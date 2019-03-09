@@ -24,7 +24,11 @@
   #include <windows.h>
 #else
   #include <pthread.h>
-  #include <sys/errno.h>
+  #if defined(EMSCRIPTEN)
+    #include <errno.h>
+  #else
+    #include <sys/errno.h>
+  #endif
   #include <unistd.h>
   #include <time.h>
 #endif
