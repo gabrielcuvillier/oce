@@ -1,2 +1,4 @@
 oce-win-bundle/
-build/
+build*/
+.idea/
+cmake-build*/
