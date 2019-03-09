@@ -30,7 +30,7 @@
 #include <OSD_Environment.hxx>
 #include <Standard_NotImplemented.hxx>
 
-#if !defined(_WIN32) && !defined(__ANDROID__) && (!defined(__APPLE__) || defined(MACOSX_USE_GLX))
+#if !defined(_WIN32) && !defined(__ANDROID__) && (!defined(__APPLE__) || defined(MACOSX_USE_GLX)) && !defined(__EMSCRIPTEN__)
   #include <X11/Xlib.h> // XOpenDisplay()
 #endif
 
@@ -66,7 +66,7 @@ OpenGl_GraphicDriver::OpenGl_GraphicDriver (const Handle(Aspect_DisplayConnectio
   myUserDrawCallback (NULL),
   myTempText (new OpenGl_Text())
 {
-#if !defined(_WIN32) && !defined(__ANDROID__) && (!defined(__APPLE__) || defined(MACOSX_USE_GLX))
+#if !defined(_WIN32) && !defined(__ANDROID__) && (!defined(__APPLE__) || defined(MACOSX_USE_GLX)) && !defined(__EMSCRIPTEN__)
   if (myDisplayConnection.IsNull())
   {
     //Aspect_GraphicDeviceDefinitionError::Raise ("OpenGl_GraphicDriver: cannot connect to X server!");
@@ -187,7 +187,7 @@ Standard_Boolean OpenGl_GraphicDriver::InitContext()
   ReleaseContext();
 #if defined(HAVE_EGL) || defined(__ANDROID__)
 
-#if !defined(_WIN32) && !defined(__ANDROID__) && (!defined(__APPLE__) || defined(MACOSX_USE_GLX))
+#if !defined(_WIN32) && !defined(__ANDROID__) && (!defined(__APPLE__) || defined(MACOSX_USE_GLX)) && !defined(__EMSCRIPTEN__)
   if (myDisplayConnection.IsNull())
   {
     return Standard_False;
@@ -286,7 +286,7 @@ Standard_Boolean OpenGl_GraphicDriver::InitEglContext (Aspect_Display          t
                                                        void*                   theEglConfig)
 {
   ReleaseContext();
-#if !defined(_WIN32) && !defined(__ANDROID__) && (!defined(__APPLE__) || defined(MACOSX_USE_GLX))
+#if !defined(_WIN32) && !defined(__ANDROID__) && (!defined(__APPLE__) || defined(MACOSX_USE_GLX)) && !defined(__EMSCRIPTEN__)
   if (myDisplayConnection.IsNull())
   {
     return Standard_False;

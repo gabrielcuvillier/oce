@@ -754,7 +754,7 @@ Standard_Boolean OpenGl_Window::Activate()
 // =======================================================================
 void OpenGl_Window::Resize (const CALL_DEF_WINDOW& theCWindow)
 {
-#if !defined(_WIN32) && !defined(HAVE_EGL) && !defined(__ANDROID__)
+#if !defined(_WIN32) && !defined(HAVE_EGL) && !defined(__ANDROID__) && !defined(__EMSCRIPTEN__)
   Display* aDisp = (Display* )myGlContext->myDisplay;
   if (aDisp == NULL)
     return;
@@ -767,7 +767,7 @@ void OpenGl_Window::Resize (const CALL_DEF_WINDOW& theCWindow)
   myWidth  = theCWindow.dx;
   myHeight = theCWindow.dy;
 
-#if !defined(_WIN32) && !defined(HAVE_EGL) && !defined(__ANDROID__)
+#if !defined(_WIN32) && !defined(HAVE_EGL) && !defined(__ANDROID__) && !defined(__EMSCRIPTEN__)
   XResizeWindow (aDisp, myGlContext->myWindow, (unsigned int )myWidth, (unsigned int )myHeight);
   XSync (aDisp, False);
 #endif
