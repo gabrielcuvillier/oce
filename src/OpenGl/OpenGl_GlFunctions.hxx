@@ -38,6 +38,10 @@
 #define GL_GLEXT_LEGACY
 #define GLX_GLXEXT_LEGACY
 
+#if defined(__EMSCRIPTEN__)
+  #define HAVE_GLES2
+#endif
+
 // include main OpenGL header provided with system
 #if defined(__APPLE__)
   #import <TargetConditionals.h>
@@ -143,7 +147,7 @@
   #define GL_TEXTURE_BUFFER_ARB             0x8C2A
 #endif
 
-#if defined(__ANDROID__)
+#if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
   #define HAVE_EGL
 #endif
 
