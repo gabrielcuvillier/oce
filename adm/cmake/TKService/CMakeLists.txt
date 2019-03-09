@@ -25,10 +25,16 @@ else(WIN32)
 		)
 		set(TOOLKIT_LIBS /System/Library/Frameworks/Cocoa.framework)
 	else(APPLE AND OCE_OSX_USE_COCOA)
-		set(TOOLKIT_MODULES ${TOOLKIT_MODULES}
-			Xw
-		)
-		set(TOOLKIT_LIBS ${X11_LIBRARIES} ${OPENGL_LIBRARIES})
+    if (EMSCRIPTEN)
+      set(TOOLKIT_MODULES ${TOOLKIT_MODULES}
+          Emscripten
+      )
+    else(EMSCRIPTEN)
+		  set(TOOLKIT_MODULES ${TOOLKIT_MODULES}
+			  Xw
+		  )
+		  set(TOOLKIT_LIBS ${X11_LIBRARIES} ${OPENGL_LIBRARIES})
+    endif(EMSCRIPTEN)
 	endif(APPLE AND OCE_OSX_USE_COCOA)
 endif(WIN32)
 set(TOOLKIT_DEPENDS
