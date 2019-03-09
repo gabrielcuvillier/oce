@@ -21,16 +21,16 @@ uniform               vec4  occLightSources[THE_MAX_LIGHTS * 4];  //!< packed li
 
 // light source properties accessors
 // GAB Note: hacked for shader to work on WebGL (array indices must be constant expressions)
-int   occLight_Type              (in int theId) { for (int x = 0; x < MAX_LIGHT; x++) { if (x == theId) { return occLightSourcesTypes[x].x } } }
-int   occLight_IsHeadlight       (in int theId) { for (int x = 0; x < MAX_LIGHT; x++) { if (x == theId) { return occLightSourcesTypes[x].y; } } }
-vec4  occLight_Diffuse           (in int theId) { for (int x = 0; x < MAX_LIGHT; x++) { if (x == theId) { return occLightSources[x * 4 + 0]; }} }
-vec4  occLight_Specular          (in int theId) { for (int x = 0; x < MAX_LIGHT; x++) { if (x == theId) { return occLightSources[x * 4 + 0]; }} }
-vec4  occLight_Position          (in int theId) { for (int x = 0; x < MAX_LIGHT; x++) { if (x == theId) { return occLightSources[x * 4 + 1]; }} }
-vec4  occLight_SpotDirection     (in int theId) { for (int x = 0; x < MAX_LIGHT; x++) { if (x == theId) { return occLightSources[x * 4 + 2]; }} }
-float occLight_ConstAttenuation  (in int theId) { for (int x = 0; x < MAX_LIGHT; x++) { if (x == theId) { return occLightSources[x * 4 + 3].x; }} }
-float occLight_LinearAttenuation (in int theId) { for (int x = 0; x < MAX_LIGHT; x++) { if (x == theId) { return occLightSources[x * 4 + 3].y; }} }
-float occLight_SpotCutOff        (in int theId) { for (int x = 0; x < MAX_LIGHT; x++) { if (x == theId) { return occLightSources[x * 4 + 3].z; }} }
-float occLight_SpotExponent      (in int theId) { for (int x = 0; x < MAX_LIGHT; x++) { if (x == theId) { return occLightSources[x * 4 + 3].w; }} }
+int   occLight_Type              (in int theId) { for (int x = 0; x < THE_MAX_LIGHTS; x++) { if (x == theId) { return occLightSourcesTypes[x].x; } } }
+int   occLight_IsHeadlight       (in int theId) { for (int x = 0; x < THE_MAX_LIGHTS; x++) { if (x == theId) { return occLightSourcesTypes[x].y; } } }
+vec4  occLight_Diffuse           (in int theId) { for (int x = 0; x < THE_MAX_LIGHTS; x++) { if (x == theId) { return occLightSources[x * 4 + 0]; }} }
+vec4  occLight_Specular          (in int theId) { for (int x = 0; x < THE_MAX_LIGHTS; x++) { if (x == theId) { return occLightSources[x * 4 + 0]; }} }
+vec4  occLight_Position          (in int theId) { for (int x = 0; x < THE_MAX_LIGHTS; x++) { if (x == theId) { return occLightSources[x * 4 + 1]; }} }
+vec4  occLight_SpotDirection     (in int theId) { for (int x = 0; x < THE_MAX_LIGHTS; x++) { if (x == theId) { return occLightSources[x * 4 + 2]; }} }
+float occLight_ConstAttenuation  (in int theId) { for (int x = 0; x < THE_MAX_LIGHTS; x++) { if (x == theId) { return occLightSources[x * 4 + 3].x; }} }
+float occLight_LinearAttenuation (in int theId) { for (int x = 0; x < THE_MAX_LIGHTS; x++) { if (x == theId) { return occLightSources[x * 4 + 3].y; }} }
+float occLight_SpotCutOff        (in int theId) { for (int x = 0; x < THE_MAX_LIGHTS; x++) { if (x == theId) { return occLightSources[x * 4 + 3].z; }} }
+float occLight_SpotExponent      (in int theId) { for (int x = 0; x < THE_MAX_LIGHTS; x++) { if (x == theId) { return occLightSources[x * 4 + 3].w; }} }
 
 // material state
 uniform vec4 occFrontMaterial[5];
