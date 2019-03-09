@@ -70,6 +70,8 @@
 # include <WNT_Window.hxx>
 #elif defined(__APPLE__) && !defined(MACOSX_USE_GLX)
 # include <Cocoa_Window.hxx>
+#elif defined (__EMSCRIPTEN__)
+# include <Emscripten_Window.hxx>
 #else
 # include <Xw_Window.hxx>
 #endif
@@ -457,7 +459,7 @@ Standard_Boolean Visual3d_ViewManager::ViewExists (const Handle(Aspect_Window)& 
   #else
     NSView* TheSpecifiedWindowId = THEWindow->HView();
   #endif
-#elif defined(__ANDROID__)
+#elif defined(__ANDROID__) || defined(__EMSCRIPTEN__)
   int TheSpecifiedWindowId = -1;
 #else
   const Handle(Xw_Window) THEWindow = Handle(Xw_Window)::DownCast (AWindow);
@@ -480,7 +482,7 @@ Standard_Boolean Visual3d_ViewManager::ViewExists (const Handle(Aspect_Window)& 
       #else
         NSView* TheWindowIdOfView = theWindow->HView();
       #endif
-#elif defined(__ANDROID__)
+#elif defined(__ANDROID__) || defined(__EMSCRIPTEN__)
       int TheWindowIdOfView = 0;
 #else
       const Handle(Xw_Window) theWindow = Handle(Xw_Window)::DownCast (AspectWindow);
