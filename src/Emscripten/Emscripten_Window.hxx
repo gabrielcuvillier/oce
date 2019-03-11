@@ -17,8 +17,6 @@
 #include <Quantity_Parameter.hxx>
 #include <Quantity_Ratio.hxx>
 
-#include "emscripten.h"
-
 class Aspect_WindowDefinitionError;
 class Aspect_WindowError;
 class Aspect_Background;
@@ -30,10 +28,7 @@ class Emscripten_Window : public Aspect_Window
 
 public:
 
-  Standard_EXPORT Emscripten_Window (const Handle(Aspect_DisplayConnection)& theDisplay,
-                                     const Standard_CString theTitle,
-                                     const Standard_Integer thePxWidth,
-                                     const Standard_Integer thePxHeight);
+  Standard_EXPORT Emscripten_Window ( );
 
   //! Destroies the Window and all resourses attached to it
   Standard_EXPORT virtual void Destroy();
@@ -71,13 +66,10 @@ public:
   Standard_EXPORT virtual void Size (Standard_Integer& theWidth,
                                      Standard_Integer& theHeight) const;
 
-  //! @return connection to X Display
-  Standard_EXPORT const Handle(Aspect_DisplayConnection)& DisplayConnection() const;
-
   //! @return native Window handle
   virtual Aspect_Drawable NativeHandle() const
   {
-    return 1;
+    return 0;
   }
 
   //! @return parent of native Window handle
@@ -87,10 +79,6 @@ public:
   }
 
 protected:
-
-  Handle(Aspect_DisplayConnection) myDisplay; //!< Display connection
-  Standard_Integer myXRight;   //!< right  position in pixels
-  Standard_Integer myYBottom;  //!< bottom position in pixels
 
 public:
 

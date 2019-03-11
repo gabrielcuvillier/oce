@@ -6,6 +6,8 @@
 #include <Aspect_Convert.hxx>
 #include <Aspect_WindowDefinitionError.hxx>
 
+#include "emscripten.h"
+
 IMPLEMENT_STANDARD_HANDLE (Emscripten_Window, Aspect_Window)
 IMPLEMENT_STANDARD_RTTIEXT(Emscripten_Window, Aspect_Window)
 
@@ -13,29 +15,9 @@ IMPLEMENT_STANDARD_RTTIEXT(Emscripten_Window, Aspect_Window)
 // function : Emscripten_Window
 // purpose  :
 // =======================================================================
-Emscripten_Window::Emscripten_Window (const Handle(Aspect_DisplayConnection)& theDisplay,
-                                      const Standard_CString theTitle,
-                                      const Standard_Integer thePxWidth,
-                                      const Standard_Integer thePxHeight)
-: Aspect_Window(),
-  myDisplay  (theDisplay),
-  myXRight   (thePxWidth),
-  myYBottom  (thePxHeight)
+Emscripten_Window::Emscripten_Window ( )
+: Aspect_Window()
 {
-  int aDummy = 0;
-  if (thePxWidth <= 0 || thePxHeight <= 0)
-  {
-    Aspect_WindowDefinitionError::Raise ("Emscripten_Window, Coordinate(s) out of range");
-  }
-  //else if (theDisplay.IsNull())
-  //{
-  //  Aspect_WindowDefinitionError::Raise ("Emscripten_Window, Display connection is undefined");
-  //  return;
-  //}
-
-  EM_ASM(
-    Browser.setCanvasSize(800, 600);
-    );
 }
 
 // =======================================================================
@@ -77,6 +59,7 @@ void Emscripten_Window::Unmap() const
 // =======================================================================
 Aspect_TypeOfResize Emscripten_Window::DoResize() const
 {
+  return Aspect_TOR_UNKNOWN;
 }
 
 // =======================================================================
@@ -94,7 +77,10 @@ Standard_Boolean Emscripten_Window::DoMapping() const
 // =======================================================================
 Quantity_Ratio Emscripten_Window::Ratio() const
 {
-  return 4./3.;
+  int width, height, isFullscreen;
+  emscripten_get_canvas_size(&width, &height, &isFullscreen);
+
+  return (Quantity_Ratio)width/(Quantity_Ratio)height;
 }
 
 // =======================================================================
@@ -104,6 +90,12 @@ Quantity_Ratio Emscripten_Window::Ratio() const
 void Emscripten_Window::Position (Standard_Integer& X1, Standard_Integer& Y1,
                           Standard_Integer& X2, Standard_Integer& Y2) const
 {
+  int width, height, isFullscreen;
+  emscripten_get_canvas_size(&width, &height, &isFullscreen);
+  X1 = 0;
+  Y1 = 0;
+  X2 = width;
+  Y2 = height;
 }
 
 // =======================================================================
@@ -113,6 +105,10 @@ void Emscripten_Window::Position (Standard_Integer& X1, Standard_Integer& Y1,
 void Emscripten_Window::Size (Standard_Integer& theWidth,
                       Standard_Integer& theHeight) const
 {
+  int width, height, isFullscreen;
+  emscripten_get_canvas_size(&width, &height, &isFullscreen);
+  theWidth = width;
+  theHeight = height;
 }
 
 #endif
