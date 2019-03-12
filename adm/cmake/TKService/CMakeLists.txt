@@ -75,5 +75,5 @@ endif(FREEIMAGE_LIBRARY AND OCE_WITH_FREEIMAGE)
 include(../BuildToolkit.cmake)
 
 if (EMSCRIPTEN)
-  target_compile_options(TKService PRIVATE -s USE_FREETYPE=1)
+  target_compile_options(TKService PUBLIC -s USE_FREETYPE=1)
 endif(EMSCRIPTEN)
