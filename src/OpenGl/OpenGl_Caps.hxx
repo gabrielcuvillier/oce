@@ -36,6 +36,13 @@ public: //! @name flags to disable particular functionality, should be used only
 public: //! @name context creation parameters
 
   /**
+   * Specify the multisampling level (antialiasing). Only works on EGL backend
+   *
+   * 1 by default.
+   */
+  Standard_Integer aaSamples;
+
+  /**
    * Specify that driver should not swap back/front buffers at the end of frame.
    * Useful when OCCT Viewer is integrated into existing OpenGL rendering pipeline as part,
    * thus swapping part is performed outside.

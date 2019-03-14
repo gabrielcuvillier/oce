@@ -332,6 +332,11 @@ public:
   //! Warning! This method should be called only before any primitives are displayed in GL scene!
   Standard_EXPORT void EnableVBO (const Standard_Boolean theToTurnOn);
 
+  //! Set the multisampling level (antialiasing)
+  //! Only works on EGL backend
+  //! Warning! This method should be called before context initialization.
+  Standard_EXPORT void SetMultisampling(const Standard_Integer theMultisampling);
+
   //! Returns information about GPU memory usage.
   //! Please read OpenGl_Context::MemoryInfo() for more description.
   Standard_EXPORT Standard_Boolean MemoryInfo (Standard_Size&           theFreeBytes,

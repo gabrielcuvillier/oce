@@ -33,6 +33,7 @@ OpenGl_Caps::OpenGl_Caps()
 #else
   ffpEnable         (Standard_False),
 #endif
+  aaSamples         (1),
   swapInterval      (1),
   buffersNoSwap     (Standard_False),
   contextStereo     (Standard_False),
@@ -65,6 +66,7 @@ OpenGl_Caps& OpenGl_Caps::operator= (const OpenGl_Caps& theCopy)
   pntSpritesDisable = theCopy.pntSpritesDisable;
   keepArrayData     = theCopy.keepArrayData;
   ffpEnable         = theCopy.ffpEnable;
+  aaSamples         = theCopy.aaSamples;
   swapInterval      = theCopy.swapInterval;
   buffersNoSwap     = theCopy.buffersNoSwap;
   contextStereo     = theCopy.contextStereo;

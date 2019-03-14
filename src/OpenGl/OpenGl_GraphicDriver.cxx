@@ -212,12 +212,14 @@ Standard_Boolean OpenGl_GraphicDriver::InitContext()
 
   EGLint aConfigAttribs[] =
   {
-    EGL_RED_SIZE,     8,
-    EGL_GREEN_SIZE,   8,
-    EGL_BLUE_SIZE,    8,
-    EGL_ALPHA_SIZE,   0,
-    EGL_DEPTH_SIZE,   24,
-    EGL_STENCIL_SIZE, 8,
+    EGL_RED_SIZE,       8,
+    EGL_GREEN_SIZE,     8,
+    EGL_BLUE_SIZE,      8,
+    EGL_ALPHA_SIZE,     0,
+    EGL_DEPTH_SIZE,     24,
+    EGL_STENCIL_SIZE,   8,
+    EGL_SAMPLE_BUFFERS, 1,
+    EGL_SAMPLES,        myCaps->aaSamples,
   #if defined(GL_ES_VERSION_2_0)
     EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
   #else
@@ -235,8 +237,23 @@ Standard_Boolean OpenGl_GraphicDriver::InitContext()
     if (eglChooseConfig ((EGLDisplay )myEglDisplay, aConfigAttribs, &myEglConfig, 1, &aNbConfigs) != EGL_TRUE
      || myEglConfig == NULL)
     {
-      ::Message::DefaultMessenger()->Send ("Error: EGL does not provide compatible configurations!", Message_Fail);
-      return Standard_False;
+      if (myCaps->aaSamples > 1) {
+        // or try with lower sampling
+        eglGetError();
+        aConfigAttribs[4 * 2 + 1] = 24; // restore depth buffer bit
+        aConfigAttribs[7 * 2 + 1] = 1;  // No multisampling
+        if (eglChooseConfig ((EGLDisplay )myEglDisplay, aConfigAttribs, &myEglConfig, 1, &aNbConfigs) != EGL_TRUE
+        || myEglConfig == NULL)
+        {
+          ::Message::DefaultMessenger()->Send ("Error: EGL does not provide compatible configurations!", Message_Fail);
+          return Standard_False;
+        }
+      }
+      else {
+        ::Message::DefaultMessenger()->Send ("Error: EGL does not provide compatible configurations!", Message_Fail);
+        return Standard_False;
+
+      }
     }
   }
 
@@ -360,6 +377,15 @@ Standard_ShortReal OpenGl_GraphicDriver::DefaultTextHeight() const
 void OpenGl_GraphicDriver::EnableVBO (const Standard_Boolean theToTurnOn)
 {
   myCaps->vboDisable = !theToTurnOn;
+}
+
+// =======================================================================
+// function : SetMultisampling
+// purpose  :
+// =======================================================================
+void OpenGl_GraphicDriver::SetMultisampling(const Standard_Integer theMultisampling)
+{
+  myCaps->aaSamples = theMultisampling;
 }
 
 // =======================================================================
