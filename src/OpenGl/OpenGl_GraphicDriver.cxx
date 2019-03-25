@@ -380,6 +380,15 @@ void OpenGl_GraphicDriver::EnableVBO (const Standard_Boolean theToTurnOn)
 }
 
 // =======================================================================
+// function : EnableFBO
+// purpose  :
+// =======================================================================
+void OpenGl_GraphicDriver::EnableFBO (const Standard_Boolean theToTurnOn)
+{
+  myCaps->fboDisable = !theToTurnOn;
+}
+
+// =======================================================================
 // function : SetMultisampling
 // purpose  :
 // =======================================================================

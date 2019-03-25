@@ -32,6 +32,7 @@ public: //! @name flags to disable particular functionality, should be used only
   Standard_Boolean keepArrayData;     //!< Disables freeing CPU memory after building VBOs (OFF by default)
   Standard_Boolean ffpEnable;         //!< Enables FFP (fixed-function pipeline), do not use built-in GLSL programs (ON by default on desktop OpenGL and OFF on OpenGL ES)
   Standard_Integer swapInterval;      //!< controls swap interval - 0 for VSync off and 1 for VSync on, 1 by default
+  Standard_Integer fboDisable;        //!< flag permits FBO usage, might be needed to be disabled if you use a GL context created externally
 
 public: //! @name context creation parameters
 

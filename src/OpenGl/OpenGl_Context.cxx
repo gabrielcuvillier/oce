@@ -138,7 +138,7 @@ OpenGl_Context::OpenGl_Context (const Handle(OpenGl_Caps)& theCaps)
     caps = theCaps;
   else
     caps = new OpenGl_Caps();
-  
+
   // system-dependent fields
 #if defined(HAVE_EGL)
   myDisplay  = (Aspect_Display          )EGL_NO_DISPLAY;
@@ -1994,7 +1994,7 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   }
 
   // initialize FBO extension (ARB)
-  if (hasFBO)
+  if (hasFBO && !caps->fboDisable)
   {
     arbFBO     = (OpenGl_ArbFBO*     )(&(*myFuncs));
     arbFBOBlit = (OpenGl_ArbFBOBlit* )(&(*myFuncs));

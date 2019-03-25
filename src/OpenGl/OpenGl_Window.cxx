@@ -157,8 +157,8 @@ OpenGl_Window::OpenGl_Window (const Handle(OpenGl_GraphicDriver)& theDriver,
    || anEglContext == EGL_NO_CONTEXT
    || anEglConfig == NULL)
   {
-    Aspect_GraphicDeviceDefinitionError::Raise ("OpenGl_Window, EGL does not provide compatible configurations!");
-    return;
+    anEglContext = theGContext;
+    anEglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
   }
 
   EGLSurface anEglSurf = EGL_NO_SURFACE;
