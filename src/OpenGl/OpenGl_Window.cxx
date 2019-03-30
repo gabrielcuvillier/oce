@@ -560,7 +560,7 @@ OpenGl_Window::OpenGl_Window (const Handle(OpenGl_GraphicDriver)& theDriver,
     if (aVis == NULL)
     {
       int anIter = 0;
-      int anAttribs[13];
+      int anAttribs[18];
       anAttribs[anIter++] = GLX_RGBA;
 
       anAttribs[anIter++] = GLX_DEPTH_SIZE;
@@ -579,6 +579,14 @@ OpenGl_Window::OpenGl_Window (const Handle(OpenGl_GraphicDriver)& theDriver,
       anAttribs[anIter++] = (wattr.depth <= 8) ? 0 : 1;
 
       anAttribs[anIter++] = GLX_DOUBLEBUFFER;
+
+      if (theCaps->aaSamples > 0) {
+        anAttribs[anIter++] = GLX_SAMPLE_BUFFERS;
+        anAttribs[anIter++] = 1;
+
+        anAttribs[anIter++] = GLX_SAMPLES;
+        anAttribs[anIter++] = theCaps->aaSamples;
+      }
 
       // warning: this flag may be set to None, so it need to be last in anAttribs
       Standard_Integer aStereoFlagPos = anIter;

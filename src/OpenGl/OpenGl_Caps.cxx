@@ -34,7 +34,7 @@ OpenGl_Caps::OpenGl_Caps()
 #else
   ffpEnable         (Standard_False),
 #endif
-  aaSamples         (1),
+  aaSamples         (0),
   swapInterval      (1),
   buffersNoSwap     (Standard_False),
   contextStereo     (Standard_False),

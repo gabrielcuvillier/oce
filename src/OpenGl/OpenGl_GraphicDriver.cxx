@@ -218,7 +218,7 @@ Standard_Boolean OpenGl_GraphicDriver::InitContext()
     EGL_ALPHA_SIZE,     0,
     EGL_DEPTH_SIZE,     24,
     EGL_STENCIL_SIZE,   8,
-    EGL_SAMPLE_BUFFERS, 1,
+    EGL_SAMPLE_BUFFERS, myCaps->aaSamples ? 1 : 0,
     EGL_SAMPLES,        myCaps->aaSamples,
   #if defined(GL_ES_VERSION_2_0)
     EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
@@ -237,11 +237,11 @@ Standard_Boolean OpenGl_GraphicDriver::InitContext()
     if (eglChooseConfig ((EGLDisplay )myEglDisplay, aConfigAttribs, &myEglConfig, 1, &aNbConfigs) != EGL_TRUE
      || myEglConfig == NULL)
     {
-      if (myCaps->aaSamples > 1) {
+      if (myCaps->aaSamples > 0) {
         // or try with lower sampling
         eglGetError();
         aConfigAttribs[4 * 2 + 1] = 24; // restore depth buffer bit
-        aConfigAttribs[7 * 2 + 1] = 1;  // No multisampling
+        aConfigAttribs[7 * 2 + 1] = 0;  // No multisampling
         if (eglChooseConfig ((EGLDisplay )myEglDisplay, aConfigAttribs, &myEglConfig, 1, &aNbConfigs) != EGL_TRUE
         || myEglConfig == NULL)
         {

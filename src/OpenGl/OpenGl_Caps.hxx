@@ -37,9 +37,9 @@ public: //! @name flags to disable particular functionality, should be used only
 public: //! @name context creation parameters
 
   /**
-   * Specify the multisampling level (antialiasing). Only works on EGL backend
+   * Specify the multisampling level (antialiasing).
    *
-   * 1 by default.
+   * 0 by default.
    */
   Standard_Integer aaSamples;
 
