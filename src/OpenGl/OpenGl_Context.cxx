@@ -1102,7 +1102,9 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
     core20    = (OpenGl_GlCore20*    )(&(*myFuncs));
     core20fwd = (OpenGl_GlCore20Fwd* )(&(*myFuncs));
     core15fwd = (OpenGl_GlCore15Fwd* )(&(*myFuncs));
-    arbFBO    = (OpenGl_ArbFBO*      )(&(*myFuncs));
+    if (!caps->fboDisable) {
+      arbFBO    = (OpenGl_ArbFBO*      )(&(*myFuncs));
+    }
   }
   if (IsGlGreaterEqual (3, 0)
    && FindProc ("glBlitFramebuffer", myFuncs->glBlitFramebuffer))
