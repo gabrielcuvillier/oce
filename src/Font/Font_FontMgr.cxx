@@ -56,7 +56,13 @@ static const Font_FontMgr_FontAliasMapNode Font_FontMgr_MapOfFontsAliases[] =
   { "Times-Italic"             , "Droid Serif"    , Font_FA_Italic  },
   { "Times-BoldItalic"         , "Droid Serif"    , Font_FA_BoldItalic  },
   { "Arial"                    , "Roboto"         , Font_FA_Regular  },
-
+#elif defined(__EMSCRIPTEN__)
+  { "Courier"                  , "DejaVu Sans Mono"      , Font_FA_Regular },
+  { "Times-Roman"              , "DejaVu Serif"        , Font_FA_Regular  },
+  { "Times-Bold"               , "DejaVu Serif"        , Font_FA_Bold },
+  { "Times-Italic"             , "DejaVu Serif"        , Font_FA_Italic  },
+  { "Times-BoldItalic"         , "DejaVu Serif"        , Font_FA_BoldItalic  },
+  { "Arial"                    , "DejaVu Sans"      , Font_FA_Regular  },
 #else   //X11
 
   { "Courier"                  , "Courier"      , Font_FA_Regular },
@@ -142,6 +148,9 @@ static const Font_FontMgr_FontAliasMapNode Font_FontMgr_MapOfFontsAliases[] =
     static Standard_CString myDefaultFontsDirs[] = {"/system/fonts",         // Android
                                                     "/usr/share/fonts",
                                                     "/usr/local/share/fonts",
+    #if defined(__EMSCRIPTEN__)
+                                                    "/fonts",
+    #endif
                                                     NULL
                                                    };
   #endif
