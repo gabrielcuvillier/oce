@@ -76,6 +76,7 @@ struct utsname info;
  if (!strcmp(info.sysname,"UNIX_System_V"))  return (OSD_UnixSystemV);
  if (!strcmp(info.sysname,"VMS_POSIX"))      return (OSD_VMS);
  if (!strcmp(info.sysname,"Darwin"))         return (OSD_MacOs);
+ if (!strcmp(info.sysname,"Emscripten"))     return (OSD_Emscripten);
  return (OSD_Unknown);
 }
 

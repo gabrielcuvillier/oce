@@ -28,7 +28,8 @@ OSD_MacOs,
 OSD_Taligent,
 OSD_WindowsNT,
 OSD_LinuxREDHAT,
-OSD_Aix
+OSD_Aix,
+OSD_Emscripten
 };
 
 #endif // _OSD_SysType_HeaderFile

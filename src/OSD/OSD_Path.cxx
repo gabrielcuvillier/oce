@@ -36,6 +36,9 @@ static OSD_SysType whereAmI(){
 #elif defined(vax) || defined(__vms)
   return OSD_VMS;
 }
+#elif defined(__EMSCRIPTEN__)
+  return OSD_Emscripten;
+}
 #elif defined(__linux__) || defined(LIN)
   return OSD_LinuxREDHAT;
 }
@@ -343,6 +346,7 @@ OSD_Path::OSD_Path(const TCollection_AsciiString& aDependentName,
   case OSD_UnixSystemV:
   case OSD_Aix:
   case OSD_OSF:
+  case OSD_Emscripten:
      UnixExtract(aDependentName,myNode,myUserName,myPassword,myTrek,myName,myExtension);
      break;
   case OSD_OS2:
