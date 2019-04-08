@@ -92,10 +92,16 @@ Standard_Integer OSD_Process::UserId(){
 
 
 TCollection_AsciiString OSD_Process::UserName(){
+// getpwuid is not implemented on Emscripten
+#if !defined(__EMSCRIPTEN__)
  struct passwd *infos;
  infos = getpwuid(getuid()); 
  TCollection_AsciiString result=infos->pw_name;
-
+#else
+  // So for now, just return "web_user" as a sample user name
+  // NB: it is good idea to have an IDBFS folder like /home/web_user
+  TCollection_AsciiString result="web_user";
+#endif
  return(result);
 }
 
