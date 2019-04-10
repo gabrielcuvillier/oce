@@ -19,6 +19,8 @@
 
 #include <StepToTopoDS_TranslateEdge.ixx>
 
+#include <Standard_ErrorHandler.hxx>
+
 #include <StepToTopoDS.hxx>
 #include <StepToTopoDS_TranslateVertex.hxx>
 #include <StepToTopoDS_GeometricTool.hxx>

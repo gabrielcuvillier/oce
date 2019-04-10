@@ -47,6 +47,7 @@ public: \
 /*! If you are using IMPLEMENT_STANDARD_EXCEPTION in your code make sure you also call
     IMPLEMENT_STANDARD_HANDLE(C1,C2) and IMPLEMENT_STANDARD_RTTIEXT(C1,C2).
 */
+#if !defined(NO_CXX_EXCEPTION)
 #define IMPLEMENT_STANDARD_EXCEPTION(C1) \
  \
 void C1::Raise(Standard_SStream& aReason) \
@@ -69,5 +70,28 @@ void C1::Throw () const \
 { \
   throw *this; \
 }
-
+#else
+#define IMPLEMENT_STANDARD_EXCEPTION(C1) \
+ \
+void C1::Raise(Standard_SStream& aReason) \
+{ \
+  Handle(C1) _E = new C1; \
+  _E->Reraise (aReason); \
+} \
+ \
+void C1::Raise(const Standard_CString AString) \
+{ \
+  Handle(C1) _E = new C1; \
+  _E->Reraise(AString); \
+} \
+ \
+Handle(C1) C1::NewInstance(const Standard_CString aMessage) \
+{ \
+  return new C1(aMessage); \
+} \
+void C1::Throw () const \
+{ \
+  return; \
+}
+#endif
 #endif

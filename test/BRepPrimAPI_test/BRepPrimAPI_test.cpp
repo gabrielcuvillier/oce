@@ -13,9 +13,11 @@ TEST(BRepPrimAPITestSuite, testCreateFlatBox)
 {
     // one of the length is equal to 0.
     // OCE must raise Standard_DomainError
+#if !defined(NO_CXX_EXCEPTION)
     ASSERT_THROW(BRepPrimAPI_MakeBox my_box(0,30.,30),Standard_DomainError);
     ASSERT_THROW(BRepPrimAPI_MakeBox my_box(30.,0.,30),Standard_DomainError);
     ASSERT_THROW(BRepPrimAPI_MakeBox my_box(30.,30.,0.),Standard_DomainError);
+#endif
 }
 
 TEST(BRepPrimAPITestSuite, testCreateSmallestBox)

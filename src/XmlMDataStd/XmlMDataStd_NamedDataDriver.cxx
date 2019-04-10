@@ -14,6 +14,7 @@
 // commercial license or contractual agreement.
 
 #include <XmlMDataStd_NamedDataDriver.ixx>
+#include <Standard_ErrorHandler.hxx>
 #include <XmlObjMgt.hxx>
 #include <XmlObjMgt_Document.hxx>
 #include <LDOM_MemManager.hxx>

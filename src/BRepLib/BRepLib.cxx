@@ -18,6 +18,7 @@
 //  Modified by skv - Thu Jun  3 12:39:19 2004 OCC5898
 
 #include <BRepLib.ixx>
+#include <Standard_ErrorHandler.hxx>
 #include <BRepAdaptor_Surface.hxx>
 #include <BRepAdaptor_HSurface.hxx>
 #include <BRepAdaptor_HCurve2d.hxx>

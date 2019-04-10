@@ -15,6 +15,7 @@
 // commercial license or contractual agreement.
 
 #include <BRepOffsetAPI_MakeOffset.ixx>
+#include <Standard_ErrorHandler.hxx>
 #include <BRepBuilderAPI_MakeFace.hxx>
 #include <BRep_Builder.hxx>
 #include <BRep_Tool.hxx>

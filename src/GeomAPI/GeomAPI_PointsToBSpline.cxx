@@ -15,6 +15,7 @@
 // commercial license or contractual agreement.
 
 #include <GeomAPI_PointsToBSpline.ixx>
+#include <Standard_ErrorHandler.hxx>
 
 #include <AppDef_BSplineCompute.hxx>
 #include <AppDef_MultiLine.hxx>

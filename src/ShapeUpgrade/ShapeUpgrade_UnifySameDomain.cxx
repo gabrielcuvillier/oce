@@ -15,6 +15,8 @@
 
 #include <ShapeUpgrade_UnifySameDomain.ixx>
 #include <ShapeUpgrade_UnifySameDomain.hxx>
+#include <Standard_ErrorHandler.hxx>
+
 #include <TopTools_SequenceOfShape.hxx>
 #include <TopTools_IndexedMapOfShape.hxx>
 #include <TopExp_Explorer.hxx>

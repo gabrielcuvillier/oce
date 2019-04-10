@@ -13,6 +13,8 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
+#include <Standard_ErrorHandler.hxx>
+
 #include <Precision.hxx>
 #include <VrmlData_Appearance.hxx>
 #include <VrmlData_ImageTexture.hxx>
@@ -661,13 +663,7 @@ VrmlData_ErrorStatus VrmlData_ImageTexture::Write(const char *thePrefix)  const
     url += URL().First();
     url += "\"";
 
-    try {
-      aStatus = aScene.WriteLine("url ", url.ToCString());
-    }
-    catch (...)
-    {
-      
-    }
+    aStatus = aScene.WriteLine("url ", url.ToCString());
     aStatus = WriteClosing();
   }
   return aStatus;

@@ -15,6 +15,8 @@
 
 #include <BRepBuilderAPI_FastSewing.hxx>
 
+#include <Standard_ErrorHandler.hxx>
+
 #include <BRepTools_Quilt.hxx>
 #include <Bnd_Box.hxx>
 

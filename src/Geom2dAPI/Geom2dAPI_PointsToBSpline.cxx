@@ -16,6 +16,8 @@
 
 #include <Geom2dAPI_PointsToBSpline.ixx>
 
+#include <Standard_ErrorHandler.hxx>
+
 #include <AppDef_BSplineCompute.hxx>
 #include <AppDef_MultiLine.hxx>
 #include <AppParCurves_MultiBSpCurve.hxx>

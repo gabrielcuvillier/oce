@@ -45,6 +45,8 @@
 
 #include <BRepOffsetAPI_ThruSections.ixx>
 
+#include <Standard_ErrorHandler.hxx>
+
 #include <Precision.hxx>
 #include <Standard_DomainError.hxx>
 

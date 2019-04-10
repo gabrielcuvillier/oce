@@ -5,6 +5,8 @@
 
 #include <GeomFill_AppSurf.hxx>
 
+#include <Standard_ErrorHandler.hxx>
+
 #include <TColgp_HArray2OfPnt.hxx>
 #include <TColStd_HArray2OfReal.hxx>
 #include <TColStd_HArray1OfReal.hxx>

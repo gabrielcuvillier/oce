@@ -15,6 +15,7 @@
 // commercial license or contractual agreement.
 
 #include <AIS_Axis.ixx>
+#include <Standard_ErrorHandler.hxx>
 #include <Aspect_TypeOfLine.hxx>
 #include <Prs3d_Drawer.hxx>
 #include <Prs3d_LineAspect.hxx>

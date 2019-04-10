@@ -16,6 +16,8 @@
 
 #include <GeomAPI_PointsToBSplineSurface.ixx>
 
+#include <Standard_ErrorHandler.hxx>
+
 #include <Geom_BSplineCurve.hxx>
 #include <GeomFill_SectionGenerator.hxx>
 #include <GeomFill_Line.hxx>
@@ -409,14 +411,14 @@ void GeomAPI_PointsToBSplineSurface::Init(const TColgp_Array2OfPnt& Points,
   if(Variation2.IsOverConstrained()) {
     return;
   }
-
-  try {
-    Variation2.Approximate();
+  {
+    try {
+      Variation2.Approximate();
+    }
+    catch (Standard_Failure) {
+      return;
+    }
   }
-  catch (Standard_Failure) {
-    return;
-  }
-
   if(!Variation2.IsDone()) {
     return;
   }
