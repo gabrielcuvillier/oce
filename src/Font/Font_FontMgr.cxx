@@ -36,7 +36,6 @@ static const Font_FontMgr_FontAliasMapNode Font_FontMgr_MapOfFontsAliases[] =
 {
 
 #if defined(_WIN32) || defined(__APPLE__)
-
   { "Courier"                  , "Courier New"    , Font_FA_Regular },
   { "Times-Roman"              , "Times New Roman", Font_FA_Regular  },
   { "Times-Bold"               , "Times New Roman", Font_FA_Bold },
@@ -47,9 +46,7 @@ static const Font_FontMgr_FontAliasMapNode Font_FontMgr_MapOfFontsAliases[] =
   { "ZapfDingbats"             , "WingDings"      , Font_FA_Regular  },
   { "Rock"                     , "Arial"          , Font_FA_Regular  },
   { "Iris"                     , "Lucida Console" , Font_FA_Regular  }
-
 #elif defined(__ANDROID__)
-
   { "Courier"                  , "Droid Sans Mono", Font_FA_Regular },
   { "Times-Roman"              , "Droid Serif"    , Font_FA_Regular  },
   { "Times-Bold"               , "Droid Serif"    , Font_FA_Bold },
@@ -57,14 +54,13 @@ static const Font_FontMgr_FontAliasMapNode Font_FontMgr_MapOfFontsAliases[] =
   { "Times-BoldItalic"         , "Droid Serif"    , Font_FA_BoldItalic  },
   { "Arial"                    , "Roboto"         , Font_FA_Regular  },
 #elif defined(__EMSCRIPTEN__)
-  { "Courier"                  , "DejaVu Sans Mono"      , Font_FA_Regular },
-  { "Times-Roman"              , "DejaVu Serif"        , Font_FA_Regular  },
-  { "Times-Bold"               , "DejaVu Serif"        , Font_FA_Bold },
-  { "Times-Italic"             , "DejaVu Serif"        , Font_FA_Italic  },
-  { "Times-BoldItalic"         , "DejaVu Serif"        , Font_FA_BoldItalic  },
-  { "Arial"                    , "DejaVu Sans"      , Font_FA_Regular  },
+  { "Courier"                  , "Droid Sans Mono"    , Font_FA_Regular },
+  { "Times-Roman"              , "Droid Serif"        , Font_FA_Regular  },
+  { "Times-Bold"               , "Droid Serif"        , Font_FA_Bold },
+  { "Times-Italic"             , "Droid Serif"        , Font_FA_Italic  },
+  { "Times-BoldItalic"         , "Droid Serif"        , Font_FA_BoldItalic  },
+  { "Arial"                    , "Roboto"             , Font_FA_Regular  },
 #else   //X11
-
   { "Courier"                  , "Courier"      , Font_FA_Regular },
   { "Times-Roman"              , "Times"        , Font_FA_Regular  },
   { "Times-Bold"               , "Times"        , Font_FA_Bold },
