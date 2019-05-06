@@ -54,6 +54,7 @@ static const Font_FontMgr_FontAliasMapNode Font_FontMgr_MapOfFontsAliases[] =
   { "Times-BoldItalic"         , "Droid Serif"    , Font_FA_BoldItalic  },
   { "Arial"                    , "Roboto"         , Font_FA_Regular  },
 #elif defined(__EMSCRIPTEN__)
+  // NB: Those fonts need to be loaded manually in MemFS (under /fonts directory)
   { "Courier"                  , "Droid Sans Mono"    , Font_FA_Regular },
   { "Times-Roman"              , "Droid Serif"        , Font_FA_Regular  },
   { "Times-Bold"               , "Droid Serif"        , Font_FA_Bold },
