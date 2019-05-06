@@ -1,3 +1,12 @@
+// Copyright (c) 2019 Gabriel Cuvillier - Continuation Labs
+//
+// This file is part of Open CASCADE Technology software library.
+//
+// This library is free software; you can redistribute it and/or modify it under
+// the terms of the GNU Lesser General Public License version 2.1 as published
+// by the Free Software Foundation, with special exception defined in the file
+// OCCT_LGPL_EXCEPTION.txt. Consult the file LICENSE_LGPL_21.txt included in OCCT
+// distribution for complete text of the license and disclaimer of any warranty.
 
 #ifndef _Emscripten_Window_H__
 #define _Emscripten_Window_H__
@@ -5,36 +14,24 @@
 #if defined(__EMSCRIPTEN__)
 
 #include <Aspect_Window.hxx>
-
-#include <Aspect_DisplayConnection.hxx>
-#include <Aspect_FillMethod.hxx>
-#include <Aspect_GradientFillMethod.hxx>
 #include <Aspect_Handle.hxx>
 #include <Aspect_TypeOfResize.hxx>
 #include <Standard.hxx>
 #include <Standard_DefineHandle.hxx>
-#include <Quantity_NameOfColor.hxx>
-#include <Quantity_Parameter.hxx>
 #include <Quantity_Ratio.hxx>
-
-class Aspect_WindowDefinitionError;
-class Aspect_WindowError;
-class Aspect_Background;
-class Quantity_Color;
-class Aspect_GradientBackground;
 
 class Emscripten_Window : public Aspect_Window
 {
 
 public:
 
-  Standard_EXPORT Emscripten_Window ( );
+  //! Creates an Emscripten window defined by its target canvas id. NULL means the default canvas.
+  Standard_EXPORT Emscripten_Window ( const char* theTarget = NULL );
 
-  //! Destroies the Window and all resourses attached to it
+  //! Destroys the Window and all resourses attached to it
   Standard_EXPORT virtual void Destroy();
 
-  ~Emscripten_Window()
-  {
+  ~Emscripten_Window() {
     Destroy();
   }
 
@@ -67,26 +64,31 @@ public:
                                      Standard_Integer& theHeight) const;
 
   //! @return native Window handle
-  virtual Aspect_Drawable NativeHandle() const
-  {
-    return 0;
+  virtual Aspect_Drawable NativeHandle() const {
+    return 0; // No native handle on Emscripten
   }
 
   //! @return parent of native Window handle
-  virtual Aspect_Drawable NativeParentHandle() const
-  {
-    return 0;
+  virtual Aspect_Drawable NativeParentHandle() const {
+    return 0; // No native handle on Emscripten
+  }
+
+  //! @return the target id (ie. canvas)
+  const char* Target() const {
+    return myTarget;
   }
 
 protected:
 
+  // Target canvas id
+  const char* myTarget;
+
 public:
 
   DEFINE_STANDARD_RTTI(Emscripten_Window)
-
 };
 
 DEFINE_STANDARD_HANDLE(Emscripten_Window, Aspect_Window)
 
-#endif
+#endif // __EMSCRIPTEN__
 #endif // _Emscripten_Window_H__
