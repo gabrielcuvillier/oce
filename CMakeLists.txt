@@ -461,7 +461,7 @@ endif(OCE_VISU_DEP)
 
 if(OCE_REQUIRES_FREETYPE AND NOT OCE_SKIP_FIND_LIBRARIES)
 	## TKService requires FreeType
-  if(NOT EMSCRIPTEN)
+  if(NOT EMSCRIPTEN) # Emscripten case is handled differently, using emscripten ports
 	  find_package(Freetype REQUIRED)
   endif(NOT EMSCRIPTEN)
 
