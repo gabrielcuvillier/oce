@@ -225,6 +225,12 @@ public:
                                          const Aspect_Display          theEglDisplay,
                                          const Aspect_RenderingContext theEglContext,
                                          const Standard_Boolean        theIsCoreProfile = Standard_False);
+#elif defined(__EMSCRIPTEN__)
+  //! Initialize class from specified surface and rendering context. Method should be called only once.
+  //! @return false if OpenGL context can not be bound to specified surface
+  Standard_EXPORT Standard_Boolean Init (const Aspect_Drawable         theEmscriptenWindow,       // Target Canvas: const char*
+                                         const Aspect_RenderingContext theEmscriptenContext,      // WebGL Context: int (=> EMSCRIPTEN_WEBGL_CONTEXT_HANDLE)
+                                         const Standard_Boolean        theIsCoreProfile = Standard_False);
 #elif defined(_WIN32)
   //! Initialize class from specified window and rendering context. Method should be called only once.
   //! @return false if OpenGL context can not be bound to specified window
@@ -625,6 +631,9 @@ private: // system-dependent fields
   Aspect_Drawable         myWindow;   //!< EGL surface                   : EGLSurface
   Aspect_Display          myDisplay;  //!< EGL connection to the Display : EGLDisplay
   Aspect_RenderingContext myGContext; //!< EGL rendering context         : EGLContext
+#elif defined(__EMSCRIPTEN__)
+  Aspect_Drawable         myWindow;   //!< Emscripten Target Canvas      : const char*
+  Aspect_RenderingContext myGContext; //!< Emscripten WebGL Context      : int (=> EMSCRIPTEN_WEBGL_CONTEXT_HANDLE)
 #elif defined(_WIN32)
   Aspect_Handle           myWindow;   //!< window handle (owner of GL context) : HWND
   Aspect_Handle           myWindowDC; //!< Device Descriptor handle : HDC

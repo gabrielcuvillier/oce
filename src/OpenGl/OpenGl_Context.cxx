@@ -41,6 +41,9 @@
   #ifdef _MSC_VER
     #pragma comment(lib, "libEGL.lib")
   #endif
+#elif defined(__EMSCRIPTEN__)
+  #include <emscripten.h>
+  #include <emscripten/html5.h>
 #elif defined(_WIN32)
   //
 #elif defined(__APPLE__) && !defined(MACOSX_USE_GLX)
@@ -144,6 +147,9 @@ OpenGl_Context::OpenGl_Context (const Handle(OpenGl_Caps)& theCaps)
   myDisplay  = (Aspect_Display          )EGL_NO_DISPLAY;
   myWindow   = (Aspect_Drawable         )EGL_NO_SURFACE;
   myGContext = (Aspect_RenderingContext )EGL_NO_CONTEXT;
+#elif defined(__EMSCRIPTEN__)
+  myWindow   = (Aspect_Drawable         )NULL;
+  myGContext = (Aspect_RenderingContext )NULL;
 #elif defined(_WIN32)
   myWindow   = NULL;
   myWindowDC = NULL;
@@ -408,6 +414,8 @@ Standard_Boolean OpenGl_Context::IsCurrent() const
   return (((EGLDisplay )myDisplay  == eglGetCurrentDisplay())
        && ((EGLContext )myGContext == eglGetCurrentContext())
        && ((EGLSurface )myWindow   == eglGetCurrentSurface (EGL_DRAW)));
+#elif defined(__EMSCRIPTEN__)
+  return (emscripten_webgl_get_current_context() == myGContext);
 #elif defined(_WIN32)
   if (myWindowDC == NULL || myGContext == NULL)
   {
@@ -450,6 +458,8 @@ Standard_Boolean OpenGl_Context::MakeCurrent()
     myIsInitialized = Standard_False;
     return Standard_False;
   }
+#elif defined(__EMSCRIPTEN__)
+  return (emscripten_webgl_make_context_current(myGContext) == EMSCRIPTEN_RESULT_SUCCESS);
 #elif defined(_WIN32)
   if (myWindowDC == NULL || myGContext == NULL)
   {
@@ -512,6 +522,8 @@ void OpenGl_Context::SwapBuffers()
   {
     eglSwapBuffers ((EGLDisplay )myDisplay, (EGLSurface )myWindow);
   }
+#elif defined(__EMSCRIPTEN__)
+  emscripten_webgl_commit_frame();
 #elif defined(_WIN32)
   if ((HDC )myWindowDC != NULL)
   {
@@ -538,6 +550,15 @@ Standard_Boolean OpenGl_Context::SetSwapInterval (const Standard_Integer theInte
   if (::eglSwapInterval ((EGLDisplay )myDisplay, theInterval) == EGL_TRUE)
   {
     return Standard_True;
+  }
+#elif defined(__EMSCRIPTEN__)
+  if (theInterval == 0)
+  {
+    return emscripten_set_main_loop_timing(0/*EM_TIMING_SETTIMEOUT*/, 0) == 0;
+  }
+  else
+  {
+    return emscripten_set_main_loop_timing(1/*EM_TIMING_RAF*/, theInterval) == 0;
   }
 #elif defined(_WIN32)
   if (myFuncs->wglSwapIntervalEXT != NULL)
@@ -578,6 +599,8 @@ void* OpenGl_Context::findProc (const char* theFuncName)
 {
 #if defined(HAVE_EGL)
   return (void* )eglGetProcAddress (theFuncName);
+#elif defined(__EMSCRIPTEN__)
+  return (void*)emscripten_webgl_get_proc_address(theFuncName);
 #elif defined(_WIN32)
   return (void*)wglGetProcAddress (theFuncName);
 #elif defined(__APPLE__) && !defined(MACOSX_USE_GLX)
@@ -680,6 +703,9 @@ Standard_Boolean OpenGl_Context::Init (const Standard_Boolean theIsCoreProfile)
   myDisplay  = (Aspect_Display )eglGetCurrentDisplay();
   myGContext = (Aspect_RenderingContext )eglGetCurrentContext();
   myWindow   = (Aspect_Drawable )eglGetCurrentSurface(EGL_DRAW);
+#elif defined(__EMSCRIPTEN__)
+  myGContext = (Aspect_RenderingContext )emscripten_webgl_get_current_context();
+  myWindow   = (Aspect_Drawable )NULL;
 #elif defined(_WIN32)
   myWindowDC = (Aspect_Handle )wglGetCurrentDC();
   myGContext = (Aspect_RenderingContext )wglGetCurrentContext();
@@ -709,6 +735,10 @@ Standard_Boolean OpenGl_Context::Init (const Aspect_Drawable         theEglSurfa
                                        const Aspect_Display          theEglDisplay,
                                        const Aspect_RenderingContext theEglContext,
                                        const Standard_Boolean        theIsCoreProfile)
+#elif defined(__EMSCRIPTEN__)
+Standard_Boolean OpenGl_Context::Init (const Aspect_Drawable         theEmscriptenWindow,
+                                       const Aspect_RenderingContext theEmscriptenContext,
+                                       const Standard_Boolean        theIsCoreProfile)
 #elif defined(_WIN32)
 Standard_Boolean OpenGl_Context::Init (const Aspect_Handle           theWindow,
                                        const Aspect_Handle           theWindowDC,
@@ -736,6 +766,9 @@ Standard_Boolean OpenGl_Context::Init (const Aspect_Drawable         theWindow,
   myWindow   = theEglSurface;
   myGContext = theEglContext;
   myDisplay  = theEglDisplay;
+#elif defined(__EMSCRIPTEN__)
+  myWindow   = theEmscriptenWindow;
+  myGContext = theEmscriptenContext;
 #elif defined(_WIN32)
   myWindow   = theWindow;
   myGContext = theGContext;

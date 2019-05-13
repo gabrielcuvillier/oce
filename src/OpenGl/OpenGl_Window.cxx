@@ -27,6 +27,8 @@
 
 #if defined(HAVE_EGL) || defined(__ANDROID__)
   #include <EGL/egl.h>
+#elif defined(__EMSCRIPTEN__)
+  #include <emscripten/html5.h>
 #endif
 
 IMPLEMENT_STANDARD_HANDLE(OpenGl_Window,MMgt_TShared)
@@ -37,7 +39,7 @@ IMPLEMENT_STANDARD_RTTIEXT(OpenGl_Window,MMgt_TShared)
 namespace
 {
 
-#if defined(HAVE_EGL) || defined(__ANDROID__)
+#if defined(HAVE_EGL) || defined(__ANDROID__) || defined(__EMSCRIPTEN__)
   //
 #elif defined(_WIN32)
 
@@ -157,8 +159,8 @@ OpenGl_Window::OpenGl_Window (const Handle(OpenGl_GraphicDriver)& theDriver,
    || anEglContext == EGL_NO_CONTEXT
    || anEglConfig == NULL)
   {
-    anEglContext = theGContext;
-    anEglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    Aspect_GraphicDeviceDefinitionError::Raise ("OpenGl_Window, EGL does not provide compatible configurations!");
+    return;
   }
 
   EGLSurface anEglSurf = EGL_NO_SURFACE;
@@ -188,6 +190,29 @@ OpenGl_Window::OpenGl_Window (const Handle(OpenGl_GraphicDriver)& theDriver,
   }
 
   myGlContext->Init ((Aspect_Drawable )anEglSurf, (Aspect_Display )anEglDisplay, (Aspect_RenderingContext )anEglContext, isCoreProfile);
+#elif defined(__EMSCRIPTEN__)
+
+  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE aGContext = NULL;
+
+  if (!myOwnGContext)
+  {
+    aGContext = theGContext;
+  }
+  else
+  {
+    EmscriptenWebGLContextAttributes attrs;
+    emscripten_webgl_init_context_attributes(&attrs);
+    attrs.enableExtensionsByDefault = true;
+    attrs.majorVersion = 1;
+    attrs.minorVersion = 0;
+    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE aGContext= emscripten_webgl_create_context(theCWindow.XWindow, &attrs);
+    if (!aGContext) {
+      return;
+    }
+    emscripten_webgl_make_context_current(aGContext);
+  }
+
+  myGlContext->Init ((Aspect_Drawable )theCWindow.XWindow, (Aspect_RenderingContext )aGContext, isCoreProfile);
 #elif defined(_WIN32)
   (void )theDriver;
   HWND  aWindow   = (HWND )theCWindow.XWindow;
@@ -706,6 +731,8 @@ OpenGl_Window::~OpenGl_Window()
     eglDestroySurface ((EGLDisplay )myGlContext->myDisplay,
                        (EGLSurface )myGlContext->myWindow);
   }
+#elif defined(__EMSCRIPTEN__)
+  emscripten_webgl_destroy_context( myGlContext->myGContext);
 #elif defined(_WIN32)
   HWND  aWindow          = (HWND  )myGlContext->myWindow;
   HDC   aWindowDC        = (HDC   )myGlContext->myWindowDC;
@@ -849,6 +876,8 @@ void OpenGl_Window::Init()
 #if defined(HAVE_EGL) || defined(__ANDROID__)
   eglQuerySurface ((EGLDisplay )myGlContext->myDisplay, (EGLSurface )myGlContext->myWindow, EGL_WIDTH,  &myWidth);
   eglQuerySurface ((EGLDisplay )myGlContext->myDisplay, (EGLSurface )myGlContext->myWindow, EGL_HEIGHT, &myHeight);
+#elif defined(__EMSCRIPTEN__)
+  emscripten_get_canvas_element_size(myGlContext->myWindow, &myWidth, &myHeight);
 #elif defined(_WIN32)
   RECT cr;
   GetClientRect ((HWND )myGlContext->myWindow, &cr);

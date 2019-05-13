@@ -452,6 +452,9 @@ Standard_Boolean Visual3d_ViewManager::ViewExists (const Handle(Aspect_Window)& 
 #if defined(_WIN32)
   const Handle(WNT_Window) THEWindow = Handle(WNT_Window)::DownCast (AWindow);
   Aspect_Handle TheSpecifiedWindowId = THEWindow->HWindow ();
+#elif defined(__EMSCRIPTEN__)
+  const Handle(Emscripten_Window) theWindow = Handle(Emscripten_Window)::DownCast (AWindow);
+  TCollection_AsciiString TheSpecifiedWindowId = theWindow->TargetCanvas();
 #elif defined(__APPLE__) && !defined(MACOSX_USE_GLX)
   const Handle(Cocoa_Window) THEWindow = Handle(Cocoa_Window)::DownCast (AWindow);
   #if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
@@ -459,7 +462,7 @@ Standard_Boolean Visual3d_ViewManager::ViewExists (const Handle(Aspect_Window)& 
   #else
     NSView* TheSpecifiedWindowId = THEWindow->HView();
   #endif
-#elif defined(__ANDROID__) || defined(__EMSCRIPTEN__)
+#elif defined(__ANDROID__)
   int TheSpecifiedWindowId = -1;
 #else
   const Handle(Xw_Window) THEWindow = Handle(Xw_Window)::DownCast (AWindow);
@@ -475,6 +478,9 @@ Standard_Boolean Visual3d_ViewManager::ViewExists (const Handle(Aspect_Window)& 
 #if defined(_WIN32)
       const Handle(WNT_Window) theWindow = Handle(WNT_Window)::DownCast (AspectWindow);
       Aspect_Handle TheWindowIdOfView = theWindow->HWindow ();
+#elif defined(__EMSCRIPTEN__)
+      const Handle(Emscripten_Window) theWindow = Handle(Emscripten_Window)::DownCast (AspectWindow);
+      TCollection_AsciiString TheWindowIdOfView = theWindow->TargetCanvas();
 #elif defined(__APPLE__) && !defined(MACOSX_USE_GLX)
       const Handle(Cocoa_Window) theWindow = Handle(Cocoa_Window)::DownCast (AspectWindow);
       #if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
@@ -482,7 +488,7 @@ Standard_Boolean Visual3d_ViewManager::ViewExists (const Handle(Aspect_Window)& 
       #else
         NSView* TheWindowIdOfView = theWindow->HView();
       #endif
-#elif defined(__ANDROID__) || defined(__EMSCRIPTEN__)
+#elif defined(__ANDROID__)
       int TheWindowIdOfView = 0;
 #else
       const Handle(Xw_Window) theWindow = Handle(Xw_Window)::DownCast (AspectWindow);

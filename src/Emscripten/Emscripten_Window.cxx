@@ -22,9 +22,9 @@ IMPLEMENT_STANDARD_RTTIEXT(Emscripten_Window, Aspect_Window)
 // function : Emscripten_Window
 // purpose  :
 // =======================================================================
-Emscripten_Window::Emscripten_Window ( const char* theTarget )
+Emscripten_Window::Emscripten_Window ( const char* theTargetCanvas )
 : Aspect_Window(),
-  myTarget(theTarget)
+  myTargetCanvas(theTargetCanvas)
 {
 }
 
@@ -34,7 +34,7 @@ Emscripten_Window::Emscripten_Window ( const char* theTarget )
 // =======================================================================
 void Emscripten_Window::Destroy()
 {
-  myTarget = NULL;
+  myTargetCanvas = NULL;
 }
 
 // =======================================================================
@@ -102,7 +102,7 @@ Standard_Boolean Emscripten_Window::DoMapping() const
 Quantity_Ratio Emscripten_Window::Ratio() const
 {
   int width = 1, height = 1;
-  emscripten_get_canvas_element_size(myTarget, &width, &height);
+  emscripten_get_canvas_element_size(myTargetCanvas, &width, &height);
 
   return (Quantity_Ratio)width/(Quantity_Ratio)height;
 }
@@ -115,7 +115,7 @@ void Emscripten_Window::Position (Standard_Integer& X1, Standard_Integer& Y1,
                           Standard_Integer& X2, Standard_Integer& Y2) const
 {
   int width = 0, height = 0;
-  emscripten_get_canvas_element_size(myTarget, &width, &height);
+  emscripten_get_canvas_element_size(myTargetCanvas, &width, &height);
   X1 = 0;
   Y1 = 0;
   X2 = width;
@@ -130,7 +130,7 @@ void Emscripten_Window::Size (Standard_Integer& theWidth,
                               Standard_Integer& theHeight) const
 {
   int width = 0, height = 0;
-  emscripten_get_canvas_element_size(myTarget, &width, &height);
+  emscripten_get_canvas_element_size(myTargetCanvas, &width, &height);
   theWidth = width;
   theHeight = height;
 }

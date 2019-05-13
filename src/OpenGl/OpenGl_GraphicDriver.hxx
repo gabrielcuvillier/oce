@@ -333,7 +333,6 @@ public:
   Standard_EXPORT void EnableVBO (const Standard_Boolean theToTurnOn);
 
   //! Set the multisampling level (antialiasing)
-  //! Only works on EGL backend
   //! Warning! This method should be called before context initialization.
   Standard_EXPORT void SetMultisampling(const Standard_Integer theMultisampling);
 

@@ -39,6 +39,7 @@
 #define GLX_GLXEXT_LEGACY
 
 #if defined(__EMSCRIPTEN__)
+  // Emscripten use GLES2
   #define HAVE_GLES2
 #endif
 
@@ -147,7 +148,7 @@
   #define GL_TEXTURE_BUFFER_ARB             0x8C2A
 #endif
 
-#if defined(__ANDROID__) || defined(__EMSCRIPTEN__)
+#if defined(__ANDROID__)
   #define HAVE_EGL
 #endif
 

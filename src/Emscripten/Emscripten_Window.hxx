@@ -26,7 +26,7 @@ class Emscripten_Window : public Aspect_Window
 public:
 
   //! Creates an Emscripten window defined by its target canvas id. NULL means the default canvas.
-  Standard_EXPORT Emscripten_Window ( const char* theTarget = NULL );
+  Standard_EXPORT Emscripten_Window ( const char* theTargetCanvas = NULL );
 
   //! Destroys the Window and all resourses attached to it
   Standard_EXPORT virtual void Destroy();
@@ -65,23 +65,23 @@ public:
 
   //! @return native Window handle
   virtual Aspect_Drawable NativeHandle() const {
-    return 0; // No native handle on Emscripten
+    return TargetCanvas();  // Return the CanvasTarget
   }
 
   //! @return parent of native Window handle
   virtual Aspect_Drawable NativeParentHandle() const {
-    return 0; // No native handle on Emscripten
+    return 0; // No parent window
   }
 
-  //! @return the target id (ie. canvas)
-  const char* Target() const {
-    return myTarget;
+  //! @return the Canvas Target Id
+  const char* TargetCanvas() const {
+    return myTargetCanvas;
   }
 
 protected:
 
-  // Target canvas id
-  const char* myTarget;
+  // Canvas Target Id
+  const char* myTargetCanvas;
 
 public:
 
