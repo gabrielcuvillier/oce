@@ -8,6 +8,7 @@ if (OCE_DATAEXCHANGE AND NOT OCE_DISABLE_X11)
 	set_tests_properties(TDataXtdTestSuite.testPattern PROPERTIES ENVIRONMENT "CSF_PluginDefaults=${BuildPluginDir};CSF_PluginUserDefaults=${BuildPluginDir}")
 
   if (EMSCRIPTEN)
+    # On Emscripten, as we link against OCAF that links to Visualization libraries, we need to link with the Freetype port
     set_target_properties(TDataXtd_test PROPERTIES LINK_FLAGS "-s USE_FREETYPE=1")
   endif(EMSCRIPTEN)
 endif (OCE_DATAEXCHANGE AND NOT OCE_DISABLE_X11)
