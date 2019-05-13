@@ -25,7 +25,7 @@
 #else
   #include <pthread.h>
   #if defined(EMSCRIPTEN)
-    #include <errno.h>
+    #include <errno.h>  // including <errno.h> instead of incorrect <sys/errno.h>
   #else
     #include <sys/errno.h>
   #endif

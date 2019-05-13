@@ -145,6 +145,8 @@ static const Font_FontMgr_FontAliasMapNode Font_FontMgr_MapOfFontsAliases[] =
     static Standard_CString myDefaultFontsDirs[] = {"/system/fonts",         // Android
                                                     "/usr/share/fonts",
                                                     "/usr/local/share/fonts",
+    // Under Emscripten, use the "/fonts" folder
+    // NB: Be sure to preload needed fonts at this location in MemFS
     #if defined(__EMSCRIPTEN__)
                                                     "/fonts",
     #endif
