@@ -81,6 +81,9 @@ if (EMSCRIPTEN)
   #set(CMAKE_EXE_LINKER_FLAGS_MINSIZEREL "-Oz")
   add_definitions(-DNO_CXX_EXCEPTION)
   add_compile_options(-fno-exceptions)
+  # Disable noisy warnings
+  add_compile_options(-Wno-tautological-pointer-compare)
+  add_compile_options(-Wno-null-dereference)
 endif(EMSCRIPTEN)
 
 if(CMAKE_BUILD_TOOL STREQUAL "nmake")
