@@ -806,6 +806,10 @@ if (NOT CHECK_BODY_TEMPLATE)
 	set (OCE_IS_DUPLICATE_UINT32_T TRUE)
 endif ()
 
+if (EMSCRIPTEN)
+  set (OCE_IS_DUPLICATE_UINT32_T FALSE)
+endif()
+
 ################################################
 # Define output path for generated libraries:  #
 # platform/compiler-build_type-bits            #
