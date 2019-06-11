@@ -1,4 +1,4 @@
-if (OCE_OCAF AND NOT OCE_DISABLE_X11)
+if (OCE_OCAF AND NOT OCE_DISABLE_X11 AND NOT EMSCRIPTEN)
 	# This test will dlopen FWOSPlugin and TKBin, we link against them to ensure that
 	# libraries from the build tree are used.
 	add_oce_test(OCAFExport_test "TKCAF;FWOSPlugin;TKBin")
