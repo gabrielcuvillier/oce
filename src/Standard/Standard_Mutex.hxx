@@ -24,7 +24,7 @@
   #include <windows.h>
 #else
   #include <pthread.h>
-  #if defined(EMSCRIPTEN)
+  #if defined(__EMSCRIPTEN__)
     #include <errno.h>  // including <errno.h> instead of incorrect <sys/errno.h>
   #else
     #include <sys/errno.h>
