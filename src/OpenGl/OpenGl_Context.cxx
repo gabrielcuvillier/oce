@@ -554,11 +554,12 @@ Standard_Boolean OpenGl_Context::SetSwapInterval (const Standard_Integer theInte
 #elif defined(__EMSCRIPTEN__)
   if (theInterval == 0)
   {
-    return emscripten_set_main_loop_timing(0/*EM_TIMING_SETTIMEOUT*/, 0) == 0;
+    return emscripten_set_main_loop_timing(1/*EM_TIMING_RAF*/, 1) == 0;
   }
   else
   {
-    return emscripten_set_main_loop_timing(1/*EM_TIMING_RAF*/, theInterval) == 0;
+    // Note: Not sure about what represent theInterval value, so let's do nothing particular
+    return emscripten_set_main_loop_timing(1/*EM_TIMING_RAF*/, 1/*theInterval*/) == 0;
   }
 #elif defined(_WIN32)
   if (myFuncs->wglSwapIntervalEXT != NULL)
