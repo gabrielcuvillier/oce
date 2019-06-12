@@ -75,10 +75,14 @@ if(NOT CMAKE_CONFIGURATION_TYPES)
 endif(NOT CMAKE_CONFIGURATION_TYPES)
 
 if (EMSCRIPTEN)
-  # Disabled usage of -Oz for now, as asm2wasm takes A LOT of memory in that case (20+GB)
+  # Disabled usage of -Oz for now, as asm2wasm takes A LOT of memory in that case (20+GB), and compilation fails with new LLVM backend
   #set(CMAKE_C_FLAGS_MINSIZEREL "-Oz")
   #set(CMAKE_CXX_FLAGS_MINSIZEREL "-DNDEBUG ${CMAKE_C_FLAGS_MINSIZEREL}")
   #set(CMAKE_EXE_LINKER_FLAGS_MINSIZEREL "-Oz")
+  #set(CMAKE_C_FLAGS_RELEASE "-O3")
+  #set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG ${CMAKE_C_FLAGS_RELEASE}")
+  #set(CMAKE_EXE_LINKER_FLAGS_RELEASE "-O3")
+  # Disable exception handling (not yet quite good in Emscripten)
   add_definitions(-DNO_CXX_EXCEPTION)
   add_compile_options(-fno-exceptions)
   # Disable noisy warnings
@@ -806,6 +810,7 @@ if (NOT CHECK_BODY_TEMPLATE)
 	set (OCE_IS_DUPLICATE_UINT32_T TRUE)
 endif ()
 
+# Emscripten: fix wrong detection of duplicate types with new LLVM backend
 if (EMSCRIPTEN)
   set (OCE_IS_DUPLICATE_UINT32_T FALSE)
 endif()
