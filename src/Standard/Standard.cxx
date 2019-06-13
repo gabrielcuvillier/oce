@@ -44,7 +44,11 @@
 # define MMGT_OPT_DEFAULT           0
 #endif
 #ifndef MMGT_CLEAR_DEFAULT
-# define MMGT_CLEAR_DEFAULT         1
+# if defined(__EMSCRIPTEN__)
+#  define MMGT_CLEAR_DEFAULT         0
+# else
+#  define MMGT_CLEAR_DEFAULT         1
+# endif
 #endif
 #ifndef MMGT_MMAP_DEFAULT
 # define MMGT_MMAP_DEFAULT          1
@@ -156,6 +160,7 @@ Standard_MMgrFactory::Standard_MMgrFactory()
 
   switch (anAllocId)
   {
+#if !defined(__EMSCRIPTEN__)
     case 1:  // OCCT optimized memory allocator
     {
       aVar = getenv ("MMGT_MMAP");
@@ -173,6 +178,7 @@ Standard_MMgrFactory::Standard_MMgrFactory()
       myFMMgr = new Standard_MMgrTBBalloc (toClear);
       break;
     case 0:
+#endif
     default: // system default memory allocator
       myFMMgr = new Standard_MMgrRaw (toClear);
   }

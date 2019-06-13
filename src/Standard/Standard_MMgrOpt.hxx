@@ -16,6 +16,8 @@
 #ifndef _Standard_MMgrOpt_HeaderFile
 #define _Standard_MMgrOpt_HeaderFile
 
+#if !defined(__EMSCRIPTEN__)
+
 #include <Standard_MMgrRoot.hxx>
 #include <Standard_Mutex.hxx>
 
@@ -143,5 +145,7 @@ protected:
   Standard_Mutex   myMutex;         //!< Mutex to protect free lists data
   Standard_Mutex   myMutexPools;    //!< Mutex to protect small block pools data
 };
+
+#endif
 
 #endif
