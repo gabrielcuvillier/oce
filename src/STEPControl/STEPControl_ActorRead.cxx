@@ -1422,6 +1422,9 @@ Handle(TransferBRep_ShapeBinder) STEPControl_ActorRead::TransferEntity(const Han
     TP->Bind(fs, sb);
     return sb;
   }
+#if defined(__EMSCRIPTEN__)
+  return sb;
+#endif
 }
 //=======================================================================
 //function : TransferShape

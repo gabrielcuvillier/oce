@@ -396,6 +396,9 @@ ShapeFix_Wireframe::ShapeFix_Wireframe(const TopoDS_Shape& shape)
 #endif
     return ReplaceFirst;
   }
+#if defined(__EMSCRIPTEN__)
+   return Standard_False;
+#endif
 }
 
 //=======================================================================

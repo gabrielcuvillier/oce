@@ -215,6 +215,9 @@ static Standard_Boolean FindParameterWithExt (const gp_Pnt& Pt1,
 #endif
     return Standard_False;
   }
+#if defined(__EMSCRIPTEN__)
+  return Standard_False;
+#endif
 }
 
 //=======================================================================

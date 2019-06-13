@@ -154,6 +154,9 @@ static Standard_Boolean Is2DClosed(const TopoDS_Shape&         theShape,
   catch ( Standard_Failure )  {
     return Standard_False;
   }
+#if defined(__EMSCRIPTEN__)
+  return Standard_False;
+#endif
 }
 //=======================================================================
 //function : BRepLib_FindSurface
