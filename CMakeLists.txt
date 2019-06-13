@@ -75,19 +75,29 @@ if(NOT CMAKE_CONFIGURATION_TYPES)
 endif(NOT CMAKE_CONFIGURATION_TYPES)
 
 if (EMSCRIPTEN)
-  # Disabled usage of -Oz for now, as asm2wasm takes A LOT of memory in that case (20+GB), and compilation fails with new LLVM backend
+  # Tweaks to MinSizeRel and Release builds
+  # Do not tweak MinSizeRel to -Oz for now, as asm2wasm takes A LOT of memory in that case (20+GB), and compilation fails with new LLVM backend
   #set(CMAKE_C_FLAGS_MINSIZEREL "-Oz")
   #set(CMAKE_CXX_FLAGS_MINSIZEREL "-DNDEBUG ${CMAKE_C_FLAGS_MINSIZEREL}")
   #set(CMAKE_EXE_LINKER_FLAGS_MINSIZEREL "-Oz")
+  # Optionally tweak Release to -O3. Performance difference is negligible, while size is a little bit increased
   #set(CMAKE_C_FLAGS_RELEASE "-O3")
   #set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG ${CMAKE_C_FLAGS_RELEASE}")
   #set(CMAKE_EXE_LINKER_FLAGS_RELEASE "-O3")
+
   # Disable exception handling (not yet quite good in Emscripten)
   add_definitions(-DNO_CXX_EXCEPTION)
   add_compile_options(-fno-exceptions)
-  # Disable noisy warnings
-  add_compile_options(-Wno-tautological-pointer-compare)
-  add_compile_options(-Wno-null-dereference)
+  # Do not trap on float=>int conversion
+  add_compile_options(-mnontrapping-fptoint)
+
+  # Wasm SIMD Autovectorization. Not yet supported in browsers
+  # add_compile_options(-msimd128)
+
+  # Disable warnings
+  add_compile_options(-Wno-tautological-pointer-compare) # useless
+  add_compile_options(-Wno-return-type-c-linkage)        # due to PLUGINFACTORY export
+  add_compile_options(-Wno-null-dereference)             # CASCADE have some weird stuff, but this should not happen normally
 endif(EMSCRIPTEN)
 
 if(CMAKE_BUILD_TOOL STREQUAL "nmake")
