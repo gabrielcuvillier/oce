@@ -40,6 +40,9 @@ const char* BRepTools_Write (const char* theFileStr, void* theShapePtr)
   {
     return Standard_Failure::Caught()->GetMessageString();
   }
+#if defined(__EMSCRIPTEN__)
+  return "";
+#endif
 }
 
 //! Dump shape to cout
@@ -62,6 +65,9 @@ const char* BRepTools_Dump (void* theShapePtr)
   {
     return Standard_Failure::Caught()->GetMessageString();
   }
+#if defined(__EMSCRIPTEN__)
+  return "";
+#endif
 }
 
 //! Dump shape location to cout
@@ -86,6 +92,9 @@ const char* BRepTools_DumpLoc (void* theLocationPtr)
   {
     return Standard_Failure::Caught()->GetMessageString();
   }
+#if defined(__EMSCRIPTEN__)
+  return "";
+#endif
 }
 
 // MSVC debugger cannot deal correctly with functions whose argunments 

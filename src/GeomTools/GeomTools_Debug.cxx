@@ -65,6 +65,9 @@ const char* GeomTools_Dump (void* theHandlePtr)
   {
     return Standard_Failure::Caught()->GetMessageString();
   }
+#if defined(__EMSCRIPTEN__)
+  return "";
+#endif
 }
 
 // MSVC debugger cannot deal correctly with functions whose argunments 
