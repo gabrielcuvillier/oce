@@ -1,3 +1,10 @@
+### June 2019
+
+* Emscripten/WebAssembly port
+
+Users who contributed to this release:
+  Gabriel Cuvillier
+
 ### Version 0.18.3 - February 2018
 
 This version is binary compatible with OCE 0.18.x

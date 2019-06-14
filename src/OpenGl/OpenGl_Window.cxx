@@ -2,6 +2,8 @@
 // Created by: Sergey ZERCHANINOV
 // Copyright (c) 2011-2014 OPEN CASCADE SAS
 //
+// Emscripten-related parts: Copyright (c) 2019 Gabriel Cuvillier - Continuation Labs
+//
 // This file is part of Open CASCADE Technology software library.
 //
 // This library is free software; you can redistribute it and/or modify it under
