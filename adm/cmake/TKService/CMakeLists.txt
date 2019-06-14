@@ -27,7 +27,7 @@ else(WIN32)
 	else(APPLE AND OCE_OSX_USE_COCOA)
     if (EMSCRIPTEN)
       set(TOOLKIT_MODULES ${TOOLKIT_MODULES}
-          Emscripten
+          EmscriptenWindow
       )
     else(EMSCRIPTEN)
 		  set(TOOLKIT_MODULES ${TOOLKIT_MODULES}
