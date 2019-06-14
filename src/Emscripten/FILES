@@ -1,2 +1,11 @@
-Emscripten_Window.cxx
-Emscripten_Window.hxx
+oce_setup_environment.js
+oce_dataexchange_resources.data
+oce_dataexchange_resources.js
+oce_ocaf_resources.data
+oce_ocaf_resources.js
+oce_units_resources.data
+oce_units_resources.js
+oce_visualization_shaders_resources.data
+oce_visualization_shaders_resources.js
+oce_visualization_textures_resources.data
+oce_visualization_textures_resources.js
