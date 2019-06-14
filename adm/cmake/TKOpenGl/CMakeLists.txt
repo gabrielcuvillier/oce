@@ -80,6 +80,10 @@ if(BORLAND AND BORLAND_VERSION_RS_XE2)
 	endforeach(source_file)
 endif(BORLAND AND BORLAND_VERSION_RS_XE2)
 
+if (EMSCRIPTEN)
+  list(APPEND TOOLKIT_LIBS webgl.js)
+endif(EMSCRIPTEN)
+
 if (EMSCRIPTEN AND NOT OCE_DISABLE_TKSERVICE_FONT)
   # Freetype is being used due to OpenGl_Font class
   #
