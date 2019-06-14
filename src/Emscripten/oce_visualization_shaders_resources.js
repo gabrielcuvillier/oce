@@ -137,7 +137,7 @@ Module['FS_createPath']('/oce/src', 'Shaders', true, true);
       var byteArray = new Uint8Array(arrayBuffer);
       var curr;
       
-          var compressedData = {"data":null,"cachedOffset":28002,"cachedIndexes":[-1,-1],"cachedChunks":[null,null],"offsets":[0,918,2065,2796,3617,4617,5580,6442,7389,8294,9315,10147,11143,12097,12944,14110,15164,16268,17742,18662,19590,20976,22361,23304,24336,25700,26296,27282,27862],"sizes":[918,1147,731,821,1000,963,862,947,905,1021,832,996,954,847,1166,1054,1104,1474,920,928,1386,1385,943,1032,1364,596,986,580,140],"successes":[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]}
+          var compressedData = {"data":null,"cachedOffset":28081,"cachedIndexes":[-1,-1],"cachedChunks":[null,null],"offsets":[0,918,2065,2796,3617,4617,5580,6442,7389,8294,9315,10147,11143,12097,12944,14110,15164,16268,17742,18662,19590,20976,22361,23304,24336,25711,26365,27345,27912],"sizes":[918,1147,731,821,1000,963,862,947,905,1021,832,996,954,847,1166,1054,1104,1474,920,928,1386,1385,943,1032,1375,654,980,567,169],"successes":[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]}
 ;
           compressedData.data = byteArray;
           assert(typeof LZ4 === 'object', 'LZ4 not present - was your app build with  -s LZ4=1  ?');
@@ -166,6 +166,6 @@ Module['FS_createPath']('/oce/src', 'Shaders', true, true);
   }
 
  }
- loadPackage({"files": [{"start": 0, "audio": 0, "end": 107, "filename": "/oce/src/Shaders/FILES"}, {"start": 107, "audio": 0, "end": 35504, "filename": "/oce/src/Shaders/RaytraceBase.fs"}, {"start": 35504, "audio": 0, "end": 35716, "filename": "/oce/src/Shaders/RaytraceBase.vs"}, {"start": 35716, "audio": 0, "end": 41480, "filename": "/oce/src/Shaders/Declarations.glsl"}, {"start": 41480, "audio": 0, "end": 43272, "filename": "/oce/src/Shaders/PhongShading.vs"}, {"start": 43272, "audio": 0, "end": 50092, "filename": "/oce/src/Shaders/PhongShading.fs"}, {"start": 50092, "audio": 0, "end": 53806, "filename": "/oce/src/Shaders/DeclarationsImpl.glsl"}, {"start": 53806, "audio": 0, "end": 54410, "filename": "/oce/src/Shaders/RaytraceRender.fs"}, {"start": 54410, "audio": 0, "end": 57504, "filename": "/oce/src/Shaders/RaytraceSmooth.fs"}], "remote_package_size": 32098, "package_uuid": "caa0caad-2ced-4e8b-98dd-aca09aa6c16c"});
+ loadPackage({"files": [{"start": 0, "audio": 0, "end": 107, "filename": "/oce/src/Shaders/FILES"}, {"start": 107, "audio": 0, "end": 35504, "filename": "/oce/src/Shaders/RaytraceBase.fs"}, {"start": 35504, "audio": 0, "end": 35716, "filename": "/oce/src/Shaders/RaytraceBase.vs"}, {"start": 35716, "audio": 0, "end": 41480, "filename": "/oce/src/Shaders/Declarations.glsl"}, {"start": 41480, "audio": 0, "end": 43272, "filename": "/oce/src/Shaders/PhongShading.vs"}, {"start": 43272, "audio": 0, "end": 50092, "filename": "/oce/src/Shaders/PhongShading.fs"}, {"start": 50092, "audio": 0, "end": 53895, "filename": "/oce/src/Shaders/DeclarationsImpl.glsl"}, {"start": 53895, "audio": 0, "end": 54499, "filename": "/oce/src/Shaders/RaytraceRender.fs"}, {"start": 54499, "audio": 0, "end": 57593, "filename": "/oce/src/Shaders/RaytraceSmooth.fs"}], "remote_package_size": 32177, "package_uuid": "e8a3cc12-9bd9-49b4-a648-9971118f7f6d"});
 
 })();
