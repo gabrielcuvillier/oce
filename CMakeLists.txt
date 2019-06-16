@@ -89,8 +89,8 @@ if (EMSCRIPTEN)
   add_definitions(-DNO_CXX_EXCEPTION)
   add_compile_options(-fno-exceptions)
 
-  # Do not trap on float=>int conversion
-  add_compile_options(-mnontrapping-fptoint)
+  # Do not trap on float=>int conversion. Disabled because not yet supported in browsers
+  # add_compile_options(-mnontrapping-fptoint)
 
   # Wasm SIMD Autovectorization. Disabled because not yet supported in browsers
   #add_compile_options(-msimd128)
