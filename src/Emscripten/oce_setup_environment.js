@@ -9,13 +9,12 @@ if (Module['preRun'] instanceof Array) {
 }
 
 function oce_setup_environment() {
-  console.info("Setup OCE filesystem root:");
+  console.info("Setup OCE in-memory filesystem root = /oce");
   FS.createPath('/', 'oce', true, true);
-  console.info( '/oce');
 
   console.info("Setup OCE environment variables:");
-  ENV.CSF_LANGUAGE = "us";
   ENV.CASROOT = "/oce";
+  ENV.CSF_LANGUAGE = "us";
   console.info("CSF_LANGUAGE="+ENV.CSF_LANGUAGE);
   console.info("CASROOT="+ENV.CASROOT);
   // Units
