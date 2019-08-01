@@ -1,7 +1,5 @@
 // Copyright (c) 2019 Gabriel Cuvillier - Continuation Labs
 
-var Module = typeof Module !== 'undefined' ? Module : {};
-
 if (Module['preRun'] instanceof Array) {
   Module['preRun'].push(oce_setup_environment);
 } else {
