@@ -54,7 +54,7 @@ static const Font_FontMgr_FontAliasMapNode Font_FontMgr_MapOfFontsAliases[] =
   { "Times-BoldItalic"         , "Droid Serif"    , Font_FA_BoldItalic  },
   { "Arial"                    , "Roboto"         , Font_FA_Regular  },
 #elif defined(__EMSCRIPTEN__)
-  // NB: Those fonts need to be loaded manually in MemFS (under /fonts directory)
+  // NB: Those fonts need to be loaded manually in MemFS (under /oce/src/Fonts directory)
   { "Courier"                  , "Droid Sans Mono"    , Font_FA_Regular },
   { "Times-Roman"              , "Droid Serif"        , Font_FA_Regular  },
   { "Times-Bold"               , "Droid Serif"        , Font_FA_Bold },
@@ -149,10 +149,10 @@ static const Font_FontMgr_FontAliasMapNode Font_FontMgr_MapOfFontsAliases[] =
     static Standard_CString myDefaultFontsDirs[] = {"/system/fonts",         // Android
                                                     "/usr/share/fonts",
                                                     "/usr/local/share/fonts",
-    // Under Emscripten, use the "/fonts" folder
+    // Under Emscripten, use the "/oce/src/Fonts" folder
     // NB: Be sure to preload needed fonts at this location in MemFS
     #if defined(__EMSCRIPTEN__)
-                                                    "/fonts",
+                                                    "/oce/src/Fonts",
     #endif
                                                     NULL
                                                    };

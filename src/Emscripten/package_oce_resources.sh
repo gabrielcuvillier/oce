@@ -4,4 +4,5 @@ python $(dirname $(which emcc))/tools/file_packager.py oce_ocaf_resources.data  
 python $(dirname $(which emcc))/tools/file_packager.py oce_dataexchange_resources.data  --preload $1/src/SHMessage/@/oce/src/SHMessage/ $1/src/XSMessage/@/oce/src/XSMessage/ $1/src/XSTEPResource/@/oce/src/XSTEPResource/ --js-output=oce_dataexchange_resources.js --use-preload-cache --no-heap-copy --lz4
 python $(dirname $(which emcc))/tools/file_packager.py oce_visualization_shaders_resources.data  --preload $1/src/Shaders/@/oce/src/Shaders/ --js-output=oce_visualization_shaders_resources.js --use-preload-cache --no-heap-copy --lz4
 python $(dirname $(which emcc))/tools/file_packager.py oce_visualization_textures_resources.data  --preload $1/src/Textures/@/oce/src/Textures/ --js-output=oce_visualization_textures_resources.js --use-preload-cache --no-heap-copy --lz4
+python $(dirname $(which emcc))/tools/file_packager.py oce_fonts_resources.data  --preload $1/src/Emscripten/Fonts/@/oce/src/Fonts/ --js-output=oce_fonts_resources.js --use-preload-cache --no-heap-copy --lz4
 cp $1/src/Emscripten/oce_setup_environment.js .
