@@ -205,10 +205,8 @@ OpenGl_Window::OpenGl_Window (const Handle(OpenGl_GraphicDriver)& theDriver,
     EmscriptenWebGLContextAttributes attrs;
     emscripten_webgl_init_context_attributes(&attrs);
     attrs.enableExtensionsByDefault = true;
-    attrs.majorVersion = 1;
-    attrs.minorVersion = 0;
-    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE aGContext= emscripten_webgl_create_context(theCWindow.XWindow, &attrs);
-    if (!aGContext) {
+    aGContext = emscripten_webgl_create_context(theCWindow.XWindow, &attrs);
+    if (aGContext <= 0) {
       return;
     }
     emscripten_webgl_make_context_current(aGContext);
