@@ -112,6 +112,7 @@ OpenGl_Context::OpenGl_Context (const Handle(OpenGl_Caps)& theCaps)
   extBgra(Standard_False),
   extAnis(Standard_False),
   extPDS (Standard_False),
+  extTexDepth(Standard_False),
   atiMem (Standard_False),
   nvxMem (Standard_False),
   mySharedResources (new OpenGl_ResourcesMap()),
@@ -1119,7 +1120,7 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
 
   hasTexRGBA8 = IsGlGreaterEqual (3, 0)
              || CheckExtension ("GL_OES_rgb8_rgba8");
-  // NPOT textures has limited support within OpenGL ES 2.0
+  // NPOT textures has limited support within OpenGL ES 2.0 - GL_REPEAT not supported (only GL_CLAMP_TO_EDGE)
   // which are relaxed by OpenGL ES 3.0 or some extensions
   //arbNPTW     = IsGlGreaterEqual (3, 0)
   //           || CheckExtension ("GL_OES_texture_npot")
@@ -1130,6 +1131,12 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   extBgra     = CheckExtension ("GL_EXT_texture_format_BGRA8888");
   extAnis = CheckExtension ("GL_EXT_texture_filter_anisotropic");
   extPDS  = CheckExtension ("GL_OES_packed_depth_stencil");
+  extTexDepth = CheckExtension ("GL_OES_depth_texture");
+  // WEBGL_depth_texture is a subset of GL_OES_depth_texture and GL_OES_packed_depth_stencil. This should work (see OpenGl_Framebuffer.cxx)
+  if (CheckExtension("GL_WEBGL_depth_texture")) {
+    extPDS = true;
+    extTexDepth = true;
+  }
 
   core11fwd = (OpenGl_GlCore11Fwd* )(&(*myFuncs));
   if (IsGlGreaterEqual (2, 0))

@@ -622,6 +622,7 @@ public: //! @name extensions
   Standard_Boolean       extBgra;        //!< GL_EXT_bgra or GL_EXT_texture_format_BGRA8888 on OpenGL ES
   Standard_Boolean       extAnis;        //!< GL_EXT_texture_filter_anisotropic
   Standard_Boolean       extPDS;         //!< GL_EXT_packed_depth_stencil
+  Standard_Boolean       extTexDepth;    //!< GL_OES_depth_texture
   Standard_Boolean       atiMem;         //!< GL_ATI_meminfo
   Standard_Boolean       nvxMem;         //!< GL_NVX_gpu_memory_info
 
