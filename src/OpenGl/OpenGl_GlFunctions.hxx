@@ -113,6 +113,9 @@
   #define GL_UNSIGNED_INT_24_8              0x84FA
   #define GL_DEPTH24_STENCIL8               0x88F0
 
+  // GL_OES_depth_texture
+  #define GL_DEPTH_STENCIL_ATTACHMENT       0x821A
+
   #define GL_READ_FRAMEBUFFER               0x8CA8
   #define GL_DRAW_FRAMEBUFFER               0x8CA9
 
