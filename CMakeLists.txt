@@ -455,6 +455,8 @@ if ("${CMAKE_SYSTEM_NAME}" STREQUAL "WindowsStore" AND BUILD_MODULE_Draw)
   set (BUILD_MODULE_Draw OFF CACHE BOOL "${BUILD_MODULE_Draw_DESCR}" FORCE)
 endif()
 
+set (BUILD_MODULE_Draw OFF)
+
 # Overview
 if (NOT DEFINED BUILD_DOC_Overview)
   set (DO_ONLY_CHECK_FOR_DOXYGEN ON)
@@ -1183,7 +1185,8 @@ OCCT_UPDATE_TARGET_FILE ()
 message (STATUS "Info: \(${CURRENT_TIME}\) OCCT configuration files prepared")
 
 # Unit testing
-set (BUILD_USE_TESTING ON CACHE BOOL "Enable unittesting framework")
+set (BUILD_USE_TESTING OFF CACHE BOOL "Enable unittesting framework")
+set (BUILD_USE_TESTING OFF)
 if(BUILD_USE_TESTING)
   include(CTest)
   enable_testing()
