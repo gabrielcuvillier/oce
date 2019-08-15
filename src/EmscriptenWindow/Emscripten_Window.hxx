@@ -85,7 +85,8 @@ protected:
 
 public:
 
-  DEFINE_STANDARD_RTTI(Emscripten_Window)
+  DEFINE_STANDARD_RTTIEXT(Emscripten_Window,Aspect_Window)
+
 };
 
 DEFINE_STANDARD_HANDLE(Emscripten_Window, Aspect_Window)
