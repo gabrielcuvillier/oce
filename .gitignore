@@ -1,2 +1,6 @@
 oce-win-bundle/
 build/
+cmake-build*
+build-wasm*
+build-native*
+.idea
