@@ -16,6 +16,8 @@
 #ifndef _Standard_MMgrTBBalloc_HeaderFile
 #define _Standard_MMgrTBBalloc_HeaderFile
 
+#if !defined(__EMSCRIPTEN__)
+
 #include <Standard_MMgrRoot.hxx>
 
 //!
@@ -46,5 +48,7 @@ class Standard_MMgrTBBalloc : public Standard_MMgrRoot
  protected:
   Standard_Boolean myClear; //! Option to nullify allocated memory
 };
+
+#endif
 
 #endif

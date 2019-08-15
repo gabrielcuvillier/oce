@@ -16,6 +16,13 @@
 #include <Standard_MMgrTBBalloc.hxx>
 #include <Standard_OutOfMemory.hxx>
 
+// NOTE: replaced by more correct check
+//#if defined(WNT) || defined(LIN)
+//#define HAVE_TBB 1
+//#endif
+
+#if !defined(__EMSCRIPTEN__)
+
 // paralleling with Intel TBB
 #ifdef HAVE_TBB
 #include <tbb/scalable_allocator.h>
@@ -84,3 +91,5 @@ Standard_Address Standard_MMgrTBBalloc::Reallocate (Standard_Address theStorage,
   // in order to do that we would need using memset...
   return newStorage;
 }
+
+#endif

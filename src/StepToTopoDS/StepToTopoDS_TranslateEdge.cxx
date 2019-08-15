@@ -167,7 +167,7 @@ static TopoDS_Edge  MakeEdge
 
 // ============================================================================
 // Method  : StepToTopoDS_TranslateEdge::StepToTopoDS_TranslateEdge()
-// Purpose : 
+// Purpose :
 // ============================================================================
 
 StepToTopoDS_TranslateEdge::StepToTopoDS_TranslateEdge()
@@ -366,7 +366,7 @@ static void GetCartesianPoints ( const Handle(StepShape_EdgeCurve)& EC,
 
 // ============================================================================
 // Method  : StepToTopoDS_TranslateEdge::MakeFromCurve3D()
-// Purpose : 
+// Purpose :
 // ============================================================================
 
 void  StepToTopoDS_TranslateEdge::MakeFromCurve3D

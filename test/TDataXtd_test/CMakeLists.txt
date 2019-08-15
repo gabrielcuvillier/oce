@@ -7,3 +7,4 @@ if (OCE_DATAEXCHANGE AND NOT OCE_DISABLE_X11)
 	string(REPLACE ";" "\\;" BuildPluginDir "${BuildPluginDir}")
 	set_tests_properties(TDataXtdTestSuite.testPattern PROPERTIES ENVIRONMENT "CSF_PluginDefaults=${BuildPluginDir};CSF_PluginUserDefaults=${BuildPluginDir}")
 endif (OCE_DATAEXCHANGE AND NOT OCE_DISABLE_X11)
+

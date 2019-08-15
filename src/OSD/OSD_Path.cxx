@@ -39,6 +39,8 @@ static OSD_SysType whereAmI()
   return OSD_VMS;
 #elif defined(__linux__) || defined(__linux)
   return OSD_LinuxREDHAT;
+#elif defined(__EMSCRIPTEN__)
+  return OSD_Emscripten;
 #elif defined(_AIX) || defined(AIX)
   return OSD_Aix;
 #else
@@ -345,6 +347,7 @@ OSD_Path::OSD_Path(const TCollection_AsciiString& aDependentName,
   case OSD_UnixSystemV:
   case OSD_Aix:
   case OSD_OSF:
+  case OSD_Emscripten:
      UnixExtract(aDependentName,myNode,myUserName,myPassword,myTrek,myName,myExtension);
      break;
   case OSD_OS2:
@@ -357,7 +360,7 @@ OSD_Path::OSD_Path(const TCollection_AsciiString& aDependentName,
   default:
 #ifdef OCCT_DEBUG
        cout << " WARNING WARNING : OSD Path for an Unknown SYSTEM : " << (Standard_Integer)todo << endl;
-#endif 
+#endif
      break ;
  } 
 }

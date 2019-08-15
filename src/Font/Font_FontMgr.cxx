@@ -39,7 +39,6 @@ static const Font_FontMgr_FontAliasMapNode Font_FontMgr_MapOfFontsAliases[] =
 {
 
 #if defined(_WIN32) || defined(__APPLE__)
-
   { "Courier"                  , "Courier New"    , Font_FA_Regular },
   { "Times-Roman"              , "Times New Roman", Font_FA_Regular  },
   { "Times-Bold"               , "Times New Roman", Font_FA_Bold },
@@ -50,18 +49,22 @@ static const Font_FontMgr_FontAliasMapNode Font_FontMgr_MapOfFontsAliases[] =
   { "ZapfDingbats"             , "WingDings"      , Font_FA_Regular  },
   { "Rock"                     , "Arial"          , Font_FA_Regular  },
   { "Iris"                     , "Lucida Console" , Font_FA_Regular  }
-
 #elif defined(__ANDROID__)
-
   { "Courier"                  , "Droid Sans Mono", Font_FA_Regular },
   { "Times-Roman"              , "Droid Serif"    , Font_FA_Regular  },
   { "Times-Bold"               , "Droid Serif"    , Font_FA_Bold },
   { "Times-Italic"             , "Droid Serif"    , Font_FA_Italic  },
   { "Times-BoldItalic"         , "Droid Serif"    , Font_FA_BoldItalic  },
   { "Arial"                    , "Roboto"         , Font_FA_Regular  },
-
+#elif defined(__EMSCRIPTEN__)
+  // NB: Those fonts need to be loaded manually in MemFS (under /oce/src/Fonts directory)
+  { "Courier"                  , "Droid Sans Mono"    , Font_FA_Regular },
+  { "Times-Roman"              , "Droid Serif"        , Font_FA_Regular  },
+  { "Times-Bold"               , "Droid Serif"        , Font_FA_Bold },
+  { "Times-Italic"             , "Droid Serif"        , Font_FA_Italic  },
+  { "Times-BoldItalic"         , "Droid Serif"        , Font_FA_BoldItalic  },
+  { "Arial"                    , "Roboto"             , Font_FA_Regular  },
 #else   //X11
-
   { "Courier"                  , "Courier"      , Font_FA_Regular },
   { "Times-Roman"              , "Times"        , Font_FA_Regular  },
   { "Times-Bold"               , "Times"        , Font_FA_Bold },
@@ -129,7 +132,7 @@ static const Font_FontMgr_FontAliasMapNode Font_FontMgr_MapOfFontsAliases[] =
       NULL
     };
 
-  #if !defined(__ANDROID__) && !defined(__APPLE__)
+  #if !defined(__ANDROID__) && !defined(__APPLE__) && !defined(__EMSCRIPTEN__)
     // X11 configuration file in plain text format (obsolete - doesn't exists in modern distributives)
     static Standard_CString myFontServiceConf[] = {"/etc/X11/fs/config",
                                                    "/usr/X11R6/lib/X11/fs/config",
@@ -149,6 +152,11 @@ static const Font_FontMgr_FontAliasMapNode Font_FontMgr_MapOfFontsAliases[] =
     static Standard_CString myDefaultFontsDirs[] = {"/system/fonts",         // Android
                                                     "/usr/share/fonts",
                                                     "/usr/local/share/fonts",
+    // Under Emscripten, use the "/oce/src/Fonts" folder
+    // NB: Be sure to preload needed fonts at this location in MemFS
+    #if defined(__EMSCRIPTEN__)
+                                                    "/oce/src/Fonts",
+    #endif
                                                     NULL
                                                    };
   #endif
@@ -393,7 +401,7 @@ void Font_FontMgr::InitFontDataBase()
 #else
 
   NCollection_Map<TCollection_AsciiString> aMapOfFontsDirs;
-#if !defined(__ANDROID__) && !defined(__APPLE__)
+#if !defined(__ANDROID__) && !defined(__APPLE__) && !defined(__EMSCRIPTEN__)
   const OSD_Protection aProtectRead (OSD_R, OSD_R, OSD_R, OSD_R);
 
   // read fonts directories from font service config file (obsolete)
@@ -472,7 +480,7 @@ void Font_FontMgr::InitFontDataBase()
   for (NCollection_Map<TCollection_AsciiString>::Iterator anIter (aMapOfFontsDirs);
        anIter.More(); anIter.Next())
   {
-  #if defined(__ANDROID__) || defined(__APPLE__)
+  #if defined(__ANDROID__) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
     OSD_Path aFolderPath (anIter.Value());
     for (OSD_FileIterator aFileIter (aFolderPath, "*"); aFileIter.More(); aFileIter.Next())
     {

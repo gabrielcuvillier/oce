@@ -371,7 +371,7 @@ void BRepOffsetAPI_ThruSections::Build()
   }
 
   myNbEdgesInSection = 0;
-  
+
   if (myWCheck) {
     // compute origin and orientation on wires to avoid twisted results
     // and update wires to have same number of edges
@@ -1169,10 +1169,10 @@ const TopoDS_Shape& BRepOffsetAPI_ThruSections::LastShape() const
 
 //=======================================================================
 //function : Generated
-//purpose  : 
+//purpose  :
 //=======================================================================
-const TopTools_ListOfShape& 
-BRepOffsetAPI_ThruSections::Generated(const TopoDS_Shape& S) 
+const TopTools_ListOfShape&
+BRepOffsetAPI_ThruSections::Generated(const TopoDS_Shape& S)
 {
   myGenerated.Clear();
 
@@ -1212,7 +1212,7 @@ BRepOffsetAPI_ThruSections::Generated(const TopoDS_Shape& S)
       return myGenerated;
 
     TopTools_IndexedDataMapOfShapeListOfShape VEmap;
-    
+
     Standard_Boolean IsDegen [2] = {Standard_False, Standard_False};
     if (myDegen1 || myDegen2)
     {
@@ -1225,7 +1225,7 @@ BRepOffsetAPI_ThruSections::Generated(const TopoDS_Shape& S)
           continue;
         if (i == 1 && !myDegen2)
           continue;
-        
+
         Explo.Init(EndSections[i], TopAbs_VERTEX);
         const TopoDS_Shape& aVertex = Explo.Current();
         if (S.IsSame(aVertex))
@@ -1291,7 +1291,7 @@ BRepOffsetAPI_ThruSections::Generated(const TopoDS_Shape& S)
       }
       return myGenerated;
     } //end of if (IsDegen[0] || IsDegen[1])
-    
+
     Standard_Integer Eindex = myVertexIndex(S);
     Standard_Integer Vindex = (Eindex > 0)? 0 : 1;
     Eindex = Abs(Eindex);

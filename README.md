@@ -1,13 +1,10 @@
-[![Build Status](https://travis-ci.org/tpaviot/oce.png?branch=master)](https://travis-ci.org/tpaviot/oce)
-Appveyor:
-[![Build status](https://ci.appveyor.com/api/projects/status/ff5s1jjpao8kf2c4?svg=true)](https://ci.appveyor.com/project/tpaviot/oce)
-[![Join the chat at https://gitter.im/tpaviot/oce](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/tpaviot/oce?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-
 ## About
 
-oce is a C++ 3D modeling library. It can be used to develop CAD/CAM softwares, for instance [FreeCad](http://www.freecadweb.org/) or [IfcOpenShell](http://www.ifcopenshell.org/).
+oce is a C++ 3D modeling library. It can be used to develop CAD/CAM softwares.
 
-oce stands for **o**pencascade **c**ommunity **e**dition. This project aims at gathering patches/ changes/ improvements from the OCC community. Official OCCT documentation and sources are available at http://www.opencascade.org/, you can also theck their development portal at http://dev.opencascade.org.
+This fork brings port of OpenCascade to Emscripten/WebAssembly.
+
+oce stands for **o**pencascade **c**ommunity **e**dition. This project aims at gathering patches/ changes/ improvements from the OCC community. Official OCCT documentation and sources are available at http://www.opencascade.org/, you can also check their development portal at http://dev.opencascade.org.
 
 ## Download latest release
 
@@ -78,7 +75,7 @@ To request write access to the repository, just ask @tpaviot (tpaviot@gmail.com)
 ``` bash
 $ git clone git://github.com/tpaviot/oce.git
 ```
-  * Stay to date with latest developements:
+  * Stay up-to-date with latest developments:
 
 ``` bash
 $ cd oce

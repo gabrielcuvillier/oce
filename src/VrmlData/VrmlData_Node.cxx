@@ -675,9 +675,9 @@ VrmlData_ErrorStatus VrmlData_ImageTexture::Write(const char *thePrefix)  const
     try {
       aStatus = aScene.WriteLine("url ", url.ToCString());
     }
-    catch (...)
+    catch (Standard_Failure)
     {
-      
+
     }
     aStatus = WriteClosing();
   }

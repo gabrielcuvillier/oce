@@ -26,6 +26,7 @@ IMPLEMENT_STANDARD_RTTIEXT(OpenGl_Caps,Standard_Transient)
 // =======================================================================
 OpenGl_Caps::OpenGl_Caps()
 : vboDisable        (Standard_False),
+  fboDisable        (Standard_False),
   pntSpritesDisable (Standard_False),
   keepArrayData     (Standard_False),
 #if !defined(GL_ES_VERSION_2_0)
@@ -35,6 +36,7 @@ OpenGl_Caps::OpenGl_Caps()
   ffpEnable         (Standard_False),
   useSystemBuffer   (Standard_True),
 #endif
+  aaSamples         (0),
   swapInterval      (1),
   buffersNoSwap     (Standard_False),
   contextStereo     (Standard_False),
@@ -64,10 +66,12 @@ OpenGl_Caps::OpenGl_Caps()
 OpenGl_Caps& OpenGl_Caps::operator= (const OpenGl_Caps& theCopy)
 {
   vboDisable        = theCopy.vboDisable;
+  fboDisable        = theCopy.fboDisable;
   pntSpritesDisable = theCopy.pntSpritesDisable;
   keepArrayData     = theCopy.keepArrayData;
   ffpEnable         = theCopy.ffpEnable;
   useSystemBuffer   = theCopy.useSystemBuffer;
+  aaSamples         = theCopy.aaSamples;
   swapInterval      = theCopy.swapInterval;
   buffersNoSwap     = theCopy.buffersNoSwap;
   contextStereo     = theCopy.contextStereo;

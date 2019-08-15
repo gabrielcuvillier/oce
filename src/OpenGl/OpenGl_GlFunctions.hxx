@@ -43,6 +43,11 @@
   #define GLX_GLXEXT_LEGACY
 #endif
 
+#if defined(__EMSCRIPTEN__)
+  // Emscripten use GLES2
+  #define HAVE_GLES2
+#endif
+
 // include main OpenGL header provided with system
 #if defined(__APPLE__)
   #import <TargetConditionals.h>
@@ -155,6 +160,9 @@
   #define GL_DEPTH_COMPONENT32F             0x8CAC
   #define GL_DEPTH32F_STENCIL8              0x8CAD
   #define GL_FLOAT_32_UNSIGNED_INT_24_8_REV 0x8DAD
+
+  // GL_WEBGL_depth_texture
+  #define GL_DEPTH_STENCIL_ATTACHMENT       0x821A
 
   #define GL_READ_FRAMEBUFFER               0x8CA8
   #define GL_DRAW_FRAMEBUFFER               0x8CA9

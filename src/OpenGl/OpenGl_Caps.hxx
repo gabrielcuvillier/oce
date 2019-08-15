@@ -32,8 +32,16 @@ public: //! @name flags to disable particular functionality, should be used only
   Standard_Boolean ffpEnable;         //!< Enables FFP (fixed-function pipeline), do not use built-in GLSL programs (ON by default on desktop OpenGL and OFF on OpenGL ES)
   Standard_Boolean useSystemBuffer;   //!< Enables usage of system backbuffer for blitting (OFF by default on desktop OpenGL and ON on OpenGL ES for testing)
   Standard_Integer swapInterval;      //!< controls swap interval - 0 for VSync off and 1 for VSync on, 1 by default
+  Standard_Integer fboDisable;        //!< flag permits FBO usage, might be needed to be disabled if you use a GL context created externally
 
 public: //! @name context creation parameters
+
+  /**
+   * Specify the multisampling level (antialiasing).
+   *
+   * 0 by default.
+   */
+  Standard_Integer aaSamples;
 
   /**
    * Specify that driver should not swap back/front buffers at the end of frame.

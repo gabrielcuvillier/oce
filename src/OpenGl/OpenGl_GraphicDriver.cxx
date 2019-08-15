@@ -44,7 +44,7 @@ IMPLEMENT_STANDARD_RTTIEXT(OpenGl_GraphicDriver,Graphic3d_GraphicDriver)
   #include <Xw_Window.hxx>
 #endif
 
-#if !defined(_WIN32) && !defined(__ANDROID__) && !defined(__QNX__) && (!defined(__APPLE__) || defined(MACOSX_USE_GLX))
+#if !defined(_WIN32) && !defined(__ANDROID__) && !defined(__QNX__) && (!defined(__APPLE__) || defined(MACOSX_USE_GLX)) && !defined(__EMSCRIPTEN__)
   #include <X11/Xlib.h> // XOpenDisplay()
 #endif
 
@@ -74,7 +74,7 @@ OpenGl_GraphicDriver::OpenGl_GraphicDriver (const Handle(Aspect_DisplayConnectio
   myMapOfView      (1, NCollection_BaseAllocator::CommonBaseAllocator()),
   myMapOfStructure (1, NCollection_BaseAllocator::CommonBaseAllocator())
 {
-#if !defined(_WIN32) && !defined(__ANDROID__) && !defined(__QNX__) && (!defined(__APPLE__) || defined(MACOSX_USE_GLX))
+#if !defined(_WIN32) && !defined(__ANDROID__) && !defined(__QNX__) && (!defined(__APPLE__) || defined(MACOSX_USE_GLX)) && !defined(__EMSCRIPTEN__)
   if (myDisplayConnection.IsNull())
   {
     //throw Aspect_GraphicDeviceDefinitionError("OpenGl_GraphicDriver: cannot connect to X server!");
@@ -276,7 +276,7 @@ Standard_Boolean OpenGl_GraphicDriver::InitContext()
   ReleaseContext();
 #if defined(HAVE_EGL) || defined(HAVE_GLES2) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__)
 
-#if !defined(_WIN32) && !defined(__ANDROID__) && !defined(__QNX__) && (!defined(__APPLE__) || defined(MACOSX_USE_GLX))
+#if !defined(_WIN32) && !defined(__ANDROID__) && !defined(__QNX__) && (!defined(__APPLE__) || defined(MACOSX_USE_GLX)) && !defined(__EMSCRIPTEN__)
   if (myDisplayConnection.IsNull())
   {
     return Standard_False;
@@ -301,12 +301,14 @@ Standard_Boolean OpenGl_GraphicDriver::InitContext()
 
   EGLint aConfigAttribs[] =
   {
-    EGL_RED_SIZE,     8,
-    EGL_GREEN_SIZE,   8,
-    EGL_BLUE_SIZE,    8,
-    EGL_ALPHA_SIZE,   0,
-    EGL_DEPTH_SIZE,   24,
-    EGL_STENCIL_SIZE, 8,
+    EGL_RED_SIZE,       8,
+    EGL_GREEN_SIZE,     8,
+    EGL_BLUE_SIZE,      8,
+    EGL_ALPHA_SIZE,     0,
+    EGL_DEPTH_SIZE,     24,
+    EGL_STENCIL_SIZE,   8,
+    EGL_SAMPLE_BUFFERS, myCaps->aaSamples ? 1 : 0,
+    EGL_SAMPLES,        myCaps->aaSamples,
   #if defined(GL_ES_VERSION_2_0)
     EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
   #else
@@ -324,8 +326,23 @@ Standard_Boolean OpenGl_GraphicDriver::InitContext()
     if (eglChooseConfig ((EGLDisplay )myEglDisplay, aConfigAttribs, &myEglConfig, 1, &aNbConfigs) != EGL_TRUE
      || myEglConfig == NULL)
     {
-      ::Message::DefaultMessenger()->Send ("Error: EGL does not provide compatible configurations!", Message_Fail);
-      return Standard_False;
+      if (myCaps->aaSamples > 0) {
+        // or try with lower sampling
+        eglGetError();
+        aConfigAttribs[4 * 2 + 1] = 24; // restore depth buffer bit
+        aConfigAttribs[7 * 2 + 1] = 0;  // No multisampling
+        if (eglChooseConfig ((EGLDisplay )myEglDisplay, aConfigAttribs, &myEglConfig, 1, &aNbConfigs) != EGL_TRUE
+        || myEglConfig == NULL)
+        {
+          ::Message::DefaultMessenger()->Send ("Error: EGL does not provide compatible configurations!", Message_Fail);
+          return Standard_False;
+        }
+      }
+      else {
+        ::Message::DefaultMessenger()->Send ("Error: EGL does not provide compatible configurations!", Message_Fail);
+        return Standard_False;
+
+      }
     }
   }
 
@@ -376,7 +393,7 @@ Standard_Boolean OpenGl_GraphicDriver::InitEglContext (Aspect_Display          t
                                                        void*                   theEglConfig)
 {
   ReleaseContext();
-#if !defined(_WIN32) && !defined(__ANDROID__) && !defined(__QNX__) && (!defined(__APPLE__) || defined(MACOSX_USE_GLX))
+#if !defined(_WIN32) && !defined(__ANDROID__) && !defined(__QNX__) && (!defined(__APPLE__) || defined(MACOSX_USE_GLX)) && !defined(__EMSCRIPTEN__)
   if (myDisplayConnection.IsNull())
   {
     return Standard_False;
@@ -453,6 +470,24 @@ Standard_ShortReal OpenGl_GraphicDriver::DefaultTextHeight() const
 void OpenGl_GraphicDriver::EnableVBO (const Standard_Boolean theToTurnOn)
 {
   myCaps->vboDisable = !theToTurnOn;
+}
+
+// =======================================================================
+// function : EnableFBO
+// purpose  :
+// =======================================================================
+void OpenGl_GraphicDriver::EnableFBO (const Standard_Boolean theToTurnOn)
+{
+  myCaps->fboDisable = !theToTurnOn;
+}
+
+// =======================================================================
+// function : SetMultisampling
+// purpose  :
+// =======================================================================
+void OpenGl_GraphicDriver::SetMultisampling(const Standard_Integer theMultisampling)
+{
+  myCaps->aaSamples = theMultisampling;
 }
 
 // =======================================================================

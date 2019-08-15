@@ -39,6 +39,8 @@
     #endif
     typedef NSOpenGLContext* Aspect_RenderingContext;
   #endif
+#elif defined (__EMSCRIPTEN__)
+  typedef int Aspect_RenderingContext; // WebGL Context under Emscripten (=> EMSCRIPTEN_WEBGL_CONTEXT_HANDLE)
 #else
   typedef void* Aspect_RenderingContext; // GLXContext under UNIX
 #endif

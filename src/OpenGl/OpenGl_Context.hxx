@@ -249,6 +249,12 @@ public:
                                          const Aspect_Display          theEglDisplay,
                                          const Aspect_RenderingContext theEglContext,
                                          const Standard_Boolean        theIsCoreProfile = Standard_False);
+#elif defined(__EMSCRIPTEN__)
+  //! Initialize class from specified surface and rendering context. Method should be called only once.
+  //! @return false if OpenGL context can not be bound to specified surface
+  Standard_EXPORT Standard_Boolean Init (const Aspect_Drawable         theEmscriptenWindow,       // Target Canvas: const char*
+                                         const Aspect_RenderingContext theEmscriptenContext,      // WebGL Context: int (=> EMSCRIPTEN_WEBGL_CONTEXT_HANDLE)
+                                         const Standard_Boolean        theIsCoreProfile = Standard_False);
 #elif defined(_WIN32)
   //! Initialize class from specified window and rendering context. Method should be called only once.
   //! @return false if OpenGL context can not be bound to specified window
@@ -820,6 +826,7 @@ public: //! @name extensions
   Standard_Boolean       extBgra;            //!< GL_EXT_bgra or GL_EXT_texture_format_BGRA8888 on OpenGL ES
   Standard_Boolean       extAnis;            //!< GL_EXT_texture_filter_anisotropic
   Standard_Boolean       extPDS;             //!< GL_EXT_packed_depth_stencil
+  Standard_Boolean       extTexDepth;    //!< GL_OES_depth_texture
   Standard_Boolean       atiMem;             //!< GL_ATI_meminfo
   Standard_Boolean       nvxMem;             //!< GL_NVX_gpu_memory_info
   Standard_Boolean       oesSampleVariables; //!< GL_OES_sample_variables
@@ -836,6 +843,9 @@ private: // system-dependent fields
   Aspect_Drawable         myWindow;   //!< EGL surface                   : EGLSurface
   Aspect_Display          myDisplay;  //!< EGL connection to the Display : EGLDisplay
   Aspect_RenderingContext myGContext; //!< EGL rendering context         : EGLContext
+#elif defined(__EMSCRIPTEN__)
+  Aspect_Drawable         myWindow;   //!< Emscripten Target Canvas      : const char*
+  Aspect_RenderingContext myGContext; //!< Emscripten WebGL Context      : int (=> EMSCRIPTEN_WEBGL_CONTEXT_HANDLE)
 #elif defined(_WIN32)
   Aspect_Handle           myWindow;   //!< window handle (owner of GL context) : HWND
   Aspect_Handle           myWindowDC; //!< Device Descriptor handle : HDC
@@ -883,9 +893,9 @@ private: // context info
   Standard_Boolean myIsGlNormalizeEnabled; //!< GL_NORMALIZE flag
                                            //!< Used to tell OpenGl that normals should be normalized
 
-  Standard_Boolean myHasRayTracing;                 //! indicates whether ray tracing mode is supported 
-  Standard_Boolean myHasRayTracingTextures;         //! indicates whether textures in ray tracing mode are supported 
-  Standard_Boolean myHasRayTracingAdaptiveSampling; //! indicates whether adaptive screen sampling in ray tracing mode is supported 
+  Standard_Boolean myHasRayTracing;                 //! indicates whether ray tracing mode is supported
+  Standard_Boolean myHasRayTracingTextures;         //! indicates whether textures in ray tracing mode are supported
+  Standard_Boolean myHasRayTracingAdaptiveSampling; //! indicates whether adaptive screen sampling in ray tracing mode is supported
 
   Handle(OpenGl_ShaderManager) myShaderManager; //! support object for managing shader programs
 

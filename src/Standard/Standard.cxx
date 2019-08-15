@@ -150,6 +150,7 @@ Standard_MMgrFactory::Standard_MMgrFactory()
 
   switch (anAllocId)
   {
+#if !defined(__EMSCRIPTEN__)
     case 1:  // OCCT optimized memory allocator
     {
       aVar = getenv ("MMGT_MMAP");
@@ -167,6 +168,7 @@ Standard_MMgrFactory::Standard_MMgrFactory()
       myFMMgr = new Standard_MMgrTBBalloc (toClear);
       break;
     case 0:
+#endif
     default: // system default memory allocator
       myFMMgr = new Standard_MMgrRaw (toClear);
   }

@@ -58,8 +58,13 @@ OCCT_INCLUDE_CMAKE_FILE ("adm/cmake/vardescr")
 
 # set type of OCCT libraries
 if (NOT BUILD_LIBRARY_TYPE)
-  set (BUILD_LIBRARY_TYPE "Shared" CACHE STRING "${BUILD_LIBRARY_TYPE_DESCR}" FORCE)
-  SET_PROPERTY(CACHE BUILD_LIBRARY_TYPE PROPERTY STRINGS Shared Static)
+  if (NOT EMSCRIPTEN)
+    set (BUILD_LIBRARY_TYPE "Shared" CACHE STRING "${BUILD_LIBRARY_TYPE_DESCR}" FORCE)
+    SET_PROPERTY(CACHE BUILD_LIBRARY_TYPE PROPERTY STRINGS Shared Static)
+  else()
+    set (BUILD_LIBRARY_TYPE "Static" CACHE STRING "${BUILD_LIBRARY_TYPE_DESCR}" FORCE)
+    SET_PROPERTY(CACHE BUILD_LIBRARY_TYPE PROPERTY STRINGS Shared Static)
+  endif()
 endif()
 
 if ("${BUILD_LIBRARY_TYPE}" STREQUAL "Shared")
@@ -146,7 +151,7 @@ if (BUILD_USE_PCH)
   # Load Cotire tool for accelerating build procedure
   include(cotire)
 
-  # Set Cotire to ignore lxx, pxx, gxx 
+  # Set Cotire to ignore lxx, pxx, gxx
   set (COTIRE_ADDITIONAL_PREFIX_HEADER_IGNORE_EXTENSIONS "lxx;pxx;gxx" CACHE STRING "Set Cotire to ignore OCCT specific files that can be #included" FORCE)
 
   # Set priority for inclusion of system headers in PCH to reduce problems
@@ -220,7 +225,7 @@ if (NOT DEFINED CMAKE_INSTALL_PREFIX_PREV)
 elseif (NOT "${CMAKE_INSTALL_PREFIX_PREV}" STREQUAL "${CMAKE_INSTALL_PREFIX}")
   # CMAKE_INSTALL_PREFIX has been changed at previous step
   set (CMAKE_INSTALL_PREFIX_PREV "${CMAKE_INSTALL_PREFIX}" CACHE INTERNAL "" FORCE)
-  
+
   # INSTALL_DIR is required to be updated
   set (INSTALL_DIR "${CMAKE_INSTALL_PREFIX}" CACHE PATH "${INSTALL_DIR_DESCR}" FORCE)
 endif()
@@ -232,10 +237,10 @@ elseif (NOT "${INSTALL_DIR_PREV}" STREQUAL "${INSTALL_DIR}")
   # INSTALL_DIR has been changed at previous step
   set (INSTALL_DIR_PREV "${INSTALL_DIR}" CACHE INTERNAL "" FORCE)
 
-  # sync CMAKE_INSTALL_PREFIX with INSTALL_DIR 
+  # sync CMAKE_INSTALL_PREFIX with INSTALL_DIR
   set (CMAKE_INSTALL_PREFIX "${INSTALL_DIR}" CACHE INTERNAL "" FORCE)
 
-  # set CMAKE_INSTALL_PREFIX_PREV to avoid the reset of structure of the install folder 
+  # set CMAKE_INSTALL_PREFIX_PREV to avoid the reset of structure of the install folder
   set (CMAKE_INSTALL_PREFIX_PREV "${INSTALL_DIR}" CACHE INTERNAL "" FORCE)
 endif()
 
@@ -462,7 +467,7 @@ if (NOT DEFINED BUILD_DOC_Overview)
   set (DO_ONLY_CHECK_FOR_DOXYGEN ON)
   OCCT_INCLUDE_CMAKE_FILE ("adm/cmake/doxygen")
   set (DO_ONLY_CHECK_FOR_DOXYGEN OFF)
-  
+
   if (CAN_DOXYGEN_BE_USED)
     message (STATUS "Info. Overview building is turned on")
   endif()
@@ -552,7 +557,7 @@ OCCT_INCLUDE_CMAKE_FILE ("adm/cmake/occt_csf")
 if (USE_TCL)
   message (STATUS "Info: TCL is used by OCCT")
   OCCT_INCLUDE_CMAKE_FILE ("adm/cmake/tcl")
-  
+
   message (STATUS "Info: TK is used by OCCT")
   OCCT_INCLUDE_CMAKE_FILE ("adm/cmake/tk")
 else()
@@ -580,7 +585,7 @@ if (USE_VTK)
   OCCT_INCLUDE_CMAKE_FILE ("adm/cmake/vtk")
 else()
   OCCT_CHECK_AND_UNSET_GROUP ("3RDPARTY_VTK")
-  
+
   if (NOT CAN_USE_VTK EQUAL -1)
     message (STATUS "Info: TKIVtk and TKIVtkDraw toolkits excluded due to VTK usage is disabled")
 
@@ -749,14 +754,14 @@ else()
   OCCT_CHECK_AND_UNSET ("3RDPARTY_DOT_EXECUTABLE")
 endif()
 
-# bison 
+# bison
 if (BUILD_YACCLEX)
   OCCT_INCLUDE_CMAKE_FILE ("adm/cmake/bison")
 else()
   OCCT_CHECK_AND_UNSET ("3RDPARTY_BISON_EXECUTABLE")
 endif()
 
-# flex 
+# flex
 if (BUILD_YACCLEX)
   OCCT_INCLUDE_CMAKE_FILE ("adm/cmake/flex")
 else()
@@ -809,7 +814,7 @@ set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/${OS_WITH_BIT}/${
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/${OS_WITH_BIT}/${COMPILER}/bind")
 set (CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/${OS_WITH_BIT}/${COMPILER}/libd")
 
-if (WIN32) 
+if (WIN32)
   set (CMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE        "${CMAKE_BINARY_DIR}/${OS_WITH_BIT}/${COMPILER}/bin")
   set (CMAKE_LIBRARY_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_BINARY_DIR}/${OS_WITH_BIT}/${COMPILER}/bini")
   set (CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG          "${CMAKE_BINARY_DIR}/${OS_WITH_BIT}/${COMPILER}/bind")
@@ -1178,7 +1183,7 @@ foreach (OCCT_MODULE ${OCCT_MODULES_ENABLED})
   install(EXPORT OpenCASCADE${OCCT_MODULE}Targets DESTINATION "${INSTALL_DIR_CMAKE}")
 endforeach()
 
-# Update generated OpenCASCADETargets-*.cmake files 
+# Update generated OpenCASCADETargets-*.cmake files
 # to have correct paths to libraries depending on the configuration
 OCCT_UPDATE_TARGET_FILE ()
 
