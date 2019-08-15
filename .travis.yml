@@ -51,6 +51,16 @@ matrix:
           - libxi-dev
     dist: trusty
   - os: linux
+    compiler: gcc
+    env: MATRIX_EVAL="CC=gcc-8 && CXX=g++-8" RUN_TESTS=true OCE_USE_PCH=ON  OCE_COPY_HEADERS_BUILD=ON
+    addons:
+      apt:
+        sources:
+          - ubuntu-toolchain-r-test
+        packages:
+          - g++-8
+    dist: trusty
+  - os: linux
     compiler: clang
     env: MATRIX_EVAL="CC=clang-4.0 && CXX=clang++-4.0"
     dist: trusty
