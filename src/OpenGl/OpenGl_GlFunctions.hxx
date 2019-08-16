@@ -208,7 +208,7 @@
   #define GL_HALF_FLOAT_OES             0x8D61
 #endif
 
-#if !defined(HAVE_EGL) && (defined(__ANDROID__) || defined(__QNX__) || defined(HAVE_GLES2) || defined(OCCT_UWP))
+#if !defined(HAVE_EGL) && (defined(__ANDROID__) || defined(__QNX__) || (defined(HAVE_GLES2) && !defined(__EMSCRIPTEN)) || defined(OCCT_UWP))
   #define HAVE_EGL
 #endif
 
