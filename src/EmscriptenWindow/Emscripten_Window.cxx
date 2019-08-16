@@ -8,7 +8,7 @@
 // OCCT_LGPL_EXCEPTION.txt. Consult the file LICENSE_LGPL_21.txt included in OCCT
 // distribution for complete text of the license and disclaimer of any warranty.
 
-#include "Emscripten_Window.hxx"
+#include <Emscripten_Window.hxx>
 
 #if defined(__EMSCRIPTEN__)
 
