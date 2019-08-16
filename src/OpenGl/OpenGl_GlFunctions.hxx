@@ -43,11 +43,6 @@
   #define GLX_GLXEXT_LEGACY
 #endif
 
-#if defined(__EMSCRIPTEN__)
-  // Emscripten use GLES2
-  #define HAVE_GLES2
-#endif
-
 // include main OpenGL header provided with system
 #if defined(__APPLE__)
   #import <TargetConditionals.h>
@@ -208,7 +203,7 @@
   #define GL_HALF_FLOAT_OES             0x8D61
 #endif
 
-#if !defined(HAVE_EGL) && (defined(__ANDROID__) || defined(__QNX__) || (defined(HAVE_GLES2) && !defined(__EMSCRIPTEN)) || defined(OCCT_UWP))
+#if !defined(HAVE_EGL) && (defined(__ANDROID__) || defined(__QNX__) || (defined(HAVE_GLES2) && !defined(__EMSCRIPTEN__)) || defined(OCCT_UWP))
   #define HAVE_EGL
 #endif
 
