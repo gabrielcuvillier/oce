@@ -881,6 +881,9 @@ Standard_Boolean OpenGl_GraphicDriver::ViewExists (const Handle(Aspect_Window)& 
 #elif defined(__ANDROID__) || defined(__QNX__) || defined(OCCT_UWP)
   (void )AWindow;
   int TheSpecifiedWindowId = -1;
+#elif defined(__EMSCRIPTEN__)
+  const Handle(Emscripten_Window) THEWindow = Handle(Emscripten_Window)::DownCast (AWindow);
+  const char* TheSpecifiedWindowId = THEWindow->TargetCanvas ();
 #else
   const Handle(Xw_Window) THEWindow = Handle(Xw_Window)::DownCast (AWindow);
   int TheSpecifiedWindowId = int (THEWindow->XWindow ());
@@ -906,12 +909,19 @@ Standard_Boolean OpenGl_GraphicDriver::ViewExists (const Handle(Aspect_Window)& 
       #endif
 #elif defined(__ANDROID__) || defined(__QNX__) || defined(OCCT_UWP)
       int TheWindowIdOfView = 0;
+#elif defined(__EMSCRIPTEN__)
+      const Handle(Emscripten_Window) theWindow = Handle(Emscripten_Window)::DownCast (AspectWindow);
+      const char* TheWindowIdOfView = theWindow->TargetCanvas ();
 #else
       const Handle(Xw_Window) theWindow = Handle(Xw_Window)::DownCast (AspectWindow);
       int TheWindowIdOfView = int (theWindow->XWindow ());
 #endif  // WNT
       // Comparaison on window IDs
+#if defined(__EMSCRIPTEN__)
+      if (!strcmp(TheSpecifiedWindowId, TheWindowIdOfView))
+#else
       if (TheWindowIdOfView == TheSpecifiedWindowId)
+#endif
       {
         isExist = Standard_True;
         theView = aView;
