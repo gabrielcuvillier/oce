@@ -87,11 +87,7 @@ Standard_Integer OSD_Process::ProcessId(){
 TCollection_AsciiString OSD_Process::UserName()
 {
   struct passwd *anInfos = getpwuid (getuid());
-#if defined(__EMSCRIPTEN__)
-  return TCollection_AsciiString (anInfos ? anInfos->pw_name : "web_user");
-#else
   return TCollection_AsciiString (anInfos ? anInfos->pw_name : "");
-#endif
 }
 
 Standard_Boolean OSD_Process::IsSuperUser (){
