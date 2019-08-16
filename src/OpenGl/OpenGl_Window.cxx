@@ -42,7 +42,7 @@ IMPLEMENT_STANDARD_RTTIEXT(OpenGl_Window,Standard_Transient)
 namespace
 {
 
-#if defined(HAVE_EGL)
+#if defined(HAVE_EGL) || defined(__EMSCRIPTEN__)
   //
 #elif defined(_WIN32)
 
@@ -233,14 +233,14 @@ OpenGl_Window::OpenGl_Window (const Handle(OpenGl_GraphicDriver)& theDriver,
     EmscriptenWebGLContextAttributes attrs;
     emscripten_webgl_init_context_attributes(&attrs);
     attrs.enableExtensionsByDefault = true;
-    aGContext = emscripten_webgl_create_context(theCWindow.XWindow, &attrs);
+    aGContext = emscripten_webgl_create_context(thePlatformWindow->NativeHandle(), &attrs);
     if (aGContext <= 0) {
       return;
     }
     emscripten_webgl_make_context_current(aGContext);
   }
 
-  myGlContext->Init ((Aspect_Drawable )theCWindow.XWindow, (Aspect_RenderingContext )aGContext, isCoreProfile);
+  myGlContext->Init ((Aspect_Drawable )thePlatformWindow->NativeHandle(), (Aspect_RenderingContext )aGContext, isCoreProfile);
 #elif defined(_WIN32)
   (void )theDriver;
   HWND  aWindow   = (HWND )myPlatformWindow->NativeHandle();
