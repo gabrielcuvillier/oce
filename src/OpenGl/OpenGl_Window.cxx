@@ -37,13 +37,12 @@ IMPLEMENT_STANDARD_RTTIEXT(OpenGl_Window,Standard_Transient)
   #include <emscripten/html5.h>
 #endif
 
-
 #if !defined(__APPLE__) || defined(MACOSX_USE_GLX)
 
 namespace
 {
 
-#if defined(HAVE_EGL) || defined(__EMSCRIPTEN__)
+#if defined(HAVE_EGL)
   //
 #elif defined(_WIN32)
 

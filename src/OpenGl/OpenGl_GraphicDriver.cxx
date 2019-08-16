@@ -40,6 +40,8 @@ IMPLEMENT_STANDARD_RTTIEXT(OpenGl_GraphicDriver,Graphic3d_GraphicDriver)
   #include <WNT_Window.hxx>
 #elif defined(__APPLE__) && !defined(MACOSX_USE_GLX)
   #include <Cocoa_Window.hxx>
+#elif defined(__EMSCRIPTEN__)
+  #include <Emscripten_Window.hxx>
 #else
   #include <Xw_Window.hxx>
 #endif
@@ -48,7 +50,7 @@ IMPLEMENT_STANDARD_RTTIEXT(OpenGl_GraphicDriver,Graphic3d_GraphicDriver)
   #include <X11/Xlib.h> // XOpenDisplay()
 #endif
 
-#if defined(HAVE_EGL) || defined(HAVE_GLES2) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__)
+#if defined(HAVE_EGL) || (defined(HAVE_GLES2) && !defined(__EMSCRIPTEN__)) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__)
   #include <EGL/egl.h>
 #endif
 
@@ -65,7 +67,7 @@ OpenGl_GraphicDriver::OpenGl_GraphicDriver (const Handle(Aspect_DisplayConnectio
                                             const Standard_Boolean                  theToInitialize)
 : Graphic3d_GraphicDriver (theDisp),
   myIsOwnContext (Standard_False),
-#if defined(HAVE_EGL) || defined(HAVE_GLES2) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__)
+#if defined(HAVE_EGL) || (defined(HAVE_GLES2) && !defined(__EMSCRIPTEN__)) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__)
   myEglDisplay ((Aspect_Display )EGL_NO_DISPLAY),
   myEglContext ((Aspect_RenderingContext )EGL_NO_CONTEXT),
   myEglConfig  (NULL),
@@ -86,7 +88,7 @@ OpenGl_GraphicDriver::OpenGl_GraphicDriver (const Handle(Aspect_DisplayConnectio
              || ::getenv ("CALL_SYNCHRO_X")  != NULL;
   XSynchronize (aDisplay, toSync);
 
-#if !defined(HAVE_EGL) && !defined(HAVE_GLES2)
+#if !defined(HAVE_EGL) && !defined(HAVE_GLES2) && !defined(__EMSCRIPTEN__)
   // does the server know about OpenGL & GLX?
   int aDummy;
   if (!XQueryExtension (aDisplay, "GLX", &aDummy, &aDummy, &aDummy))
@@ -239,7 +241,7 @@ void OpenGl_GraphicDriver::ReleaseContext()
     aWindow->GetGlContext()->forcedRelease();
   }
 
-#if defined(HAVE_EGL) || defined(HAVE_GLES2) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__)
+#if defined(HAVE_EGL) || (defined(HAVE_GLES2) && !defined(__EMSCRIPTEN__)) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__)
   if (myIsOwnContext)
   {
     if (myEglContext != (Aspect_RenderingContext )EGL_NO_CONTEXT)
@@ -274,9 +276,9 @@ void OpenGl_GraphicDriver::ReleaseContext()
 Standard_Boolean OpenGl_GraphicDriver::InitContext()
 {
   ReleaseContext();
-#if defined(HAVE_EGL) || defined(HAVE_GLES2) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__)
+#if defined(HAVE_EGL) || (defined(HAVE_GLES2) && !defined(__EMSCRIPTEN__)) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__)
 
-#if !defined(_WIN32) && !defined(__ANDROID__) && !defined(__QNX__) && (!defined(__APPLE__) || defined(MACOSX_USE_GLX)) && !defined(__EMSCRIPTEN__)
+#if !defined(_WIN32) && !defined(__ANDROID__) && !defined(__QNX__) && (!defined(__APPLE__) || defined(MACOSX_USE_GLX))
   if (myDisplayConnection.IsNull())
   {
     return Standard_False;
@@ -383,7 +385,7 @@ Standard_Boolean OpenGl_GraphicDriver::InitContext()
   return Standard_True;
 }
 
-#if defined(HAVE_EGL) || defined(HAVE_GLES2) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__)
+#if defined(HAVE_EGL) || (defined(HAVE_GLES2) && !defined(__EMSCRIPTEN__)) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__)
 // =======================================================================
 // function : InitEglContext
 // purpose  :
