@@ -263,6 +263,8 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
   set (BIN_LETTER "d")
 elseif ("${CMAKE_BUILD_TYPE}" STREQUAL "RelWithDebInfo")
   set (BIN_LETTER "i")
+elseif ("${CMAKE_BUILD_TYPE}" STREQUAL "MinSizeRel")
+  set (BIN_LETTER "z")
 endif()
 
 # Get all used variables: OS_WITH_BIT, COMPILER
