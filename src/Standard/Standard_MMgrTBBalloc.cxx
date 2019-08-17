@@ -16,11 +16,6 @@
 #include <Standard_MMgrTBBalloc.hxx>
 #include <Standard_OutOfMemory.hxx>
 
-// NOTE: replaced by more correct check
-//#if defined(WNT) || defined(LIN)
-//#define HAVE_TBB 1
-//#endif
-
 #if !defined(__EMSCRIPTEN__)
 
 // paralleling with Intel TBB

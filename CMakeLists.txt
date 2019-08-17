@@ -1,36 +1,3 @@
-# How to build OCE using CMake under Unix (Linux, Darwin etc.)?
-# 1. Copy this file, as-is, to the top-level OCE folder
-# 2. Make a build directory somewhere outside the OCE source tree
-# 3. cmake "relative/path/to/OCE"
-# 4. make
-# 5. make install (or sudo make install)
-
-# How to build OCE using CMake under Windows (Linux, Darwin etc.)?
-# 1. Copy this file, as-is, to the top-level folder
-# 2. Launch the cmake-gui, and select the top-level folder
-# 3. You can choose whatever you want as an install directory
-# 4. Click 'Configure'
-# 5. Choose your generator
-# 6. When configure is achived, you can change the variable with a red background
-# 7. Click 'Generate'
-# 8. From your IDE, open the generated makefile and run the compilation.
-
-project(OCE)
-
-set(OCE_VERSION_MAJOR 0)
-set(OCE_VERSION_MINOR 19)
-# OCE_VERSION_PATCH is used for bugfixes releases only
-# (uncomment following line)
-set(OCE_VERSION_PATCH)
-#  Empty for official releases, set to -dev, -rc1, etc for development releases
-set(OCE_VERSION_DEVEL -dev)
-
-# bugfix release: add ${OCE_VERSION_PATCH} to OCE_VERSION
-set(OCE_VERSION ${OCE_VERSION_MAJOR}.${OCE_VERSION_MINOR}${OCE_VERSION_DEVEL})
-
-set(OCE_ABI_SOVERSION 12)
-set(OCE_ABI_VERSION ${OCE_ABI_SOVERSION}.0.0)
-
 cmake_minimum_required (VERSION 2.8.12 FATAL_ERROR)
 
 set (CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/adm/cmake")
@@ -47,11 +14,6 @@ macro (OCCT_INCLUDE_CMAKE_FILE BEING_INCLUDED_FILE)
     include (${CMAKE_SOURCE_DIR}/${BEING_INCLUDED_FILE}.cmake)
   endif()
 endmacro()
-
-if (APPLE)
-#XCODE_VERSION_MAJOR
-  add_definitions("-stdlib=libc++")
-endif()
 
 # include variable description
 OCCT_INCLUDE_CMAKE_FILE ("adm/cmake/vardescr")
@@ -78,6 +40,9 @@ else()
   message (STATUS "Info: Only 3rdparty's header files are used for building of static OCCT libraries")
   unset (BUILD_SHARED_LIBRARY_NAME_POSTFIX)
 endif()
+
+# the name of the project
+project (OCCT)
 
 if (WIN32)
   add_definitions(-DUNICODE)
@@ -126,20 +91,6 @@ endif()
 if (BUILD_WITH_DEBUG)
   set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS $<$<CONFIG:DEBUG>:OCCT_DEBUG>)
 endif()
-
-# oce-win-bundle handling for MSVC and MINGW
-if(MSVC OR MINGW)
-  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/oce-win-bundle/oce-bundle-root.empty")
-      MESSAGE("Using oce-win-bundle checkout")
-      if (NOT DEFINED USE_BUNDLE)
-        set (USE_BUNDLE ON CACHE BOOL "Use OCE Windows Bundle that has been built and installed")
-      endif()
-      if(USE_BUNDLE)
-          ADD_SUBDIRECTORY(oce-win-bundle)
-          SET(OCE_SKIP_FIND_LIBRARIES TRUE)
-      ENDIF()
-  endif()
-endif(MSVC OR MINGW)
 
 # option to enable or disable use of precompiled headers
 if (NOT DEFINED BUILD_USE_PCH)
@@ -1219,16 +1170,3 @@ endforeach()
 OCCT_UPDATE_TARGET_FILE ()
 
 message (STATUS "Info: \(${CURRENT_TIME}\) OCCT configuration files prepared")
-
-# Unit testing
-set (BUILD_USE_TESTING OFF CACHE BOOL "Enable unittesting framework")
-if(BUILD_USE_TESTING)
-  include(CTest)
-  enable_testing()
-  subdirs(test)
-endif(BUILD_USE_TESTING)
-
-# Final bundle step for dependencies
-if(OCE_USE_BUNDLE)
-  include(oce-win-bundle/depends.cmake)
-endif()
