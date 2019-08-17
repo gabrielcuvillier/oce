@@ -58,7 +58,7 @@ inline Standard_Integer HashCode(const long long int theMe,
   return ((theMe & 0x7fffffffffffffff) % theUpper) + 1;
 }
 
-#if (defined(_LP64) || defined(__LP64__) || defined(_WIN64)) || defined(__APPLE__)
+#if (defined(_LP64) || defined(__LP64__) || defined(_WIN64)) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
 // ------------------------------------------------------------------
 // Hascode : Computes a hascoding value for a given unsigned integer
 // ------------------------------------------------------------------
