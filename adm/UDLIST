@@ -215,6 +215,7 @@ n V3d
 n WNT
 n Xw
 n Cocoa
+n Emscripten
 r Textures
 r Shaders
 t TKMeshVS
