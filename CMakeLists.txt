@@ -1222,10 +1222,6 @@ message (STATUS "Info: \(${CURRENT_TIME}\) OCCT configuration files prepared")
 
 # Unit testing
 set (BUILD_USE_TESTING OFF CACHE BOOL "Enable unittesting framework")
-if (EMSCRIPTEN)
-  set (BUILD_USE_TESTING OFF)
-endif()
-
 if(BUILD_USE_TESTING)
   include(CTest)
   enable_testing()
