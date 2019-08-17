@@ -18,7 +18,6 @@
 #include <Aspect_TypeOfResize.hxx>
 #include <Standard.hxx>
 #include <Standard_DefineHandle.hxx>
-#include <Quantity_Ratio.hxx>
 
 class Emscripten_Window : public Aspect_Window
 {
@@ -31,54 +30,58 @@ public:
   //! Destroys the Window and all resourses attached to it
   Standard_EXPORT virtual void Destroy();
 
-  ~Emscripten_Window() {
+  Standard_EXPORT ~Emscripten_Window() {
     Destroy();
   }
 
   //! Opens the window <me>
-  Standard_EXPORT virtual void Map() const;
+  Standard_EXPORT virtual void Map() const Standard_OVERRIDE ;
 
   //! Closes the window <me>
-  Standard_EXPORT virtual void Unmap() const;
+  Standard_EXPORT virtual void Unmap() const Standard_OVERRIDE ;
 
   //! Applies the resizing to the window <me>
-  Standard_EXPORT virtual Aspect_TypeOfResize DoResize() const;
+  Standard_EXPORT virtual Aspect_TypeOfResize DoResize() const Standard_OVERRIDE ;
 
   //! Apply the mapping change to the window <me>
-  Standard_EXPORT virtual Standard_Boolean DoMapping() const;
+  Standard_EXPORT virtual Standard_Boolean DoMapping() const Standard_OVERRIDE ;
 
   //! Returns True if the window <me> is opened
-  Standard_EXPORT virtual Standard_Boolean IsMapped() const;
+  Standard_EXPORT virtual Standard_Boolean IsMapped() const Standard_OVERRIDE ;
 
   //! Returns The Window RATIO equal to the physical WIDTH/HEIGHT dimensions
-  Standard_EXPORT virtual Quantity_Ratio Ratio() const;
+  Standard_EXPORT virtual Standard_Real Ratio() const Standard_OVERRIDE ;
 
   //! Returns The Window POSITION in PIXEL
   Standard_EXPORT virtual void Position (Standard_Integer& X1,
                                          Standard_Integer& Y1,
                                          Standard_Integer& X2,
-                                         Standard_Integer& Y2) const;
+                                         Standard_Integer& Y2) const Standard_OVERRIDE ;
 
   //! Returns The Window SIZE in PIXEL
   Standard_EXPORT virtual void Size (Standard_Integer& theWidth,
-                                     Standard_Integer& theHeight) const;
+                                     Standard_Integer& theHeight) const Standard_OVERRIDE ;
+
+  //! @return the Canvas Target Id
+  Standard_EXPORT const char* TargetCanvas() const {
+    return myTargetCanvas;
+  }
 
   //! @return native Window handle
-  virtual Aspect_Drawable NativeHandle() const {
+  virtual Aspect_Drawable NativeHandle() const Standard_OVERRIDE {
     return TargetCanvas();  // Return the CanvasTarget
   }
 
   //! @return parent of native Window handle
-  virtual Aspect_Drawable NativeParentHandle() const {
+  virtual Aspect_Drawable NativeParentHandle() const Standard_OVERRIDE {
     return 0; // No parent window
   }
 
-  //! @return the Canvas Target Id
-  const char* TargetCanvas() const {
-    return myTargetCanvas;
+  virtual Aspect_FBConfig NativeFBConfig() const Standard_OVERRIDE {
+    return 0;
   }
 
-protected:
+private:
 
   // Canvas Target Id
   const char* myTargetCanvas;

@@ -98,12 +98,12 @@ Standard_Boolean Emscripten_Window::DoMapping() const
 // function : Ratio
 // purpose  :
 // =======================================================================
-Quantity_Ratio Emscripten_Window::Ratio() const
+Standard_Real Emscripten_Window::Ratio() const
 {
   int width = 1, height = 1;
   emscripten_get_canvas_element_size(myTargetCanvas, &width, &height);
 
-  return (Quantity_Ratio)width/(Quantity_Ratio)height;
+  return (Standard_Real)width/(Standard_Real)height;
 }
 
 // =======================================================================
