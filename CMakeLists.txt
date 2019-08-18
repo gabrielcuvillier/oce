@@ -1,4 +1,6 @@
-cmake_minimum_required (VERSION 2.8.12 FATAL_ERROR)
+project (OCCT)
+
+cmake_minimum_required (VERSION 2.9)
 
 set (CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/adm/cmake")
 
@@ -15,18 +17,22 @@ macro (OCCT_INCLUDE_CMAKE_FILE BEING_INCLUDED_FILE)
   endif()
 endmacro()
 
+if(EMSCRIPTEN)
+  message(STATUS "Info: Building for Emscripten/WebAssembly.")
+endif()
+
 # include variable description
 OCCT_INCLUDE_CMAKE_FILE ("adm/cmake/vardescr")
 
 # set type of OCCT libraries
-if (NOT BUILD_LIBRARY_TYPE)
-  if (NOT EMSCRIPTEN)
+if (NOT EMSCRIPTEN)
+  if (NOT BUILD_LIBRARY_TYPE)
     set (BUILD_LIBRARY_TYPE "Shared" CACHE STRING "${BUILD_LIBRARY_TYPE_DESCR}" FORCE)
     SET_PROPERTY(CACHE BUILD_LIBRARY_TYPE PROPERTY STRINGS Shared Static)
-  else()
-    set (BUILD_LIBRARY_TYPE "Static" CACHE STRING "${BUILD_LIBRARY_TYPE_DESCR}" FORCE)
-    SET_PROPERTY(CACHE BUILD_LIBRARY_TYPE PROPERTY STRINGS Shared Static)
   endif()
+else()
+  set (BUILD_LIBRARY_TYPE "Static" CACHE STRING "${BUILD_LIBRARY_TYPE_DESCR}" FORCE)
+  SET_PROPERTY(CACHE BUILD_LIBRARY_TYPE PROPERTY STRINGS Shared Static)
 endif()
 
 if ("${BUILD_LIBRARY_TYPE}" STREQUAL "Shared")
@@ -37,12 +43,9 @@ if ("${BUILD_LIBRARY_TYPE}" STREQUAL "Shared")
   endif()
 else()
   unset (BUILD_SHARED_LIBS)
-  message (STATUS "Info: Only 3rdparty's header files are used for building of static OCCT libraries")
+  message (STATUS "Info: Building static OCCT libraries")
   unset (BUILD_SHARED_LIBRARY_NAME_POSTFIX)
 endif()
-
-# the name of the project
-project (OCCT)
 
 if (WIN32)
   add_definitions(-DUNICODE)
@@ -405,30 +408,31 @@ foreach (OCCT_MODULE ${OCCT_MODULES})
 endforeach()
 
 if (ANDROID AND BUILD_MODULE_Draw)
-  message (STATUS "Info. Draw module is turned off due to it is not supported on Android")
+  message (STATUS "Info: Draw module is turned off due to it is not supported on Android")
   set (BUILD_MODULE_Draw OFF CACHE BOOL "${BUILD_MODULE_Draw_DESCR}" FORCE)
 endif()
 if ("${CMAKE_SYSTEM_NAME}" STREQUAL "WindowsStore" AND BUILD_MODULE_Draw)
-  message (STATUS "Info. Draw module is turned off due to it is not supported on UWP")
+  message (STATUS "Info: Draw module is turned off due to it is not supported on UWP")
   set (BUILD_MODULE_Draw OFF CACHE BOOL "${BUILD_MODULE_Draw_DESCR}" FORCE)
 endif()
-if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Emscripten" AND BUILD_MODULE_Draw)
-  message (STATUS "Info. Draw module is turned off due to it is not supported on Emscripten")
+if (EMSCRIPTEN)
+  message (STATUS "Info: Draw module is turned off due to it is not supported on Emscripten")
   set (BUILD_MODULE_Draw OFF CACHE BOOL "${BUILD_MODULE_Draw_DESCR}" FORCE)
 endif()
 
 if (EMSCRIPTEN)
+  message (STATUS "Info: IGNORE_NO_ATOMICS is defined due to unsupported atomics on Emscripten")
   add_definitions(-DIGNORE_NO_ATOMICS)
 endif()
 
 # Overview
-if (NOT DEFINED BUILD_DOC_Overview)
+if (NOT DEFINED BUILD_DOC_Overview AND NOT EMSCRIPTEN)
   set (DO_ONLY_CHECK_FOR_DOXYGEN ON)
   OCCT_INCLUDE_CMAKE_FILE ("adm/cmake/doxygen")
   set (DO_ONLY_CHECK_FOR_DOXYGEN OFF)
 
   if (CAN_DOXYGEN_BE_USED)
-    message (STATUS "Info. Overview building is turned on")
+    message (STATUS "Info: Overview building is turned on")
   endif()
 
   set (BUILD_DOC_Overview ${CAN_DOXYGEN_BE_USED} CACHE BOOL "${BUILD_DOC_Overview_DESCR}")
