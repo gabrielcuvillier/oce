@@ -24,8 +24,6 @@
 #include <NCollection_DataMap.hxx>
 #include <NCollection_IncAllocator.hxx>
 #include <NCollection_TypeDef.hxx>
-#include <gp_XY.hxx>
-#include <gp_XYZ.hxx>
 
 //! Auxiliary enumeration serving as responce from method Inspect
 enum NCollection_CellFilter_Action 

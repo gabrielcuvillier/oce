@@ -1,8 +1,5 @@
-// Created by: Peter KURNEV
-// Copyright (c) 2010-2014 OPEN CASCADE SAS
-// Copyright (c) 2007-2010 CEA/DEN, EDF R&D, OPEN CASCADE
-// Copyright (c) 2003-2007 OPEN CASCADE, EADS/CCR, LIP6, CEA/DEN, CEDRAT,
-//                         EDF R&D, LEG, PRINCIPIA R&D, BUREAU VERITAS
+// Created by: Oleg AGASHIN
+// Copyright (c) 2017 OPEN CASCADE SAS
 //
 // This file is part of Open CASCADE Technology software library.
 //
@@ -15,63 +12,65 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
-#include <BOPCol_BoxBndTree.hxx>
+
+#include <BOPAlgo_ToolsProvider.hxx>
+#include <BOPAlgo_PaveFiller.hxx>
+#include <BOPAlgo_Alerts.hxx>
 
 //=======================================================================
-//function : 
+//function : Constructor
 //purpose  : 
 //=======================================================================
-BOPCol_BoxBndTreeSelector::BOPCol_BoxBndTreeSelector()
+BOPAlgo_ToolsProvider::BOPAlgo_ToolsProvider()
+:
+  BOPAlgo_Builder(),
+  myTools(myAllocator),
+  myMapTools(100, myAllocator)
 {
 }
+
 //=======================================================================
-//function : ~
+//function : Constructor
 //purpose  : 
 //=======================================================================
-BOPCol_BoxBndTreeSelector::~BOPCol_BoxBndTreeSelector()
+BOPAlgo_ToolsProvider::BOPAlgo_ToolsProvider
+  (const Handle(NCollection_BaseAllocator)& theAllocator)
+:
+  BOPAlgo_Builder(theAllocator),
+  myTools(myAllocator),
+  myMapTools(100, myAllocator)
 {
 }
-//=======================================================================
-//function : Reject
-//purpose  : 
-//=======================================================================
-  Standard_Boolean BOPCol_BoxBndTreeSelector::Reject (const Bnd_Box& aBox) const
-{
-  return myBox.IsOut(aBox);
-}
-//=======================================================================
-//function : Accept
-//purpose  : 
-//=======================================================================
-Standard_Boolean BOPCol_BoxBndTreeSelector::Accept (const Standard_Integer& aIndex)
-{
-  Standard_Boolean bRet=Standard_False;
-  //
-  myIndices.Append(aIndex);
-  bRet=!bRet;
-  return bRet;
-}
-//=======================================================================
-//function : SetBox
-//purpose  : 
-//=======================================================================
-void BOPCol_BoxBndTreeSelector::SetBox(const Bnd_Box& aBox)
-{
-  myBox=aBox;
-}
+
 //=======================================================================
 //function : Clear
 //purpose  : 
 //=======================================================================
-void BOPCol_BoxBndTreeSelector::Clear()
+void BOPAlgo_ToolsProvider::Clear()
 {
-  myIndices.Clear();
+  BOPAlgo_Builder::Clear();
+  myTools.Clear();
+  myMapTools.Clear();
 }
+
 //=======================================================================
-//function : Indices
+//function : AddTool
 //purpose  : 
 //=======================================================================
-const BOPCol_ListOfInteger& BOPCol_BoxBndTreeSelector::Indices() const
+void BOPAlgo_ToolsProvider::AddTool(const TopoDS_Shape& theShape)
 {
-  return myIndices;
+  if (myMapTools.Add(theShape))
+    myTools.Append(theShape);
+}
+
+//=======================================================================
+//function : SetTools
+//purpose  : 
+//=======================================================================
+void BOPAlgo_ToolsProvider::SetTools(const TopTools_ListOfShape& theShapes)
+{
+  myTools.Clear();
+  TopTools_ListIteratorOfListOfShape aIt(theShapes);
+  for (; aIt.More(); aIt.Next())
+    AddTool(aIt.Value());
 }

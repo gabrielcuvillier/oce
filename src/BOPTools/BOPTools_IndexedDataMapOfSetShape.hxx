@@ -1,8 +1,5 @@
-// Created by: Peter KURNEV
-// Copyright (c) 2010-2014 OPEN CASCADE SAS
-// Copyright (c) 2007-2010 CEA/DEN, EDF R&D, OPEN CASCADE
-// Copyright (c) 2003-2007 OPEN CASCADE, EADS/CCR, LIP6, CEA/DEN, CEDRAT,
-//                         EDF R&D, LEG, PRINCIPIA R&D, BUREAU VERITAS
+// Created by: Eugeny MALTCHIKOV
+// Copyright (c) 2017 OPEN CASCADE SAS
 //
 // This file is part of Open CASCADE Technology software library.
 //
@@ -15,15 +12,14 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
+#ifndef BOPTools_IndexedDataMapOfSetShape_HeaderFile
+#define BOPTools_IndexedDataMapOfSetShape_HeaderFile
 
-#include <BOPDS_PassKey.hxx>
+#include <BOPTools_Set.hxx>
+#include <BOPTools_SetMapHasher.hxx>
+#include <NCollection_IndexedDataMap.hxx>
+#include <TopoDS_Shape.hxx>
 
-#include <stdio.h>
+typedef NCollection_IndexedDataMap<BOPTools_Set, TopoDS_Shape, BOPTools_SetMapHasher> BOPTools_IndexedDataMapOfSetShape;
 
-//=======================================================================
-//function : Dump
-//purpose  : 
-//=======================================================================
-  void BOPDS_PassKey::Dump(const Standard_Integer )const
-{
-}
+#endif

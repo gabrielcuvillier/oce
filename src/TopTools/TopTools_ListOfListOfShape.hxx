@@ -1,5 +1,5 @@
-// Created by: Peter KURNEV
-// Copyright (c) 1999-2014 OPEN CASCADE SAS
+// Created by: Eugeny MALTCHIKOV
+// Copyright (c) 2017 OPEN CASCADE SAS
 //
 // This file is part of Open CASCADE Technology software library.
 //
@@ -12,14 +12,13 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
-#ifndef BOPDS_MapOfPassKeyBoolean_HeaderFile
-#define BOPDS_MapOfPassKeyBoolean_HeaderFile
+#ifndef TopTools_ListOfListOfShape_HeaderFile
+#define TopTools_ListOfListOfShape_HeaderFile
 
-#include <NCollection_Map.hxx>   
-#include <BOPDS_PassKeyMapHasher.hxx>
-#include <BOPDS_PassKeyBoolean.hxx>
+#include <TopTools_ListOfShape.hxx>
 
-typedef NCollection_Map<BOPDS_PassKeyBoolean, BOPDS_PassKeyMapHasher> BOPDS_MapOfPassKeyBoolean; 
-typedef BOPDS_MapOfPassKeyBoolean::Iterator BOPDS_MapIteratorMapOfPassKeyBoolean;  
+typedef NCollection_List<TopTools_ListOfShape> TopTools_ListOfListOfShape;
+typedef TopTools_ListOfListOfShape::Iterator TopTools_ListIteratorOfListOfListOfShape;
+
 
 #endif

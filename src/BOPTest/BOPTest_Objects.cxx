@@ -55,6 +55,7 @@ class BOPTest_Session {
     myFuzzyValue = 0.;
     myGlue = BOPAlgo_GlueOff;
     myDrawWarnShapes = Standard_False;
+    myCheckInverted = Standard_True;
   };
   //
   // Clear
@@ -94,11 +95,11 @@ class BOPTest_Session {
     myBuilder=myBuilderDefault;
   };
   //
-  BOPCol_ListOfShape& Shapes() {
+  TopTools_ListOfShape& Shapes() {
     return myShapes;
   }
   //
-  BOPCol_ListOfShape& Tools() {
+  TopTools_ListOfShape& Tools() {
     return myTools;
   }
   //
@@ -142,6 +143,14 @@ class BOPTest_Session {
     return myDrawWarnShapes;
   };
   //
+  void SetCheckInverted(const Standard_Boolean bCheck) {
+    myCheckInverted = bCheck;
+  };
+  //
+  Standard_Boolean CheckInverted() const {
+    return myCheckInverted;
+  };
+  //
 protected:
   //
   BOPTest_Session(const BOPTest_Session&);
@@ -153,13 +162,14 @@ protected:
   BOPAlgo_Builder* myBuilder;
   BOPAlgo_Builder* myBuilderDefault;
   //
-  BOPCol_ListOfShape myShapes;
-  BOPCol_ListOfShape myTools;
+  TopTools_ListOfShape myShapes;
+  TopTools_ListOfShape myTools;
   Standard_Boolean myRunParallel;
   Standard_Boolean myNonDestructive;
   Standard_Real myFuzzyValue;
   BOPAlgo_GlueEnum myGlue;
   Standard_Boolean myDrawWarnShapes;
+  Standard_Boolean myCheckInverted;
 };
 //
 //=======================================================================
@@ -277,7 +287,7 @@ BOPAlgo_Splitter& BOPTest_Objects::Splitter()
 //function : Shapes
 //purpose  : 
 //=======================================================================
-BOPCol_ListOfShape& BOPTest_Objects::Shapes()
+TopTools_ListOfShape& BOPTest_Objects::Shapes()
 {
   return GetSession().Shapes();
 }
@@ -285,7 +295,7 @@ BOPCol_ListOfShape& BOPTest_Objects::Shapes()
 //function : Tools
 //purpose  : 
 //=======================================================================
-BOPCol_ListOfShape& BOPTest_Objects::Tools()
+TopTools_ListOfShape& BOPTest_Objects::Tools()
 {
   return GetSession().Tools();
 }
@@ -368,6 +378,22 @@ void BOPTest_Objects::SetDrawWarnShapes(const Standard_Boolean bDraw)
 Standard_Boolean BOPTest_Objects::DrawWarnShapes()
 {
   return GetSession().DrawWarnShapes();
+}
+//=======================================================================
+//function : SetCheckInverted
+//purpose  : 
+//=======================================================================
+void BOPTest_Objects::SetCheckInverted(const Standard_Boolean bCheck)
+{
+  GetSession().SetCheckInverted(bCheck);
+}
+//=======================================================================
+//function : CheckInverted
+//purpose  : 
+//=======================================================================
+Standard_Boolean BOPTest_Objects::CheckInverted()
+{
+  return GetSession().CheckInverted();
 }
 //=======================================================================
 //function : Allocator1

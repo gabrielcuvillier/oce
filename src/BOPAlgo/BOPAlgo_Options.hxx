@@ -18,7 +18,7 @@
 #include <Message_Report.hxx>
 #include <Standard_OStream.hxx>
 
-#include <BOPCol_BaseAllocator.hxx>
+#include <NCollection_BaseAllocator.hxx>
 
 class Message_ProgressIndicator;
 
@@ -43,13 +43,13 @@ public:
   Standard_EXPORT BOPAlgo_Options();
 
   //! Constructor with allocator
-  Standard_EXPORT BOPAlgo_Options(const BOPCol_BaseAllocator& theAllocator);
+  Standard_EXPORT BOPAlgo_Options(const Handle(NCollection_BaseAllocator)& theAllocator);
 
   //! Destructor
   Standard_EXPORT virtual ~BOPAlgo_Options();
 
   //! Returns allocator
-  const BOPCol_BaseAllocator& Allocator() const
+  const Handle(NCollection_BaseAllocator)& Allocator() const
   {
     return myAllocator;
   }
@@ -164,7 +164,7 @@ protected:
 
 protected:
 
-  BOPCol_BaseAllocator myAllocator;
+  Handle(NCollection_BaseAllocator) myAllocator;
   Handle(Message_Report) myReport;
   Standard_Boolean myRunParallel;
   Standard_Real myFuzzyValue;

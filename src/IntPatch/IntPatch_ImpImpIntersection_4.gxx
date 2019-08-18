@@ -69,7 +69,7 @@ class ComputationMethods
   //            |C11 C21|
   //            |       | != 0
   //            |C12 C22|
-  //
+  //            
   //In this case, variables V1 and V2 can be found as follows:
   //    {V1 = K11*sin(U1)+K21*sin(U2)+L11*cos(U1)+L21*cos(U2)+M1 = K1*cos(U1-FIV1)+L1*cos(U2-PSIV1)+M1      (4)
   //    {V2 = K12*sin(U1)+K22*sin(U2)+L12*cos(U1)+L22*cos(U2)+M2 = K2*cos(U2-FIV2)+L2*cos(U2-PSIV2)+M2
@@ -216,7 +216,7 @@ ComputationMethods::stCoeffsValue::stCoeffsValue(const gp_Cylinder& theCyl1,
   // In point of fact, every determinant (aDelta1, aDelta2 and aDelta3) is
   // cross-product between directions (i.e. sine of angle).
   // If sine is too small then sine is (approx.) equal to angle itself.
-  // Therefore, in this case we should compare sine with angular tolerance.
+  // Therefore, in this case we should compare sine with angular tolerance. 
   // This constant is used for check if axes are parallel (see constructor
   // AxeOperator::AxeOperator(...) in IntAna_QuadQuadGeo.cxx file).
   if(Abs(aDetV1V2) < Precision::Angular())
@@ -470,11 +470,11 @@ public:
                         const Standard_Boolean theFlForce,
                         Standard_Boolean& isTheFound1,
                         Standard_Boolean& isTheFound2) const;
-
+  
   static Standard_Boolean BoundariesComputing(const ComputationMethods::stCoeffsValue &theCoeffs,
                                               const Standard_Real thePeriod,
                                               Bnd_Range theURange[]);
-
+  
   void BoundaryEstimation(const gp_Cylinder& theCy1,
                           const gp_Cylinder& theCy2,
                           Bnd_Range& theOutBoxS1,
@@ -511,7 +511,7 @@ private:
   const Standard_Boolean myIsReverse;
 };
 
-static
+static 
   Standard_Boolean ExploreCurve(const gp_Cylinder& aCy,
 				const gp_Cone& aCo,
 				IntAna_Curve& aC,
@@ -548,7 +548,7 @@ static inline void MinMax(Standard_Real& theParMIN, Standard_Real& theParMAX)
 //=======================================================================
 //function : ExtremaLineLine
 //purpose  : Computes extrema between the given lines. Returns parameters
-//          on correspond curve (see correspond method for Extrema_ExtElC class).
+//          on correspond curve (see correspond method for Extrema_ExtElC class). 
 //=======================================================================
 static inline void ExtremaLineLine(const gp_Ax1& theC1,
                                    const gp_Ax1& theC2,
@@ -610,10 +610,10 @@ static void VBoundaryPrecise( const math_Matrix& theMatr,
   //    dV2 = -dU1*aDet2/aDet
 
   //If U1 is increased then dU1 > 0.
-  //If (aDet1/aDet > 0) then dV1 < 0 and
+  //If (aDet1/aDet > 0) then dV1 < 0 and 
   //V1 will be decreased after increasing U1.
 
-  //We have analogical situation with V2-parameter.
+  //We have analogical situation with V2-parameter. 
 
   if(aDet*aDet1 > 0.0)
   {
@@ -952,7 +952,7 @@ Standard_Boolean CyCyAnalyticalIntersect( const IntSurf_Quadric& Quad1,
                                           IntPatch_SequenceOfPoint& spnt)
 {
   IntPatch_Point ptsol;
-
+  
   Standard_Integer i;
 
   IntSurf_TypeTrans trans1,trans2;
@@ -1004,7 +1004,7 @@ Standard_Boolean CyCyAnalyticalIntersect( const IntSurf_Quadric& Quad1,
       { // Cylinders are tangent to each other by line
         linsol = theInter.Line(1);
         ptref = linsol.Location();
-
+        
         //Radius-vectors
         gp_Dir crb1(gp_Vec(ptref,Cy1.Location()));
         gp_Dir crb2(gp_Vec(ptref,Cy2.Location()));
@@ -1017,7 +1017,7 @@ Standard_Boolean CyCyAnalyticalIntersect( const IntSurf_Quadric& Quad1,
 
         if (crb1.Dot(crb2) < 0.)
         { // centre de courbures "opposes"
-            //ATTENTION!!!
+            //ATTENTION!!! 
             //        Normal and Radius-vector of the 1st(!) cylinder
             //        is used for judging what the situation of the 2nd(!)
             //        cylinder is.
@@ -1147,7 +1147,7 @@ Standard_Boolean CyCyAnalyticalIntersect( const IntSurf_Quadric& Quad1,
       pmult2.SetParameters(oU1,oV1,oU2,oV2);
 
       // on traite la premiere ellipse
-
+        
       //-- Calcul de la Transition de la ligne 
       ElCLib::D1(0.,elipsol,ptref,Tgt);
 
@@ -1656,7 +1656,7 @@ Standard_Boolean WorkWithBoundaries::
                           aCosU1Last = cos(aMainVarPrev),
                           aSinU2Last = sin(aU2Prev),
                           aCosU2Last = cos(aU2Prev);
-      aMSum -= (myCoeffs.mVecA1*aCosU1Last +
+      aMSum -= (myCoeffs.mVecA1*aCosU1Last + 
                 myCoeffs.mVecB1*aSinU1Last +
                 myCoeffs.mVecA2*aCosU2Last +
                 myCoeffs.mVecB2*aSinU2Last +
@@ -1738,7 +1738,7 @@ Standard_Boolean InscribePoint( const Standard_Real theUfTarget,
 
 //=======================================================================
 //function : InscribeInterval
-//purpose  : Shifts theRange in order to make at least one of its
+//purpose  : Shifts theRange in order to make at least one of its 
 //            boundary in the range [theUfTarget, theUlTarget]
 //=======================================================================
 static Standard_Boolean InscribeInterval(const Standard_Real theUfTarget,
@@ -1754,7 +1754,7 @@ static Standard_Boolean InscribeInterval(const Standard_Real theUfTarget,
   }
 
   const Standard_Real aDelta = theRange.Delta();
-  if(InscribePoint(theUfTarget, theUlTarget, anUpar,
+  if(InscribePoint(theUfTarget, theUlTarget, anUpar, 
           theTol2D, thePeriod, (Abs(theUlTarget-anUpar) < theTol2D)))
   {
     theRange.SetVoid();
@@ -1814,7 +1814,7 @@ static Standard_Boolean ExcludeNearElements(Standard_Real theArr[],
 
     if((anA-anB) < theTol)
     {
-      if((anB != 0.0) && (anB != theUSurf1f) && (anB != theUSurf1l))
+      if((anB != 0.0) && (anB != theUSurf1f) && (anB != theUSurf1l)) 
       anA = (anA + anB)/2.0;
       else
         anA = anB;
@@ -1862,7 +1862,7 @@ static Standard_Boolean AddPointIntoWL( const IntSurf_Quadric& theQuad1,
                                         const Standard_Boolean theOnlyCheck = Standard_False)
 {
   //Check if the point is in the domain or can be inscribed in the domain after adjusting.
-
+  
   gp_Pnt  aPt1(theQuad1.Value(thePntOnSurf1.X(), thePntOnSurf1.Y())),
           aPt2(theQuad2.Value(thePntOnSurf2.X(), thePntOnSurf2.Y()));
 
@@ -1875,7 +1875,7 @@ static Standard_Boolean AddPointIntoWL( const IntSurf_Quadric& theQuad1,
     return Standard_False;
 
   if ((theLine->NbPoints() > 0) &&
-      ((theUlSurf1 - theUfSurf1) >= thePeriodOfSurf1) &&
+      ((theUlSurf1 - theUfSurf1) >= thePeriodOfSurf1) &&      
       (((aU1par + thePeriodOfSurf1 - theUlSurf1) <= theTol2D) ||
        ((aU1par - thePeriodOfSurf1 - theUfSurf1) >= theTol2D)))
   {
@@ -2005,7 +2005,7 @@ static Standard_Boolean AddPointIntoWL( const IntSurf_Quadric& theQuad1,
     if((1 < aDeltaStep) && (aDeltaStep < 2000))
     {
       //Add new points in case of non-uniform distribution of existing points
-      SeekAdditionalPoints( theQuad1, theQuad2, theLine,
+      SeekAdditionalPoints( theQuad1, theQuad2, theLine, 
                             theCoeffs, theWLIndex, aDeltaStep, aNbPnts-2,
                             aNbPnts-1, theTol2D, thePeriodOfSurf1, isTheReverse);
     }
@@ -2042,7 +2042,7 @@ void WorkWithBoundaries::AddBoundaryPoint(const Handle(IntPatch_WLine)& theWL,
 
   myUVSurf1.Get(aUSurf1f, aVSurf1f, aUSurf1l, aVSurf1l);
   myUVSurf2.Get(aUSurf2f, aVSurf2f, aUSurf2l, aVSurf2l);
-
+  
   const Standard_Integer aSize = 4;
   const Standard_Real anArrVzad[aSize] = {aVSurf1f, aVSurf1l, aVSurf2f, aVSurf2l};
 
@@ -2116,7 +2116,7 @@ void WorkWithBoundaries::AddBoundaryPoint(const Handle(IntPatch_WLine)& theWL,
 
   // Sort with acceding U1-parameter.
   std::sort(aUVPoint, aUVPoint+aSize);
-
+    
   isTheFound1 = isTheFound2 = Standard_False;
 
   //Adding found points on boundary in the WLine.
@@ -2289,7 +2289,7 @@ Standard_Boolean WorkWithBoundaries::
 {
   //All comments to this method is related to the comment
   //to ComputationMethods class
-
+  
   //So, we have the equation
   //    cos(U2-FI2)=B*cos(U1-FI1)+C
   //Evidently,
@@ -2302,7 +2302,7 @@ Standard_Boolean WorkWithBoundaries::
     if (theCoeffs.mB + Abs(theCoeffs.mC) < -1.0)
     {
       //(1-C)/B < -1 or -(1+C)/B > 1  ==> No solution
-
+      
       return Standard_False;
     }
     else if (theCoeffs.mB + Abs(theCoeffs.mC) <= 1.0)
@@ -2314,7 +2314,7 @@ Standard_Boolean WorkWithBoundaries::
     else if ((1 + theCoeffs.mC <= theCoeffs.mB) &&
              (theCoeffs.mB <= 1 - theCoeffs.mC))
     {
-      //(1-C)/B >= 1 and -(1+C)/B >= -1 ==>
+      //(1-C)/B >= 1 and -(1+C)/B >= -1 ==> 
       //(U=[0;aDAngle]+aFI1) || (U=[2*PI-aDAngle;2*PI]+aFI1),
       //where aDAngle = acos(-(myCoeffs.mC + 1) / myCoeffs.mB)
 
@@ -2397,7 +2397,7 @@ Standard_Boolean WorkWithBoundaries::
     else if ((-theCoeffs.mC - 1 <= theCoeffs.mB) &&
              (theCoeffs.mB <= theCoeffs.mC - 1))
     {
-      //  -(1+C)/B >= 1 and (1-C)/B >= -1 ==>
+      //  -(1+C)/B >= 1 and (1-C)/B >= -1 ==> 
       //(U=[0;aDAngle]+aFI1) || (U=[2*PI-aDAngle;2*PI]+aFI1),
       //where aDAngle = acos((1 - myCoeffs.mC) / myCoeffs.mB)
 
@@ -2621,7 +2621,7 @@ void WorkWithBoundaries::BoundaryEstimation(const gp_Cylinder& theCy1,
   if (aSqSinA < Precision::Angular()*Precision::Angular())
     return;
 
-  //Half of delta V. Delta V is a distance between
+  //Half of delta V. Delta V is a distance between 
   //projections of two opposite parallelogram vertices
   //(joined by the maximal diagonal) to the cylinder axis.
   const Standard_Real aSinA = sqrt(aSqSinA);
@@ -3257,8 +3257,8 @@ static IntPatch_ImpImpIntersection::IntStatus
         //Step computing
 
         {
-          //Step of aU1-parameter is computed adaptively. The algorithm
-          //aims to provide given aDeltaV1 and aDeltaV2 values (if it is
+          //Step of aU1-parameter is computed adaptively. The algorithm 
+          //aims to provide given aDeltaV1 and aDeltaV2 values (if it is 
           //possible because the intersection line can go along V-isoline)
           //in every iteration. It allows avoiding "flying" intersection
           //points too far each from other (see issue #24915).
@@ -3302,7 +3302,7 @@ static IntPatch_ImpImpIntersection::IntStatus
             //The main idea is in solving of linearized system (2)
             //(see description to ComputationMethods class) in order to find new U1-value
             //to provide new value V1 or V2, which differs from current one by aDeltaV1 or
-            //aDeltaV2 respectively.
+            //aDeltaV2 respectively. 
 
             //While linearizing, following Taylor formulas are used:
             //    cos(x0+dx) = cos(x0) - sin(x0)*dx
@@ -3595,7 +3595,7 @@ static IntPatch_ImpImpIntersection::IntStatus
 
 //=======================================================================
 //function : IntCyCy
-//purpose  :
+//purpose  : 
 //=======================================================================
 IntPatch_ImpImpIntersection::IntStatus IntCyCy(const IntSurf_Quadric& theQuad1,
                                                const IntSurf_Quadric& theQuad2,
@@ -3635,7 +3635,7 @@ IntPatch_ImpImpIntersection::IntStatus IntCyCy(const IntSurf_Quadric& theQuad1,
       return IntPatch_ImpImpIntersection::IntStatus_OK;
     }
   }
-
+  
   //Here, intersection line is not an analytical curve(line, circle, ellipsis etc.)
 
   Standard_Real aUSBou[2][2], aVSBou[2][2]; //const
@@ -3649,7 +3649,7 @@ IntPatch_ImpImpIntersection::IntStatus IntCyCy(const IntSurf_Quadric& theQuad1,
   const ComputationMethods::stCoeffsValue anEquationCoeffs1(aCyl1, aCyl2);
   const ComputationMethods::stCoeffsValue anEquationCoeffs2(aCyl2, aCyl1);
 
-  //Boundaries.
+  //Boundaries. 
   //Intersection result can include two non-connected regions
   //(see WorkWithBoundaries::BoundariesComputing(...) method).
   const Standard_Integer aNbOfBoundaries = 2;
@@ -3687,7 +3687,7 @@ IntPatch_ImpImpIntersection::IntStatus IntCyCy(const IntSurf_Quadric& theQuad1,
   {
     anAlloc->Reset();
     NCollection_List<Bnd_Range> aListOfRng(anAlloc);
-
+    
     aListOfRng.Append(anURange[aCID][0]);
     aListOfRng.Append(anURange[aCID][1]);
 

@@ -158,16 +158,16 @@ void ShapeUpgrade_SplitCurve3dContinuity::Compute()
 	Standard_Integer newMultiplicity = Deg - myCont;
  	if (newMultiplicity < 0) newMultiplicity = 0;
 	{
- 	try {
-	  OCC_CATCH_SIGNALS
-	  corrected = MyBSpline->RemoveKnot(iknot, newMultiplicity, myTolerance);
- 	}
-	catch (Standard_Failure) {
-	  corrected = Standard_False;
+	  try {
+	    OCC_CATCH_SIGNALS
+	    corrected = MyBSpline->RemoveKnot(iknot, newMultiplicity, myTolerance);
+	  }
+	  catch (Standard_Failure) {
+	    corrected = Standard_False;
+	  }
 	}
-	}
-
-
+	
+	
 	if (corrected && newMultiplicity > 0) {
 	 Continuity=Deg-MyBSpline->Multiplicity(iknot);
 	 corrected = (Continuity >= myCont);

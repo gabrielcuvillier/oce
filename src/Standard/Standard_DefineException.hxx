@@ -46,6 +46,6 @@ public: \
 };
 
 //! Obsolete macro, kept for compatibility with old code
-#define IMPLEMENT_STANDARD_EXCEPTION(C1)
+#define IMPLEMENT_STANDARD_EXCEPTION(C1) 
 
 #endif

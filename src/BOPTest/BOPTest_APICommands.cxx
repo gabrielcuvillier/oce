@@ -14,7 +14,6 @@
 
 
 #include <BOPAlgo_PaveFiller.hxx>
-#include <BOPCol_ListOfShape.hxx>
 #include <BOPTest.hxx>
 #include <BOPTest_Objects.hxx>
 #include <BRepAlgoAPI_BooleanOperation.hxx>
@@ -31,9 +30,6 @@
 
 #include <stdio.h>
 #include <string.h>
-static 
-  void ConvertList(const BOPCol_ListOfShape& aLSB,
-                   TopTools_ListOfShape& aLS);
 
 static Standard_Integer bapibuild(Draw_Interpretor&, Standard_Integer, const char**);
 static Standard_Integer bapibop  (Draw_Interpretor&, Standard_Integer, const char**);
@@ -108,12 +104,8 @@ Standard_Integer bapibop(Draw_Interpretor& di,
      break;
   }
   //
-  BOPCol_ListOfShape& aLSB=BOPTest_Objects::Shapes();
-  BOPCol_ListOfShape& aLTB=BOPTest_Objects::Tools();
-  //
-  TopTools_ListOfShape aLS, aLT;
-  ConvertList(aLSB, aLS);
-  ConvertList(aLTB, aLT);
+  TopTools_ListOfShape& aLS=BOPTest_Objects::Shapes();
+  TopTools_ListOfShape& aLT=BOPTest_Objects::Tools();
   //
   bRunParallel=BOPTest_Objects::RunParallel();
   aFuzzyValue=BOPTest_Objects::FuzzyValue();
@@ -133,6 +125,7 @@ Standard_Integer bapibop(Draw_Interpretor& di,
   pBuilder->SetFuzzyValue(aFuzzyValue);
   pBuilder->SetNonDestructive(bNonDestructive);
   pBuilder->SetGlue(aGlue);
+  pBuilder->SetCheckInverted(BOPTest_Objects::CheckInverted());
   //
   pBuilder->Build(); 
   //
@@ -176,13 +169,10 @@ Standard_Integer bapibuild(Draw_Interpretor& di,
   Standard_Real aFuzzyValue;
   BRepAlgoAPI_BuilderAlgo aBuilder;
   //
-  BOPCol_ListOfShape& aLSB=BOPTest_Objects::Shapes();
-  BOPCol_ListOfShape& aLTB=BOPTest_Objects::Tools();
+  TopTools_ListOfShape aLS = BOPTest_Objects::Shapes();
+  TopTools_ListOfShape aLT = BOPTest_Objects::Tools();
   //
-  TopTools_ListOfShape aLS;
-  ConvertList(aLSB, aLS);
-  ConvertList(aLTB, aLS);
-  //
+  aLS.Append(aLT);
   bRunParallel=BOPTest_Objects::RunParallel();
   aFuzzyValue=BOPTest_Objects::FuzzyValue();
   bNonDestructive = BOPTest_Objects::NonDestructive();
@@ -193,6 +183,7 @@ Standard_Integer bapibuild(Draw_Interpretor& di,
   aBuilder.SetFuzzyValue(aFuzzyValue);
   aBuilder.SetNonDestructive(bNonDestructive);
   aBuilder.SetGlue(aGlue);
+  aBuilder.SetCheckInverted(BOPTest_Objects::CheckInverted());
   //
   aBuilder.Build(); 
   //
@@ -219,21 +210,6 @@ Standard_Integer bapibuild(Draw_Interpretor& di,
   DBRep::Set(a[1], aR);
   return 0;
 }
-//=======================================================================
-//function : ConvertLists
-//purpose  : 
-//=======================================================================
-void ConvertList(const BOPCol_ListOfShape& aLSB,
-                 TopTools_ListOfShape& aLS)
-{
-  BOPCol_ListIteratorOfListOfShape aItB;
-  //
-  aItB.Initialize(aLSB);
-  for (; aItB.More(); aItB.Next()) {
-    const TopoDS_Shape& aS=aItB.Value();
-    aLS.Append(aS);
-  }
-}
 
 //=======================================================================
 //function : bapisplit
@@ -257,6 +233,7 @@ Standard_Integer bapisplit(Draw_Interpretor& di,
   aSplitter.SetFuzzyValue(BOPTest_Objects::FuzzyValue());
   aSplitter.SetNonDestructive(BOPTest_Objects::NonDestructive());
   aSplitter.SetGlue(BOPTest_Objects::Glue());
+  aSplitter.SetCheckInverted(BOPTest_Objects::CheckInverted());
   //
   // performing operation
   aSplitter.Build();

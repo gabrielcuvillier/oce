@@ -14,8 +14,6 @@
 
 
 #include <Bnd_Box.hxx>
-#include <BOPCol_IndexedDataMapOfShapeListOfShape.hxx>
-#include <BOPCol_IndexedMapOfShape.hxx>
 #include <BOPTools_AlgoTools2D.hxx>
 #include <BOPTools_AlgoTools3D.hxx>
 #include <BRep_Builder.hxx>
@@ -62,9 +60,10 @@
 #include <TopoDS_Face.hxx>
 #include <TopoDS_Shape.hxx>
 #include <TopoDS_Vertex.hxx>
+#include <TopTools_IndexedMapOfShape.hxx>
 
 static void Add(const TopoDS_Shape& aS,
-                BOPCol_IndexedMapOfShape& myShapes, 
+                TopTools_IndexedMapOfShape& myShapes, 
                 Standard_Boolean& bHasGeometry);
 static 
   Standard_Boolean HasGeometry(const TopoDS_Shape& aS);
@@ -309,22 +308,27 @@ Standard_Boolean BOPTools_AlgoTools3D::GetNormalToSurface
    const Standard_Real V,
    gp_Dir& aDNS)
 {
-  Standard_Boolean bFlag;
-  
   gp_Pnt aP;
   gp_Vec aD1U, aD1V;
 
   aS->D1(U, V, aP, aD1U, aD1V);
-  
-  gp_Dir aDD1U(aD1U); 
-  gp_Dir aDD1V(aD1V); 
-  
-  bFlag=IntTools_Tools::IsDirsCoinside(aDD1U, aDD1U);
-  if (!bFlag) {
+
+  Standard_Real aLenU = aD1U.SquareMagnitude();
+  if (aLenU < gp::Resolution())
+    return Standard_False;
+
+  Standard_Real aLenV = aD1V.SquareMagnitude();
+  if (aLenV < gp::Resolution())
+    return Standard_False;
+
+  gp_Dir aDD1U(aD1U);
+  gp_Dir aDD1V(aD1V);
+
+  Standard_Boolean bFlag = IntTools_Tools::IsDirsCoinside(aDD1U, aDD1U);
+  if (!bFlag)
     return bFlag;
-  }
-  
-  aDNS=aDD1U^aDD1V;
+
+  aDNS = aDD1U^aDD1V;
   return bFlag;
 }
 //=======================================================================
@@ -626,7 +630,7 @@ Standard_Boolean BOPTools_AlgoTools3D::IsEmptyShape
 {
   Standard_Boolean bHasGeometry=Standard_False;
   //
-  BOPCol_IndexedMapOfShape myShapes;
+  TopTools_IndexedMapOfShape myShapes;
   //
   Add(aS, myShapes, bHasGeometry);
 
@@ -637,7 +641,7 @@ Standard_Boolean BOPTools_AlgoTools3D::IsEmptyShape
 //purpose  : 
 //=======================================================================
 void Add(const TopoDS_Shape& aS,
-         BOPCol_IndexedMapOfShape& myShapes, 
+         TopTools_IndexedMapOfShape& myShapes, 
          Standard_Boolean& bHasGeometry)
 {
   Standard_Integer anIndex; 
