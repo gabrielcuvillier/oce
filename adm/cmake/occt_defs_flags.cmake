@@ -29,8 +29,11 @@ if (WIN32)
   add_definitions (-D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_DEPRECATE)
 else()
   if (EMSCRIPTEN)
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions -s WASM_OBJECT_FILES=0")
-    set (CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fexceptions -s WASM_OBJECT_FILES=0")
+    # Changes compared to regular build:
+    # PIC not supported
+    # Do not convert UNIX signals to exceptions (structured exception handling)
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions")
+    set (CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fexceptions")
   else()
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions -fPIC")
     set (CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fexceptions -fPIC")
