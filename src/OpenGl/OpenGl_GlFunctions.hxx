@@ -1714,6 +1714,9 @@ public: //! @name wgl extensions
 #elif defined(__APPLE__)
 public: //! @name CGL extensions
 
+#elif defined(__EMSCRIPTEN__)
+public: //! @name WebGL extensions
+
 #else
 public: //! @name glX extensions
 
