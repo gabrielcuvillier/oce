@@ -57,7 +57,7 @@ static const Font_FontMgr_FontAliasMapNode Font_FontMgr_MapOfFontsAliases[] =
   { "Times-BoldItalic"         , "Droid Serif"    , Font_FA_BoldItalic  },
   { "Arial"                    , "Roboto"         , Font_FA_Regular  },
 #elif defined(__EMSCRIPTEN__)
-  // NB: Those fonts need to be loaded manually in MemFS (under /oce/src/Fonts directory)
+  // NB: Those fonts need to be loaded manually in MemFS (under path defined by CSF_CustomFontDirectory, or a default directory - see below)
   { "Courier"                  , "Droid Sans Mono"    , Font_FA_Regular },
   { "Times-Roman"              , "Droid Serif"        , Font_FA_Regular  },
   { "Times-Bold"               , "Droid Serif"        , Font_FA_Bold },
@@ -147,16 +147,16 @@ static const Font_FontMgr_FontAliasMapNode Font_FontMgr_MapOfFontsAliases[] =
                                                     "/Library/Fonts",
                                                     NULL
                                                    };
+  #elif __EMSCRIPTEN__
+    // Use CSF_CustomFontDirectory environment variable, or "/fonts" by default
+    static Standard_CString myDefaultFontsDirs[] = { getenv("CSF_CustomFontDirectory") ? getenv("CSF_CustomFontDirectory") : "/fonts",
+                                                     NULL
+                                                   };
   #else
     // default fonts paths in most Unix systems (Linux and others)
     static Standard_CString myDefaultFontsDirs[] = {"/system/fonts",         // Android
                                                     "/usr/share/fonts",
                                                     "/usr/local/share/fonts",
-    // Under Emscripten, use the "/oce/src/Fonts" folder
-    // NB: Be sure to preload needed fonts at this location in MemFS
-    #if defined(__EMSCRIPTEN__)
-                                                    "/oce/src/Fonts",
-    #endif
                                                     NULL
                                                    };
   #endif
