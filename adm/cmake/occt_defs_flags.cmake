@@ -29,11 +29,9 @@ if (WIN32)
   add_definitions (-D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_DEPRECATE)
 else()
   if (EMSCRIPTEN)
-    # Changes compared to regular build:
-    # PIC not supported
-    # Do not convert UNIX signals to exceptions (structured exception handling)
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions")
-    set (CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fexceptions")
+    # Changes compared to regular build: PIC not supported, disable exceptions, do not convert UNIX signals to exceptions
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions")
+    set (CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fno-exceptions")
   else()
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions -fPIC")
     set (CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fexceptions -fPIC")
@@ -149,6 +147,8 @@ endif()
 
 set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DNo_Exception")
 set (CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -DNo_Exception")
+set (CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} -DNo_Exception")
+set (CMAKE_C_FLAGS_MINSIZEREL "${CMAKE_C_FLAGS_MINSIZEREL} -DNo_Exception")
 
 # Super aggressive size optimizations for MinSizeRel:  enable LTO, and use 'Oz' optimization level (instead of Os)
 set (CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} -DNo_Exception -flto")

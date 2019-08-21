@@ -41,7 +41,12 @@
 
 static int errh = 1;
 
-
+#if defined(__EMSCRIPTEN__)
+static void raisecheck (Standard_Failure const & theException,Handle(Interface_Check)& ach)
+{
+  throw theException;
+}
+#else
 static void raisecheck (Standard_Failure& theException,Handle(Interface_Check)& ach)
 {
   char mess[100];
@@ -57,7 +62,7 @@ static void raisecheck (Standard_Failure& theException,Handle(Interface_Check)& 
     throw theException;
   }
 }
-
+#endif
 
   //  thestat : evite a CheckSuccess de refaire un calcul prealablement fait :
   //  bit valeur 1 : Verify  fait, valeur 4 : et ilya des erreurs
