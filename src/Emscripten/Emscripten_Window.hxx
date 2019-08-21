@@ -27,12 +27,7 @@ public:
   //! Creates an Emscripten window defined by its target canvas id. NULL means the default canvas.
   Standard_EXPORT Emscripten_Window ( const char* theTargetCanvas = NULL );
 
-  //! Destroys the Window and all resourses attached to it
-  Standard_EXPORT virtual void Destroy();
-
-  Standard_EXPORT ~Emscripten_Window() {
-    Destroy();
-  }
+  Standard_EXPORT virtual ~Emscripten_Window();
 
   //! Opens the window <me>
   Standard_EXPORT virtual void Map() const Standard_OVERRIDE ;
@@ -62,23 +57,23 @@ public:
   Standard_EXPORT virtual void Size (Standard_Integer& theWidth,
                                      Standard_Integer& theHeight) const Standard_OVERRIDE ;
 
-  //! @return the Canvas Target Id
-  Standard_EXPORT const char* TargetCanvas() const {
-    return myTargetCanvas;
-  }
-
   //! @return native Window handle
-  virtual Aspect_Drawable NativeHandle() const Standard_OVERRIDE {
+  Standard_EXPORT virtual Aspect_Drawable NativeHandle() const Standard_OVERRIDE {
     return TargetCanvas();  // Return the CanvasTarget
   }
 
   //! @return parent of native Window handle
-  virtual Aspect_Drawable NativeParentHandle() const Standard_OVERRIDE {
+  Standard_EXPORT virtual Aspect_Drawable NativeParentHandle() const Standard_OVERRIDE {
     return 0; // No parent window
   }
 
-  virtual Aspect_FBConfig NativeFBConfig() const Standard_OVERRIDE {
-    return 0;
+  Standard_EXPORT virtual Aspect_FBConfig NativeFBConfig() const Standard_OVERRIDE {
+    return 0; // No FBConfig
+  }
+
+  //! @return the Canvas Target Id
+  Standard_EXPORT const char* TargetCanvas() const {
+    return myTargetCanvas;
   }
 
 private:

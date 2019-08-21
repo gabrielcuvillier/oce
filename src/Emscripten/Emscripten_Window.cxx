@@ -23,17 +23,25 @@ IMPLEMENT_STANDARD_RTTIEXT(Emscripten_Window, Aspect_Window)
 // =======================================================================
 Emscripten_Window::Emscripten_Window ( const char* theTargetCanvas )
 : Aspect_Window(),
-  myTargetCanvas(theTargetCanvas)
+  myTargetCanvas(NULL)
 {
+  // Do a copy of the input target canvas, as it may come from Emscripten runtime (the lifetime of the pointer is sometime unclear)
+  if (theTargetCanvas != NULL) {
+    myTargetCanvas = new char [(strlen (theTargetCanvas) + 1 )];
+    strcpy (myTargetCanvas,theTargetCanvas);
+  }
 }
 
 // =======================================================================
-// function : Destroy
+// function : Destructor
 // purpose  :
 // =======================================================================
-void Emscripten_Window::Destroy()
+Emscripten_Window::~Emscripten_Window()
 {
-  myTargetCanvas = NULL;
+  if (myTargetCanvas != NULL) {
+    delete [] myTargetCanvas;
+    myTargetCanvas = NULL;
+  }
 }
 
 // =======================================================================
