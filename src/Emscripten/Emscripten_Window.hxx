@@ -79,7 +79,7 @@ public:
 private:
 
   // Canvas Target Id
-  const char* myTargetCanvas;
+  char* myTargetCanvas;
 
 public:
 

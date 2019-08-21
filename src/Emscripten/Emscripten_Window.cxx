@@ -14,6 +14,7 @@
 
 #include <emscripten.h>
 #include <emscripten/html5.h>
+#include <string.h>
 
 IMPLEMENT_STANDARD_RTTIEXT(Emscripten_Window, Aspect_Window)
 
