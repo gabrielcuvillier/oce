@@ -99,7 +99,7 @@ Aspect_TypeOfResize Emscripten_Window::DoResize() const
 // =======================================================================
 Standard_Boolean Emscripten_Window::DoMapping() const
 {
-  return Standard_True; // IsMapped()
+  return IsMapped();
 }
 
 // =======================================================================
