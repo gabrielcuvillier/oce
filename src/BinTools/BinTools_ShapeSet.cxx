@@ -1393,36 +1393,7 @@ void BinTools_ShapeSet::WriteTriangulation(Standard_OStream& OS) const
     OCC_CATCH_SIGNALS
     for (i = 1; i <= nbtri; i++) {
       T = Handle(Poly_Triangulation)::DownCast(myTriangulations(i));
-      BinTools::PutInteger(OS, T->NbNodes());
-      BinTools::PutInteger(OS, T->NbTriangles());
-      BinTools::PutBool(OS, T->HasUVNodes()? 1:0);
-    // write the deflection
-      BinTools::PutReal(OS, T->Deflection());
-
-    // write the 3d nodes
-      nbNodes = T->NbNodes();
-      const TColgp_Array1OfPnt& Nodes = T->Nodes();
-      for (j = 1; j <= nbNodes; j++) {
-	BinTools::PutReal(OS, Nodes(j).X());
-	BinTools::PutReal(OS, Nodes(j).Y());
-	BinTools::PutReal(OS, Nodes(j).Z());
-      }
-    
-      if (T->HasUVNodes()) {
-	const TColgp_Array1OfPnt2d& UVNodes = T->UVNodes();
-	for (j = 1; j <= nbNodes; j++) {
-	  BinTools::PutReal(OS, UVNodes(j).X());
-	  BinTools::PutReal(OS, UVNodes(j).Y());
-	}
-      }
-      nbTriangles = T->NbTriangles();
-      const Poly_Array1OfTriangle& Triangles = T->Triangles();
-      for (j = 1; j <= nbTriangles; j++) {
-	Triangles(j).Get(n1, n2, n3);
-	BinTools::PutInteger(OS, n1);
-	BinTools::PutInteger(OS, n2);
-	BinTools::PutInteger(OS, n3);
-      }
+      BinTools::Write(T, OS);
     }
   }
   catch(Standard_Failure const& anException) {
@@ -1458,40 +1429,7 @@ void BinTools_ShapeSet::ReadTriangulation(Standard_IStream& IS)
   try {
     OCC_CATCH_SIGNALS
     for (i=1; i<=nbtri; i++) {
-      BinTools::GetInteger(IS, nbNodes);
-      BinTools::GetInteger(IS, nbTriangles);
-      TColgp_Array1OfPnt Nodes(1, nbNodes);
-      BinTools::GetBool(IS, hasUV);
-      TColgp_Array1OfPnt2d UVNodes(1, nbNodes);
-      BinTools::GetReal(IS, d); //deflection
-      for (j = 1; j <= nbNodes; j++) {
-	BinTools::GetReal(IS, x);
-	BinTools::GetReal(IS, y);
-	BinTools::GetReal(IS, z);
-	Nodes(j).SetCoord(x,y,z);
-      }
-      
-      if (hasUV) {
-	for (j = 1; j <= nbNodes; j++) {
-	  BinTools::GetReal(IS, x);
-	  BinTools::GetReal(IS, y);
-	  UVNodes(j).SetCoord(x,y);
-	}
-      }
-      
-      // read the triangles
-      Standard_Integer n1,n2,n3;
-      Poly_Array1OfTriangle Triangles(1, nbTriangles);
-      for (j = 1; j <= nbTriangles; j++) {
-	BinTools::GetInteger(IS, n1);
-	BinTools::GetInteger(IS, n2);
-	BinTools::GetInteger(IS, n3);
-	Triangles(j).Set(n1,n2,n3);
-      }
-      
-      if (hasUV) T =  new Poly_Triangulation(Nodes,UVNodes,Triangles);
-      else T = new Poly_Triangulation(Nodes,Triangles);      
-      T->Deflection(d);      
+      BinTools::Read(T, IS);
       myTriangulations.Add(T);
     }
   }

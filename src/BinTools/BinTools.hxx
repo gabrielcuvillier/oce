@@ -28,6 +28,7 @@
 #include <Standard_IStream.hxx>
 
 class TopoDS_Shape;
+class Poly_Triangulation;
 class BinTools_ShapeSet;
 class BinTools_Curve2dSet;
 class BinTools_CurveSet;
@@ -71,7 +72,19 @@ public:
   //! Reads a shape from <theFile> and returns it in <theShape>.
   Standard_EXPORT static Standard_Boolean Read (TopoDS_Shape& theShape, const Standard_CString theFile);
 
-protected:
+  //! Writes <theTri> on <theStream> in binary format.
+  Standard_EXPORT static void Write (Handle(Poly_Triangulation) theTri, Standard_OStream& theStream);
+
+  //! Reads a triangulation from <theStream> and returns it in <theShape>.
+  Standard_EXPORT static void Read (Handle(Poly_Triangulation)& theTri, Standard_IStream& theStream);
+
+  //! Writes <theTri> in <theFile>.
+  Standard_EXPORT static Standard_Boolean Write (Handle(Poly_Triangulation) theTri, const Standard_CString theFile);
+
+  //! Reads a triangulation from <theFile> and returns it in <theTri>.
+  Standard_EXPORT static Standard_Boolean Read (Handle(Poly_Triangulation)& theTri, const Standard_CString theFile);
+
+ protected:
 
 
 

@@ -2,6 +2,8 @@
 // Created by: Sergey ZARITCHNY
 // Copyright (c) 2004-2014 OPEN CASCADE SAS
 //
+// Updates by: Copyright (c) 2019 Gabriel Cuvillier - Continuation Labs
+//
 // This file is part of Open CASCADE Technology software library.
 //
 // This library is free software; you can redistribute it and/or modify it under
@@ -190,5 +192,131 @@ Standard_Boolean BinTools::Read (TopoDS_Shape& theShape, const Standard_CString 
 
   Standard_IStream aStream (&aBuf);
   Read (theShape, aStream);
+  return aStream.good();
+}
+
+//=======================================================================
+//function : Write
+//purpose  :
+//=======================================================================
+
+void BinTools::Write (Handle(Poly_Triangulation) theTri, Standard_OStream& theStream)
+{
+  Standard_Integer j = 0;
+  Standard_Integer nbNodes =0, nbTriangles=0;
+
+  BinTools::PutInteger(theStream, theTri->NbNodes());
+  BinTools::PutInteger(theStream, theTri->NbTriangles());
+  BinTools::PutBool(theStream, theTri->HasUVNodes() ? 1 : 0);
+  // write the deflection
+  BinTools::PutReal(theStream, theTri->Deflection());
+
+  // write the 3d nodes
+  nbNodes = theTri->NbNodes();
+  const TColgp_Array1OfPnt &Nodes = theTri->Nodes();
+  for (j = 1; j <= nbNodes; j++) {
+    BinTools::PutReal(theStream, Nodes(j).X());
+    BinTools::PutReal(theStream, Nodes(j).Y());
+    BinTools::PutReal(theStream, Nodes(j).Z());
+  }
+
+  if (theTri->HasUVNodes()) {
+    const TColgp_Array1OfPnt2d &UVNodes = theTri->UVNodes();
+    for (j = 1; j <= nbNodes; j++) {
+      BinTools::PutReal(theStream, UVNodes(j).X());
+      BinTools::PutReal(theStream, UVNodes(j).Y());
+    }
+  }
+  nbTriangles = theTri->NbTriangles();
+  const Poly_Array1OfTriangle &Triangles = theTri->Triangles();
+  Standard_Integer n1,n2,n3;
+  for (j = 1; j <= nbTriangles; j++) {
+    Triangles(j).Get(n1, n2, n3);
+    BinTools::PutInteger(theStream, n1);
+    BinTools::PutInteger(theStream, n2);
+    BinTools::PutInteger(theStream, n3);
+  }
+}
+
+//=======================================================================
+//function : Read
+//purpose  :
+//=======================================================================
+
+void BinTools::Read (Handle(Poly_Triangulation)& theTri, Standard_IStream& theStream)
+{
+  Standard_Integer j;
+  Standard_Real d, x, y, z;
+  Standard_Integer nbNodes =0, nbTriangles=0;
+  Standard_Boolean hasUV = Standard_False;
+
+  BinTools::GetInteger(theStream, nbNodes);
+  BinTools::GetInteger(theStream, nbTriangles);
+  TColgp_Array1OfPnt Nodes(1, nbNodes);
+  BinTools::GetBool(theStream, hasUV);
+  TColgp_Array1OfPnt2d UVNodes(1, nbNodes);
+  BinTools::GetReal(theStream, d); //deflection
+  for (j = 1; j <= nbNodes; j++) {
+    BinTools::GetReal(theStream, x);
+    BinTools::GetReal(theStream, y);
+    BinTools::GetReal(theStream, z);
+    Nodes(j).SetCoord(x,y,z);
+  }
+
+  if (hasUV) {
+    for (j = 1; j <= nbNodes; j++) {
+      BinTools::GetReal(theStream, x);
+      BinTools::GetReal(theStream, y);
+      UVNodes(j).SetCoord(x,y);
+    }
+  }
+
+  // read the triangles
+  Standard_Integer n1,n2,n3;
+  Poly_Array1OfTriangle Triangles(1, nbTriangles);
+  for (j = 1; j <= nbTriangles; j++) {
+    BinTools::GetInteger(theStream, n1);
+    BinTools::GetInteger(theStream, n2);
+    BinTools::GetInteger(theStream, n3);
+    Triangles(j).Set(n1,n2,n3);
+  }
+
+  if (hasUV) theTri =  new Poly_Triangulation(Nodes,UVNodes,Triangles);
+  else theTri = new Poly_Triangulation(Nodes,Triangles);
+  theTri->Deflection(d);
+}
+
+//=======================================================================
+//function : Write
+//purpose  :
+//=======================================================================
+
+Standard_Boolean BinTools::Write (Handle(Poly_Triangulation) theTri, const Standard_CString theFile)
+{
+  ofstream aStream;
+  aStream.precision (15);
+  OSD_OpenStream (aStream, theFile, ios::out | ios::binary);
+  if (!aStream.good())
+    return Standard_False;
+
+  Write (theTri, aStream);
+  aStream.close();
+  return aStream.good();
+}
+
+//=======================================================================
+//function : Read
+//purpose  :
+//=======================================================================
+
+Standard_Boolean BinTools::Read (Handle(Poly_Triangulation)& theTri, const Standard_CString theFile)
+{
+  filebuf aBuf;
+  OSD_OpenStream (aBuf, theFile, ios::in | ios::binary);
+  if (!aBuf.is_open())
+    return Standard_False;
+
+  Standard_IStream aStream (&aBuf);
+  Read (theTri, aStream);
   return aStream.good();
 }
