@@ -133,7 +133,11 @@ Standard_MMgrFactory::Standard_MMgrFactory()
 #endif
 
   aVar = getenv ("MMGT_CLEAR");
-  Standard_Boolean toClear     = (aVar ? (atoi (aVar) != 0) : Standard_True);
+#if defined(__EMSCRIPTEN__)
+  Standard_Boolean toClear = (aVar ? (atoi (aVar) != 0) : Standard_False);  // Optim (+ fix issues with emmalloc that do not support calloc)
+#else
+  Standard_Boolean toClear = (aVar ? (atoi (aVar) != 0) : Standard_True);
+#endif
 
   // on Windows (actual for XP and 2000) activate low fragmentation heap
   // for CRT heap in order to get best performance.
