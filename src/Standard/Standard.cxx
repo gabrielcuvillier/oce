@@ -134,7 +134,8 @@ Standard_MMgrFactory::Standard_MMgrFactory()
 
   aVar = getenv ("MMGT_CLEAR");
 #if defined(__EMSCRIPTEN__)
-  Standard_Boolean toClear = (aVar ? (atoi (aVar) != 0) : Standard_False);  // Optim (+ fix issues with emmalloc that do not support calloc)
+  // There is an issue with malloc (random crashes), let's use calloc instead for now
+  Standard_Boolean toClear = Standard_True;
 #else
   Standard_Boolean toClear = (aVar ? (atoi (aVar) != 0) : Standard_True);
 #endif
