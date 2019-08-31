@@ -21,8 +21,6 @@
 #include <Standard_OutOfMemory.hxx>
 #include <Standard_Assert.hxx>
 
-#if !defined(__EMSCRIPTEN__)
-
 #include <stdio.h>
 #include <errno.h>
 
@@ -829,5 +827,3 @@ void Standard_MMgrOpt::FreeMemory (Standard_Address aBlock,
   else
     free(aBlock);
 }
-
-#endif
