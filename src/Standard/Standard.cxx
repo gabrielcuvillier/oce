@@ -132,13 +132,10 @@ Standard_MMgrFactory::Standard_MMgrFactory()
   }
 #endif
 
+  // Emscripten Warning: there is a random crash issue issue with malloc (uncleared memory). calloc will work (cleared memory)
+  // Hopefully, the default is to use calloc. But this have to be investigated
   aVar = getenv ("MMGT_CLEAR");
-#if defined(__EMSCRIPTEN__)
-  // There is an issue with malloc (random crashes), let's use calloc instead for now
-  Standard_Boolean toClear = Standard_True;
-#else
-  Standard_Boolean toClear = (aVar ? (atoi (aVar) != 0) : Standard_True);
-#endif
+  const Standard_Boolean toClear = (aVar ? (atoi (aVar) != 0) : Standard_True);
 
   // on Windows (actual for XP and 2000) activate low fragmentation heap
   // for CRT heap in order to get best performance.
@@ -173,9 +170,26 @@ Standard_MMgrFactory::Standard_MMgrFactory()
       myFMMgr = new Standard_MMgrTBBalloc (toClear);
       break;
     case 0:
-#endif
     default: // system default memory allocator
       myFMMgr = new Standard_MMgrRaw (toClear);
+#else
+    case 1:  // OCCT optimized memory allocator
+    {
+      Standard_Boolean bMMap       = Standard_False;  // Memmap does not have any sense on Emscripten/WebAssembly
+      aVar = getenv ("MMGT_CELLSIZE");
+      Standard_Integer aCellSize   = (aVar ?  atoi (aVar) : 200);
+      aVar = getenv ("MMGT_NBPAGES");
+      Standard_Integer aNbPages    = (aVar ?  atoi (aVar) : 1000);
+      aVar = getenv ("MMGT_THRESHOLD");
+      Standard_Integer aThreshold  = (aVar ?  atoi (aVar) : 40000);
+      myFMMgr = new Standard_MMgrOpt (toClear, bMMap, aCellSize, aNbPages, aThreshold);
+      break;
+    }
+    case 2:  // TBB is not yet ready on Emscripten/WebAssembly
+    case 0:
+    default: // system default memory allocator
+      myFMMgr = new Standard_MMgrRaw (toClear);
+#endif
   }
 }
 
