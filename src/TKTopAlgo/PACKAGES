@@ -4,7 +4,6 @@ MAT2d
 Bisector
 BRepMAT2d
 BRepCheck
-BRepBndLib
 BRepExtrema
 BRepClass
 BRepClass3d

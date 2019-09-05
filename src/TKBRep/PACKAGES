@@ -4,5 +4,6 @@ TopTools
 BRep
 BRepLProp
 BRepAdaptor
+BRepBndLib
 BRepTools
 BinTools
