@@ -292,8 +292,12 @@ void AIS_Shape::Compute(const Handle(Prs3d_Projector)& aProjector,
       OCC_CATCH_SIGNALS
       switch (TypeOfHLR()) {
         case Prs3d_TOH_Algo:
+#if !defined(__EMSCRIPTEN__)
           StdPrs_HLRShape::Add (aPresentation, SH, myDrawer, aProjector);
           break;
+#else
+#pragma message("StdPrs_HLRShape disabled on Emscripten. Only HLRPolyShape is used.")
+#endif
         case Prs3d_TOH_PolyAlgo:
         default:
           StdPrs_HLRPolyShape::Add (aPresentation, SH, myDrawer, aProjector);
