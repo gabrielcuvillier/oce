@@ -13,6 +13,8 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
+#if !defined(__EMSCRIPTEN__)
+
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -827,3 +829,5 @@ void Standard_MMgrOpt::FreeMemory (Standard_Address aBlock,
   else
     free(aBlock);
 }
+
+#endif

@@ -13,10 +13,10 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
+#if !defined(__EMSCRIPTEN__)
+
 #include <Standard_MMgrTBBalloc.hxx>
 #include <Standard_OutOfMemory.hxx>
-
-#if !defined(__EMSCRIPTEN__)
 
 // paralleling with Intel TBB
 #ifdef HAVE_TBB

@@ -173,18 +173,18 @@ Standard_MMgrFactory::Standard_MMgrFactory()
     default: // system default memory allocator
       myFMMgr = new Standard_MMgrRaw (toClear);
 #else
-    case 1:  // OCCT optimized memory allocator
-    {
-      Standard_Boolean bMMap       = Standard_False;  // Memmap does not have any sense on Emscripten/WebAssembly
-      aVar = getenv ("MMGT_CELLSIZE");
-      Standard_Integer aCellSize   = (aVar ?  atoi (aVar) : 200);
-      aVar = getenv ("MMGT_NBPAGES");
-      Standard_Integer aNbPages    = (aVar ?  atoi (aVar) : 1000);
-      aVar = getenv ("MMGT_THRESHOLD");
-      Standard_Integer aThreshold  = (aVar ?  atoi (aVar) : 40000);
-      myFMMgr = new Standard_MMgrOpt (toClear, bMMap, aCellSize, aNbPages, aThreshold);
-      break;
-    }
+    case 1:  // OCCT optimized memory allocator: Let's disable it on Emscripten
+//    {
+//      Standard_Boolean bMMap       = Standard_False;  // Memmap does not have any sense on Emscripten/WebAssembly
+//      aVar = getenv ("MMGT_CELLSIZE");
+//      Standard_Integer aCellSize   = (aVar ?  atoi (aVar) : 200);
+//      aVar = getenv ("MMGT_NBPAGES");
+//      Standard_Integer aNbPages    = (aVar ?  atoi (aVar) : 1000);
+//      aVar = getenv ("MMGT_THRESHOLD");
+//      Standard_Integer aThreshold  = (aVar ?  atoi (aVar) : 40000);
+//      myFMMgr = new Standard_MMgrOpt (toClear, bMMap, aCellSize, aNbPages, aThreshold);
+//      break;
+//    }
     case 2:  // TBB is not yet ready on Emscripten/WebAssembly
     case 0:
     default: // system default memory allocator
