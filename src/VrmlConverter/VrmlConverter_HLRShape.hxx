@@ -17,6 +17,8 @@
 #ifndef _VrmlConverter_HLRShape_HeaderFile
 #define _VrmlConverter_HLRShape_HeaderFile
 
+#if !defined(__EMSCRIPTEN__)
+
 #include <Standard.hxx>
 #include <Standard_DefineAlloc.hxx>
 #include <Standard_Handle.hxx>
@@ -69,7 +71,7 @@ private:
 
 
 
-
+#endif
 
 
 

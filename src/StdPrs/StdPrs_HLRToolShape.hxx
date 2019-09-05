@@ -17,6 +17,8 @@
 #ifndef _StdPrs_HLRToolShape_HeaderFile
 #define _StdPrs_HLRToolShape_HeaderFile
 
+#if !defined(__EMSCRIPTEN__)
+
 #include <Standard.hxx>
 #include <Standard_DefineAlloc.hxx>
 #include <Standard_Handle.hxx>
@@ -79,7 +81,7 @@ private:
 
 };
 
-
+#endif
 
 
 

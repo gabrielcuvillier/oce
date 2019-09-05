@@ -12,6 +12,7 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
+#if !defined(__EMSCRIPTEN__)
 
 #include <BRepAdaptor_Curve.hxx>
 #include <HLRAlgo_Projector.hxx>
@@ -81,3 +82,5 @@ void StdPrs_HLRToolShape::Hidden (BRepAdaptor_Curve& TheEdge,
   Standard_ShortReal t1,t2;
   myEdgeIterator.Hidden(U1,t1,U2,t2);
 }
+
+#endif
