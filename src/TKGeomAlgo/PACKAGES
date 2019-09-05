@@ -1,4 +1,3 @@
-Hatch
 GeomInt
 IntStart
 IntWalk
@@ -16,8 +15,6 @@ ApproxInt
 GccAna
 GccEnt
 GccInt
-HatchGen
-Geom2dHatch
 Law
 AppBlend
 Plate
