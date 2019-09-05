@@ -16,8 +16,6 @@
 
 #include <BRepMesh_DataStructureOfDelaun.hxx>
 #include <BRepMesh_PairOfIndex.hxx>
-#include <BRepBuilderAPI_MakeEdge.hxx>
-#include <BRepBuilderAPI_MakeVertex.hxx>
 
 #include <TopoDS_Compound.hxx>
 #include <BRep_Builder.hxx>
@@ -513,6 +511,10 @@ void BRepMesh_DataStructureOfDelaun::Statistics(Standard_OStream& theStream) con
 //
 //  Stores the mesh data structure to BRep file with the given name.
 //=======================================================================
+// This "dump" function make TKMesh depends on TKTopAlgo. This is not quite usefull
+#if !defined(__EMSCRIPTEN__)
+#include <BRepBuilderAPI_MakeEdge.hxx>
+#include <BRepBuilderAPI_MakeVertex.hxx>
 Standard_CString BRepMesh_Dump(void*            theMeshHandlePtr,
                                Standard_CString theFileNameStr)
 {
@@ -578,3 +580,4 @@ Standard_CString BRepMesh_Dump(void*            theMeshHandlePtr,
 
   return theFileNameStr;
 }
+#endif

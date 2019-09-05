@@ -28,7 +28,6 @@
 #include <BRep_Builder.hxx>
 #include <BRep_Tool.hxx>
 #include <BRepTools.hxx>
-#include <BRepLib.hxx>
 #include <BRepBndLib.hxx>
 #include <BRepAdaptor_Curve.hxx>
 
@@ -176,7 +175,7 @@ void BRepMesh_IncrementalMesh::collectFaces()
 {
   Handle(NCollection_IncAllocator) anAlloc = new NCollection_IncAllocator;
   TopTools_ListOfShape aFaceList(anAlloc);
-  BRepLib::ReverseSortFaces(myShape, aFaceList);
+  BRepTools::ReverseSortFaces(myShape, aFaceList);
   TColStd_MapOfTransient aTFaceMap(1, anAlloc);
 
   // make array of faces suitable for processing (excluding faces without surface)

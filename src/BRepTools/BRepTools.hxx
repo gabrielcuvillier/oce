@@ -24,6 +24,7 @@
 #include <Standard_Real.hxx>
 #include <Standard_Boolean.hxx>
 #include <TopTools_IndexedMapOfShape.hxx>
+#include <TopTools_ListOfShape.hxx>
 #include <Standard_OStream.hxx>
 #include <Standard_IStream.hxx>
 #include <Standard_CString.hxx>
@@ -55,7 +56,6 @@ class BRepTools_ReShape;
 class Geom_Curve;
 class Geom2d_Curve;
 class Geom_Surface;
-
 
 //! The BRepTools package provides  utilities for BRep
 //! data structures.
@@ -217,9 +217,12 @@ public:
                                                         const Standard_Real theF,
                                                         const Standard_Real theL);
 
+  //! Sorts in  LF  the   Faces  of S   on the reverse
+  //! complexity       of       their      surfaces
+  //! (other,Torus,Sphere,Cone,Cylinder,Plane)
+  Standard_EXPORT static void ReverseSortFaces (const TopoDS_Shape& S, TopTools_ListOfShape& LF);
 
-
-protected:
+ protected:
 
 
 

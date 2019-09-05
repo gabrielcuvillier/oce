@@ -20,7 +20,7 @@
 #include <Standard.hxx>
 #include <Standard_DefineAlloc.hxx>
 #include <Standard_Macro.hxx>
-#include <BRepTopAdaptor_SeqOfPtr.hxx>
+#include <TColStd_SequenceOfAddress.hxx>
 #include <TColStd_SequenceOfBoolean.hxx>
 #include <TopAbs_State.hxx>
 #include <NCollection_Sequence.hxx>
@@ -70,7 +70,7 @@ public:
 
 private:
 
-  BRepTopAdaptor_SeqOfPtr       myTabClass;
+  TColStd_SequenceOfAddress       myTabClass;
   TColStd_SequenceOfBoolean     myTabOrient;
 };
 
