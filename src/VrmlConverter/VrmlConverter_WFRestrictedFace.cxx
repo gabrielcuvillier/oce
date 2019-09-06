@@ -12,6 +12,8 @@
 // commercial license or contractual agreement.
 
 
+#if !defined(__EMSCRIPTEN__)
+
 #include <Adaptor3d_IsoCurve.hxx>
 #include <Bnd_Box2d.hxx>
 #include <BndLib_Add2dCurve.hxx>
@@ -352,4 +354,5 @@ void VrmlConverter_WFRestrictedFace::AddVIso
 		      finv,
 		      aDrawer);
 }
+#endif
 

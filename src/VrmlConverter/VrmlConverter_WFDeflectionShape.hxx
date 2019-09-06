@@ -17,6 +17,8 @@
 #ifndef _VrmlConverter_WFDeflectionShape_HeaderFile
 #define _VrmlConverter_WFDeflectionShape_HeaderFile
 
+#if !defined(__EMSCRIPTEN__)
+
 #include <Standard.hxx>
 #include <Standard_DefineAlloc.hxx>
 #include <Standard_Handle.hxx>
@@ -68,3 +70,4 @@ private:
 
 
 #endif // _VrmlConverter_WFDeflectionShape_HeaderFile
+#endif

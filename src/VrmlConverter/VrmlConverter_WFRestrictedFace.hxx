@@ -17,6 +17,9 @@
 #ifndef _VrmlConverter_WFRestrictedFace_HeaderFile
 #define _VrmlConverter_WFRestrictedFace_HeaderFile
 
+
+#if !defined(__EMSCRIPTEN__)
+
 #include <Standard.hxx>
 #include <Standard_DefineAlloc.hxx>
 #include <Standard_Handle.hxx>
@@ -76,3 +79,4 @@ private:
 
 
 #endif // _VrmlConverter_WFRestrictedFace_HeaderFile
+#endif

@@ -11,6 +11,7 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
+#if !defined(__EMSCRIPTEN__)
 
 #include <Adaptor2d_Curve2d.hxx>
 #include <Adaptor3d_IsoCurve.hxx>
@@ -383,3 +384,5 @@ void VrmlConverter_WFDeflectionRestrictedFace::AddVIso
 		      finv,
 		      aDrawer);
 }
+
+#endif

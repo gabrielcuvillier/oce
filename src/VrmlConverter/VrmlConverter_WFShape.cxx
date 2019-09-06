@@ -12,6 +12,8 @@
 // commercial license or contractual agreement.
 
 
+#if !defined(__EMSCRIPTEN__)
+
 #include <Bnd_Box.hxx>
 #include <BRep_Tool.hxx>
 #include <BRepAdaptor_Curve.hxx>
@@ -245,4 +247,4 @@ void VrmlConverter_WFShape::Add(Standard_OStream&                    anOStream,
       }
 
 }
-
+#endif
