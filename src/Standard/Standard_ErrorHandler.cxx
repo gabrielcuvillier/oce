@@ -307,4 +307,20 @@ void Standard_ErrorHandler::Callback::UnregisterCallback ()
     ((Standard_ErrorHandler*)myHandler)->myCallbackPtr = (Standard_ErrorHandler::Callback*)myNext;
   myHandler = myNext = myPrev = 0;
 }
+#else
+// If OCC_CONVERT_SIGNALS is not defined,
+// provide empty implementation
+Standard_ErrorHandler::Callback::Callback ()
+       : myHandler(0), myPrev(0), myNext(0)
+{
+}
+Standard_ErrorHandler::Callback::~Callback ()
+{
+}
+void Standard_ErrorHandler::Callback::RegisterCallback ()
+{
+}
+void Standard_ErrorHandler::Callback::UnregisterCallback ()
+{
+}
 #endif

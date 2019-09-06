@@ -24,6 +24,12 @@
 #include <string.h>
 IMPLEMENT_STANDARD_RTTIEXT(Standard_Failure,Standard_Transient)
 
+#if defined(__EMSCRIPTEN__)
+Standard_Failure::operator bool() const {
+  return false;
+}
+#endif
+
 static Standard_CString allocate_message(const Standard_CString AString)
 {
   Standard_CString aStr = 0;
