@@ -37,11 +37,22 @@
 // catch is redefined to always fail while still defining 'anException' variable. This is needed because the catch blocks sometime need that variable
 // The redefinition will discard the catched expression, replacing it by definition of a dummy Standard_Failure error, that will always yield false
 // thanks to a definition of operator bool() in Standard_Failure
-#define catch(x)  if(Standard_Failure const anException = Standard_Failure())
-
-#endif
+#define catch(x)  if(Standard_Failure anException{})
 
 #define DEFINE_STANDARD_EXCEPTION(C1,C2) \
+ \
+class C1 : public C2 { \
+public: \
+  C1() : C2() {} \
+  C1(const Standard_CString theMessage) : C2(theMessage) {} \
+};
+
+//! Obsolete macro, kept for compatibility with old code
+#define IMPLEMENT_STANDARD_EXCEPTION(C1)
+
+#else
+
+#define DEFINE_STANDARD_EXCEPTION(C1, C2) \
  \
 class C1 : public C2 { \
   void Throw () const Standard_OVERRIDE { throw *this; } \
@@ -61,6 +72,7 @@ public: \
 };
 
 //! Obsolete macro, kept for compatibility with old code
-#define IMPLEMENT_STANDARD_EXCEPTION(C1) 
+#define IMPLEMENT_STANDARD_EXCEPTION(C1)
 
+#endif
 #endif
