@@ -13,6 +13,8 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
+#if !defined(HAVE_GLES2)    // can't rely on GL_ES_VERSION_2_0, as GLES2/gl.h is never included from that file
+
 #include <OpenGl_View.hxx>
 
 #include <Graphic3d_TextureParams.hxx>
@@ -3237,3 +3239,5 @@ Standard_Boolean OpenGl_View::raytrace (const Standard_Integer        theSizeX,
 
   return Standard_True;
 }
+
+#endif

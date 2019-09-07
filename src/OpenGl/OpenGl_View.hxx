@@ -768,6 +768,7 @@ protected: //! @name data types related to ray-tracing
 
 protected: //! @name methods related to ray-tracing
 
+#if !defined(GL_ES_VERSION_2_0)
   //! Updates 3D scene geometry for ray-tracing.
   Standard_Boolean updateRaytraceGeometry (const RaytraceUpdateMode      theMode,
                                            const Standard_Integer        theViewId,
@@ -937,6 +938,7 @@ protected: //! @name methods related to ray-tracing
                              Graphic3d_Camera::Projection  theProjection,
                              OpenGl_FrameBuffer*           theReadDrawFbo,
                              const Handle(OpenGl_Context)& theGlContext);
+#endif
 
 protected: //! @name fields related to ray-tracing
 

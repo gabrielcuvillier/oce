@@ -179,7 +179,9 @@ void OpenGl_View::ReleaseGlResources (const Handle(OpenGl_Context)& theCtx)
   myFullScreenQuad           .Release (theCtx.operator->());
   myFullScreenQuadFlip       .Release (theCtx.operator->());
 
+#if !defined(GL_ES_VERSION_2_0)
   releaseRaytraceResources (theCtx);
+#endif
 }
 
 // =======================================================================

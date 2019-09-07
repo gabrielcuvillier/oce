@@ -1044,6 +1044,7 @@ void OpenGl_View::renderStructs (Graphic3d_Camera::Projection theProjection,
     myRaytraceInitStatus == OpenGl_RT_FAIL ||
     aCtx->IsFeedback();
 
+#if !defined(GL_ES_VERSION_2_0)
   if (!toRenderGL)
   {
     toRenderGL = !initRaytraceResources (aCtx) ||
@@ -1108,6 +1109,7 @@ void OpenGl_View::renderStructs (Graphic3d_Camera::Projection theProjection,
       myZLayers.Render (myWorkspace, theToDrawImmediate, OpenGl_LF_Upper, theReadDrawFbo, theOitAccumFbo);
     }
   }
+#endif
 
   // Redraw 3D scene using OpenGL in standard
   // mode or in case of ray-tracing failure
