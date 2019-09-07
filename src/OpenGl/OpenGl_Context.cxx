@@ -1335,6 +1335,14 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   extPDS  = IsGlGreaterEqual (3, 0)
          || CheckExtension ("GL_OES_packed_depth_stencil");
   extTexDepth = CheckExtension ("GL_OES_depth_texture");
+#if defined(__EMSCRIPTEN__)
+  // WEBGL_depth_texture is a subset of GL_OES_depth_texture and GL_OES_packed_depth_stencil. This should work (see OpenGl_Framebuffer.cxx)
+  if (CheckExtension("GL_WEBGL_depth_texture"))
+  {
+    extPDS = true;
+    extTexDepth = true;
+  }
+#endif
 
   core11fwd = (OpenGl_GlCore11Fwd* )(&(*myFuncs));
   if (IsGlGreaterEqual (2, 0))
@@ -1567,13 +1575,6 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   }
 #elif defined(__APPLE__)
     //
-#elif defined(__EMSCRIPTEN__)
-    // WEBGL_depth_texture is a subset of GL_OES_depth_texture and GL_OES_packed_depth_stencil. This should work (see OpenGl_Framebuffer.cxx)
-    if (CheckExtension("GL_WEBGL_depth_texture"))
-    {
-      extPDS = true;
-      extTexDepth = true;
-    }
 #else
     const char* aGlxExts = ::glXQueryExtensionsString ((Display* )myDisplay, DefaultScreen ((Display* )myDisplay));
     if (CheckExtension (aGlxExts, "GLX_EXT_swap_control"))
