@@ -221,7 +221,6 @@ OpenGl_Window::OpenGl_Window (const Handle(OpenGl_GraphicDriver)& theDriver,
 
   myGlContext->Init ((Aspect_Drawable )anEglSurf, (Aspect_Display )anEglDisplay, (Aspect_RenderingContext )anEglContext, isCoreProfile);
 #elif defined(__EMSCRIPTEN__)
-
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE aGContext = NULL;
 
   if (!myOwnGContext)

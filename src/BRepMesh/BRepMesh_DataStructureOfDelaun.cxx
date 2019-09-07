@@ -511,7 +511,8 @@ void BRepMesh_DataStructureOfDelaun::Statistics(Standard_OStream& theStream) con
 //
 //  Stores the mesh data structure to BRep file with the given name.
 //=======================================================================
-// This "dump" function make TKMesh depends on TKTopAlgo. This is not quite usefull
+
+// This "dump" function make TKMesh depends on TKTopAlgo. This is useless for Emscripten
 #if !defined(__EMSCRIPTEN__)
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakeVertex.hxx>

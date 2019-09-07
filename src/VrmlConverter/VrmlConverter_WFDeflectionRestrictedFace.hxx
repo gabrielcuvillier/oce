@@ -17,6 +17,7 @@
 #ifndef _VrmlConverter_WFDeflectionRestrictedFace_HeaderFile
 #define _VrmlConverter_WFDeflectionRestrictedFace_HeaderFile
 
+// File only used for VRML 1.0, which is disabled on Emscripten to prevent dependencies on TKVisualization
 #if !defined(__EMSCRIPTEN__)
 
 #include <Standard.hxx>

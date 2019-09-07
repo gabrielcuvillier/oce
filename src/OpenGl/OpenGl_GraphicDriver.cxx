@@ -918,6 +918,7 @@ Standard_Boolean OpenGl_GraphicDriver::ViewExists (const Handle(Aspect_Window)& 
 #endif  // WNT
       // Comparaison on window IDs
 #if defined(__EMSCRIPTEN__)
+      // On Emscripten, Aspect_Drawable is a const char* string (the canvas element id), so let's do strcmp instead of direct equality comparison
       if (!strcmp(TheSpecifiedWindowId, TheWindowIdOfView))
 #else
       if (TheWindowIdOfView == TheSpecifiedWindowId)

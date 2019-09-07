@@ -11,6 +11,7 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
+// File only used for VRML 1.0, which is disabled on Emscripten to prevent dependencies on TKVisualization
 #if !defined(__EMSCRIPTEN__)
 
 #include <Bnd_Box.hxx>

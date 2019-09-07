@@ -14,6 +14,7 @@
 #ifndef _StdPrs_HLRFace_H__
 #define _StdPrs_HLRFace_H__
 
+// File only used for VRML 1.0, which is disabled on Emscripten to prevent dependencies on TKVisualization
 #if !defined(__EMSCRIPTEN__)
 
 #include <Prs3d_Root.hxx>
