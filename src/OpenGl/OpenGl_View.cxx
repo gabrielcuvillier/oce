@@ -81,8 +81,10 @@ OpenGl_View::OpenGl_View (const Handle(Graphic3d_StructureManager)& theMgr,
   myTextureParams   (new OpenGl_AspectFace()),
   myBgGradientArray (new OpenGl_BackgroundArray (Graphic3d_TOB_GRADIENT)),
   myBgTextureArray  (new OpenGl_BackgroundArray (Graphic3d_TOB_TEXTURE)),
-  // ray-tracing fields initialization
-  myRaytraceInitStatus     (OpenGl_RT_NONE),
+  myToUpdateEnvironmentMap (Standard_False)
+    // ray-tracing fields initialization
+#if !defined(GL_ES_VERSION_2_0)
+  ,myRaytraceInitStatus     (OpenGl_RT_NONE),
   myIsRaytraceDataValid    (Standard_False),
   myIsRaytraceWarnTextures (Standard_False),
   myRaytraceBVHBuilder (new BVH_BinnedBuilder<Standard_ShortReal, 3, BVH_Constants_NbBinsBest> (BVH_Constants_LeafNodeSizeAverage,
@@ -91,10 +93,10 @@ OpenGl_View::OpenGl_View (const Handle(Graphic3d_StructureManager)& theMgr,
                                                                                                 OSD_Parallel::NbLogicalProcessors() + 1)),
   myRaytraceSceneRadius  (0.0f),
   myRaytraceSceneEpsilon (1.0e-6f),
-  myToUpdateEnvironmentMap (Standard_False),
   myRaytraceLayerListState (0),
   myPrevCameraApertureRadius(0.f),
   myPrevCameraFocalPlaneDist(0.f)
+#endif
 {
   myWorkspace = new OpenGl_Workspace (this, NULL);
 
@@ -117,10 +119,12 @@ OpenGl_View::OpenGl_View (const Handle(Graphic3d_StructureManager)& theMgr,
   myImmediateSceneFbosOit[1] = new OpenGl_FrameBuffer();
   myOpenGlFBO                = new OpenGl_FrameBuffer();
   myOpenGlFBO2               = new OpenGl_FrameBuffer();
+#if !defined(GL_ES_VERSION_2_0)
   myRaytraceFBO1[0]          = new OpenGl_FrameBuffer();
   myRaytraceFBO1[1]          = new OpenGl_FrameBuffer();
   myRaytraceFBO2[0]          = new OpenGl_FrameBuffer();
   myRaytraceFBO2[1]          = new OpenGl_FrameBuffer();
+#endif
 }
 
 // =======================================================================
@@ -380,10 +384,12 @@ Standard_Boolean OpenGl_View::BufferDump (Image_PixMap& theImage, const Graphic3
     return myWorkspace->BufferDump(myFBO, theImage, theBufferType);
   }
 
+#if !defined(GL_ES_VERSION_2_0)
   if (!myRaytraceParameters.AdaptiveScreenSampling)
   {
     return myWorkspace->BufferDump(myAccumFrames % 2 ? myRaytraceFBO2[0] : myRaytraceFBO1[0], theImage, theBufferType);
   }
+#endif
 
 #if defined(GL_ES_VERSION_2_0)
   return false;

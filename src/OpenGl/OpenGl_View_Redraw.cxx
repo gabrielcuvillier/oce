@@ -523,11 +523,13 @@ void OpenGl_View::Redraw()
     }
   }
 
+#if !defined(GL_ES_VERSION_2_0)
   if (myRenderParams.Method == Graphic3d_RM_RAYTRACING
    && myRenderParams.IsGlobalIlluminationEnabled)
   {
     myAccumFrames++;
   }
+#endif
 
   // bind default FBO
   bindDefaultFbo();
@@ -883,7 +885,9 @@ void OpenGl_View::render (Graphic3d_Camera::Projection theProjection,
   Graphic3d_WorldViewProjState aWVPState = myCamera->WorldViewProjState();
   if (myWorldViewProjState != aWVPState)
   {
+#if !defined(GL_ES_VERSION_2_0)
     myAccumFrames = 0;
+#endif
     myWorldViewProjState = aWVPState;
   }
 
@@ -1040,8 +1044,12 @@ void OpenGl_View::renderStructs (Graphic3d_Camera::Projection theProjection,
 
   Handle(OpenGl_Context) aCtx = myWorkspace->GetGlContext();
   Standard_Boolean toRenderGL = theToDrawImmediate ||
+#if !defined(GL_ES_VERSION_2_0)
     myRenderParams.Method != Graphic3d_RM_RAYTRACING ||
     myRaytraceInitStatus == OpenGl_RT_FAIL ||
+#else
+    true ||
+#endif
     aCtx->IsFeedback();
 
 #if !defined(GL_ES_VERSION_2_0)

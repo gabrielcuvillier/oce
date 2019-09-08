@@ -768,6 +768,9 @@ protected: //! @name data types related to ray-tracing
 
 protected: //! @name methods related to ray-tracing
 
+  //! Marks if environment map should be updated.
+  Standard_Boolean myToUpdateEnvironmentMap;
+
 #if !defined(GL_ES_VERSION_2_0)
   //! Updates 3D scene geometry for ray-tracing.
   Standard_Boolean updateRaytraceGeometry (const RaytraceUpdateMode      theMode,
@@ -938,7 +941,6 @@ protected: //! @name methods related to ray-tracing
                              Graphic3d_Camera::Projection  theProjection,
                              OpenGl_FrameBuffer*           theReadDrawFbo,
                              const Handle(OpenGl_Context)& theGlContext);
-#endif
 
 protected: //! @name fields related to ray-tracing
 
@@ -1045,9 +1047,6 @@ protected: //! @name fields related to ray-tracing
   //! Render filter to filter out all raytracable structures.
   Handle(OpenGl_RaytraceFilter) myRaytraceFilter;
 
-  //! Marks if environment map should be updated.
-  Standard_Boolean myToUpdateEnvironmentMap;
-
   //! State of OpenGL layer list.
   Standard_Size myRaytraceLayerListState;
 
@@ -1083,6 +1082,7 @@ protected: //! @name fields related to ray-tracing
 
   //! Focal distance of camera on previous frame used for depth-of-field (path tracing)
   float myPrevCameraFocalPlaneDist;
+#endif
 
 public:
 
