@@ -1,23 +1,6 @@
 // This file has been automatically generated from resource file src/Shaders/Declarations.glsl
 
 static const char Shaders_Declarations_glsl[] =
-  "// Created on: 2013-10-10\n"
-  "// Created by: Denis BOGOLEPOV\n"
-  "// Copyright (c) 2013-2014 OPEN CASCADE SAS\n"
-  "//\n"
-  "// This file is part of Open CASCADE Technology software library.\n"
-  "//\n"
-  "// This library is free software; you can redistribute it and/or modify it under\n"
-  "// the terms of the GNU Lesser General Public License version 2.1 as published\n"
-  "// by the Free Software Foundation, with special exception defined in the file\n"
-  "// OCCT_LGPL_EXCEPTION.txt. Consult the file LICENSE_LGPL_21.txt included in OCCT\n"
-  "// distribution for complete text of the license and disclaimer of any warranty.\n"
-  "//\n"
-  "// Alternatively, this file may be used under the terms of Open CASCADE\n"
-  "// commercial license or contractual agreement.\n"
-  "\n"
-  "// This files includes definition of common uniform variables in OCCT GLSL programs\n"
-  "\n"
   "#define THE_MAX_LIGHTS      8\n"
   "#define THE_MAX_CLIP_PLANES 8\n"
   "\n"

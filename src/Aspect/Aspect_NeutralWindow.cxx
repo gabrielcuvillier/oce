@@ -13,6 +13,8 @@
 
 #include <Aspect_NeutralWindow.hxx>
 
+#if !defined(__EMSCRIPTEN__)
+
 IMPLEMENT_STANDARD_RTTIEXT(Aspect_NeutralWindow, Aspect_Window)
 
 // =======================================================================
@@ -109,3 +111,4 @@ Standard_Boolean Aspect_NeutralWindow::SetSize (const Standard_Integer theWidth,
   myHeight = theHeight;
   return Standard_True;
 }
+#endif
