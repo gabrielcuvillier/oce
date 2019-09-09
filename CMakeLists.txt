@@ -423,7 +423,7 @@ endif()
 if (EMSCRIPTEN)
   message (STATUS "Info: IGNORE_NO_ATOMICS is defined due to unsupported atomics on Emscripten")
   add_definitions(-DIGNORE_NO_ATOMICS)
-  add_definitions(-DOCCT_HANDLE_NOCAST)
+  #add_definitions(-DOCCT_HANDLE_NOCAST)  # not enabled as it makes bigger builds
 endif()
 
 # Overview
