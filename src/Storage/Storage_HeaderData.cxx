@@ -47,9 +47,11 @@ Standard_Boolean Storage_HeaderData::Read (Storage_BaseDriver& theDriver)
   }
 
   {
+#if !defined(__EMSCRIPTEN__)
     try
     {
       OCC_CATCH_SIGNALS
+#endif
       theDriver.ReadInfo (myNBObj,
                           myStorageVersion,
                           myDate,
@@ -59,6 +61,7 @@ Standard_Boolean Storage_HeaderData::Read (Storage_BaseDriver& theDriver)
                           myApplicationVersion,
                           myDataType,
                           myUserInfo);
+#if !defined(__EMSCRIPTEN__)
     }
     catch (Storage_StreamTypeMismatchError)
     {
@@ -72,6 +75,7 @@ Standard_Boolean Storage_HeaderData::Read (Storage_BaseDriver& theDriver)
       myErrorStatusExt = "ReadInfo";
       return Standard_False;
     }
+#endif
   }
 
   myErrorStatus = theDriver.EndReadInfoSection();
@@ -90,10 +94,13 @@ Standard_Boolean Storage_HeaderData::Read (Storage_BaseDriver& theDriver)
   }
 
   {
+#if !defined(__EMSCRIPTEN__)
     try
     {
       OCC_CATCH_SIGNALS
+#endif
       theDriver.ReadComment (myComments);
+#if !defined(__EMSCRIPTEN__)
     }
     catch (Storage_StreamTypeMismatchError)
     {
@@ -107,6 +114,7 @@ Standard_Boolean Storage_HeaderData::Read (Storage_BaseDriver& theDriver)
       myErrorStatusExt = "ReadComment";
       return Standard_False;
     }
+#endif
   }
 
   myErrorStatus = theDriver.EndReadCommentSection();

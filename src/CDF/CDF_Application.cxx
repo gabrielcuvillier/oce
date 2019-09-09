@@ -355,21 +355,20 @@ Handle(CDM_Document) CDF_Application::Read (Standard_IStream& theIStream)
   aDoc = aReader->CreateDocument();
 
   // 3. read the content of theIStream to aDoc
-  try
   {
-    OCC_CATCH_SIGNALS
-  
-    aReader->Read (theIStream, dData, aDoc, this);
-  }
-  catch (Standard_Failure const& anException)
-  {
-    myRetrievableStatus = aReader->GetStatus();
-    if (myRetrievableStatus  > PCDM_RS_AlreadyRetrieved)
-    {
-      Standard_SStream aMsg;
-      aMsg << anException << endl;
-      throw Standard_Failure(aMsg.str().c_str());
-    }	
+    try {
+      OCC_CATCH_SIGNALS
+
+      aReader->Read(theIStream, dData, aDoc, this);
+    }
+    catch (Standard_Failure const &anException) {
+      myRetrievableStatus = aReader->GetStatus();
+      if (myRetrievableStatus > PCDM_RS_AlreadyRetrieved) {
+        Standard_SStream aMsg;
+        aMsg << anException << endl;
+        throw Standard_Failure(aMsg.str().c_str());
+      }
+    }
   }
 
   myRetrievableStatus = aReader->GetStatus();
@@ -465,16 +464,17 @@ Handle(PCDM_StorageDriver) CDF_Application::WriterFromFormat(const TCollection_E
   // Convert to GUID.
   Standard_GUID aPluginId = UTL::GUID(strPluginId);
 
-  try {
-    OCC_CATCH_SIGNALS
-    aDriver = Handle(PCDM_StorageDriver)::DownCast(Plugin::Load(aPluginId));
-  } 
-  catch (Standard_Failure const& anException)
   {
-    myWriters.Add(theFormat, aDriver);
-    myRetrievableStatus = PCDM_RS_WrongResource;
-    throw anException;
-  }	
+    try {
+      OCC_CATCH_SIGNALS
+      aDriver = Handle(PCDM_StorageDriver)::DownCast(Plugin::Load(aPluginId));
+    }
+    catch (Standard_Failure const &anException) {
+      myWriters.Add(theFormat, aDriver);
+      myRetrievableStatus = PCDM_RS_WrongResource;
+      throw anException;
+    }
+  }
   if (aDriver.IsNull()) 
   {
     myRetrievableStatus = PCDM_RS_WrongResource;

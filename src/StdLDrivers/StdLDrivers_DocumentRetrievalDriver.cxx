@@ -202,16 +202,19 @@ Handle(StdObjMgt_Persistent) StdLDrivers_DocumentRetrievalDriver::read (
   for (i = 1; i <= theHeaderData.NumberOfObjects(); i++)
   {
     Storage_Error anError;
+#if !defined(__EMSCRIPTEN__)
     try
     {
       OCC_CATCH_SIGNALS
+#endif
       aReadData.ReadPersistentObject (i);
       anError = Storage_VSOk;
+#if !defined(__EMSCRIPTEN__)
     }
     catch (Storage_StreamTypeMismatchError) { anError = Storage_VSTypeMismatch; }
     catch (Storage_StreamFormatError      ) { anError = Storage_VSFormatError;  }
     catch (Storage_StreamReadError        ) { anError = Storage_VSFormatError;  }
-
+#endif
     raiseOnStorageError (anError);
   }
 

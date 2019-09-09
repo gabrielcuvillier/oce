@@ -80,8 +80,10 @@ PCDM_StoreStatus CDF_StoreList::Store (Handle(CDM_MetaData)& aMetaData, TCollect
 
   PCDM_StoreStatus status = PCDM_SS_OK;
   {
+#if !defined(__EMSCRIPTEN__)
     try {
       OCC_CATCH_SIGNALS
+#endif
       for (; !myStack.IsEmpty(); myStack.RemoveFirst()) {
 
         Handle(CDM_Document) theDocument = myStack.First();
@@ -119,8 +121,8 @@ PCDM_StoreStatus CDF_StoreList::Store (Handle(CDM_MetaData)& aMetaData, TCollect
           }
         }
       }
+#if !defined(__EMSCRIPTEN__)
     }
-
     catch (CDF_MetaDataDriverError anException) {
       CAUGHT(anException, aStatusAssociatedText, TCollection_ExtendedString("metadatadriver failed; reason:"));
       status = PCDM_SS_DriverFailure;
@@ -129,6 +131,7 @@ PCDM_StoreStatus CDF_StoreList::Store (Handle(CDM_MetaData)& aMetaData, TCollect
       CAUGHT(anException, aStatusAssociatedText, TCollection_ExtendedString("driver failed; reason:"));
       status = PCDM_SS_Failure; 
     }
+#endif
   }
 
   return status;

@@ -54,12 +54,6 @@ public:
   //! Destructor
   Standard_EXPORT ~Standard_Failure();
 
-#if defined(__EMSCRIPTEN__)
-  // This is needed by the redefinition of catch(x) due to exception being disabled
-  // see Standard_DefineException.hxx
-  Standard_EXPORT operator bool() const { return false; }
-#endif
-
   //! Prints on the stream <s> the exception name followed by
   //! the error message.
   //! Level: Advanced

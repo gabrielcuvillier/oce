@@ -35,9 +35,8 @@
 // try is redefined to always pass
 #define try
 // catch is redefined to always fail while still defining 'anException' variable. This is needed because the catch blocks sometime need that variable
-// The redefinition will discard the catched expression, replacing it by definition of a dummy Standard_Failure error, that will always yield false
-// thanks to a definition of operator bool() in Standard_Failure
-#define catch(x)  if(Standard_Failure anException{})
+// The redefinition will discard the catched expression, replacing it by definition of a dummy Standard_Failure error
+#define catch(x)  Standard_Failure anException{}; if(false)
 
 #define DEFINE_STANDARD_EXCEPTION(C1,C2) \
  \

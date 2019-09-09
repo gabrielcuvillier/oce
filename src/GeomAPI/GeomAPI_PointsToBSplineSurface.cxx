@@ -410,11 +410,13 @@ void GeomAPI_PointsToBSplineSurface::Init(const TColgp_Array2OfPnt& Points,
     return;
   }
 
-  try {
-    Variation2.Approximate();
-  }
-  catch (Standard_Failure) {
-    return;
+  {
+    try {
+      Variation2.Approximate();
+    }
+    catch (Standard_Failure) {
+      return;
+    }
   }
 
   if(!Variation2.IsDone()) {
