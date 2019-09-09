@@ -64,6 +64,9 @@ TCollection_AsciiString result;
 // =========================================================================
 
 OSD_SysType OSD_Host::SystemId()const{
+#if defined(__EMSCRIPTEN__)
+  return (OSD_Emscripten);
+#else
 struct utsname info; 
  
  uname (&info);
@@ -78,8 +81,8 @@ struct utsname info;
  if (!strcmp(info.sysname,"UNIX_System_V"))  return (OSD_UnixSystemV);
  if (!strcmp(info.sysname,"VMS_POSIX"))      return (OSD_VMS);
  if (!strcmp(info.sysname,"Darwin"))         return (OSD_MacOs);
- if (!strcmp(info.sysname,"Emscripten"))     return (OSD_Emscripten);
  return (OSD_Unknown);
+#endif
 }
 
 // =========================================================================
@@ -140,7 +143,10 @@ TCollection_AsciiString OSD_Host::InternetAddress(){
 
 // =========================================================================
 OSD_OEMType OSD_Host::MachineType(){
-struct utsname info; 
+#if defined(__EMSCRIPTEN__)
+  return (OSD_WASM);
+#else
+  struct utsname info;
  
  uname (&info);
 
@@ -156,7 +162,7 @@ struct utsname info;
  if (!strncmp(info.sysname,"AIX",3))        return (OSD_AIX);
  if (!strcmp(info.sysname,"Darwin"))        return (OSD_MAC);
  return (OSD_Unavailable);
-
+#endif
 }
 
 void OSD_Host::Reset(){

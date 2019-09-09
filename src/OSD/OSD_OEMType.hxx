@@ -30,7 +30,8 @@ OSD_HP,
 OSD_IBM,
 OSD_VAX,
 OSD_LIN,
-OSD_AIX
+OSD_AIX,
+OSD_WASM
 };
 
 #endif // _OSD_OEMType_HeaderFile
