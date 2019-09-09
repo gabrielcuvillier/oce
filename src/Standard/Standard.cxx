@@ -302,6 +302,8 @@ Standard_Address Standard::AllocateAligned (const Standard_Size theSize,
 {
 #if defined(_MSC_VER)
   return _aligned_malloc (theSize, theAlign);
+#elif defined(__EMSCRIPTEN__)
+  return aligned_alloc(theAlign, theSize);
 #elif defined(__ANDROID__) || defined(__QNX__)
   return memalign (theAlign, theSize);
 #elif (defined(__GNUC__) && __GNUC__ >= 4 && __GNUC_MINOR__ >= 1 && (defined(__i386) || defined(__x86_64)))
@@ -326,6 +328,8 @@ void Standard::FreeAligned (Standard_Address thePtrAligned)
 #if defined(_MSC_VER)
   _aligned_free (thePtrAligned);
 #elif defined(__ANDROID__) || defined(__QNX__)
+  free (thePtrAligned);
+#elif defined(__EMSCRIPTEN__)
   free (thePtrAligned);
 #elif (defined(__GNUC__) && __GNUC__ >= 4 && __GNUC_MINOR__ >= 1 && (defined(__i386) || defined(__x86_64)))
   _mm_free (thePtrAligned);
