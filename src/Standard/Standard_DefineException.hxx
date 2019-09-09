@@ -30,10 +30,10 @@
 // As Exceptions are disabled on Emscripten (-fno-exceptions + DISABLE_EXCEPTION_CATCHING=1) due to being too slow,
 // redefine throw/try/catch to dummy code
 
-// throw is redefined to abort() method to abort the program, with a 'coma' operator so that the compiler will take into account the throwed expression, and then compile
-#define throw     abort(),
+// throw is redefined to abort the program (and display a message), with a 'coma' operator so that the compiler will take into account the throwed expression, and then compile
+#define throw     std::printf("abort\n"), abort(),
 // try is redefined to always pass
-#define try       if(true)
+#define try
 // catch is redefined to always fail while still defining 'anException' variable. This is needed because the catch blocks sometime need that variable
 // The redefinition will discard the catched expression, replacing it by definition of a dummy Standard_Failure error, that will always yield false
 // thanks to a definition of operator bool() in Standard_Failure
