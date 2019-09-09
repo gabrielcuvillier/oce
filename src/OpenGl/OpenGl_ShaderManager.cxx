@@ -250,12 +250,12 @@ const char THE_FRAG_CLIP_PLANES_2[] =
   EOL"  }";
 
 //! Output color and coverage for accumulation by OIT algorithm.
+#if !defined(GL_ES_VERSION_2_0)
+
 const char THE_FRAG_write_oit_buffers[] =
   EOL"  float aWeight     = occFragColor.a * clamp (1e+2 * pow (1.0 - gl_FragCoord.z * occOitDepthFactor, 3.0), 1e-2, 1e+2);"
   EOL"  occFragCoverage.r = occFragColor.a * aWeight;"
   EOL"  occFragColor      = vec4 (occFragColor.rgb * occFragColor.a * aWeight, occFragColor.a);";
-
-#if !defined(GL_ES_VERSION_2_0)
 
   static const GLfloat THE_DEFAULT_AMBIENT[4]    = { 0.0f, 0.0f, 0.0f, 1.0f };
   static const GLfloat THE_DEFAULT_SPOT_DIR[3]   = { 0.0f, 0.0f, -1.0f };
@@ -1075,6 +1075,7 @@ void OpenGl_ShaderManager::PushMaterialState (const Handle(OpenGl_ShaderProgram)
   }
 }
 
+#if !defined(GL_ES_VERSION_2_0)
 // =======================================================================
 // function : PushOitState
 // purpose  : Pushes state of OIT uniforms to the specified program
@@ -1103,6 +1104,7 @@ void OpenGl_ShaderManager::PushOitState (const Handle(OpenGl_ShaderProgram)& the
     theProgram->SetUniform (myContext, aLocDepthFactor, myOitState.DepthFactor());
   }
 }
+#endif
 
 // =======================================================================
 // function : PushState
@@ -1117,7 +1119,9 @@ void OpenGl_ShaderManager::PushState (const Handle(OpenGl_ShaderProgram)& thePro
   PushProjectionState  (aProgram);
   PushLightSourceState (aProgram);
   PushMaterialState    (aProgram);
+#if !defined(GL_ES_VERSION_2_0)
   PushOitState         (aProgram);
+#endif
 }
 
 // =======================================================================
@@ -1253,6 +1257,7 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramFboBlit()
 // function : prepareStdProgramOitCompositing
 // purpose  :
 // =======================================================================
+#if !defined(GL_ES_VERSION_2_0)
 Standard_Boolean OpenGl_ShaderManager::prepareStdProgramOitCompositing (const Standard_Boolean theMsaa)
 {
   Handle(OpenGl_ShaderProgram)& aProgram = myOitCompositingProgram[theMsaa ? 1 : 0];
@@ -1336,6 +1341,7 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramOitCompositing (const St
   myContext->BindProgram (Handle(OpenGl_ShaderProgram)());
   return Standard_True;
 }
+#endif
 
 // =======================================================================
 // function : pointSpriteAlphaSrc
@@ -1481,10 +1487,12 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramFlat (Handle(OpenGl_Shad
       aSrcFragExtraMain += THE_FRAG_CLIP_PLANES_N;
     }
   }
+#if !defined(GL_ES_VERSION_2_0)
   if ((theBits & OpenGl_PO_WriteOit) != 0)
   {
     aSrcFragWriteOit += THE_FRAG_write_oit_buffers;
   }
+#endif
 
   TCollection_AsciiString aSrcVertEndMain;
   if ((theBits & OpenGl_PO_StippleLine) != 0)
@@ -1780,10 +1788,12 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramGouraud (Handle(OpenGl_S
       aSrcFragExtraMain += THE_FRAG_CLIP_PLANES_N;
     }
   }
+#if !defined(GL_ES_VERSION_2_0)
   if ((theBits & OpenGl_PO_WriteOit) != 0)
   {
     aSrcFragWriteOit += THE_FRAG_write_oit_buffers;
   }
+#endif
 
   const TCollection_AsciiString aLights = stdComputeLighting ((theBits & OpenGl_PO_VertColor) != 0);
   aSrcVert = TCollection_AsciiString()
@@ -1914,10 +1924,12 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramPhong (Handle(OpenGl_Sha
       aSrcFragExtraMain += THE_FRAG_CLIP_PLANES_N;
     }
   }
+#if !defined(GL_ES_VERSION_2_0)
   if ((theBits & OpenGl_PO_WriteOit) != 0)
   {
     aSrcFragWriteOit += THE_FRAG_write_oit_buffers;
   }
+#endif
 
   aSrcVert = TCollection_AsciiString()
     + THE_FUNC_transformNormal

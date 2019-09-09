@@ -21,6 +21,8 @@
 #ifndef _OpenGl_HaltonSampler_H
 #define _OpenGl_HaltonSampler_H
 
+#if !defined(GL_ES_VERSION_2_0)
+
 #include <algorithm>
 #include <vector>
 
@@ -186,3 +188,4 @@ void OpenGl_HaltonSampler::initRandom (Random_number_generator& theRand)
 }
 
 #endif // _OpenGl_HaltonSampler_H
+#endif

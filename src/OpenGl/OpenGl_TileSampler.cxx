@@ -17,6 +17,8 @@
 #include <OpenGl_TileSampler.hxx>
 #include <TCollection_ExtendedString.hxx>
 
+#if !defined(GL_ES_VERSION_2_0)
+
 namespace
 {
   //! Scale factor for estimating visual error.
@@ -194,3 +196,4 @@ void OpenGl_TileSampler::Upload (const Handle(OpenGl_Context)& theContext,
                              "Error! Failed to upload tile offset map on the GPU");
   }
 }
+#endif
