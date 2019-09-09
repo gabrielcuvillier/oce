@@ -18,6 +18,8 @@
 #include <string.h>
 #include <sys/types.h>
 
+#if !defined(__EMSCRIPTEN__)
+
 typedef unsigned short char16 ;
 
 #include <Resource_Shiftjis.h>
@@ -238,3 +240,4 @@ void Resource_unicode_to_gb (unsigned int *ph, unsigned int *pl)
     *pl = 0 ;
   }
 }
+#endif

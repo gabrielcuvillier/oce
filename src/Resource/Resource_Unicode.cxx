@@ -21,6 +21,8 @@
 #include <TCollection_AsciiString.hxx>
 #include <TCollection_ExtendedString.hxx>
 
+#if !defined(__EMSCRIPTEN__)
+
 #define isjis(c) (((c)>=0x21 && (c)<=0x7e))
 #define iseuc(c) (((c)>=0xa1 && (c)<=0xfe))
 #define issjis1(c) (((c)>=0x81 && (c)<=0x9f) || ((c)>=0xe0 && (c)<=0xef))
@@ -125,6 +127,7 @@ void Resource_Unicode::ConvertGBToUnicode(const Standard_CString fromstr,TCollec
     }
   }
 }
+#endif
 
 void Resource_Unicode::ConvertANSIToUnicode(const Standard_CString fromstr,TCollection_ExtendedString& tostr)
 {
@@ -133,6 +136,8 @@ void Resource_Unicode::ConvertANSIToUnicode(const Standard_CString fromstr,TColl
   TCollection_ExtendedString curext(fromstr);
   tostr.AssignCat(curext);
 }
+
+#if !defined(__EMSCRIPTEN__)
 
 Standard_Boolean Resource_Unicode::ConvertUnicodeToSJIS(const TCollection_ExtendedString& fromstr,
 							Standard_PCharacter& tostr,
@@ -182,7 +187,7 @@ Standard_Boolean Resource_Unicode::ConvertUnicodeToSJIS(const TCollection_Extend
   }
   return Standard_True;
 }
-	  
+
 Standard_Boolean Resource_Unicode::ConvertUnicodeToEUC(const TCollection_ExtendedString& fromstr,
 						       Standard_PCharacter& tostr,
 						       const Standard_Integer maxsize)
@@ -280,7 +285,8 @@ Standard_Boolean Resource_Unicode::ConvertUnicodeToGB(const TCollection_Extended
   }
   return Standard_True;
 }
-	  
+#endif
+
 Standard_Boolean Resource_Unicode::ConvertUnicodeToANSI(const TCollection_ExtendedString& fromstr,
 							Standard_PCharacter& tostr,
 							const Standard_Integer maxsize)
@@ -372,6 +378,7 @@ void Resource_Unicode::ConvertFormatToUnicode(const Standard_CString fromstr,
 {
   Resource_FormatType theform = Resource_Unicode::GetFormat();
   switch (theform) {
+#if !defined(__EMSCRIPTEN__)
   case Resource_SJIS :
     {
       ConvertSJISToUnicode(fromstr,tostr);
@@ -387,11 +394,17 @@ void Resource_Unicode::ConvertFormatToUnicode(const Standard_CString fromstr,
       ConvertGBToUnicode(fromstr,tostr);
       break;
     }
+#endif
   case Resource_ANSI :
     {
       ConvertANSIToUnicode(fromstr,tostr);
       break;
     }
+#if defined(__EMSCRIPTEN__)
+    default: {
+      break;
+    }
+#endif
   }
 }
 
@@ -401,6 +414,7 @@ Standard_Boolean Resource_Unicode::ConvertUnicodeToFormat(const TCollection_Exte
 {
   Resource_FormatType theform = Resource_Unicode::GetFormat();
   switch (theform) {
+#if !defined(__EMSCRIPTEN__)
   case Resource_SJIS :
     {
       return ConvertUnicodeToSJIS(fromstr,tostr,maxsize);
@@ -413,10 +427,14 @@ Standard_Boolean Resource_Unicode::ConvertUnicodeToFormat(const TCollection_Exte
     {
       return ConvertUnicodeToGB(fromstr,tostr,maxsize);
     }
+#endif
   case Resource_ANSI :
     {
       return ConvertUnicodeToANSI(fromstr,tostr,maxsize);
     }
+#if defined(__EMSCRIPTEN__)
+    default: {}
+#endif
   }
   return Standard_False;
 }
