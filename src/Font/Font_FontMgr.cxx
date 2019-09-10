@@ -58,12 +58,12 @@ static const Font_FontMgr_FontAliasMapNode Font_FontMgr_MapOfFontsAliases[] =
   { "Arial"                    , "Roboto"         , Font_FA_Regular  },
 #elif defined(__EMSCRIPTEN__)
   // NB: Those fonts need to be loaded manually in MemFS (under path defined by CSF_CustomFontDirectory, or a default directory - see below)
-  { "Courier"                  , "Droid Sans Mono"    , Font_FA_Regular },
-  { "Times-Roman"              , "Droid Serif"        , Font_FA_Regular  },
-  { "Times-Bold"               , "Droid Serif"        , Font_FA_Bold },
-  { "Times-Italic"             , "Droid Serif"        , Font_FA_Italic  },
-  { "Times-BoldItalic"         , "Droid Serif"        , Font_FA_BoldItalic  },
-  { "Arial"                    , "Roboto"             , Font_FA_Regular  },
+  { "Courier"                  , "Bitstream Vera Sans Mono"    , Font_FA_Regular },
+  { "Times-Roman"              , "Bitstream Vera Serif"        , Font_FA_Regular  },
+  { "Times-Bold"               , "Bitstream Vera Serif"        , Font_FA_Bold },
+  { "Times-Italic"             , "Bitstream Vera Serif"        , Font_FA_Italic  },
+  { "Times-BoldItalic"         , "Bitstream Vera Serif"        , Font_FA_BoldItalic  },
+  { "Arial"                    , "Bitstream Vera Sans"         , Font_FA_Regular  },
 #else   //X11
   { "Courier"                  , "Courier"      , Font_FA_Regular },
   { "Times-Roman"              , "Times"        , Font_FA_Regular  },
