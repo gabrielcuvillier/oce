@@ -361,6 +361,7 @@ void AIS_ColoredShape::Compute (const Handle(PrsMgr_PresentationManager3d)& ,
 
   if (theMode == AIS_Shaded)
   {
+#if !defined(__EMSCRIPTEN__)
     if (myDrawer->IsAutoTriangulation())
     {
       // compute mesh for entire shape beforehand to ensure consistency and optimizations (parallelization)
@@ -376,6 +377,7 @@ void AIS_ColoredShape::Compute (const Handle(PrsMgr_PresentationManager3d)& ,
         SetToUpdate (AIS_WireFrame);
       }
     }
+#endif
   }
   else // WireFrame mode
   {
@@ -474,11 +476,13 @@ void AIS_ColoredShape::ComputeSelection (const Handle(SelectMgr_Selection)& theS
   const Standard_Real    aDeflection = Prs3d::GetDeflection (myshape, myDrawer);
   const Standard_Real    aDeviationAngle = myDrawer->HLRAngle();
   const Standard_Integer aPriority   = StdSelect_BRepSelectionTool::GetStandardPriority (myshape, aTypOfSel);
+#if !defined(__EMSCRIPTEN__)
   if (myDrawer->IsAutoTriangulation()
   && !BRepTools::Triangulation (myshape, Precision::Infinite()))
   {
     BRepMesh_IncrementalMesh aMesher (myshape, aDeflection, Standard_False, aDeviationAngle);
   }
+#endif
 
   AIS_DataMapOfShapeDrawer aSubshapeDrawerMap;
   fillSubshapeDrawerMap (aSubshapeDrawerMap);

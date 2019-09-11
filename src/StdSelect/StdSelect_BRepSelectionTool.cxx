@@ -114,10 +114,12 @@ void StdSelect_BRepSelectionTool::Load (const Handle(SelectMgr_Selection)& theSe
 {
   Standard_Integer aPriority = (thePriority == -1) ? GetStandardPriority (theShape, theType) : thePriority;
 
+#if !defined(__EMSCRIPTEN__)
   if( isAutoTriangulation && !BRepTools::Triangulation (theShape, Precision::Infinite()) )
   {
     BRepMesh_IncrementalMesh aMesher(theShape, theDeflection, Standard_False, theDeviationAngle);
   }
+#endif
 
   Handle(StdSelect_BRepOwner) aBrepOwner;
   switch (theType)

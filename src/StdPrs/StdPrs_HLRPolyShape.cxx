@@ -64,6 +64,7 @@ void StdPrs_HLRPolyShape::Add(const Handle (Prs3d_Presentation)& aPresentation,
     }
   }
 
+#if !defined(__EMSCRIPTEN__)
   if (aDrawer->IsAutoTriangulation())
   {
     const Standard_Boolean aRel = aDrawer->TypeOfDeflection() == Aspect_TOD_RELATIVE;
@@ -74,7 +75,8 @@ void StdPrs_HLRPolyShape::Add(const Handle (Prs3d_Presentation)& aPresentation,
     aMeshParams.Deflection = aDef;
     BRepMesh_IncrementalMesh mesh(aShape, aMeshParams);
   }
-  
+#endif
+
   Handle(HLRBRep_PolyAlgo) hider = new HLRBRep_PolyAlgo(aShape);
 
   hider->Projector(aProjector->Projector());

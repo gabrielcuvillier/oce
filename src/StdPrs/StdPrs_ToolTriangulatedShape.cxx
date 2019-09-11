@@ -280,6 +280,7 @@ void StdPrs_ToolTriangulatedShape::ClearOnOwnDeflectionChange (const TopoDS_Shap
                                                                const Handle(Prs3d_Drawer)& theDrawer,
                                                                const Standard_Boolean      theToResetCoeff)
 {
+#if !defined(__EMSCRIPTEN__)
   if (!theDrawer->IsAutoTriangulation()
     || theShape.IsNull())
   {
@@ -304,4 +305,7 @@ void StdPrs_ToolTriangulatedShape::ClearOnOwnDeflectionChange (const TopoDS_Shap
     theDrawer->UpdatePreviousDeviationAngle();
     theDrawer->UpdatePreviousDeviationCoefficient();
   }
+#else
+  return;
+#endif
 }

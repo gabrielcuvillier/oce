@@ -274,6 +274,7 @@ void AIS_Shape::Compute(const Handle(Prs3d_Projector)& aProjector,
   Aspect_TypeOfDeflection prevdef = defdrawer->TypeOfDeflection();
   defdrawer->SetTypeOfDeflection(Aspect_TOD_RELATIVE);
 
+#if !defined(__EMSCRIPTEN__)
   if (myDrawer->IsAutoTriangulation())
   {
     // coefficients for calculation
@@ -286,7 +287,8 @@ void AIS_Shape::Compute(const Handle(Prs3d_Projector)& aProjector,
       BRepTools::Clean(SH);
     }
   }
-  
+#endif
+
   {
     try {
       OCC_CATCH_SIGNALS
