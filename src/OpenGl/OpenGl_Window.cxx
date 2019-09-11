@@ -221,6 +221,7 @@ OpenGl_Window::OpenGl_Window (const Handle(OpenGl_GraphicDriver)& theDriver,
 
   myGlContext->Init ((Aspect_Drawable )anEglSurf, (Aspect_Display )anEglDisplay, (Aspect_RenderingContext )anEglContext, isCoreProfile);
 #elif defined(__EMSCRIPTEN__)
+  (void)theDriver;
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE aGContext = NULL;
 
   if (!myOwnGContext)
@@ -232,6 +233,8 @@ OpenGl_Window::OpenGl_Window (const Handle(OpenGl_GraphicDriver)& theDriver,
     EmscriptenWebGLContextAttributes attrs;
     emscripten_webgl_init_context_attributes(&attrs);
     attrs.enableExtensionsByDefault = true;
+    attrs.stencil = true; // not enabled by default, be sure to have one
+    attrs.antialias = true;
     aGContext = emscripten_webgl_create_context(thePlatformWindow->NativeHandle(), &attrs);
     if (aGContext <= 0) {
       return;
