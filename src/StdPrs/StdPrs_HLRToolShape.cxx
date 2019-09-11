@@ -12,9 +12,6 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
-// File only used for VRML 1.0, which is disabled on Emscripten to prevent dependencies on TKVisualization
-#if !defined(__EMSCRIPTEN__)
-
 #include <BRepAdaptor_Curve.hxx>
 #include <HLRAlgo_Projector.hxx>
 #include <HLRBRep_Algo.hxx>
@@ -83,5 +80,3 @@ void StdPrs_HLRToolShape::Hidden (BRepAdaptor_Curve& TheEdge,
   Standard_ShortReal t1,t2;
   myEdgeIterator.Hidden(U1,t1,U2,t2);
 }
-
-#endif
