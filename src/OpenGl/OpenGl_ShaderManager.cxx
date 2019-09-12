@@ -345,7 +345,11 @@ const char THE_FRAG_write_oit_buffers[] =
 // =======================================================================
 OpenGl_ShaderManager::OpenGl_ShaderManager (OpenGl_Context* theContext)
 : myFfpProgram (new OpenGl_ShaderProgramFFP()),
+#if !defined(GL_ES_VERSION_2_0)
   myShadingModel (Graphic3d_TOSM_VERTEX),
+#else
+  myShadingModel (Graphic3d_TOSM_FRAGMENT),
+#endif
   myContext  (theContext),
   myHasLocalOrigin (Standard_False),
   myLastView (NULL)
@@ -1376,6 +1380,7 @@ namespace
 
 }
 
+#if !defined(GL_ES_VERSION_2_0)
 // =======================================================================
 // function : prepareStdProgramFlat
 // purpose  :
@@ -1587,6 +1592,7 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramFlat (Handle(OpenGl_Shad
   }
   return Standard_True;
 }
+#endif
 
 // =======================================================================
 // function : pointSpriteShadingSrc
@@ -1711,6 +1717,7 @@ TCollection_AsciiString OpenGl_ShaderManager::stdComputeLighting (const Standard
       EOL"}";
 }
 
+#if !defined(GL_ES_VERSION_2_0)
 // =======================================================================
 // function : prepareStdProgramGouraud
 // purpose  :
@@ -1851,6 +1858,7 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramGouraud (Handle(OpenGl_S
   }
   return Standard_True;
 }
+#endif
 
 // =======================================================================
 // function : prepareStdProgramPhong
@@ -1991,6 +1999,7 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramPhong (Handle(OpenGl_Sha
   return Standard_True;
 }
 
+#if !defined(GL_ES_VERSION_2_0)
 // =======================================================================
 // function : prepareStdProgramStereo
 // purpose  :
@@ -2217,6 +2226,7 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramStereo (Handle(OpenGl_Sh
   myContext->BindProgram (NULL);
   return Standard_True;
 }
+#endif
 
 // =======================================================================
 // function : bindProgramWithState

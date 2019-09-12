@@ -247,6 +247,7 @@ Standard_Boolean OpenGl_FrameBuffer::Init (const Handle(OpenGl_Context)& theGlCo
   const Standard_Integer aSizeX = theSizeX > 0 ? theSizeX : 2;
   const Standard_Integer aSizeY = theSizeY > 0 ? theSizeY : 2;
 
+#if !defined(GL_ES_VERSION_2_0)
   // Create the textures (will be used as color buffer and depth-stencil buffer)
   if (theNbSamples != 0)
   {
@@ -264,6 +265,7 @@ Standard_Boolean OpenGl_FrameBuffer::Init (const Handle(OpenGl_Context)& theGlCo
     }
   }
   else
+#endif
   {
     for (Standard_Integer aColorBufferIdx = 0; aColorBufferIdx < myColorTextures.Length(); ++aColorBufferIdx)
     {
@@ -372,6 +374,7 @@ Standard_Boolean OpenGl_FrameBuffer::Init (const Handle(OpenGl_Context)& theGlCo
   const Standard_Integer aSizeY = theSizeY > 0 ? theSizeY : 2;
   bool hasStencilRB = false;
 
+#if !defined(GL_ES_VERSION_2_0)
   // Create the textures (will be used as color buffer and depth-stencil buffer)
   if (theNbSamples != 0)
   {
@@ -394,6 +397,7 @@ Standard_Boolean OpenGl_FrameBuffer::Init (const Handle(OpenGl_Context)& theGlCo
     }
   }
   else
+#endif
   {
     GLenum aPixelFormat = 0;
     GLenum aDataType    = 0;

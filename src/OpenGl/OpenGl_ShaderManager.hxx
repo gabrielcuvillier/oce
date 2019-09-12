@@ -181,7 +181,6 @@ public:
     const Handle(OpenGl_ShaderProgram)& aProgram = myOitCompositingProgram [aProgramIdx];
     return !aProgram.IsNull() && myContext->BindProgram (aProgram);
   }
-#endif
 
   //! Bind program for rendering stereoscopic image.
   Standard_Boolean BindStereoProgram (const Graphic3d_StereoMode theStereoMode)
@@ -199,6 +198,7 @@ public:
     return !aProgram.IsNull()
          && myContext->BindProgram (aProgram);
   }
+#endif
 
 public:
 
@@ -386,16 +386,19 @@ protected:
   Handle(OpenGl_ShaderProgram)& getStdProgram (const Standard_Boolean theToLightOn,
                                                const Standard_Integer theBits)
   {
+#if !defined(GL_ES_VERSION_2_0)
     // If environment map is enabled lighting calculations are
     // not needed (in accordance with default OCCT behaviour)
     if (theToLightOn && (theBits & OpenGl_PO_TextureEnv) == 0)
     {
+#endif
       Handle(OpenGl_ShaderProgram)& aProgram = myLightPrograms->ChangeValue (theBits);
       if (aProgram.IsNull())
       {
         prepareStdProgramLight (aProgram, theBits);
       }
       return aProgram;
+#if !defined(GL_ES_VERSION_2_0)
     }
 
     Handle(OpenGl_ShaderProgram)& aProgram = myFlatPrograms.ChangeValue (theBits);
@@ -404,6 +407,7 @@ protected:
       prepareStdProgramFlat (aProgram, theBits);
     }
     return aProgram;
+#endif
   }
 
   //! Prepare standard GLSL program for accessing point sprite alpha.
@@ -423,22 +427,30 @@ protected:
   Standard_EXPORT Standard_Boolean prepareStdProgramOitCompositing (const Standard_Boolean theMsaa);
 #endif
 
+#if !defined(GL_ES_VERSION_2_0)
   //! Prepare standard GLSL program without lighting.
   Standard_EXPORT Standard_Boolean prepareStdProgramFlat (Handle(OpenGl_ShaderProgram)& theProgram,
                                                           const Standard_Integer        theBits);
+#endif
 
   //! Prepare standard GLSL program with lighting.
   Standard_Boolean prepareStdProgramLight (Handle(OpenGl_ShaderProgram)& theProgram,
                                            const Standard_Integer        theBits)
   {
+#if !defined(GL_ES_VERSION_2_0)
     return myShadingModel == Graphic3d_TOSM_FRAGMENT
          ? prepareStdProgramPhong   (theProgram, theBits)
          : prepareStdProgramGouraud (theProgram, theBits);
+#else
+    return prepareStdProgramPhong   (theProgram, theBits);
+#endif
   }
 
+#if !defined(GL_ES_VERSION_2_0)
   //! Prepare standard GLSL program with per-vertex lighting.
   Standard_EXPORT Standard_Boolean prepareStdProgramGouraud (Handle(OpenGl_ShaderProgram)& theProgram,
                                                              const Standard_Integer        theBits);
+#endif
 
   //! Prepare standard GLSL program with per-pixel lighting.
   Standard_EXPORT Standard_Boolean prepareStdProgramPhong (Handle(OpenGl_ShaderProgram)& theProgram,
@@ -454,9 +466,11 @@ protected:
   //! Set pointer myLightPrograms to active lighting programs set from myMapOfLightPrograms
   Standard_EXPORT void switchLightPrograms();
 
+#if !defined(GL_ES_VERSION_2_0)
   //! Prepare standard GLSL program for stereoscopic image.
   Standard_EXPORT Standard_Boolean prepareStdProgramStereo (Handle(OpenGl_ShaderProgram)& theProgram,
                                                             const Graphic3d_StereoMode    theStereoMode);
+#endif
 
 protected:
 

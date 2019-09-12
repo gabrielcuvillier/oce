@@ -25,8 +25,10 @@
 enum Graphic3d_TypeOfShadingModel
 {
   Graphic3d_TOSM_NONE,
+#if !defined(GL_ES_VERSION_2_0)
   Graphic3d_TOSM_FACET,
   Graphic3d_TOSM_VERTEX,
+#endif
   Graphic3d_TOSM_FRAGMENT
 };
 

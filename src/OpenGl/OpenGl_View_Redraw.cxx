@@ -259,6 +259,7 @@ void OpenGl_View::Redraw()
     myImmediateSceneFbos[1]->ChangeViewport (0, 0);
   }
 
+#if !defined(GL_ES_VERSION_2_0)
   if (aProjectType == Graphic3d_Camera::Projection_Stereo
    && myMainSceneFbos[0]->IsValid())
   {
@@ -304,7 +305,9 @@ void OpenGl_View::Redraw()
       }
     }
   }
+#endif
 
+#if !defined(GL_ES_VERSION_2_0)
   // create color and coverage accumulation buffers required for OIT algorithm
   if (toUseOit)
   {
@@ -381,6 +384,8 @@ void OpenGl_View::Redraw()
       toUseOit = false;
     }
   }
+#endif
+
   if (!toUseOit && myMainSceneFbosOit[0]->IsValid())
   {
     myMainSceneFbosOit     [0]->Release (aCtx.operator->());
@@ -393,6 +398,7 @@ void OpenGl_View::Redraw()
     myImmediateSceneFbosOit[1]->ChangeViewport (0, 0);
   }
 
+#if !defined(GL_ES_VERSION_2_0)
   if (aProjectType == Graphic3d_Camera::Projection_Stereo)
   {
     OpenGl_FrameBuffer* aMainFbos[2] =
@@ -481,6 +487,7 @@ void OpenGl_View::Redraw()
     }
   }
   else
+#endif
   {
     OpenGl_FrameBuffer* aMainFbo    = myMainSceneFbos[0]->IsValid() ? myMainSceneFbos[0].operator->() : aFrameBuffer;
     OpenGl_FrameBuffer* aMainFboOit = myMainSceneFbosOit[0]->IsValid() ? myMainSceneFbosOit[0].operator->() : NULL;
@@ -604,6 +611,7 @@ void OpenGl_View::RedrawImmediate()
   }
 
   bool toSwap = false;
+#if !defined(GL_ES_VERSION_2_0)
   if (aProjectType == Graphic3d_Camera::Projection_Stereo)
   {
     OpenGl_FrameBuffer* aMainFbos[2] =
@@ -679,6 +687,7 @@ void OpenGl_View::RedrawImmediate()
     }
   }
   else
+#endif
   {
     OpenGl_FrameBuffer* aMainFbo = myMainSceneFbos[0]->IsValid() ? myMainSceneFbos[0].operator->() : NULL;
     OpenGl_FrameBuffer* anImmFbo = aFrameBuffer;
@@ -1437,6 +1446,7 @@ bool OpenGl_View::blitBuffers (OpenGl_FrameBuffer*    theReadFbo,
   return true;
 }
 
+#if !defined(GL_ES_VERSION_2_0)
 // =======================================================================
 // function : drawStereoPair
 // purpose  :
@@ -1619,6 +1629,7 @@ void OpenGl_View::drawStereoPair (OpenGl_FrameBuffer* theDrawFbo)
                        aMsg);
   }
 }
+#endif
 
 // =======================================================================
 // function : copyBackToFront
@@ -1700,6 +1711,7 @@ bool OpenGl_View::copyBackToFront()
 Standard_Boolean OpenGl_View::checkOitCompatibility (const Handle(OpenGl_Context)& theGlContext,
                                                      const Standard_Boolean theMSAA)
 {
+#if !defined(GL_ES_VERSION_2_0)
   // determine if OIT is supported by current OpenGl context
   Standard_Boolean& aToDisableOIT = theMSAA ? myToDisableMSAA : myToDisableOIT;
   if (aToDisableOIT)
@@ -1735,6 +1747,9 @@ Standard_Boolean OpenGl_View::checkOitCompatibility (const Handle(OpenGl_Context
 
   aToDisableOIT = Standard_True;
   return Standard_False;
+#else
+  return Standard_False;
+#endif
 }
 
 // =======================================================================
