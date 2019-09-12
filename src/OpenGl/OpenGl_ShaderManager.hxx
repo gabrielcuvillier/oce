@@ -386,19 +386,16 @@ protected:
   Handle(OpenGl_ShaderProgram)& getStdProgram (const Standard_Boolean theToLightOn,
                                                const Standard_Integer theBits)
   {
-#if !defined(GL_ES_VERSION_2_0)
     // If environment map is enabled lighting calculations are
     // not needed (in accordance with default OCCT behaviour)
     if (theToLightOn && (theBits & OpenGl_PO_TextureEnv) == 0)
     {
-#endif
       Handle(OpenGl_ShaderProgram)& aProgram = myLightPrograms->ChangeValue (theBits);
       if (aProgram.IsNull())
       {
         prepareStdProgramLight (aProgram, theBits);
       }
       return aProgram;
-#if !defined(GL_ES_VERSION_2_0)
     }
 
     Handle(OpenGl_ShaderProgram)& aProgram = myFlatPrograms.ChangeValue (theBits);
@@ -407,7 +404,6 @@ protected:
       prepareStdProgramFlat (aProgram, theBits);
     }
     return aProgram;
-#endif
   }
 
   //! Prepare standard GLSL program for accessing point sprite alpha.
@@ -427,11 +423,9 @@ protected:
   Standard_EXPORT Standard_Boolean prepareStdProgramOitCompositing (const Standard_Boolean theMsaa);
 #endif
 
-#if !defined(GL_ES_VERSION_2_0)
   //! Prepare standard GLSL program without lighting.
   Standard_EXPORT Standard_Boolean prepareStdProgramFlat (Handle(OpenGl_ShaderProgram)& theProgram,
                                                           const Standard_Integer        theBits);
-#endif
 
   //! Prepare standard GLSL program with lighting.
   Standard_Boolean prepareStdProgramLight (Handle(OpenGl_ShaderProgram)& theProgram,

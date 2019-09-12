@@ -12,6 +12,8 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
+#if !defined(GL_ES_VERSION_2_0)
+
 #include <OpenGl_VertexBufferCompat.hxx>
 
 #include <NCollection_AlignedAllocator.hxx>
@@ -175,3 +177,5 @@ bool OpenGl_VertexBufferCompat::subData (const Handle(OpenGl_Context)& ,
   memcpy (myData->ChangeData() + anOffset, theData, aNbBytes);
   return true;
 }
+
+#endif

@@ -15,6 +15,8 @@
 #ifndef _OpenGl_VertexBufferCompat_HeaderFile
 #define _OpenGl_VertexBufferCompat_HeaderFile
 
+#if !defined(GL_ES_VERSION_2_0)
+
 #include <OpenGl_VertexBuffer.hxx>
 
 //! Compatibility layer for old OpenGL without VBO.
@@ -92,3 +94,4 @@ public:
 DEFINE_STANDARD_HANDLE(OpenGl_VertexBufferCompat, OpenGl_VertexBuffer)
 
 #endif // _OpenGl_VertexBufferCompat_HeaderFile
+#endif

@@ -1380,7 +1380,6 @@ namespace
 
 }
 
-#if !defined(GL_ES_VERSION_2_0)
 // =======================================================================
 // function : prepareStdProgramFlat
 // purpose  :
@@ -1592,7 +1591,6 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramFlat (Handle(OpenGl_Shad
   }
   return Standard_True;
 }
-#endif
 
 // =======================================================================
 // function : pointSpriteShadingSrc
