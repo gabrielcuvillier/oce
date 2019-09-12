@@ -68,8 +68,10 @@ public:
                              const Handle(V3d_View)& theView);
 
   //! pick action - input pixel values for polyline selection for selection.
+#if !defined(__EMSCRIPTEN__)
   Standard_EXPORT void Pick (const TColgp_Array1OfPnt2d& thePolyline,
                              const Handle(V3d_View)& theView);
+#endif
 
   //! Dump of detection results into image.
   //! This method performs axis picking for each pixel in the image

@@ -91,7 +91,6 @@ public:
   //! Updates window size in all selecting volumes
   Standard_EXPORT void SetWindowSize (const Standard_Integer theWidth, const Standard_Integer theHeight);
 
-
   //! Builds rectangular selecting frustum for point selection
   Standard_EXPORT void BuildSelectingVolume (const gp_Pnt2d& thePoint);
 
@@ -99,9 +98,10 @@ public:
   Standard_EXPORT void BuildSelectingVolume (const gp_Pnt2d& theMinPt,
                                              const gp_Pnt2d& theMaxPt);
 
+#if !defined(__EMSCRIPTEN__)
   //! Builds set of triangular selecting frustums for polyline selection
   Standard_EXPORT void BuildSelectingVolume (const TColgp_Array1OfPnt2d& thePoints);
-
+#endif
 
   //! SAT intersection test between defined volume and given axis-aligned box
   Standard_EXPORT virtual Standard_Boolean Overlaps (const SelectMgr_Vec3& theBoxMin,

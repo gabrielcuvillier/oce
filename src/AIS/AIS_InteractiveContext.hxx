@@ -433,11 +433,13 @@ public: //! @name Selection management
                                            const Standard_Integer  theYPMax,
                                            const Handle(V3d_View)& theView,
                                            const Standard_Boolean  theToUpdateViewer);
-  
+
+#if !defined(__EMSCRIPTEN__)
   //! polyline selection; clears the previous picked list
   Standard_EXPORT AIS_StatusOfPick Select (const TColgp_Array1OfPnt2d& thePolyline,
                                            const Handle(V3d_View)&     theView,
                                            const Standard_Boolean      theToUpdateViewer);
+#endif
 
   //! Stores and hilights the previous detected; Unhilights the previous picked.
   //! @sa MoveTo().
@@ -448,11 +450,13 @@ public: //! @name Selection management
   //! @sa MoveTo().
   Standard_EXPORT AIS_StatusOfPick ShiftSelect (const Standard_Boolean theToUpdateViewer);
 
+#if !defined(__EMSCRIPTEN__)
   //! Adds the last detected to the list of previous picked.
   //! If the last detected was already declared as picked, removes it from the Picked List.
   Standard_EXPORT AIS_StatusOfPick ShiftSelect (const TColgp_Array1OfPnt2d& thePolyline,
                                                 const Handle(V3d_View)&     theView,
                                                 const Standard_Boolean      theToUpdateViewer);
+#endif
 
   //! Rectangle of selection; adds new detected entities into the picked list,
   //! removes the detected entities that were already stored.

@@ -179,11 +179,13 @@ public:
   Standard_EXPORT AIS_StatusOfPick Select (const Standard_Integer XPMin, const Standard_Integer YPMin, const Standard_Integer XPMax, const Standard_Integer YPMax, const Handle(V3d_View)& aView, const Standard_Boolean updateviewer = Standard_True);
   
   Standard_EXPORT AIS_StatusOfPick ShiftSelect (const Standard_Integer XPMin, const Standard_Integer YPMin, const Standard_Integer XPMax, const Standard_Integer YPMax, const Handle(V3d_View)& aView, const Standard_Boolean updateviewer = Standard_True);
-  
+
+#if !defined(__EMSCRIPTEN__)
   Standard_EXPORT AIS_StatusOfPick Select (const TColgp_Array1OfPnt2d& Polyline, const Handle(V3d_View)& aView, const Standard_Boolean updateviewer = Standard_True);
   
   Standard_EXPORT AIS_StatusOfPick ShiftSelect (const TColgp_Array1OfPnt2d& Polyline, const Handle(V3d_View)& aView, const Standard_Boolean updateviewer = Standard_True);
-  
+#endif
+
   Standard_EXPORT void HilightPicked (const Standard_Boolean updateviewer = Standard_True);
   
   Standard_EXPORT void UnhilightPicked (const Standard_Boolean updateviewer = Standard_True);

@@ -495,6 +495,7 @@ AIS_StatusOfPick AIS_InteractiveContext::Select (const Standard_Integer  theXPMi
   
 }
 
+#if !defined(__EMSCRIPTEN__)
 //=======================================================================
 //function : Select
 //purpose  : Selection by polyline
@@ -541,6 +542,7 @@ AIS_StatusOfPick AIS_InteractiveContext::Select (const TColgp_Array1OfPnt2d& the
                                          : AIS_SOP_SeveralSelected;
   
 }
+#endif
 
 //=======================================================================
 //function : Select
@@ -678,6 +680,7 @@ AIS_StatusOfPick AIS_InteractiveContext::ShiftSelect (const Standard_Integer the
 
 }
 
+#if !defined(__EMSCRIPTEN__)
 //=======================================================================
 //function : ShiftSelect
 //purpose  : 
@@ -724,6 +727,7 @@ AIS_StatusOfPick AIS_InteractiveContext::ShiftSelect (const TColgp_Array1OfPnt2d
                         : (aSelNum == 1) ? AIS_SOP_OneSelected
                                          : AIS_SOP_SeveralSelected;
 }
+#endif
 
 //=======================================================================
 //function : SetCurrentObject

@@ -163,6 +163,7 @@ void StdSelect_ViewerSelector3d::Pick (const Standard_Integer theXPMin,
   TraverseSensitives();
 }
 
+#if !defined(__EMSCRIPTEN__)
 //=======================================================================
 // Function: Pick
 // Purpose : Selection using a polyline
@@ -180,6 +181,7 @@ void StdSelect_ViewerSelector3d::Pick (const TColgp_Array1OfPnt2d& thePolyline,
 
   TraverseSensitives();
 }
+#endif
 
 //=======================================================================
 // Function: DisplaySensitive.

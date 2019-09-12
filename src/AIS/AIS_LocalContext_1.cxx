@@ -248,6 +248,7 @@ AIS_StatusOfPick AIS_LocalContext::Select (const Standard_Integer  theXPMin,
                                         : AIS_SOP_Error;
 }
 
+#if !defined(__EMSCRIPTEN__)
 //==================================================
 // Function: Select
 // Purpose : Selection by polyline
@@ -304,6 +305,7 @@ AIS_StatusOfPick AIS_LocalContext::Select (const TColgp_Array1OfPnt2d& thePolyli
                         : (aSelNum > 1) ? AIS_SOP_SeveralSelected
                                         : AIS_SOP_Error;
 }
+#endif
 
 //=======================================================================
 //function : ShiftSelect
@@ -406,6 +408,7 @@ AIS_StatusOfPick AIS_LocalContext::ShiftSelect (const Standard_Integer  theXPMin
                                         : AIS_SOP_Error;
 }
 
+#if !defined(__EMSCRIPTEN__)
 //==================================================
 // Function: Select
 // Purpose : Selection by polyline
@@ -454,6 +457,7 @@ AIS_StatusOfPick AIS_LocalContext::ShiftSelect (const TColgp_Array1OfPnt2d& theP
                         : (aSelNum > 1) ? AIS_SOP_SeveralSelected
                                         : AIS_SOP_Error;
 }
+#endif
 
 //==================================================
 // Function: Hilight
