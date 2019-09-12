@@ -20,6 +20,7 @@
 #include <OSD_File.hxx>
 #include <OSD_OpenFile.hxx>
 #include <RWStl_Reader.hxx>
+#include <Poly.hxx>
 
 namespace
 {
@@ -93,6 +94,8 @@ namespace
       {
         aPoly->ChangeTriangle (aTriIter + 1) = myTriangles (aTriIter);
       }
+
+      Poly::ComputeNormals (aPoly);
 
       return aPoly;
     }
