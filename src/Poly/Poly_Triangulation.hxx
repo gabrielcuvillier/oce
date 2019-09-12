@@ -75,11 +75,15 @@ public:
   //! 2D nodes will be associated with 3D ones, (i.e. to
   //! enable a 2D representation).
   Standard_EXPORT Poly_Triangulation(const Standard_Integer nbNodes, const Standard_Integer nbTriangles, const Standard_Boolean UVNodes);
+  Standard_EXPORT Poly_Triangulation(const Standard_Integer nbNodes, const Standard_Integer nbTriangles, const Standard_Boolean UVNodes, const Standard_Boolean Normals);
 
   //! Constructs a triangulation from a set of triangles. The
   //! triangulation is initialized with 3D points from Nodes and triangles
   //! from Triangles.
   Standard_EXPORT Poly_Triangulation(const TColgp_Array1OfPnt& Nodes, const Poly_Array1OfTriangle& Triangles);
+  //! Version with normals
+  Standard_EXPORT Poly_Triangulation(const TColgp_Array1OfPnt& Nodes, const TShort_Array1OfShortReal& Normals, const Poly_Array1OfTriangle& Triangles);
+
 
   //! Constructs a triangulation from a set of triangles. The
   //! triangulation is initialized with 3D points from Nodes, 2D points from
@@ -89,6 +93,8 @@ public:
   //! from Nodes on the surface approximated by the
   //! constructed triangulation.
   Standard_EXPORT Poly_Triangulation(const TColgp_Array1OfPnt& Nodes, const TColgp_Array1OfPnt2d& UVNodes, const Poly_Array1OfTriangle& Triangles);
+  //! Version with UV and normals
+  Standard_EXPORT Poly_Triangulation(const TColgp_Array1OfPnt& Nodes, const TColgp_Array1OfPnt2d& UVNodes, const TShort_Array1OfShortReal& Normals, const Poly_Array1OfTriangle& Triangles);
 
   //! Creates full copy of current triangulation
   Standard_EXPORT virtual Handle(Poly_Triangulation) Copy() const;
