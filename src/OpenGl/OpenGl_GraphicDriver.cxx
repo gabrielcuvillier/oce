@@ -465,6 +465,7 @@ Standard_ShortReal OpenGl_GraphicDriver::DefaultTextHeight() const
   return 16.;
 }
 
+#if !defined(HAVE_GLES2)
 // =======================================================================
 // function : EnableVBO
 // purpose  :
@@ -473,6 +474,7 @@ void OpenGl_GraphicDriver::EnableVBO (const Standard_Boolean theToTurnOn)
 {
   myCaps->vboDisable = !theToTurnOn;
 }
+#endif
 
 // =======================================================================
 // function : EnableFBO

@@ -500,8 +500,12 @@ public:
   //! Returns true if VBO is supported and permitted.
   inline bool ToUseVbo() const
   {
+#if !defined(GL_ES_VERSION_2_0)
     return core15fwd != NULL
        && !caps->vboDisable;
+#else
+    return true;
+#endif
   }
 
   //! @return cached state of GL_NORMALIZE.

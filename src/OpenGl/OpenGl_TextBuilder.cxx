@@ -174,14 +174,12 @@ void OpenGl_TextBuilder::Perform (const Font_TextFormatter&                     
     Handle(OpenGl_VertexBuffer) aVertsVbo, aTcrdsVbo;
     while (theVertsPerTexture.Length() < theTextures.Length())
     {
-#if !defined(GL_ES_VERSION_2_0)
       if (isNormalMode)
       {
-#endif
         aVertsVbo = new OpenGl_VertexBuffer();
         aTcrdsVbo = new OpenGl_VertexBuffer();
-#if !defined(GL_ES_VERSION_2_0)
       }
+#if !defined(GL_ES_VERSION_2_0)
       else
       {
         aVertsVbo = new OpenGl_VertexBufferCompat();

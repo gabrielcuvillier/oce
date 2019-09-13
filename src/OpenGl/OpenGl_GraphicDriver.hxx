@@ -172,10 +172,12 @@ public:
   //! Specify swap buffer behavior.
   Standard_EXPORT void SetBuffersNoSwap (const Standard_Boolean theIsNoSwap);
 
+#if !defined(HAVE_GLES2)
   //! VBO usage can be forbidden by this method even if it is supported by GL driver.
   //! Notice that disabling of VBO will cause rendering performance degradation.
   //! Warning! This method should be called only before any primitives are displayed in GL scene!
   Standard_EXPORT void EnableVBO (const Standard_Boolean theToTurnOn) Standard_OVERRIDE;
+#endif
 
   //! Set the multisampling level (antialiasing)
   //! Warning! This method should be called before context initialization.

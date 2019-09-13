@@ -142,6 +142,8 @@ void OpenGl_View::Redraw()
 {
   const Standard_Boolean wasDisabledMSAA = myToDisableMSAA;
   const Standard_Boolean hadFboBlit      = myHasFboBlit;
+
+#if !defined(GL_ES_VERSION_2_0)
   if (myRenderParams.Method == Graphic3d_RM_RAYTRACING
   && !myCaps->vboDisable
   && !myCaps->keepArrayData)
@@ -151,6 +153,7 @@ void OpenGl_View::Redraw()
     myDriver->setDeviceLost();
     myCaps->keepArrayData = Standard_True;
   }
+#endif
 
   if (!myWorkspace->Activate())
   {
@@ -189,8 +192,12 @@ void OpenGl_View::Redraw()
     aNbSamples = OpenGl_Context::GetPowerOfTwo (aNbSamples, aCtx->MaxMsaaSamples());
   }
 
-  bool toUseOit = myRenderParams.TransparencyMethod == Graphic3d_RTM_BLEND_OIT
+#if !defined(GL_ES_VERSION_2)
+  const bool toUseOit = myRenderParams.TransparencyMethod == Graphic3d_RTM_BLEND_OIT
                && checkOitCompatibility (aCtx, aNbSamples > 0);
+#else
+  const bool toUseOit = false;
+#endif
 
   const bool toInitImmediateFbo = myTransientDrawToFront
                                && (!aCtx->caps->useSystemBuffer || (toUseOit && HasImmediateStructures()));
@@ -1056,8 +1063,6 @@ void OpenGl_View::renderStructs (Graphic3d_Camera::Projection theProjection,
 #if !defined(GL_ES_VERSION_2_0)
     myRenderParams.Method != Graphic3d_RM_RAYTRACING ||
     myRaytraceInitStatus == OpenGl_RT_FAIL ||
-#else
-    true ||
 #endif
     aCtx->IsFeedback();
 
