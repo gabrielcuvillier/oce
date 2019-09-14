@@ -261,6 +261,7 @@ public:
   //! @param theMax [in] the maximum point of scene.
   virtual void GraduatedTrihedronMinMaxValues (const Graphic3d_Vec3 theMin, const Graphic3d_Vec3 theMax) = 0;
 
+#if !defined(HAVE_GLES2)
   //! Dump active rendering buffer into specified memory buffer.
   virtual Standard_Boolean BufferDump (Image_PixMap& theImage, const Graphic3d_BufferType& theBufferType) = 0;
 
@@ -271,6 +272,7 @@ public:
   virtual Standard_Boolean Export (const Standard_CString theFileName,
                                    const Graphic3d_ExportFormat theFormat,
                                    const Graphic3d_SortType theSortType = Graphic3d_ST_BSP_Tree) = 0;
+#endif
 
   //! Marks BVH tree and the set of BVH primitives of correspondent priority list with id theLayerId as outdated.
   virtual void InvalidateBVHData (const Standard_Integer theLayerId) = 0;

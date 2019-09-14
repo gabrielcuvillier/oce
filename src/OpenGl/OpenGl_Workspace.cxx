@@ -37,7 +37,9 @@
 #include <NCollection_AlignedAllocator.hxx>
 
 IMPLEMENT_STANDARD_RTTIEXT(OpenGl_Workspace,Standard_Transient)
+#if !defined(GL_ES_VERSION_2_0)
 IMPLEMENT_STANDARD_RTTIEXT(OpenGl_RaytraceFilter,OpenGl_RenderFilter)
+#endif
 
 #ifdef HAVE_GL2PS
   #include <gl2ps.h>
@@ -542,6 +544,7 @@ inline void convertRowFromRgba (T* theRgbRow,
   }
 }
 
+#if !defined(GL_ES_VERSION_2_0)
 // =======================================================================
 // function : BufferDump
 // purpose  :
@@ -752,7 +755,9 @@ Standard_Boolean OpenGl_Workspace::BufferDump (const Handle(OpenGl_FrameBuffer)&
 
   return !hasErrors;
 }
+#endif
 
+#if !defined(GL_ES_VERSION_2_0)
 // =======================================================================
 // function : ShouldRender
 // purpose  :
@@ -768,3 +773,4 @@ Standard_Boolean OpenGl_RaytraceFilter::ShouldRender (const Handle(OpenGl_Worksp
   return aPrevFilterResult &&
     !OpenGl_Raytrace::IsRaytracedElement (theElement);
 }
+#endif

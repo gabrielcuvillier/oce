@@ -12,11 +12,12 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
+#if !defined(HAVE_GLES2)
+
 #include <OpenGl_TextureBufferArb.hxx>
 
 #include <OpenGl_Context.hxx>
 #include <Standard_Assert.hxx>
-
 
 IMPLEMENT_STANDARD_RTTIEXT(OpenGl_TextureBufferArb,OpenGl_VertexBuffer)
 
@@ -284,3 +285,5 @@ void OpenGl_TextureBufferArb::UnbindTexture (const Handle(OpenGl_Context)& theGl
   theGlCtx->core20fwd->glActiveTexture (GL_TEXTURE0 + theTextureUnit);
   glBindTexture (GetTarget(), NO_TEXTURE);
 }
+
+#endif

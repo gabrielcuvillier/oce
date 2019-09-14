@@ -24,6 +24,8 @@
 #include <Geom_Curve.hxx>
 #include <Geom2d_Curve.hxx>
 
+#if !defined(__EMSCRIPTEN__)
+
 // This file defines global functions not declared in any public header,
 // intended for use from debugger prompt (Command Window in Visual Studio)
 
@@ -81,4 +83,5 @@ const char* GeomTools_Dump (const Handle(Standard_Transient)& theGeom)
   return GeomTools_Dump ((void*)&theGeom);
 }
 
+#endif
 #endif

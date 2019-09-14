@@ -142,11 +142,13 @@ public:
   //! @param theMax [in] the maximum point of scene.
   Standard_EXPORT virtual void GraduatedTrihedronMinMaxValues (const Graphic3d_Vec3 theMin, const Graphic3d_Vec3 theMax) Standard_OVERRIDE;
 
+#if !defined(GL_ES_VERSION_2_0)
   //! Dump active rendering buffer into specified memory buffer.
   //! In Ray-Tracing allow to get a raw HDR buffer using Graphic3d_BT_RGB_RayTraceHdrLeft buffer type,
   //! only Left view will be dumped ignoring stereoscopic parameter.
   Standard_EXPORT virtual Standard_Boolean BufferDump (Image_PixMap& theImage,
                                                        const Graphic3d_BufferType& theBufferType) Standard_OVERRIDE;
+
 
   //! Export scene into the one of the Vector graphics formats (SVG, PS, PDF...).
   //! In contrast to Bitmaps, Vector graphics is scalable (so you may got quality benefits
@@ -155,6 +157,7 @@ public:
   Standard_EXPORT virtual Standard_Boolean Export (const Standard_CString theFileName,
                                                    const Graphic3d_ExportFormat theFormat,
                                                    const Graphic3d_SortType theSortType = Graphic3d_ST_BSP_Tree) Standard_OVERRIDE;
+#endif
 
   //! Marks BVH tree and the set of BVH primitives of correspondent priority list with id theLayerId as outdated.
   Standard_EXPORT virtual void InvalidateBVHData (const Standard_Integer theLayerId) Standard_OVERRIDE;
@@ -451,6 +454,7 @@ private:
   //! Initialize blit quad.
   OpenGl_VertexBuffer* initBlitQuad (const Standard_Boolean theToFlip);
 
+#if !defined(GL_ES_VERSION_2_0)
   //! Blend together views pair into stereo image.
   void drawStereoPair (OpenGl_FrameBuffer* theDrawFbo);
 
@@ -462,6 +466,7 @@ private:
   bool chooseOitColorConfiguration (const Handle(OpenGl_Context)& theGlContext,
                                     const Standard_Integer theConfigIndex,
                                     OpenGl_ColorFormats& theFormats);
+#endif
 
 protected:
 
@@ -540,6 +545,7 @@ protected: //! @name Background parameters
 
 protected: //! @name data types related to ray-tracing
 
+#if !defined(GL_ES_VERSION_2_0)
   //! Result of OpenGL shaders initialization.
   enum RaytraceInitStatus
   {
@@ -613,6 +619,7 @@ protected: //! @name data types related to ray-tracing
 
     OpenGl_RT_NbVariables // special field
   };
+#endif
 
   //! Defines OpenGL image samplers.
   enum ShaderImageNames
@@ -676,6 +683,7 @@ protected: //! @name data types related to ray-tracing
 
   };
 
+#if !defined(GL_ES_VERSION_2_0)
   //! Default ray-tracing depth.
   static const Standard_Integer THE_DEFAULT_NB_BOUNCES = 3;
 
@@ -740,6 +748,7 @@ protected: //! @name data types related to ray-tracing
       DepthOfField           (Standard_False),
       ToneMappingMethod      (Graphic3d_ToneMappingMethod_Disabled) { }
   };
+#endif
 
   //! Describes state of OpenGL structure.
   struct StructState

@@ -27,7 +27,7 @@
 #include <OpenGl_ShaderObject.hxx>
 #include <OpenGl_ShaderProgram.hxx>
 #include <OpenGl_TextParam.hxx>
-#include <OpenGl_TextureBufferArb.hxx>
+//#include <OpenGl_TextureBufferArb.hxx>
 #include <OpenGl_Vec.hxx>
 #include <OpenGl_Window.hxx>
 
@@ -37,6 +37,7 @@ class Image_PixMap;
 class OpenGl_RaytraceFilter;
 DEFINE_STANDARD_HANDLE (OpenGl_RaytraceFilter, OpenGl_RenderFilter)
 
+#if !defined(GL_ES_VERSION_2_0)
 //! Graphical ray-tracing filter.
 //! Filters out all raytracable structures.
 class OpenGl_RaytraceFilter : public OpenGl_RenderFilter
@@ -72,6 +73,7 @@ public:
 
   DEFINE_STANDARD_RTTIEXT(OpenGl_RaytraceFilter,OpenGl_RenderFilter)
 };
+#endif
 
 class OpenGl_Workspace;
 DEFINE_STANDARD_HANDLE(OpenGl_Workspace,Standard_Transient)
@@ -99,9 +101,11 @@ public:
 
   Standard_EXPORT void FBORelease (Handle(OpenGl_FrameBuffer)& theFbo);
 
+#if !defined(GL_ES_VERSION_2_0)
   Standard_Boolean BufferDump (const Handle(OpenGl_FrameBuffer)& theFbo,
                                Image_PixMap&                     theImage,
                                const Graphic3d_BufferType&       theBufferType);
+#endif
 
   Standard_EXPORT Standard_Integer Width()  const;
 

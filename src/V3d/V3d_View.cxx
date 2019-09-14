@@ -2759,6 +2759,7 @@ void V3d_View::Init()
   }
 }
 
+#if !defined(HAVE_GLES2)
 //=============================================================================
 //function : Export
 //purpose  :
@@ -3013,6 +3014,7 @@ Standard_Boolean V3d_View::ToPixMap (Image_PixMap&               theImage,
   myView->SetFBO (aPrevFBOPtr);
   return isSuccess;
 }
+#endif
 
 //=============================================================================
 //function : ImmediateUpdate

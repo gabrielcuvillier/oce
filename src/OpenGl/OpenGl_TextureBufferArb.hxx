@@ -15,6 +15,8 @@
 #ifndef _OpenGl_TextureBufferArb_H__
 #define _OpenGl_TextureBufferArb_H__
 
+#if !defined(HAVE_GLES2)
+
 #include <OpenGl_VertexBuffer.hxx>
 #include <OpenGl_ArbTBO.hxx>
 
@@ -118,3 +120,4 @@ public:
 DEFINE_STANDARD_HANDLE(OpenGl_TextureBufferArb, OpenGl_VertexBuffer)
 
 #endif // _OpenGl_TextureBufferArb_H__
+#endif

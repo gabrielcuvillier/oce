@@ -795,6 +795,7 @@ public:
   //! grid in <me>
   Standard_EXPORT void SetGridActivity (const Standard_Boolean aFlag);
 
+#if !defined(HAVE_GLES2)
   //! dump the full contents of the view at the same
   //! scale in the file <theFile>. The file name
   //! extension must be one of ".png",".bmp",".jpg",".gif".
@@ -836,6 +837,7 @@ public:
     aParams.ToAdjustAspect = theToAdjustAspect;
     return ToPixMap (theImage, aParams);
   }
+#endif
 
   //! Manages display of the back faces
   //! When <aModel> is TOBM_AUTOMATIC the object backfaces

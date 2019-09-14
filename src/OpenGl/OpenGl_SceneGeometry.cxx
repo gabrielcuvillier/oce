@@ -13,6 +13,8 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
+#if !defined(HAVE_GLES2)
+
 #include <OSD_Timer.hxx>
 #include <OSD_Parallel.hxx>
 #include <Standard_Assert.hxx>
@@ -627,3 +629,5 @@ namespace OpenGl_Raytrace
     return Standard_False;
   }
 }
+
+#endif

@@ -373,6 +373,7 @@ void OpenGl_View::GraduatedTrihedronMinMaxValues (const Graphic3d_Vec3 theMin, c
   myGraduatedTrihedron.SetMinMax (theMin, theMax);
 }
 
+#if !defined(GL_ES_VERSION_2_0)
 // =======================================================================
 // function : BufferDump
 // purpose  :
@@ -434,6 +435,7 @@ Standard_Boolean OpenGl_View::BufferDump (Image_PixMap& theImage, const Graphic3
   return true;
 #endif
 }
+#endif
 
 // =======================================================================
 // function : Background
@@ -852,12 +854,14 @@ Standard_Boolean OpenGl_View::Export (const Standard_CString theFileName,
   return anErrCode == GL2PS_SUCCESS;
 }
 #else
+#if !defined(GL_ES_VERSION_2_0)
 Standard_Boolean OpenGl_View::Export (const Standard_CString /*theFileName*/,
                                       const Graphic3d_ExportFormat /*theFormat*/,
                                       const Graphic3d_SortType /*theSortType*/)
 {
     return Standard_False;
 }
+#endif
 #endif
 
 //=======================================================================

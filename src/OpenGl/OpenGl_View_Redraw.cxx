@@ -163,7 +163,9 @@ void OpenGl_View::Redraw()
   myWindow->SetSwapInterval();
 
   ++myFrameCounter;
+#if !defined(GL_ES_VERSION_2_0)
   const Graphic3d_StereoMode   aStereoMode  = myRenderParams.StereoMode;
+#endif
   Graphic3d_Camera::Projection aProjectType = myCamera->ProjectionType();
   Handle(OpenGl_Context)       aCtx         = myWorkspace->GetGlContext();
 
@@ -184,6 +186,7 @@ void OpenGl_View::Redraw()
   Standard_Integer aRendSizeY = Standard_Integer(myRenderParams.RenderResolutionScale * aSizeY + 0.5f);
 
   // determine multisampling parameters
+#if !defined(GL_ES_VERSION_2_0)
   Standard_Integer aNbSamples = !myToDisableMSAA && aSizeX == aRendSizeX
                               ? Max (Min (myRenderParams.NbMsaaSamples, aCtx->MaxMsaaSamples()), 0)
                               : 0;
@@ -191,8 +194,11 @@ void OpenGl_View::Redraw()
   {
     aNbSamples = OpenGl_Context::GetPowerOfTwo (aNbSamples, aCtx->MaxMsaaSamples());
   }
+#else
+  Standard_Integer aNbSamples = 0;
+#endif
 
-#if !defined(GL_ES_VERSION_2)
+#if !defined(GL_ES_VERSION_2_0)
   const bool toUseOit = myRenderParams.TransparencyMethod == Graphic3d_RTM_BLEND_OIT
                && checkOitCompatibility (aCtx, aNbSamples > 0);
 #else
@@ -597,7 +603,9 @@ void OpenGl_View::RedrawImmediate()
     return;
   }
 
+#if !defined(GL_ES_VERSION_2_0)
   const Graphic3d_StereoMode   aStereoMode  = myRenderParams.StereoMode;
+#endif
   Graphic3d_Camera::Projection aProjectType = myCamera->ProjectionType();
   OpenGl_FrameBuffer*          aFrameBuffer = myFBO.operator->();
 
@@ -608,6 +616,7 @@ void OpenGl_View::RedrawImmediate()
     aFrameBuffer = aCtx->DefaultFrameBuffer().operator->();
   }
 
+#if !defined(GL_ES_VERSION_2_0)
   if (aProjectType == Graphic3d_Camera::Projection_Stereo)
   {
     if (myMainSceneFbos[0]->IsValid()
@@ -616,6 +625,7 @@ void OpenGl_View::RedrawImmediate()
       aProjectType = Graphic3d_Camera::Projection_Perspective;
     }
   }
+#endif
 
   bool toSwap = false;
 #if !defined(GL_ES_VERSION_2_0)
@@ -1063,6 +1073,8 @@ void OpenGl_View::renderStructs (Graphic3d_Camera::Projection theProjection,
 #if !defined(GL_ES_VERSION_2_0)
     myRenderParams.Method != Graphic3d_RM_RAYTRACING ||
     myRaytraceInitStatus == OpenGl_RT_FAIL ||
+#else
+    true ||
 #endif
     aCtx->IsFeedback();
 
@@ -1313,6 +1325,7 @@ bool OpenGl_View::blitBuffers (OpenGl_FrameBuffer*    theReadFbo,
 #endif
   aCtx->core20fwd->glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
+#if !defined(GL_ES_VERSION_2_0)
   if (aCtx->arbFBOBlit != NULL
    && theReadFbo->NbSamples() != 0)
   {
@@ -1387,6 +1400,7 @@ bool OpenGl_View::blitBuffers (OpenGl_FrameBuffer*    theReadFbo,
     }
   }
   else
+#endif
   {
     aCtx->core20fwd->glDepthFunc (GL_ALWAYS);
     aCtx->core20fwd->glDepthMask (GL_TRUE);
@@ -1709,6 +1723,7 @@ bool OpenGl_View::copyBackToFront()
 #endif
 }
 
+#if !defined(GL_ES_VERSION_2_0)
 // =======================================================================
 // function : checkOitCompatibility
 // purpose  :
@@ -1716,7 +1731,6 @@ bool OpenGl_View::copyBackToFront()
 Standard_Boolean OpenGl_View::checkOitCompatibility (const Handle(OpenGl_Context)& theGlContext,
                                                      const Standard_Boolean theMSAA)
 {
-#if !defined(GL_ES_VERSION_2_0)
   // determine if OIT is supported by current OpenGl context
   Standard_Boolean& aToDisableOIT = theMSAA ? myToDisableMSAA : myToDisableOIT;
   if (aToDisableOIT)
@@ -1752,9 +1766,6 @@ Standard_Boolean OpenGl_View::checkOitCompatibility (const Handle(OpenGl_Context
 
   aToDisableOIT = Standard_True;
   return Standard_False;
-#else
-  return Standard_False;
-#endif
 }
 
 // =======================================================================
@@ -1783,3 +1794,4 @@ bool OpenGl_View::chooseOitColorConfiguration (const Handle(OpenGl_Context)& the
   }
   return false; // color combination does not exist
 }
+#endif
