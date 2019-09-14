@@ -188,6 +188,7 @@ t TKFeat
 t TKFillet
 t TKGeomAlgo
 t TKHLR
+t TKHLRBase
 t TKMesh
 t TKOffset
 t TKPrim

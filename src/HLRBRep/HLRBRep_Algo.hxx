@@ -44,9 +44,9 @@ DEFINE_STANDARD_HANDLE(HLRBRep_Algo, HLRBRep_InternalAlgo)
 //! HLRBRep_HLRToShape extraction utilities, which reconstruct a new, simplified shape
 //! from a selection of calculation results. This new shape is made up of edges, which
 //! represent the shape visualized in the projection.
-//! HLRBRep_Algo takes the shape itself into account whereas HLRBRep_PolyAlgo
+//! HLRBRep_Algo takes the shape itself into account whereas HLRAlgo_BRepPolyAlgo
 //! works with a polyhedral simplification of the shape. When you use HLRBRep_Algo, you
-//! obtain an exact result, whereas, when you use HLRBRep_PolyAlgo, you reduce
+//! obtain an exact result, whereas, when you use HLRAlgo_BRepPolyAlgo, you reduce
 //! computation time but obtain polygonal segments. In the case of complicated
 //! shapes, HLRBRep_Algo may be time-consuming.
 //! An HLRBRep_Algo object provides a framework for:

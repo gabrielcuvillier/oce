@@ -88,7 +88,7 @@
 #include <TopLoc_Location.hxx>
 
 #include <HLRAlgo_Projector.hxx>
-#include <HLRBRep_PolyAlgo.hxx>
+#include <HLRAlgo_BRepPolyAlgo.hxx>
 #include <HLRBRep_PolyHLRToShape.hxx>
 #include <Aspect_Window.hxx>
 
@@ -3065,7 +3065,7 @@ static int VComputeHLR (Draw_Interpretor& di,
     return 1;
   }
 
-  Handle(HLRBRep_PolyAlgo) aPolyAlgo = new HLRBRep_PolyAlgo();
+  Handle(HLRAlgo_BRepPolyAlgo) aPolyAlgo = new HLRAlgo_BRepPolyAlgo();
   HLRBRep_PolyHLRToShape aHLRToShape;
 
   gp_Pnt anEye;

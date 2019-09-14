@@ -22,7 +22,7 @@
 #include <HLRAlgo_EdgeIterator.hxx>
 #include <HLRBRep_BiPoint.hxx>
 #include <HLRBRep_ListIteratorOfListOfBPoint.hxx>
-#include <HLRBRep_PolyAlgo.hxx>
+#include <HLRAlgo_BRepPolyAlgo.hxx>
 #include <TopoDS_Shape.hxx>
 
 #define PntX1 ((Standard_Real*)Coordinates)[0]
@@ -56,7 +56,7 @@ void DBRep_HideData::Set(const Standard_Integer viewID,
   myFocal = focal;
   myAngle = ang;
 
-  Handle(HLRBRep_PolyAlgo) hider = new HLRBRep_PolyAlgo(S);
+  Handle(HLRAlgo_BRepPolyAlgo) hider = new HLRAlgo_BRepPolyAlgo(S);
   hider->Angle(ang);
   hider->Projector(HLRAlgo_Projector(myTrsf,myFocal > 0.,myFocal));
   hider->Update();

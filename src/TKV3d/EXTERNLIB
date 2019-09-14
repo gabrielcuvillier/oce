@@ -9,7 +9,7 @@ TKG3d
 TKGeomBase
 TKMesh
 TKGeomAlgo
-TKHLR
+TKHLRBase
 CSF_user32
 CSF_gdi32
 CSF_OpenGlLibs

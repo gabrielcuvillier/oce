@@ -24,7 +24,7 @@
 #include <HLRBRep_BiPoint.hxx>
 #include <HLRBRep_ListIteratorOfListOfBPoint.hxx>
 #include <HLRBRep_ListOfBPoint.hxx>
-#include <HLRBRep_PolyAlgo.hxx>
+#include <HLRAlgo_BRepPolyAlgo.hxx>
 #include <Prs3d_LineAspect.hxx>
 #include <Prs3d_Presentation.hxx>
 #include <Prs3d_Projector.hxx>
@@ -77,7 +77,7 @@ void StdPrs_HLRPolyShape::Add(const Handle (Prs3d_Presentation)& aPresentation,
   }
 #endif
 
-  Handle(HLRBRep_PolyAlgo) hider = new HLRBRep_PolyAlgo(aShape);
+  Handle(HLRAlgo_BRepPolyAlgo) hider = new HLRAlgo_BRepPolyAlgo(aShape);
 
   hider->Projector(aProjector->Projector());
   hider->Angle(aDrawer->HLRAngle());

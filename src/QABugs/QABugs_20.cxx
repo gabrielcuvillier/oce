@@ -60,7 +60,7 @@
 
 #include <HLRAppli_ReflectLines.hxx>
 #include <HLRBRep_PolyHLRToShape.hxx>
-#include <HLRBRep_PolyAlgo.hxx>
+#include <HLRAlgo_BRepPolyAlgo.hxx>
 
 #include <limits>
 
@@ -2324,7 +2324,7 @@ static Standard_Integer OCC28784(Draw_Interpretor&, Standard_Integer argc, const
   gp_Ax2 aPlane (gp::Origin(), gp::DX(), -gp::DZ());
   HLRAlgo_Projector aProjector(aPlane);
 
-  Handle(HLRBRep_PolyAlgo) aHLR = new HLRBRep_PolyAlgo(aShape);
+  Handle(HLRAlgo_BRepPolyAlgo) aHLR = new HLRAlgo_BRepPolyAlgo(aShape);
   aHLR->Projector(aProjector);
   aHLR->Update();
 

@@ -22,7 +22,7 @@
 #include <HLRAlgo_EdgeStatus.hxx>
 #include <HLRBRep_BiPnt2D.hxx>
 #include <HLRBRep_ListIteratorOfListOfBPnt2D.hxx>
-#include <HLRBRep_PolyAlgo.hxx>
+#include <HLRAlgo_BRepPolyAlgo.hxx>
 #include <HLRBRep_PolyHLRToShape.hxx>
 #include <TopExp_Explorer.hxx>
 #include <TopoDS.hxx>
@@ -42,7 +42,7 @@ HLRBRep_PolyHLRToShape::HLRBRep_PolyHLRToShape ()
 //purpose  : 
 //=======================================================================
 
-void HLRBRep_PolyHLRToShape::Update (const Handle(HLRBRep_PolyAlgo)& A)
+void HLRBRep_PolyHLRToShape::Update (const Handle(HLRAlgo_BRepPolyAlgo)& A)
 {
   myAlgo = A;
   myHideMode = Standard_True;
