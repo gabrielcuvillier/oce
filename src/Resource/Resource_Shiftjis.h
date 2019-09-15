@@ -14,7 +14,7 @@
  commercial license or contractual agreement.
 */
 
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_UNICODE_CONVERSIONS)
 
 static  char16 unisjis   [65536] = {
 0x0 , 0x0 , 0x0 , 0x0 ,

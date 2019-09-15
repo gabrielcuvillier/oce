@@ -18,7 +18,7 @@
 #include <string.h>
 #include <sys/types.h>
 
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_UNICODE_CONVERSIONS)
 
 typedef unsigned short char16 ;
 
