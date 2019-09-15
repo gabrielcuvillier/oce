@@ -108,13 +108,21 @@ public:
   //! Binds main thread context
   void SetContext( TypeContext& theContext )
   {
+#if !defined(__EMSCRIPTEN__)
     myContexts.Bind(OSD_Thread::Current(), theContext);
+#else
+    myContexts.Bind(0, theContext);
+#endif
   }
 
   //! Returns current thread context
   TypeContext& GetThreadContext() const
   {
+#if !defined(__EMSCRIPTEN__)
     const Standard_ThreadId aThreadID = OSD_Thread::Current();
+#else
+    const Standard_ThreadId aThreadID = 0;
+#endif
     if ( myContexts.IsBound(aThreadID) )
     {
       TypeContext& aContext = myContexts(aThreadID);

@@ -16,6 +16,8 @@
 #ifndef _OSD_Thread_HeaderFile
 #define _OSD_Thread_HeaderFile
 
+#if !defined(__EMSCRIPTEN__)
+
 #include <Standard.hxx>
 #include <Standard_DefineAlloc.hxx>
 #include <Standard_Handle.hxx>
@@ -124,3 +126,4 @@ private:
 };
 
 #endif // _OSD_Thread_HeaderFile
+#endif

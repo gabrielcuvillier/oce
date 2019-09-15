@@ -32,9 +32,12 @@ inline Standard_Integer HashCode(const Standard_ThreadId Value,
 
 #else
 
+#if !defined(__EMSCRIPTEN__)
 #include <pthread.h>
 typedef pthread_t Standard_ThreadId;
-
+#else
+typedef Standard_Integer Standard_ThreadId;
+#endif
 #endif
 
 #endif

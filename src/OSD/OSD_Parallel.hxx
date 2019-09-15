@@ -14,7 +14,9 @@
 #ifndef OSD_Parallel_HeaderFile
 #define OSD_Parallel_HeaderFile
 
+#if !defined(__EMSCRIPTEN__)
 #include <OSD_Thread.hxx>
+#endif
 #include <Standard_Mutex.hxx>
 #include <Standard_NotImplemented.hxx>
 #include <Standard_Atomic.hxx>
@@ -221,6 +223,11 @@ void OSD_Parallel::ForEach( InputIterator          theBegin,
                             const Functor&         theFunctor,
                             const Standard_Boolean isForceSingleThreadExecution )
 {
+#if defined(__EMSCRIPTEN__)
+  (void)isForceSingleThreadExecution;
+  for ( InputIterator it(theBegin); it != theEnd; ++it )
+    theFunctor(*it);
+#else
   if ( isForceSingleThreadExecution )
   {
     for ( InputIterator it(theBegin); it != theEnd; ++it )
@@ -258,6 +265,7 @@ void OSD_Parallel::ForEach( InputIterator          theBegin,
       aThreads(i).Wait();
   }
   #endif
+#endif
 }
 
 //=======================================================================
@@ -270,6 +278,11 @@ void OSD_Parallel::For( const Standard_Integer theBegin,
                         const Functor&         theFunctor,
                         const Standard_Boolean isForceSingleThreadExecution )
 {
+#if defined(__EMSCRIPTEN__)
+  (void)isForceSingleThreadExecution;
+  for ( Standard_Integer i = theBegin; i < theEnd; ++i )
+      theFunctor(i);
+#else
   if ( isForceSingleThreadExecution )
   {
     for ( Standard_Integer i = theBegin; i < theEnd; ++i )
@@ -307,6 +320,7 @@ void OSD_Parallel::For( const Standard_Integer theBegin,
       aThreads(i).Wait();
   }
   #endif
+#endif
 }
 
 #endif

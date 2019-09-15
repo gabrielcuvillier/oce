@@ -24,8 +24,10 @@ IMPLEMENT_STANDARD_RTTIEXT(BVH_BuildThread,Standard_Transient)
 BVH_BuildThread::BVH_BuildThread (BVH_BuildTool&  theBuildTool,
                                   BVH_BuildQueue& theBuildQueue)
 : myBuildTool  (theBuildTool),
-  myBuildQueue (theBuildQueue),
-  myWorkThread (threadFunction)
+  myBuildQueue (theBuildQueue)
+  #if !defined(__EMSCRIPTEN__)
+  ,myWorkThread (threadFunction)
+  #endif
 {
   //
 }

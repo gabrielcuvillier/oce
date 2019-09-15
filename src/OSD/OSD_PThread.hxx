@@ -25,9 +25,12 @@ typedef HANDLE OSD_PThread;
 
 #else
 
+#if !defined(__EMSCRIPTEN__)
 #include <pthread.h>
 typedef pthread_t OSD_PThread;
-
+#else
+typedef Standard_Integer OSD_PThread;
+#endif
 #endif
 
 #endif
