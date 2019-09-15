@@ -14,8 +14,6 @@
 #ifndef _Aspect_NeutralWindow_HeaderFile
 #define _Aspect_NeutralWindow_HeaderFile
 
-#if !defined(__EMSCRIPTEN__)
-
 #include <Aspect_Window.hxx>
 
 //! Defines a platform-neutral window.
@@ -123,4 +121,3 @@ protected:
 DEFINE_STANDARD_HANDLE(Aspect_NeutralWindow, Aspect_Window)
 
 #endif // _Aspect_NeutralWindow_HeaderFile
-#endif

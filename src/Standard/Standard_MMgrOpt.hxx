@@ -16,7 +16,7 @@
 #ifndef _Standard_MMgrOpt_HeaderFile
 #define _Standard_MMgrOpt_HeaderFile
 
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_OPTIMIZED_MEMORY_ALLOCATOR)
 
 #include <Standard_MMgrRoot.hxx>
 #include <Standard_Mutex.hxx>

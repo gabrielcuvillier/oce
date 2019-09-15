@@ -274,7 +274,7 @@ void AIS_Shape::Compute(const Handle(Prs3d_Projector)& aProjector,
   Aspect_TypeOfDeflection prevdef = defdrawer->TypeOfDeflection();
   defdrawer->SetTypeOfDeflection(Aspect_TOD_RELATIVE);
 
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
   if (myDrawer->IsAutoTriangulation())
   {
     // coefficients for calculation
@@ -294,11 +294,9 @@ void AIS_Shape::Compute(const Handle(Prs3d_Projector)& aProjector,
       OCC_CATCH_SIGNALS
       switch (TypeOfHLR()) {
         case Prs3d_TOH_Algo:
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_EXACTHLR_IN_VISUALIZATION)
           StdPrs_HLRShape::Add (aPresentation, SH, myDrawer, aProjector);
           break;
-#else
-#pragma message("StdPrs_HLRShape disabled on Emscripten. Only HLRPolyShape is used.")
 #endif
         case Prs3d_TOH_PolyAlgo:
         default:

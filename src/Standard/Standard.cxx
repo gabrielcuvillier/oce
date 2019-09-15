@@ -98,8 +98,13 @@ Standard_MMgrFactory::Standard_MMgrFactory()
 #endif
 
   char* aVar;
+
+#if !defined(OCCT_DISABLE_OPTIMIZED_MEMORY_ALLOCATOR)
   aVar = getenv ("MMGT_OPT");
   const Standard_Integer anAllocId   = (aVar ?  atoi (aVar): OCCT_MMGT_OPT_DEFAULT);
+#else
+  const Standard_Integer anAllocId = 0;
+#endif
 
 #if defined(_WIN32) && !defined(_WIN64) && !defined(__MINGW32__)
   static const DWORD _SSE2_FEATURE_BIT(0x04000000);
@@ -152,7 +157,7 @@ Standard_MMgrFactory::Standard_MMgrFactory()
 
   switch (anAllocId)
   {
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_OPTIMIZED_MEMORY_ALLOCATOR)
     case 1:  // OCCT optimized memory allocator
     {
       aVar = getenv ("MMGT_MMAP");
@@ -173,20 +178,6 @@ Standard_MMgrFactory::Standard_MMgrFactory()
     default: // system default memory allocator
       myFMMgr = new Standard_MMgrRaw (toClear);
 #else
-    case 1:  // OCCT optimized memory allocator: Let's disable it on Emscripten
-//    {
-//      Standard_Boolean bMMap       = Standard_False;  // Memmap does not have any sense on Emscripten/WebAssembly
-//      aVar = getenv ("MMGT_CELLSIZE");
-//      Standard_Integer aCellSize   = (aVar ?  atoi (aVar) : 200);
-//      aVar = getenv ("MMGT_NBPAGES");
-//      Standard_Integer aNbPages    = (aVar ?  atoi (aVar) : 1000);
-//      aVar = getenv ("MMGT_THRESHOLD");
-//      Standard_Integer aThreshold  = (aVar ?  atoi (aVar) : 40000);
-//      myFMMgr = new Standard_MMgrOpt (toClear, bMMap, aCellSize, aNbPages, aThreshold);
-//      break;
-//    }
-    case 2:  // TBB is not yet ready on Emscripten/WebAssembly
-    case 0:
     default: // system default memory allocator
       myFMMgr = new Standard_MMgrRaw (toClear);
 #endif

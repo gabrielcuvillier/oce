@@ -38,7 +38,7 @@ public:
 
   DEFINE_STANDARD_ALLOC
 
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_UNICODE_CONVERSIONS)
   //! Converts non-ASCII CString <fromstr> in SJIS format
   //! to Unicode ExtendedString <tostr>.
   Standard_EXPORT static void ConvertSJISToUnicode (const Standard_CString fromstr, TCollection_ExtendedString& tostr);
@@ -56,7 +56,7 @@ public:
   //! to Unicode ExtendedString <tostr>.
   Standard_EXPORT static void ConvertANSIToUnicode (const Standard_CString fromstr, TCollection_ExtendedString& tostr);
 
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_UNICODE_CONVERSIONS)
   //! Converts Unicode ExtendedString <fromstr> to non-ASCII
   //! CString <tostr> in SJIS format, limited to <maxsize>
   //! characters. To translate the whole <fromstr>, use more

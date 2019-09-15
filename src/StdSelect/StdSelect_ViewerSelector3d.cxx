@@ -163,7 +163,7 @@ void StdSelect_ViewerSelector3d::Pick (const Standard_Integer theXPMin,
   TraverseSensitives();
 }
 
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
 //=======================================================================
 // Function: Pick
 // Purpose : Selection using a polyline

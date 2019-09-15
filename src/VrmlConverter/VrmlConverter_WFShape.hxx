@@ -17,8 +17,7 @@
 #ifndef _VrmlConverter_WFShape_HeaderFile
 #define _VrmlConverter_WFShape_HeaderFile
 
-// File only used for VRML 1.0, which is disabled on Emscripten to prevent dependencies on TKVisualization
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_EXACTHLR_IN_VISUALIZATION)
 
 #include <Standard.hxx>
 #include <Standard_DefineAlloc.hxx>

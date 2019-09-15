@@ -2839,7 +2839,7 @@ void OpenGl_Context::DiagnosticInformation (TColStd_IndexedDataMapOfStringString
   #elif defined(__APPLE__)
     //
   #elif defined(__EMSCRIPTEN__)
-    // TODO
+    //
   #else
     Display* aDisplay = (Display*)myDisplay;
     const int aScreen = DefaultScreen(aDisplay);

@@ -16,7 +16,7 @@
 #ifndef _Standard_MMgrTBBalloc_HeaderFile
 #define _Standard_MMgrTBBalloc_HeaderFile
 
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_OPTIMIZED_MEMORY_ALLOCATOR)
 
 #include <Standard_MMgrRoot.hxx>
 

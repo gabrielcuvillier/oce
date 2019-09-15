@@ -224,8 +224,7 @@ Handle(Vrml_Material) VrmlAPI_Writer::GetUnfreeBoundsMaterial() const
 
 void VrmlAPI_Writer::Write(const TopoDS_Shape& aShape,const Standard_CString aFile, const Standard_Integer aVersion) const
 {
-// Only used for VRML 1.0, which is disabled on Emscripten to prevent dependencies on TKVisualization
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_EXACTHLR_IN_VISUALIZATION)
   if (aVersion == 1)
     write_v1(aShape, aFile);
   else if (aVersion == 2)
@@ -233,8 +232,7 @@ void VrmlAPI_Writer::Write(const TopoDS_Shape& aShape,const Standard_CString aFi
     write_v2(aShape, aFile);
 }
 
-// Function only used for VRML 1.0, which is disabled on Emscripten to prevent dependencies on TKVisualization
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_EXACTHLR_IN_VISUALIZATION)
 void VrmlAPI_Writer::write_v1(const TopoDS_Shape& aShape,const Standard_CString aFile) const
 {
   OSD_Path thePath(aFile);

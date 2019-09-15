@@ -527,7 +527,7 @@ void StdPrs_ShadedShape::Add (const Handle (Prs3d_Presentation)& thePrs,
   // add wireframe presentation for isolated edges and vertices
   wireframeFromShape (thePrs, theShape, theDrawer);
 
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
   // Use automatic re-triangulation with deflection-check logic only if this feature is enable
   if (theDrawer->IsAutoTriangulation())
   {

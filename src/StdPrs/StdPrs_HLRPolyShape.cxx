@@ -64,7 +64,7 @@ void StdPrs_HLRPolyShape::Add(const Handle (Prs3d_Presentation)& aPresentation,
     }
   }
 
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
   if (aDrawer->IsAutoTriangulation())
   {
     const Standard_Boolean aRel = aDrawer->TypeOfDeflection() == Aspect_TOD_RELATIVE;

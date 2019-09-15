@@ -420,12 +420,6 @@ if (EMSCRIPTEN)
   set (BUILD_MODULE_Draw OFF CACHE BOOL "${BUILD_MODULE_Draw_DESCR}" FORCE)
 endif()
 
-if (EMSCRIPTEN)
-  message (STATUS "Info: IGNORE_NO_ATOMICS is defined due to unsupported atomics on Emscripten")
-  add_definitions(-DIGNORE_NO_ATOMICS)
-  #add_definitions(-DOCCT_HANDLE_NOCAST)  # not enabled as it makes bigger builds
-endif()
-
 # Overview
 if (NOT DEFINED BUILD_DOC_Overview AND NOT EMSCRIPTEN)
   set (DO_ONLY_CHECK_FOR_DOXYGEN ON)

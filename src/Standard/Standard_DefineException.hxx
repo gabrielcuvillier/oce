@@ -26,16 +26,20 @@
     DEFINE_STANDARD_HANDLE(C1,C2) before it.
 */
 
-#if defined(__EMSCRIPTEN__)
 // As Exceptions are disabled on Emscripten (-fno-exceptions + DISABLE_EXCEPTION_CATCHING=1) due to being too slow,
 // redefine throw/try/catch to dummy code
+#if defined(__EMSCRIPTEN__)
 
-// throw is redefined to abort the program (and display a message), with a 'coma' operator so that the compiler will take into account the throwed expression, and then compile
-#define throw     std::printf("abort\n"), abort(),
+// throw is redefined to abort the program (and display a message), with a 'coma' operator so that the compiler will
+// take into account the throwed expression, and then compile
+#define throw     std::printf("exception\n"), abort(),
+
 // try is redefined to always pass
 #define try
-// catch is redefined to always fail while still defining 'anException' variable. This is needed because the catch blocks sometime need that variable
-// The redefinition will discard the catched expression, replacing it by definition of a dummy Standard_Failure error
+
+// catch is redefined to always fail while still defining 'anException' variable. This is needed because the catch
+// blocks sometime need that variable. The redefinition will discard the catched expression, replacing it by definition
+// of a dummy Standard_Failure error
 #define catch(x)  Standard_Failure anException{}; if(false)
 
 #define DEFINE_STANDARD_EXCEPTION(C1,C2) \

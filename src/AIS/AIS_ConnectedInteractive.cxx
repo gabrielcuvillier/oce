@@ -200,7 +200,7 @@ void AIS_ConnectedInteractive::Compute (const Handle(Prs3d_Projector)& theProjec
       // process HLRAngle and HLRDeviationCoefficient()
       Standard_Real aPrevAngle = myDrawer->HLRAngle();
       Standard_Real aNewAngle = aDefaultDrawer->HLRAngle();
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
       if (myDrawer->IsAutoTriangulation() &&
           Abs (aNewAngle - aPrevAngle) > Precision::Angular())
       {

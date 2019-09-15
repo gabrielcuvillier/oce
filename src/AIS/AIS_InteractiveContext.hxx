@@ -434,7 +434,7 @@ public: //! @name Selection management
                                            const Handle(V3d_View)& theView,
                                            const Standard_Boolean  theToUpdateViewer);
 
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
   //! polyline selection; clears the previous picked list
   Standard_EXPORT AIS_StatusOfPick Select (const TColgp_Array1OfPnt2d& thePolyline,
                                            const Handle(V3d_View)&     theView,
@@ -450,7 +450,7 @@ public: //! @name Selection management
   //! @sa MoveTo().
   Standard_EXPORT AIS_StatusOfPick ShiftSelect (const Standard_Boolean theToUpdateViewer);
 
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
   //! Adds the last detected to the list of previous picked.
   //! If the last detected was already declared as picked, removes it from the Picked List.
   Standard_EXPORT AIS_StatusOfPick ShiftSelect (const TColgp_Array1OfPnt2d& thePolyline,

@@ -17,7 +17,7 @@
 #ifndef Resource_ConvertUnicode_HeaderFile
 #define Resource_ConvertUnicode_HeaderFile
 
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_NO_UNICODE_CONVERSIONS)
 
 extern "C" {
 

@@ -21,7 +21,7 @@
 #include <TCollection_AsciiString.hxx>
 #include <TCollection_ExtendedString.hxx>
 
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_UNICODE_CONVERSIONS)
 
 #define isjis(c) (((c)>=0x21 && (c)<=0x7e))
 #define iseuc(c) (((c)>=0xa1 && (c)<=0xfe))
@@ -137,7 +137,7 @@ void Resource_Unicode::ConvertANSIToUnicode(const Standard_CString fromstr,TColl
   tostr.AssignCat(curext);
 }
 
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_UNICODE_CONVERSIONS)
 
 Standard_Boolean Resource_Unicode::ConvertUnicodeToSJIS(const TCollection_ExtendedString& fromstr,
 							Standard_PCharacter& tostr,
@@ -378,7 +378,7 @@ void Resource_Unicode::ConvertFormatToUnicode(const Standard_CString fromstr,
 {
   Resource_FormatType theform = Resource_Unicode::GetFormat();
   switch (theform) {
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_UNICODE_CONVERSIONS)
   case Resource_SJIS :
     {
       ConvertSJISToUnicode(fromstr,tostr);
@@ -400,7 +400,7 @@ void Resource_Unicode::ConvertFormatToUnicode(const Standard_CString fromstr,
       ConvertANSIToUnicode(fromstr,tostr);
       break;
     }
-#if defined(__EMSCRIPTEN__)
+#if defined(OCCT_DISABLE_UNICODE_CONVERSIONS)
     default: {
       break;
     }
@@ -414,7 +414,7 @@ Standard_Boolean Resource_Unicode::ConvertUnicodeToFormat(const TCollection_Exte
 {
   Resource_FormatType theform = Resource_Unicode::GetFormat();
   switch (theform) {
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_UNICODE_CONVERSIONS)
   case Resource_SJIS :
     {
       return ConvertUnicodeToSJIS(fromstr,tostr,maxsize);
@@ -432,7 +432,7 @@ Standard_Boolean Resource_Unicode::ConvertUnicodeToFormat(const TCollection_Exte
     {
       return ConvertUnicodeToANSI(fromstr,tostr,maxsize);
     }
-#if defined(__EMSCRIPTEN__)
+#if defined(OCCT_DISABLE_UNICODE_CONVERSIONS)
     default: {}
 #endif
   }

@@ -361,7 +361,7 @@ void AIS_ColoredShape::Compute (const Handle(PrsMgr_PresentationManager3d)& ,
 
   if (theMode == AIS_Shaded)
   {
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
     if (myDrawer->IsAutoTriangulation())
     {
       // compute mesh for entire shape beforehand to ensure consistency and optimizations (parallelization)
@@ -476,7 +476,7 @@ void AIS_ColoredShape::ComputeSelection (const Handle(SelectMgr_Selection)& theS
   const Standard_Real    aDeflection = Prs3d::GetDeflection (myshape, myDrawer);
   const Standard_Real    aDeviationAngle = myDrawer->HLRAngle();
   const Standard_Integer aPriority   = StdSelect_BRepSelectionTool::GetStandardPriority (myshape, aTypOfSel);
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
   if (myDrawer->IsAutoTriangulation()
   && !BRepTools::Triangulation (myshape, Precision::Infinite()))
   {

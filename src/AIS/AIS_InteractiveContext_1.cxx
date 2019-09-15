@@ -495,7 +495,7 @@ AIS_StatusOfPick AIS_InteractiveContext::Select (const Standard_Integer  theXPMi
   
 }
 
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
 //=======================================================================
 //function : Select
 //purpose  : Selection by polyline
@@ -680,7 +680,7 @@ AIS_StatusOfPick AIS_InteractiveContext::ShiftSelect (const Standard_Integer the
 
 }
 
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
 //=======================================================================
 //function : ShiftSelect
 //purpose  : 

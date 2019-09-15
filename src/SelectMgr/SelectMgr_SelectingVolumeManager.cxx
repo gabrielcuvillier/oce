@@ -27,7 +27,7 @@ SelectMgr_SelectingVolumeManager::SelectMgr_SelectingVolumeManager (Standard_Boo
   if (theToAllocateFrustums)
   {
     mySelectingVolumes[Frustum] = new SelectMgr_RectangularFrustum();
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
     mySelectingVolumes[FrustumSet] = new SelectMgr_TriangularFrustumSet();
 #endif
   }
@@ -82,7 +82,7 @@ Standard_Integer SelectMgr_SelectingVolumeManager::GetActiveSelectionType() cons
 //=======================================================================
 void SelectMgr_SelectingVolumeManager::SetActiveSelectionType (const SelectionType& theType)
 {
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
   myActiveSelectionType = theType;
 #else
   if (theType == Polyline) {
@@ -103,7 +103,7 @@ void SelectMgr_SelectingVolumeManager::SetCamera (const Handle(Graphic3d_Camera)
 {
   for (Standard_Integer anIdx = 0; anIdx < VolumeTypesNb; ++anIdx)
   {
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
     mySelectingVolumes[anIdx]->SetCamera (theCamera);
 #else
     if (anIdx != FrustumSet) {
@@ -125,7 +125,7 @@ void SelectMgr_SelectingVolumeManager::SetCamera (const Graphic3d_Mat4d& theProj
 {
   for (Standard_Integer anIdx = 0; anIdx < VolumeTypesNb; ++anIdx)
   {
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
     mySelectingVolumes[anIdx]->SetCamera (theProjection, theWorldView, theIsOrthographic, theWVPState);
 #else
     if (anIdx != FrustumSet) {
@@ -185,7 +185,7 @@ void SelectMgr_SelectingVolumeManager::SetViewport (const Standard_Real theX,
 {
   for (Standard_Integer anIdx = 0; anIdx < VolumeTypesNb; ++anIdx)
   {
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
     mySelectingVolumes[anIdx]->SetViewport (theX, theY, theWidth, theHeight);
 #else
     if (anIdx != FrustumSet) {
@@ -204,7 +204,7 @@ void SelectMgr_SelectingVolumeManager::SetWindowSize (const Standard_Integer the
 {
   for (Standard_Integer anIdx = 0; anIdx < VolumeTypesNb; ++anIdx)
   {
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
     mySelectingVolumes[anIdx]->SetWindowSize (theWidth, theHeight);
 #else
     if (anIdx != FrustumSet) {
@@ -222,7 +222,7 @@ void SelectMgr_SelectingVolumeManager::SetPixelTolerance (const Standard_Integer
 {
   for (Standard_Integer anIdx = 0; anIdx < VolumeTypesNb; ++anIdx)
   {
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
     mySelectingVolumes[anIdx]->SetPixelTolerance (theTolerance);
 #else
     if (anIdx != FrustumSet) {
@@ -257,7 +257,7 @@ void SelectMgr_SelectingVolumeManager::BuildSelectingVolume (const gp_Pnt2d& the
   mySelectingVolumes[Frustum]->Build (theMinPt, theMaxPt);
 }
 
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
 //=======================================================================
 // function : BuildSelectingVolume
 // purpose  : Builds set of triangular selecting frustums for polyline

@@ -98,7 +98,7 @@ public:
   Standard_EXPORT void BuildSelectingVolume (const gp_Pnt2d& theMinPt,
                                              const gp_Pnt2d& theMaxPt);
 
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
   //! Builds set of triangular selecting frustums for polyline selection
   Standard_EXPORT void BuildSelectingVolume (const TColgp_Array1OfPnt2d& thePoints);
 #endif

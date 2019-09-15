@@ -24,7 +24,8 @@
 #include <Geom_Curve.hxx>
 #include <Geom2d_Curve.hxx>
 
-#if !defined(__EMSCRIPTEN__)
+// Functions only used to debug in Visual Studio
+#if 0
 
 // This file defines global functions not declared in any public header,
 // intended for use from debugger prompt (Command Window in Visual Studio)

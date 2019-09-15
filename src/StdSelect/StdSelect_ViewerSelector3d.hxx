@@ -68,7 +68,7 @@ public:
                              const Handle(V3d_View)& theView);
 
   //! pick action - input pixel values for polyline selection for selection.
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
   Standard_EXPORT void Pick (const TColgp_Array1OfPnt2d& thePolyline,
                              const Handle(V3d_View)& theView);
 #endif

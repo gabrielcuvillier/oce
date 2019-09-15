@@ -248,7 +248,7 @@ AIS_StatusOfPick AIS_LocalContext::Select (const Standard_Integer  theXPMin,
                                         : AIS_SOP_Error;
 }
 
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
 //==================================================
 // Function: Select
 // Purpose : Selection by polyline
@@ -408,7 +408,7 @@ AIS_StatusOfPick AIS_LocalContext::ShiftSelect (const Standard_Integer  theXPMin
                                         : AIS_SOP_Error;
 }
 
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
 //==================================================
 // Function: Select
 // Purpose : Selection by polyline
