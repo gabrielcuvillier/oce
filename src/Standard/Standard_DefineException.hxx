@@ -30,17 +30,18 @@
 // redefine throw/try/catch to dummy code
 #if defined(__EMSCRIPTEN__)
 
-// throw is redefined to abort the program (and display a message), with a 'coma' operator so that the compiler will
-// take into account the throwed expression, and then compile
-#define throw     std::printf("exception\n"), abort(),
+// 'throw' is redefined to display an error message (using CLang __builtin_FILE and __builtin_LINE functions), and
+// abort the program immediatly. Then, a clever/hacky usage of the 'comma' operator allow the compiler to handle
+// correctly the thrown exception (notice the 'comma' at the end...)
+#define throw std::printf("Exception thrown at %s:%d\n", __builtin_FUNCTION(), __builtin_LINE()), abort(),
 
-// try is redefined to always pass
+// 'try' is redefined to do nothing
 #define try
 
-// catch is redefined to always fail while still defining 'anException' variable. This is needed because the catch
-// blocks sometime need that variable. The redefinition will discard the catched expression, replacing it by definition
-// of a dummy Standard_Failure error
-#define catch(x)  Standard_Failure anException{}; if(false)
+// 'catch' is redefined discard the catch expression as well as eliminate the catch block at compile time
+// (thanks to C++17 'if constexpr'), while still defining 'anException' so that the block compiles (thanks to
+// C++17 if with initialization statement)
+#define catch(x) if constexpr(Standard_Failure anException{}; false)
 
 #define DEFINE_STANDARD_EXCEPTION(C1,C2) \
  \
