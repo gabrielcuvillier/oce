@@ -156,19 +156,15 @@ Storage_Error StdStorage::Read(Storage_BaseDriver&      theDriver,
 
   for (Standard_Integer i = 1; i <= aHeaderData->NumberOfObjects(); i++)
   {
-#if !defined(__EMSCRIPTEN__)
     try
     {
       OCC_CATCH_SIGNALS
-#endif
       aReadData.ReadPersistentObject(i);
       anError = Storage_VSOk;
-#if !defined(__EMSCRIPTEN__)
     }
     catch (Storage_StreamTypeMismatchError) { anError = Storage_VSTypeMismatch; }
     catch (Storage_StreamFormatError) { anError = Storage_VSFormatError; }
     catch (Storage_StreamReadError) { anError = Storage_VSFormatError; }
-#endif
 
     if (anError != Storage_VSOk)
       return anError;
