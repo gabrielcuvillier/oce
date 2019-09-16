@@ -13,9 +13,9 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
-#if !defined(__EMSCRIPTEN__)
-
 #include <OSD_Thread.hxx>
+
+#if !defined(OCCT_DISABLE_MULTITHREADING)
 
 //=============================================
 // OSD_Thread::OSD_Thread

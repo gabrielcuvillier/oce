@@ -32,7 +32,7 @@
 //!
 //! The implementation is based on C long jumps.
 //!
-//! If macro OCC_CONVERT_SIGNALS is defined, this enables macro OCC_CATCH_SIGNALS
+//! If macro OCCT_CONVERT_SIGNALS is defined, this enables macro OCC_CATCH_SIGNALS
 //! that can be used in the code (often inside try {} blocks) to convert C-style 
 //! signals to standard C++ exceptions. This works only when OSD::SetSignal()
 //! is called to set appropriate signal handler. In the case of signal (like 
@@ -45,7 +45,7 @@
 //! signal handler, this OCC_CONVERT_SIGNALS is not needed. Note however that
 //! this requires that compiler option /EHa is used.
 
-#if defined(OCC_CONVERT_SIGNALS)
+#if defined(OCCT_CONVERT_SIGNALS)
 
   // Exceptions are raied as usual, signal cause jumps in the nearest 
   // OCC_CATCH_SIGNALS and then thrown as exceptions.
@@ -137,7 +137,7 @@ public:
   //! so as to be correctly destroyed when error handler is activated.
   //!
   //! Note that this is needed only when Open CASCADE is compiled with
-  //! OCC_CONVERT_SIGNALS options (i.e. on UNIX/Linux).
+  //! OCCT_CONVERT_SIGNALS options (i.e. on UNIX/Linux).
   //! In that case, raising OCC exception and/or signal will not cause
   //! C++ stack unwinding and destruction of objects created in the stack.
   //!

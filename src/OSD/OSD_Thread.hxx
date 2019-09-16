@@ -16,7 +16,7 @@
 #ifndef _OSD_Thread_HeaderFile
 #define _OSD_Thread_HeaderFile
 
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MULTITHREADING)
 
 #include <Standard.hxx>
 #include <Standard_DefineAlloc.hxx>

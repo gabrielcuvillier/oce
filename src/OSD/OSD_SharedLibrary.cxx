@@ -12,8 +12,9 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
-#ifndef _WIN32
+#if !defined(OCCT_DISABLE_SHAREDLIBRARY)
 
+#ifndef _WIN32
 
 #include <OSD_Function.hxx>
 #include <OSD_LoadMode.hxx>
@@ -300,4 +301,5 @@ void OSD_SharedLibrary :: Destroy () {
 
 }  // end OSD_SharedLibrary :: Destroy
 
+#endif
 #endif

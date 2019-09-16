@@ -16,9 +16,7 @@
 #ifndef _BVH_BuildThread_Header
 #define _BVH_BuildThread_Header
 
-#if !defined(__EMSCRIPTEN__)
 #include <OSD_Thread.hxx>
-#endif
 #include <BVH_BuildQueue.hxx>
 
 //! Tool object to call BVH builder subroutines.
@@ -41,7 +39,7 @@ public:
   //! Starts execution of BVH build thread.
   void Run()
   {
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MULTITHREADING)
     myWorkThread.Run (this);
 #else
     execute();
@@ -51,7 +49,7 @@ public:
   //! Waits till the thread finishes execution.
   void Wait()
   {
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MULTITHREADING)
     myWorkThread.Wait();
 #endif
   }
@@ -75,7 +73,7 @@ protected:
   //! Reference to BVH build queue.
   BVH_BuildQueue& myBuildQueue;
 
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MULTITHREADING)
   //! Thread to execute work items.
   OSD_Thread myWorkThread;
 #endif

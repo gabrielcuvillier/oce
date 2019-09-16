@@ -17,10 +17,6 @@ macro (OCCT_INCLUDE_CMAKE_FILE BEING_INCLUDED_FILE)
   endif()
 endmacro()
 
-if(EMSCRIPTEN)
-  message(STATUS "Info: Building for Emscripten/WebAssembly.")
-endif()
-
 # include variable description
 OCCT_INCLUDE_CMAKE_FILE ("adm/cmake/vardescr")
 
@@ -32,7 +28,7 @@ if (NOT EMSCRIPTEN)
   endif()
 else()
   set (BUILD_LIBRARY_TYPE "Static" CACHE STRING "${BUILD_LIBRARY_TYPE_DESCR}" FORCE)
-  SET_PROPERTY(CACHE BUILD_LIBRARY_TYPE PROPERTY STRINGS Shared Static)
+  SET_PROPERTY(CACHE BUILD_LIBRARY_TYPE PROPERTY STRINGS Static)
 endif()
 
 if ("${BUILD_LIBRARY_TYPE}" STREQUAL "Shared")

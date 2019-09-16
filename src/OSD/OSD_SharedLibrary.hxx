@@ -17,6 +17,8 @@
 #ifndef _OSD_SharedLibrary_HeaderFile
 #define _OSD_SharedLibrary_HeaderFile
 
+#if !defined(OCCT_DISABLE_SHAREDLIBRARY)
+
 #include <Standard.hxx>
 #include <Standard_DefineAlloc.hxx>
 #include <Standard_Handle.hxx>
@@ -125,3 +127,4 @@ private:
 
 
 #endif // _OSD_SharedLibrary_HeaderFile
+#endif

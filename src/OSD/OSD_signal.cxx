@@ -611,7 +611,9 @@ LONG _osd_debug ( void ) {
 #include <Standard_ErrorHandler.hxx>
 
 // POSIX threads
+#if !defined(OCCT_DISABLE_MULTITHREADING)
 #include <pthread.h>
+#endif
 
 #ifdef __linux__
 #include  <cfenv>

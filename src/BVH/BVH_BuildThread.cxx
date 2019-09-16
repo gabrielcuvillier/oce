@@ -25,7 +25,7 @@ BVH_BuildThread::BVH_BuildThread (BVH_BuildTool&  theBuildTool,
                                   BVH_BuildQueue& theBuildQueue)
 : myBuildTool  (theBuildTool),
   myBuildQueue (theBuildQueue)
-  #if !defined(__EMSCRIPTEN__)
+  #if !defined(OCCT_DISABLE_MULTITHREADING)
   ,myWorkThread (threadFunction)
   #endif
 {

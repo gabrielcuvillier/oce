@@ -27,11 +27,13 @@ Standard_Mutex::Standard_Mutex ()
 #if (defined(_WIN32) || defined(__WIN32__))
   InitializeCriticalSection (&myMutex);
 #else
+#if !defined(OCCT_DISABLE_MULTITHREADING)
   pthread_mutexattr_t anAttr;
   pthread_mutexattr_init (&anAttr);
   pthread_mutexattr_settype (&anAttr, PTHREAD_MUTEX_RECURSIVE);
   pthread_mutex_init (&myMutex, &anAttr);
   pthread_mutexattr_destroy (&anAttr);
+#endif
 #endif
 }
 
@@ -44,7 +46,9 @@ Standard_Mutex::~Standard_Mutex ()
 #if (defined(_WIN32) || defined(__WIN32__))
   DeleteCriticalSection (&myMutex);
 #else
+#if !defined(OCCT_DISABLE_MULTITHREADING)
   pthread_mutex_destroy (&myMutex);
+#endif
 #endif
 }
 
@@ -57,7 +61,9 @@ void Standard_Mutex::Lock ()
 #if (defined(_WIN32) || defined(__WIN32__))
   EnterCriticalSection (&myMutex);
 #else
+#if !defined(OCCT_DISABLE_MULTITHREADING)
   pthread_mutex_lock (&myMutex);
+#endif
 #endif
 }
 
@@ -70,7 +76,11 @@ Standard_Boolean Standard_Mutex::TryLock ()
 #if (defined(_WIN32) || defined(__WIN32__))
   return (TryEnterCriticalSection (&myMutex) != 0);
 #else
+#if !defined(OCCT_DISABLE_MULTITHREADING)
   return (pthread_mutex_trylock (&myMutex) != EBUSY);
+#else
+  return Standard_True;
+#endif
 #endif
 }
 

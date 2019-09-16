@@ -120,6 +120,7 @@ Standard_Boolean BRepMesh_DiscretFactory::SetDefault(
     // retrieve from cache
     aFunc = (BRepMesh_PluginEntryType )myFactoryMethods (aMeshAlgoId);
   }
+#if !defined(OCCT_DISABLE_SHAREDLIBRARY)
   else
   {
     TCollection_AsciiString aLibName;
@@ -136,6 +137,7 @@ Standard_Boolean BRepMesh_DiscretFactory::SetDefault(
     aFunc = (BRepMesh_PluginEntryType )aSL.DlSymb (theFuncName.ToCString());
     myFactoryMethods.Bind (aMeshAlgoId, (OSD_Function )aFunc);
   }
+#endif
 
   if (aFunc == NULL)
   {

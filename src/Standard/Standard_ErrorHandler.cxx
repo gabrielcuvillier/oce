@@ -22,7 +22,9 @@
 #include <Standard.hxx>
 
 #ifndef _WIN32
-#include <pthread.h>
+#if !defined(OCCT_DISABLE_MULTITHREADING)
+  #include <pthread.h>
+#endif
 #else
 #include <windows.h>
 #endif
@@ -47,7 +49,11 @@ static Standard_Mutex theMutex;
 static inline Standard_ThreadId GetThreadID()
 {
 #ifndef _WIN32
+  #if !defined(OCCT_DISABLE_MULTITHREADING)
   return pthread_self();
+  #else
+  return 0;
+  #endif
 #else
   return GetCurrentThreadId();
 #endif
@@ -267,7 +273,7 @@ Standard_ErrorHandler* Standard_ErrorHandler::FindHandler(const Standard_Handler
   return anActive;
 }
 
-#if defined(OCC_CONVERT_SIGNALS)
+#if defined(OCCT_CONVERT_SIGNALS)
 
 Standard_ErrorHandler::Callback::Callback ()
   : myHandler(0), myPrev(0), myNext(0)
@@ -308,7 +314,7 @@ void Standard_ErrorHandler::Callback::UnregisterCallback ()
   myHandler = myNext = myPrev = 0;
 }
 #else
-// If OCC_CONVERT_SIGNALS is not defined,
+// If OCCT_CONVERT_SIGNALS is not defined,
 // provide empty implementation
 Standard_ErrorHandler::Callback::Callback ()
        : myHandler(0), myPrev(0), myNext(0)

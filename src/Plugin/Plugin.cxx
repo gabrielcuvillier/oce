@@ -39,7 +39,7 @@ Handle(Standard_Transient) Plugin::Load (const Standard_GUID& aGUID,
   aGUID.ToCString(thePluginId);
   TCollection_AsciiString pid(thePluginId);
   static Plugin_MapOfFunctions theMapOfFunctions;
-  OSD_Function f;
+  OSD_Function f = nullptr;
 
   if(!theMapOfFunctions.IsBound(pid)) {
    
@@ -68,7 +68,9 @@ Handle(Standard_Transient) Plugin::Load (const Standard_GUID& aGUID,
     thePluginLibrary += ".sl";
 #else
     thePluginLibrary += ".so";
-#endif  
+#endif
+
+#if !defined(OCCT_DISABLE_SHAREDLIBRARY)
     OSD_SharedLibrary theSharedLibrary(thePluginLibrary.ToCString());
     if(!theSharedLibrary.DlOpen(OSD_RTLD_LAZY)) {
       TCollection_AsciiString error(theSharedLibrary.DlError());
@@ -89,6 +91,7 @@ Handle(Standard_Transient) Plugin::Load (const Standard_GUID& aGUID,
       throw Plugin_Failure(aMsg.str().c_str());
     }
     theMapOfFunctions.Bind(pid,f);
+#endif
   }
   else
     f = theMapOfFunctions(pid);

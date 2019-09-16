@@ -108,7 +108,7 @@ public:
   //! Binds main thread context
   void SetContext( TypeContext& theContext )
   {
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MULTITHREADING)
     myContexts.Bind(OSD_Thread::Current(), theContext);
 #else
     myContexts.Bind(0, theContext);
@@ -118,7 +118,7 @@ public:
   //! Returns current thread context
   TypeContext& GetThreadContext() const
   {
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MULTITHREADING)
     const Standard_ThreadId aThreadID = OSD_Thread::Current();
 #else
     const Standard_ThreadId aThreadID = 0;

@@ -23,7 +23,9 @@
 #if defined(_WIN32)
   #include <windows.h>
 #else
-  #include <pthread.h>
+  #if !defined(OCCT_DISABLE_MULTITHREADING)
+    #include <pthread.h>
+  #endif
   #if defined(__EMSCRIPTEN__)
     #include <errno.h>  // including <errno.h> instead of incorrect <sys/errno.h>
   #else
@@ -170,7 +172,9 @@ private:
 #if (defined(_WIN32) || defined(__WIN32__))
   CRITICAL_SECTION myMutex;
 #else
+#if !defined(OCCT_DISABLE_MULTITHREADING)
   pthread_mutex_t myMutex;
+#endif
 #endif  
 };
 
@@ -181,7 +185,9 @@ inline void Standard_Mutex::Unlock ()
 #if (defined(_WIN32) || defined(__WIN32__))
   LeaveCriticalSection (&myMutex);
 #else
+#if !defined(OCCT_DISABLE_MULTITHREADING)
   pthread_mutex_unlock (&myMutex);
+#endif
 #endif
 }
 

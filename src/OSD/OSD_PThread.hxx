@@ -25,7 +25,7 @@ typedef HANDLE OSD_PThread;
 
 #else
 
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MULTITHREADING)
 #include <pthread.h>
 typedef pthread_t OSD_PThread;
 #else

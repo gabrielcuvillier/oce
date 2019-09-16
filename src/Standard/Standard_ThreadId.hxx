@@ -32,7 +32,7 @@ inline Standard_Integer HashCode(const Standard_ThreadId Value,
 
 #else
 
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_DISABLE_MULTITHREADING)
 #include <pthread.h>
 typedef pthread_t Standard_ThreadId;
 #else

@@ -2339,7 +2339,7 @@ proc osutils:cbp { theCmpl theOutDir theProjName thePlatform theSrcFiles theLibs
     } else {
       lappend aCmplFlags "-std=c++0x"
       lappend aCmplFlags "-fPIC"
-      lappend aCmplFlags "-DOCC_CONVERT_SIGNALS"
+      lappend aCmplFlags "-DOCCT_CONVERT_SIGNALS"
     }
     lappend aCmplFlags   "-Wall"
     lappend aCmplFlags   "-fexceptions"
@@ -2805,7 +2805,7 @@ proc osutils:xcdtk { theOutDir theToolKit theGuidsMap theIsStatic thePlatform {t
   set anExecExtension "\t\t\t\tEXECUTABLE_EXTENSION = dylib;"
   set anExecPrefix "\t\t\t\tEXECUTABLE_PREFIX = lib;"
   set aWrapperExtension "\t\t\t\tWRAPPER_EXTENSION = dylib;"
-  set aTKDefines [list "OCC_CONVERT_SIGNALS"]
+  set aTKDefines [list "OCCT_CONVERT_SIGNALS"]
   if { $theIsStatic == 1 } {
     lappend aTKDefines "OCCT_NO_PLUGINS"
   }

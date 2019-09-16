@@ -5,6 +5,10 @@ if(FLAGS_ALREADY_INCLUDED)
 endif()
 set(FLAGS_ALREADY_INCLUDED 1)
 
+if(EMSCRIPTEN)
+  message(STATUS "Info: Building for Emscripten/WebAssembly.")
+endif()
+
 # force option /fp:precise for Visual Studio projects.
 #
 # Note that while this option is default for MSVC compiler, Visual Studio
@@ -29,29 +33,42 @@ if (WIN32)
   add_definitions (-D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_DEPRECATE)
 else()
   if (EMSCRIPTEN)
-    # Changes compared to regular build: PIC not supported, disable exceptions, do not convert UNIX signals to exceptions
-    message (STATUS "Info: Exceptions are disabled (-fno-exceptions, -DNo_Exception)")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions")
-    set (CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fno-exceptions")
-    add_definitions(-DNo_Exception)
-    message (STATUS "Info: PIC is disabled (-fno-PIC)")
-    message (STATUS "Info: IGNORE_NO_ATOMICS is defined due to unsupported atomics on Emscripten")
-    add_definitions(-DIGNORE_NO_ATOMICS)
-    message (STATUS "Info: OCCT_HANDLE_NOCAST is defined to prevent some unsafe methods with Handles")
-    add_definitions(-DOCCT_HANDLE_NOCAST)
-    message (STATUS "Info: OCC_CONVERT_SIGNALS is NOT defined")
+    message (STATUS "Info: Exceptions are disabled")
+    add_compile_options(-fno-exceptions)
+
+    message (STATUS "Info: PIC disabled")
+    add_compile_options(-fno-PIC)
+
+    message (STATUS "Info: OCCT_DISABLE_MULTITHREADING is defined due to unsupported on Browsers")
+    add_definitions(-DOCCT_DISABLE_MULTITHREADING)
+
     message (STATUS "Info: OCCT_DISABLE_UNICODE_CONVERSIONS is defined")
     add_definitions(-DOCCT_DISABLE_UNICODE_CONVERSIONS)
+
+    #Keep Meshing in Vizu for now
     #message (STATUS "Info: OCCT_DISABLE_MESHING_IN_VISUALIZATION is defined")
     #add_definitions(-DOCCT_DISABLE_MESHING_IN_VISUALIZATION)
+
     message (STATUS "Info: OCCT_DISABLE_EXACTHLR_IN_VISUALIZATION is defined")
     add_definitions(-DOCCT_DISABLE_EXACTHLR_IN_VISUALIZATION)
+
     message (STATUS "Info: OCCT_DISABLE_OPTIMIZED_MEMORY_ALLOCATOR is defined")
     add_definitions(-DOCCT_DISABLE_OPTIMIZED_MEMORY_ALLOCATOR)
+
+    message (STATUS "Info: OCCT_DISABLE_SHAREDLIBRARY is defined")
+    add_definitions(-DOCCT_DISABLE_SHAREDLIBRARY)
+
+    message (STATUS "Info: OCCT_HANDLE_NOCAST is defined to prevent some unsafe methods with Handles")
+    add_definitions(-DOCCT_HANDLE_NOCAST)
+
+    message (STATUS "Info: OCCT_IGNORE_NO_ATOMICS is defined due to unsupported atomics on Emscripten")
+    add_definitions(-DOCCT_IGNORE_NO_ATOMICS)
+
+    message (STATUS "Info: OCCT_CONVERT_SIGNALS is NOT defined")
   else()
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions -fPIC")
     set (CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fexceptions -fPIC")
-    add_definitions(-DOCC_CONVERT_SIGNALS)
+    add_definitions(-DOCCT_CONVERT_SIGNALS)
   endif()
 endif()
 
@@ -242,23 +259,5 @@ if (ENABLE_O1)
     string (REGEX REPLACE "-O2" "-O1" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
   else()
     set (CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O1")
-  endif()
-endif()
-
-set (ENABLE_O0 OFF CACHE BOOL "Enable O0 build for Release")
-if (ENABLE_O0)
-  # Use 'O2' optimization level (instead of O3)
-  string (REGEX MATCH "-O2" IS_O2_CXX "${CMAKE_CXX_FLAGS_RELEASE}")
-  if (IS_O2_CXX)
-    string (REGEX REPLACE "-O2" "-O0" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
-  else()
-    set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O0")
-  endif()
-
-  string (REGEX MATCH "-O2" IS_O2_C "${CMAKE_C_FLAGS_RELEASE}")
-  if (IS_O2_C)
-    string (REGEX REPLACE "-O2" "-O0" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
-  else()
-    set (CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O0")
   endif()
 endif()
