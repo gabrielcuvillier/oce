@@ -217,25 +217,3 @@ TopoDS_Edge HLRBRep::MakeEdge3d(const HLRBRep_Curve& ec,
   BB.Add(Edg, V2new);
   return Edg;
 }
-
-//=======================================================================
-//function : PolyHLRAngleAndDeflection
-//purpose  : 
-//=======================================================================
-
-void 
-HLRBRep::PolyHLRAngleAndDeflection (const Standard_Real InAngl,
-				    Standard_Real& OutAngl,
-				    Standard_Real& OutDefl)
-{
-  static Standard_Real HAngMin =  1*M_PI/180;
-  static Standard_Real HAngLim =  5*M_PI/180;
-  static Standard_Real HAngMax = 35*M_PI/180;
-
-  OutAngl = InAngl;
-  if (OutAngl < HAngMin) OutAngl = HAngMin;
-  if (OutAngl > HAngMax) OutAngl = HAngMax;
-  OutAngl = HAngLim + sqrt((OutAngl - HAngMin) * (HAngMax - HAngLim) *
-			   (HAngMax - HAngLim) / (HAngMax - HAngMin));
-  OutDefl = OutAngl * OutAngl * 0.5;
-}

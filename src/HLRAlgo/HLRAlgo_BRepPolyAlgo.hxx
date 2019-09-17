@@ -105,6 +105,7 @@ class HLRAlgo_BRepPolyAlgo : public Standard_Transient {
 
  public:
 
+  Standard_EXPORT static void PolyHLRAngleAndDeflection (const Standard_Real InAngl, Standard_Real& OutAngl, Standard_Real& OutDefl);
 
   //! Constructs an empty framework for the
   //! calculation of the visible and hidden lines of a shape in a projection.
