@@ -30,10 +30,10 @@
 // redefine throw/try/catch to dummy code
 #if defined(__EMSCRIPTEN__)
 
-// 'throw' is redefined to display an error message (using CLang __builtin_FILE and __builtin_LINE functions), and
-// abort the program immediatly. Then, a clever/hacky usage of the 'comma' operator allow the compiler to handle
-// correctly the thrown exception (notice the 'comma' at the end...)
-#define throw std::printf("Exception thrown at %s:%d\n", __builtin_FUNCTION(), __builtin_LINE()), abort(),
+// 'throw' is redefined to display "Standard_Failure" on stderr, and abort the program immediatly.
+// Then, a clever/hacky usage of the 'comma' operator allow the compiler to handle correctly the exception expression
+// (notice the 'comma' at the end...)
+#define throw std::fprintf(stderr, "%s\n", Standard_Failure::get_type_name()), abort(),
 
 // 'try' is redefined to do nothing
 #define try
