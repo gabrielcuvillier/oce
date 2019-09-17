@@ -97,7 +97,7 @@ Standard_MMgrFactory::Standard_MMgrFactory()
   Standard_STATIC_ASSERT(sizeof(Standard_WideChar) == sizeof(Standard_Utf16Char));
 #endif
 
-  char* aVar;
+  char* aVar = nullptr;
 
 #if !defined(OCCT_DISABLE_OPTIMIZED_MEMORY_ALLOCATOR)
   aVar = getenv ("MMGT_OPT");

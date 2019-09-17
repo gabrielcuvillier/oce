@@ -6,10 +6,11 @@ TKMath
 TKBRep
 TKGeomAlgo
 TKTopAlgo
+TKTopBase
 TKMesh
 TKService
 TKHLR
-TKHLRAglo
+TKHLRBase
 CSF_TclLibs
 CSF_TclTkLibs
 CSF_XwLibs

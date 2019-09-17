@@ -2,6 +2,7 @@ TKGeomBase
 TKFillet
 TKBRep
 TKTopAlgo
+TKTopBase
 TKHLR
 TKHLRBase
 TKernel
