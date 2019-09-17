@@ -8,3 +8,4 @@ BRepClass3d
 BRepGProp
 BRepIntCurveSurface
 BRepApprox
+BRepBuilderAPI

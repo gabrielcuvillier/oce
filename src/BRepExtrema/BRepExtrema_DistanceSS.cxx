@@ -44,9 +44,9 @@
 #include <GeomAbs_Shape.hxx>
 #include <GeomAdaptor_Curve.hxx>
 #include <TColStd_Array1OfReal.hxx>
-#include <BRepBuilderAPI_MakeVertex.hxx>
-#include <BRepBuilderAPI_MakeEdge.hxx>
-#include <BRepBuilderAPI_MakeFace.hxx>
+#include <BRepLib_MakeVertex.hxx>
+#include <BRepLib_MakeEdge.hxx>
+#include <BRepLib_MakeFace.hxx>
 #include <Geom_Surface.hxx>
 #include <GeomAPI_ProjectPointOnSurf.hxx>
 #include <GeomAPI_ProjectPointOnCurve.hxx>
@@ -210,7 +210,7 @@ static void TRIM_INFINIT_EDGE(const TopoDS_Edge& S1, const TopoDS_Edge& S2, Topo
     }
 
     Handle(Geom_Curve) result = new Geom_TrimmedCurve(pCurv, Umin, Umax);
-    aResEdge = BRepBuilderAPI_MakeEdge(result);
+    aResEdge = BRepLib_MakeEdge(result);
   }
 }
 
@@ -380,7 +380,7 @@ static void TRIM_INFINIT_FACE(const TopoDS_Shape& S1, const TopoDS_Shape& S2,
     }
 
     Handle(Geom_Surface) result = new Geom_RectangularTrimmedSurface(pSurf, Umin, Umax, Vmin, Vmax);
-    aResFace = BRepBuilderAPI_MakeFace(result, Precision::Confusion());
+    aResFace = BRepLib_MakeFace(result, Precision::Confusion());
 
     bIsInfinit = Standard_True;
   }
@@ -447,7 +447,7 @@ static void PERFORM_C0(const TopoDS_Edge &S1, const TopoDS_Edge &S2,
       {
         const Standard_Real aParameter = arrInter(i);
         const gp_Pnt aPnt = aAdaptorCurve.Value(aParameter);
-        const TopoDS_Vertex V1 = BRepBuilderAPI_MakeVertex(aPnt);
+        const TopoDS_Vertex V1 = BRepLib_MakeVertex(aPnt);
 
         BRepExtrema_ExtPC Ext(V1,Eother);
         const Standard_Integer NbExtrema = Ext.IsDone()? Ext.NbExt() : 0;
@@ -1051,7 +1051,7 @@ void BRepExtrema_DistanceSS::Perform(const TopoDS_Edge& S1, const TopoDS_Face& S
       {
         const Standard_Real aParameter = arrInter(i);
         gp_Pnt aPnt = aAdaptorCurve.Value(aParameter);
-        TopoDS_Vertex V1 = BRepBuilderAPI_MakeVertex(aPnt);
+        TopoDS_Vertex V1 = BRepLib_MakeVertex(aPnt);
 
         BRepExtrema_ExtPF ExtPF(V1,S2);
         const Standard_Integer NbExtremaPF = ExtPF.IsDone()? ExtPF.NbExt() : 0;
@@ -1196,7 +1196,7 @@ void BRepExtrema_DistanceSS::Perform(const TopoDS_Face& S1, const TopoDS_Edge& S
       {
         const Standard_Real aParameter = arrInter(i);
         gp_Pnt aPnt = aAdaptorCurve.Value(aParameter);
-        TopoDS_Vertex V1 = BRepBuilderAPI_MakeVertex(aPnt);
+        TopoDS_Vertex V1 = BRepLib_MakeVertex(aPnt);
 
         BRepExtrema_ExtPF ExtPF(V1,S1);
         const Standard_Integer NbExtremaPF = ExtPF.IsDone()? ExtPF.NbExt() : 0;

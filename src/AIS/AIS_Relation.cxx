@@ -19,8 +19,8 @@
 #include <AIS_GraphicTool.hxx>
 #include <AIS_Relation.hxx>
 #include <BRep_Tool.hxx>
-#include <BRepBuilderAPI_MakeEdge.hxx>
-#include <BRepBuilderAPI_MakeVertex.hxx>
+#include <BRepLib_MakeEdge.hxx>
+#include <BRepLib_MakeVertex.hxx>
 #include <ElCLib.hxx>
 #include <Geom_CartesianPoint.hxx>
 #include <Geom_Circle.hxx>
@@ -110,11 +110,11 @@ void AIS_Relation::ComputeProjEdgePresentation(const Handle(Prs3d_Presentation)&
     if ( !isInfinite) {
       pf = ElCLib::Parameter(gl->Lin(),FirstP);
       pl = ElCLib::Parameter(gl->Lin(),LastP);
-      BRepBuilderAPI_MakeEdge MakEd(gl->Lin(), pf, pl);
+      BRepLib_MakeEdge MakEd(gl->Lin(), pf, pl);
       E = MakEd.Edge();
     }
     else {
-      BRepBuilderAPI_MakeEdge MakEd(gl->Lin());
+      BRepLib_MakeEdge MakEd(gl->Lin());
       E = MakEd.Edge();
     }
   }
@@ -122,7 +122,7 @@ void AIS_Relation::ComputeProjEdgePresentation(const Handle(Prs3d_Presentation)&
     Handle(Geom_Circle) gc (Handle(Geom_Circle)::DownCast (ProjCurv));
     pf = ElCLib::Parameter(gc->Circ(),FirstP);
     pl = ElCLib::Parameter(gc->Circ(),LastP);
-    BRepBuilderAPI_MakeEdge MakEd(gc->Circ(),pf, pl);
+    BRepLib_MakeEdge MakEd(gc->Circ(),pf, pl);
     E = MakEd.Edge();
   }
   StdPrs_WFShape::Add (aPrs, E, myDrawer);
@@ -135,28 +135,28 @@ void AIS_Relation::ComputeProjEdgePresentation(const Handle(Prs3d_Presentation)&
     ppl = BRep_Tool::Pnt( TopExp::LastVertex(TopoDS::Edge(anEdge)));
     if (FirstP.Distance (ppf) > gp::Resolution())
     {
-      BRepBuilderAPI_MakeEdge MakEd1 (FirstP, ppf);
+      BRepLib_MakeEdge MakEd1 (FirstP, ppf);
       StdPrs_WFShape::Add (aPrs, MakEd1.Edge(), myDrawer);
     }
     else
     {
-      BRepBuilderAPI_MakeVertex MakVert1 (FirstP);
+      BRepLib_MakeVertex MakVert1 (FirstP);
       StdPrs_WFShape::Add (aPrs, MakVert1.Vertex(), myDrawer);
     }
     if (LastP.Distance (ppl) > gp::Resolution())
     {
-      BRepBuilderAPI_MakeEdge MakEd2 (LastP, ppl);
+      BRepLib_MakeEdge MakEd2 (LastP, ppl);
       StdPrs_WFShape::Add (aPrs, MakEd2.Edge(), myDrawer);
     }
     else
     {
-      BRepBuilderAPI_MakeVertex MakVert2 (LastP);
+      BRepLib_MakeVertex MakVert2 (LastP);
       StdPrs_WFShape::Add (aPrs, MakVert2.Vertex(), myDrawer);
     }
 /*
-    BRepBuilderAPI_MakeEdge MakEd1 (FirstP, ppf);
+    BRepLib_MakeEdge MakEd1 (FirstP, ppf);
     StdPrs_WFShape::Add (aPrs, MakEd1.Edge(), myDrawer);
-    BRepBuilderAPI_MakeEdge MakEd2 (LastP, ppl);
+    BRepLib_MakeEdge MakEd2 (LastP, ppl);
     StdPrs_WFShape::Add (aPrs, MakEd2.Edge(), myDrawer);
 */
   }
@@ -199,7 +199,7 @@ void AIS_Relation::ComputeProjVertexPresentation(const Handle(Prs3d_Presentation
   // Si les points ne sont pas confondus...
   if (!ProjPoint.IsEqual (BRep_Tool::Pnt(aVertex),Precision::Confusion())) {
     // calcul des lignes de rappel
-    BRepBuilderAPI_MakeEdge MakEd (ProjPoint,BRep_Tool::Pnt(aVertex));
+    BRepLib_MakeEdge MakEd (ProjPoint,BRep_Tool::Pnt(aVertex));
     StdPrs_WFShape::Add (aPrs, MakEd.Edge(), myDrawer);
   }
 }
