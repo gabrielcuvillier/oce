@@ -6,7 +6,7 @@ set (CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/adm/cmake")
 
 set (CMAKE_SUPPRESS_REGENERATION TRUE)
 
-set (CMAKE_CONFIGURATION_TYPES Release Debug RelWithDebInfo MinSizeRel CACHE INTERNAL "" FORCE)
+set (CMAKE_CONFIGURATION_TYPES Release Debug RelWithDebInfo MinSizeRel CACHE INTERNAL "Release" FORCE)
 
 # macro: include patched file if it exists
 macro (OCCT_INCLUDE_CMAKE_FILE BEING_INCLUDED_FILE)
