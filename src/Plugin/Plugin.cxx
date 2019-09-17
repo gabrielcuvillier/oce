@@ -24,8 +24,11 @@
 #include <Standard_Transient.hxx>
 #include <TCollection_AsciiString.hxx>
 
+
+#if !defined(OCCT_DISABLE_SHAREDLIBRARY)
 static Standard_Character tc[1000];
 static Standard_PCharacter thePluginId = tc;
+#endif
 
 
 //=======================================================================
@@ -35,7 +38,7 @@ static Standard_PCharacter thePluginId = tc;
 Handle(Standard_Transient) Plugin::Load (const Standard_GUID& aGUID,
                                          const Standard_Boolean theVerbose)
 {
-  
+#if !defined(OCCT_DISABLE_SHAREDLIBRARY)
   aGUID.ToCString(thePluginId);
   TCollection_AsciiString pid(thePluginId);
   static Plugin_MapOfFunctions theMapOfFunctions;
@@ -70,7 +73,6 @@ Handle(Standard_Transient) Plugin::Load (const Standard_GUID& aGUID,
     thePluginLibrary += ".so";
 #endif
 
-#if !defined(OCCT_DISABLE_SHAREDLIBRARY)
     OSD_SharedLibrary theSharedLibrary(thePluginLibrary.ToCString());
     if(!theSharedLibrary.DlOpen(OSD_RTLD_LAZY)) {
       TCollection_AsciiString error(theSharedLibrary.DlError());
@@ -91,7 +93,6 @@ Handle(Standard_Transient) Plugin::Load (const Standard_GUID& aGUID,
       throw Plugin_Failure(aMsg.str().c_str());
     }
     theMapOfFunctions.Bind(pid,f);
-#endif
   }
   else
     f = theMapOfFunctions(pid);
@@ -100,5 +101,7 @@ Handle(Standard_Transient) Plugin::Load (const Standard_GUID& aGUID,
   fp = (Standard_Transient* (*)(const Standard_GUID&)) f;
   Handle(Standard_Transient) theServiceFactory = (*fp) (aGUID);
   return theServiceFactory;
-  
+#else
+  return nullptr;
+#endif
 }
