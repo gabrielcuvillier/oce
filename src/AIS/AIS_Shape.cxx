@@ -35,7 +35,6 @@
 #include <Graphic3d_MaterialAspect.hxx>
 #include <Graphic3d_SequenceOfGroup.hxx>
 #include <Graphic3d_Structure.hxx>
-#include <HLRBRep.hxx>
 #include <OSD_Timer.hxx>
 #include <Precision.hxx>
 #include <Prs3d.hxx>
@@ -67,6 +66,7 @@
 #include <TopExp_Explorer.hxx>
 #include <TopoDS_Iterator.hxx>
 #include <TopoDS_Shape.hxx>
+#include <HLRAlgo_BRepPolyAlgo.hxx>
 
 IMPLEMENT_STANDARD_RTTIEXT(AIS_Shape,AIS_InteractiveObject)
 
@@ -1182,7 +1182,7 @@ void AIS_Shape::SetOwnDeviationAngle ( const Standard_Real  anAngle )
 void AIS_Shape::SetAngleAndDeviation ( const Standard_Real  anAngle )
 {
   Standard_Real OutAngl,OutDefl;
-  HLRBRep::PolyHLRAngleAndDeflection(anAngle,OutAngl,OutDefl);
+  HLRAlgo_BRepPolyAlgo::PolyHLRAngleAndDeflection(anAngle,OutAngl,OutDefl);
   SetOwnDeviationAngle(anAngle) ;
   SetOwnDeviationCoefficient(OutDefl) ;
   myInitAng = anAngle;
@@ -1209,11 +1209,11 @@ Standard_Real AIS_Shape::UserAngle() const
 void AIS_Shape::SetHLRAngleAndDeviation ( const Standard_Real  anAngle )
 {
   Standard_Real OutAngl,OutDefl;
-  HLRBRep::PolyHLRAngleAndDeflection(anAngle,OutAngl,OutDefl);
+  HLRAlgo_BRepPolyAlgo::PolyHLRAngleAndDeflection(anAngle,OutAngl,OutDefl);
   SetOwnHLRDeviationAngle( OutAngl );
   SetOwnHLRDeviationCoefficient(OutDefl);
-
 }
+
 //=======================================================================
 //function : SetOwnHLRDeviationAngle
 //purpose  : 

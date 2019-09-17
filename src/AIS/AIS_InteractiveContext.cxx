@@ -30,7 +30,6 @@
 #include <AIS_Trihedron.hxx>
 #include <Geom_Axis2Placement.hxx>
 #include <Graphic3d_AspectFillArea3d.hxx>
-#include <HLRBRep.hxx>
 #include <OSD_Environment.hxx>
 #include <Precision.hxx>
 #include <Prs3d_BasicAspect.hxx>
@@ -60,6 +59,7 @@
 #include <UnitsAPI.hxx>
 #include <V3d_View.hxx>
 #include <V3d_Viewer.hxx>
+#include <HLRAlgo_BRepPolyAlgo.hxx>
 
 IMPLEMENT_STANDARD_RTTIEXT(AIS_InteractiveContext, Standard_Transient)
 
@@ -1514,7 +1514,7 @@ void AIS_InteractiveContext::SetHLRAngle (const Standard_Real theAngle)
 void AIS_InteractiveContext::SetHLRAngleAndDeviation (const Standard_Real theAngle)
 {
   Standard_Real anOutAngl, anOutDefl;
-  HLRBRep::PolyHLRAngleAndDeflection (theAngle, anOutAngl, anOutDefl);
+  HLRAlgo_BRepPolyAlgo::PolyHLRAngleAndDeflection (theAngle, anOutAngl, anOutDefl);
 
   myDefaultDrawer->SetHLRAngle                (anOutAngl);
   myDefaultDrawer->SetHLRDeviationCoefficient (anOutDefl);
