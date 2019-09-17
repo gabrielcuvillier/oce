@@ -13,6 +13,8 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
+#if !defined(OCCT_DISABLE_BREPFONT)
+
 #include <Font_BRepTextBuilder.hxx>
 
 // =======================================================================
@@ -87,3 +89,5 @@ TopoDS_Shape Font_BRepTextBuilder::Perform (Font_BRepFont&                      
 
   return Perform (theFont, aFormatter, thePenLoc);
 }
+
+#endif

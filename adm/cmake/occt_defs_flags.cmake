@@ -52,6 +52,9 @@ else()
     message (STATUS "Info: OCCT_DISABLE_EXACTHLR_IN_VISUALIZATION is defined")
     add_definitions(-DOCCT_DISABLE_EXACTHLR_IN_VISUALIZATION)
 
+    message (STATUS "Info: OCCT_DISABLE_BREPFONT is defined")
+    add_definitions(-DOCCT_DISABLE_BREPFONT)
+
     message (STATUS "Info: OCCT_DISABLE_OPTIMIZED_MEMORY_ALLOCATOR is defined")
     add_definitions(-DOCCT_DISABLE_OPTIMIZED_MEMORY_ALLOCATOR)
 

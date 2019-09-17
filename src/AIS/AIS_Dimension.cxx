@@ -332,6 +332,7 @@ TCollection_ExtendedString AIS_Dimension::GetValueString (Standard_Real& theWidt
 
   theWidth = 0.0;
 
+#if !defined(OCCT_DISABLE_BREPFONT)
   if (myDrawer->DimensionAspect()->IsText3d())
   {
     // text width produced by BRepFont
@@ -347,6 +348,7 @@ TCollection_ExtendedString AIS_Dimension::GetValueString (Standard_Real& theWidt
     }
   }
   else
+#endif
   {
     // Text width for 1:1 scale 2D case
     Handle(Font_FTFont) aFont = new Font_FTFont();
@@ -431,6 +433,7 @@ void AIS_Dimension::drawText (const Handle(Prs3d_Presentation)& thePresentation,
                               const TCollection_ExtendedString& theText,
                               const Standard_Integer theLabelPosition)
 {
+#if !defined(OCCT_DISABLE_BREPFONT)
   if (myDrawer->DimensionAspect()->IsText3d())
   {
     // getting font parameters
@@ -561,6 +564,7 @@ void AIS_Dimension::drawText (const Handle(Prs3d_Presentation)& thePresentation,
 
     return;
   }
+#endif
 
   // generate primitives for 2D text
   myDrawer->DimensionAspect()->TextAspect()->Aspect()->SetDisplayType (Aspect_TODT_DIMENSION);

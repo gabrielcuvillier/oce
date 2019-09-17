@@ -14,6 +14,8 @@
 
 #include <Font_BRepFont.hxx>
 
+#if !defined(OCCT_DISABLE_BREPFONT)
+
 #include <BRep_Tool.hxx>
 #include <BRepLib_MakeFace.hxx>
 #include <BRepLib_MakeWire.hxx>
@@ -480,3 +482,5 @@ Standard_Boolean Font_BRepFont::renderGlyph (const Standard_Utf32Char theChar,
   myCache.Bind (theChar, theShape);
   return !theShape.IsNull();
 }
+
+#endif

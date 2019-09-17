@@ -16,6 +16,8 @@
 #ifndef Font_BRepTextBuilder_Header
 #define Font_BRepTextBuilder_Header
 
+#if !defined(OCCT_DISABLE_BREPFONT)
+
 #include <Font_BRepFont.hxx>
 #include <Font_TextFormatter.hxx>
 #include <gp_Ax3.hxx>
@@ -49,3 +51,5 @@ protected:
 };
 
 #endif // Font_BRepTextBuilder_Header
+
+#endif

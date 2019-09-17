@@ -15,6 +15,8 @@
 #ifndef _Font_BRepFont_H__
 #define _Font_BRepFont_H__
 
+#if !defined(OCCT_DISABLE_BREPFONT)
+
 #include <Adaptor3d_CurveOnSurface.hxx>
 #include <BRep_Builder.hxx>
 #include <Font_FTFont.hxx>
@@ -213,3 +215,4 @@ public:
 DEFINE_STANDARD_HANDLE(Font_BRepFont, Font_FTFont)
 
 #endif // _Font_BRepFont_H__
+#endif
