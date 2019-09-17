@@ -511,9 +511,7 @@ void BRepMesh_DataStructureOfDelaun::Statistics(Standard_OStream& theStream) con
 //
 //  Stores the mesh data structure to BRep file with the given name.
 //=======================================================================
-
-// This "dump" function make TKMesh depends on TKTopAlgo. Let's disable this as it is only used for debugging
-#if 0
+#ifdef OCCT_DEBUG
 #include <BRepBuilderAPI_MakeEdge.hxx>
 #include <BRepBuilderAPI_MakeVertex.hxx>
 Standard_CString BRepMesh_Dump(void*            theMeshHandlePtr,
