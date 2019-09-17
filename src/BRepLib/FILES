@@ -30,6 +30,10 @@ BRepLib_MakeVertex.hxx
 BRepLib_MakeWire.cxx
 BRepLib_MakeWire.hxx
 BRepLib_MakeWire_1.cxx
+BRepLib_Transform.cxx
+BRepLib_Transform.hxx
+BRepLib_ModifyShape.cxx
+BRepLib_ModifyShape.hxx
 BRepLib_ShapeModification.hxx
 BRepLib_ShellError.hxx
 BRepLib_WireError.hxx
