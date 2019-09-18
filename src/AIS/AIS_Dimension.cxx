@@ -73,7 +73,8 @@
 #include <Units_UnitsDictionary.hxx>
 #include <UnitsAPI.hxx>
 #include <UnitsAPI_SystemUnits.hxx>
-
+#include <NCollection_UtfString.hxx>
+#include <Font_FTFont.hxx>
 
 IMPLEMENT_STANDARD_RTTIEXT(AIS_Dimension,AIS_InteractiveObject)
 
