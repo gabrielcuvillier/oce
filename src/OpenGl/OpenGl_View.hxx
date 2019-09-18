@@ -49,6 +49,7 @@
 #include <OpenGl_Window.hxx>
 #include <OpenGl_Workspace.hxx>
 #include <OpenGl_TileSampler.hxx>
+#include <OpenGl_TextureBufferArb.hxx>
 
 #include <map>
 #include <set>

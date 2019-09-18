@@ -40,6 +40,7 @@
 #include <gp_Lin2d.hxx>
 #include <gp_Trsf.hxx>
 #include <HLRBRep.hxx>
+#include <HLRAlgo_BRepPolyAlgo.hxx>
 #include <Poly_Connect.hxx>
 #include <Poly_Polygon3D.hxx>
 #include <Poly_PolygonOnTriangulation.hxx>
@@ -839,7 +840,7 @@ void DBRep_DrawableShape::DisplayHiddenLines(Draw_Display& dis)
   Standard_Real focal = -1;
   if (!strcmp(dout.GetType(id),"PERS")) focal = dout.Focal(id);
   Standard_Real Ang,Def;
-  HLRBRep::PolyHLRAngleAndDeflection(myAng,Ang,Def);
+  HLRAlgo_BRepPolyAlgo::PolyHLRAngleAndDeflection(myAng,Ang,Def);
   BRepMesh_FastDiscret::Parameters aMeshParams;
   aMeshParams.Relative = Standard_True;
   aMeshParams.Deflection = Def;

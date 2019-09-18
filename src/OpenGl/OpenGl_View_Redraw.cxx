@@ -199,7 +199,7 @@ void OpenGl_View::Redraw()
 #endif
 
 #if !defined(GL_ES_VERSION_2_0)
-  const bool toUseOit = myRenderParams.TransparencyMethod == Graphic3d_RTM_BLEND_OIT
+  bool toUseOit = myRenderParams.TransparencyMethod == Graphic3d_RTM_BLEND_OIT
                && checkOitCompatibility (aCtx, aNbSamples > 0);
 #else
   const bool toUseOit = false;
