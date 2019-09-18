@@ -95,8 +95,6 @@ namespace
         aPoly->ChangeTriangle (aTriIter + 1) = myTriangles (aTriIter);
       }
 
-      Poly::ComputeNormals (aPoly);
-
       return aPoly;
     }
 
