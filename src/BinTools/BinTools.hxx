@@ -77,10 +77,12 @@ public:
   Standard_EXPORT static Standard_Boolean Read (TopoDS_Shape& theShape, const Standard_CString theFile);
 
   //! Writes <theTri> on <theStream> in binary format.
-  Standard_EXPORT static void Write (Handle(Poly_Triangulation) theTri, Standard_OStream& theStream);
+  Standard_EXPORT static void Write (Handle(Poly_Triangulation) theTri, Standard_OStream& theStream,
+                                     Standard_Boolean bFormatWithNormals = false);
 
   //! Reads a triangulation from <theStream> and returns it in <theShape>.
-  Standard_EXPORT static void Read (Handle(Poly_Triangulation)& theTri, Standard_IStream& theStream);
+  Standard_EXPORT static void Read (Handle(Poly_Triangulation)& theTri, Standard_IStream& theStream,
+                                    Standard_Boolean bFormatWithNormals = false);
 
   //! Writes <theTri> in <theFile>.
   Standard_EXPORT static Standard_Boolean Write (Handle(Poly_Triangulation) theTri, const Standard_CString theFile);

@@ -1306,8 +1306,7 @@ void BinTools_ShapeSet::ReadPolygon3D(Standard_IStream &IS) {
 //=======================================================================
 
 void BinTools_ShapeSet::WriteTriangulation(Standard_OStream &OS) const {
-  Standard_Integer i, j, nbNodes, nbtri = myTriangulations.Extent();
-  Standard_Integer nbTriangles = 0, n1, n2, n3;
+  Standard_Integer i, nbtri = myTriangulations.Extent();
   OS << "Triangulations " << nbtri << "\n";
   Handle(Poly_Triangulation) T;
   try {
@@ -1332,10 +1331,7 @@ void BinTools_ShapeSet::WriteTriangulation(Standard_OStream &OS) const {
 
 void BinTools_ShapeSet::ReadTriangulation(Standard_IStream &IS) {
   char buffer[255];
-  Standard_Integer i, j, nbtri = 0;
-  Standard_Real d, x, y, z;
-  Standard_Integer nbNodes = 0, nbTriangles = 0;
-  Standard_Boolean hasUV = Standard_False;
+  Standard_Integer i, nbtri = 0;
 
   Handle(Poly_Triangulation) T;
   IS >> buffer;

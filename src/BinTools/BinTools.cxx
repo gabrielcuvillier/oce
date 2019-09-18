@@ -219,7 +219,7 @@ Standard_Boolean BinTools::Read(TopoDS_Shape &theShape, const Standard_CString t
 //purpose  :
 //=======================================================================
 
-void BinTools::Write(Handle(Poly_Triangulation) theTri, Standard_OStream &theStream) {
+void BinTools::Write(Handle(Poly_Triangulation) theTri, Standard_OStream &theStream, Standard_Boolean bFormatWithNormals) {
   Standard_Integer j = 0;
   Standard_Integer nbNodes = 0, nbTriangles = 0;
 
@@ -229,8 +229,10 @@ void BinTools::Write(Handle(Poly_Triangulation) theTri, Standard_OStream &theStr
   BinTools::PutInteger(theStream, theTri->NbTriangles());
   // write HasUVNodes
   BinTools::PutBool(theStream, theTri->HasUVNodes() ? 1 : 0);
-  // write HasNormals
-  BinTools::PutBool(theStream, theTri->HasNormals() ? 1 : 0);
+  if (bFormatWithNormals) {
+    // write HasNormals
+    BinTools::PutBool(theStream, theTri->HasNormals() ? 1 : 0);
+  }
   // write the deflection
   BinTools::PutReal(theStream, theTri->Deflection());
 
@@ -251,10 +253,13 @@ void BinTools::Write(Handle(Poly_Triangulation) theTri, Standard_OStream &theStr
     }
   }
 
-  if (theTri->HasNormals()) {
-    const TShort_Array1OfShortReal &NormalNodes = theTri->Normals();
-    for (j = 1; j <= nbNodes * 3; j++) {
-      BinTools::PutShortReal(theStream, NormalNodes(j));
+  if (bFormatWithNormals) {
+    // write HasNormals
+    if (theTri->HasNormals()) {
+      const TShort_Array1OfShortReal &NormalNodes = theTri->Normals();
+      for (j = 1; j <= nbNodes * 3; j++) {
+        BinTools::PutShortReal(theStream, NormalNodes(j));
+      }
     }
   }
 
@@ -274,7 +279,7 @@ void BinTools::Write(Handle(Poly_Triangulation) theTri, Standard_OStream &theStr
 //purpose  :
 //=======================================================================
 
-void BinTools::Read(Handle(Poly_Triangulation) &theTri, Standard_IStream &theStream) {
+void BinTools::Read(Handle(Poly_Triangulation) &theTri, Standard_IStream &theStream, Standard_Boolean bFormatWithNormals) {
   Standard_Integer j;
   Standard_Real d, x, y, z;
   Standard_Integer nbNodes = 0, nbTriangles = 0;
@@ -286,7 +291,9 @@ void BinTools::Read(Handle(Poly_Triangulation) &theTri, Standard_IStream &theStr
   TColgp_Array1OfPnt Nodes(1, nbNodes);
   BinTools::GetBool(theStream, hasUV);
   TColgp_Array1OfPnt2d UVNodes(1, nbNodes);
-  BinTools::GetBool(theStream, hasNormals);
+  if (bFormatWithNormals) {
+    BinTools::GetBool(theStream, hasNormals);
+  }
   TShort_Array1OfShortReal NormalNodes(1, nbNodes * 3);
 
   BinTools::GetReal(theStream, d); //deflection
