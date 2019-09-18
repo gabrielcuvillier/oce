@@ -143,7 +143,8 @@ AppDef_MultiLine& AppDef_MyLineTool::MakeMLBetween(const AppDef_MultiLine&,
 						   const Standard_Integer ,
 						   const Standard_Integer )
 {
-  return *((AppDef_MultiLine*) 0);
+  throw Standard_Failure();
+  //return *((AppDef_MultiLine*) 0);
 }
 
 Standard_Boolean AppDef_MyLineTool::MakeMLOneMorePoint(const AppDef_MultiLine& ,
