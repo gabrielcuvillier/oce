@@ -24,6 +24,8 @@ class Standard_Transient;
 
 namespace opencascade {
 
+  void debug_type(Standard_Transient const* theTransient) noexcept;
+
   //! Trait yielding true if class T1 is base of T2 but not the same
   template <class T1, class T2, class Dummy = void>
   struct is_base_but_not_same : std::is_base_of <T1, T2> {};
@@ -68,15 +70,15 @@ namespace opencascade {
     handle () : entity(0) {}
 
     //! Constructor from pointer to new object
-    handle (const T *thePtr) : entity(const_cast<T*>(thePtr))
+    handle (const T *thePtr) : entity(0)
     {
-      BeginScope();
+      Assign(const_cast<T*>(thePtr));
     }
 
     //! Copy constructor
-    handle (const handle& theHandle) : entity(theHandle.entity)
+    handle (const handle& theHandle) : entity(0)
     {
-      BeginScope();
+      Assign(theHandle.entity);
     }
 
     //! Move constructor
@@ -251,9 +253,9 @@ namespace opencascade {
     //! Constructs handle holding entity of base type (T) from the one which holds entity of derived type (T2).
     template <class T2, typename = typename std::enable_if <is_base_but_not_same <T, T2>::value>::type>
     handle (const handle<T2>& theHandle) :
-      entity(theHandle.entity)
+      entity(0)
     {
-      BeginScope();
+      Assign(theHandle.entity);
     }
 
     //! Generalized move constructor
@@ -307,9 +309,9 @@ namespace opencascade {
     //! Constructs handle holding entity of base type (T) from the one which holds entity of derived type (T2).
     template <class T2>
     handle (const handle<T2>& theHandle, typename std::enable_if <is_base_but_not_same <T, T2>::value>::type* = nullptr) :
-      entity(theHandle.entity)
+      entity(0)
     {
-      BeginScope();
+      Assign(theHandle.entity);
     }
 
     //! Generalized move constructor
@@ -379,6 +381,14 @@ namespace opencascade {
       EndScope();
       entity = thePtr;
       BeginScope();
+
+#if defined(__EMSCRIPTEN__)
+      static bool once = false;
+      if (!once) {
+        once = true;
+        opencascade::debug_type(entity);
+      }
+#endif
     }
   
     //! Increment reference counter of referred object 
