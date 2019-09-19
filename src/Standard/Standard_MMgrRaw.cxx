@@ -32,16 +32,17 @@ Standard_MMgrRaw::Standard_MMgrRaw(const Standard_Boolean aClear)
 //purpose  : 
 //=======================================================================
 
-Standard_Address Standard_MMgrRaw::Allocate(const Standard_Size aSize)
+Standard_Address Standard_MMgrRaw::Allocate(const Standard_Size theSize)
 {
   // the size is rounded up to 4 since some OCC classes
   // (e.g. TCollection_AsciiString) assume memory to be double word-aligned
-#if defined(__EMSCRIPTEN__)
-  // Some Emscripten memory allocator (ie. emmalloc) have troubles with calloc/malloc(0), so just prevent this
-  const Standard_Size aRoundSize = aSize ? (aSize + 3) & ~0x3 : 4;
-#else
-  const Standard_Size aRoundSize = (aSize + 3) & ~0x3;
-#endif
+  Standard_Size aRoundSize;
+  if constexpr(__EMSCRIPTEN__) {
+    // Some Emscripten memory allocator (ie. emmalloc) have troubles with calloc/malloc(0), so just prevent this
+    aRoundSize = theSize ? (theSize + 3) & ~0x3 : 4;
+  } else {
+    aRoundSize = (theSize + 3) & ~0x3;
+  }
   // we use ?: operator instead of if() since it is faster :-)
   Standard_Address aPtr = ( myClear ? calloc(aRoundSize, sizeof(char)) :
                                       malloc(aRoundSize) );
@@ -70,12 +71,13 @@ Standard_Address Standard_MMgrRaw::Reallocate(Standard_Address theStorage,
 {
   // the size is rounded up to 4 since some OCC classes
   // (e.g. TCollection_AsciiString) assume memory to be double word-aligned
-#if defined(__EMSCRIPTEN__)
-  // Some Emscripten memory allocator (ie. emmalloc) have troubles with calloc/malloc(0), so just prevent this
-  const Standard_Size aRoundSize = theSize ? (theSize + 3) & ~0x3 : 4;
-#else
-  const Standard_Size aRoundSize = (theSize + 3) & ~0x3;
-#endif
+  Standard_Size aRoundSize;
+  if constexpr(__EMSCRIPTEN__) {
+    // Some Emscripten memory allocator (ie. emmalloc) have troubles with calloc/malloc(0), so just prevent this
+    aRoundSize = theSize ? (theSize + 3) & ~0x3 : 4;
+  } else {
+    aRoundSize = (theSize + 3) & ~0x3;
+  }
   Standard_Address newStorage = (Standard_Address)realloc(theStorage, aRoundSize);
   if ( ! newStorage )
     throw Standard_OutOfMemory("Standard_MMgrRaw::Reallocate(): realloc failed");
