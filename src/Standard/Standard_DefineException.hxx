@@ -27,13 +27,22 @@
 */
 
 // As Exceptions are disabled on Emscripten (-fno-exceptions + DISABLE_EXCEPTION_CATCHING=1) due to being too slow,
-// redefine throw/try/catch to dummy code
+// redefine throw/try/catch to specific exception hijacking code
 #if defined(__EMSCRIPTEN__)
 
-// 'throw' is redefined to display "Standard_Failure" on stderr, and abort the program immediatly.
-// Then, a clever/hacky usage of the 'comma' operator allow the compiler to handle correctly the exception expression
-// (notice the 'comma' at the end...)
-#define throw std::fprintf(stderr, "%s\n", Standard_Failure::get_type_name()), abort(),
+class _DelayedTerminate {
+ public:
+  Standard_Failure* myFailure;
+  _DelayedTerminate() noexcept;
+  [[noreturn]] ~_DelayedTerminate() noexcept;
+
+  // Overload of comma operator <= rationale is a bit tricky to explain, but this works.
+  Standard_Failure& operator,(Standard_Failure & theFailure) noexcept;
+};
+
+// 'throw' is redefined use _DelayedTerminate functionality
+// NB: notice the trailing "comma" operator, necessary for the functionality
+#define throw _DelayedTerminate(),
 
 // 'try' is redefined to do nothing
 #define try
@@ -43,18 +52,7 @@
 // C++17 if with initialization statement)
 #define catch(x) if constexpr(Standard_Failure anException{}; false)
 
-#define DEFINE_STANDARD_EXCEPTION(C1,C2) \
- \
-class C1 : public C2 { \
-public: \
-  C1() : C2() {} \
-  C1(const Standard_CString theMessage) : C2(theMessage) {} \
-};
-
-//! Obsolete macro, kept for compatibility with old code
-#define IMPLEMENT_STANDARD_EXCEPTION(C1)
-
-#else
+#endif
 
 #define DEFINE_STANDARD_EXCEPTION(C1, C2) \
  \
@@ -78,5 +76,4 @@ public: \
 //! Obsolete macro, kept for compatibility with old code
 #define IMPLEMENT_STANDARD_EXCEPTION(C1)
 
-#endif
 #endif
