@@ -1343,7 +1343,6 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
       extTexDepth = true;
     }
   }
-#endif
 
   core11fwd = (OpenGl_GlCore11Fwd* )(&(*myFuncs));
   if (IsGlGreaterEqual (2, 0))

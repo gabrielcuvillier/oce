@@ -64,25 +64,25 @@ TCollection_AsciiString OSD_Host::SystemVersion(){
 // =========================================================================
 
 OSD_SysType OSD_Host::SystemId()const{
-#if defined(__EMSCRIPTEN__)
+if constexpr(__EMSCRIPTEN__) {
   return (OSD_Emscripten);
-#else
+} else {
   struct utsname info;
 
-  uname (&info);
+  uname(&info);
 
-  if (!strcmp(info.sysname,"SunOS"))          return (OSD_UnixBSD);
-  if (!strcmp(info.sysname,"ULTRIX"))         return (OSD_UnixBSD);
-  if (!strcmp(info.sysname,"FreeBSD"))        return (OSD_UnixBSD);
-  if (!strncmp(info.sysname,"Linux",5))       return (OSD_LinuxREDHAT);
-  if (!strncmp(info.sysname,"IRIX", 4))       return (OSD_UnixSystemV);
-  if (!strncmp(info.sysname,"OSF", 3))        return (OSD_OSF);
-  if (!strcmp(info.sysname,"AIX"))            return (OSD_Aix);
-  if (!strcmp(info.sysname,"UNIX_System_V"))  return (OSD_UnixSystemV);
-  if (!strcmp(info.sysname,"VMS_POSIX"))      return (OSD_VMS);
-  if (!strcmp(info.sysname,"Darwin"))         return (OSD_MacOs);
+  if (!strcmp(info.sysname, "SunOS")) return (OSD_UnixBSD);
+  if (!strcmp(info.sysname, "ULTRIX")) return (OSD_UnixBSD);
+  if (!strcmp(info.sysname, "FreeBSD")) return (OSD_UnixBSD);
+  if (!strncmp(info.sysname, "Linux", 5)) return (OSD_LinuxREDHAT);
+  if (!strncmp(info.sysname, "IRIX", 4)) return (OSD_UnixSystemV);
+  if (!strncmp(info.sysname, "OSF", 3)) return (OSD_OSF);
+  if (!strcmp(info.sysname, "AIX")) return (OSD_Aix);
+  if (!strcmp(info.sysname, "UNIX_System_V")) return (OSD_UnixSystemV);
+  if (!strcmp(info.sysname, "VMS_POSIX")) return (OSD_VMS);
+  if (!strcmp(info.sysname, "Darwin")) return (OSD_MacOs);
   return (OSD_Unknown);
-#endif
+}
 }
 
 // =========================================================================
@@ -143,26 +143,26 @@ TCollection_AsciiString OSD_Host::InternetAddress(){
 
 // =========================================================================
 OSD_OEMType OSD_Host::MachineType(){
-#if defined(__EMSCRIPTEN__)
+if constexpr (__EMSCRIPTEN__) {
   return (OSD_WASM);
-#else
+} else {
   struct utsname info;
- 
-  uname (&info);
 
-  if (!strcmp(info.sysname,"SunOS"))         return (OSD_SUN);
-  if (!strcmp(info.sysname,"ULTRIX"))        return (OSD_DEC);
-  if (!strncmp(info.sysname,"IRIX",4))       return (OSD_SGI);
-  if (!strcmp(info.sysname,"HP-UX"))         return (OSD_HP);
-  if (!strcmp(info.sysname,"UNIX_System_V")) return (OSD_NEC);
-  if (!strcmp(info.sysname,"VMS_POSIX"))     return (OSD_VAX);
-  if (!strncmp(info.sysname,"OSF",3))        return (OSD_DEC);
-  if (!strncmp(info.sysname,"Linux",5))      return (OSD_LIN);
-  if (!strcmp(info.sysname,"FreeBSD"))       return (OSD_LIN);
-  if (!strncmp(info.sysname,"AIX",3))        return (OSD_AIX);
-  if (!strcmp(info.sysname,"Darwin"))        return (OSD_MAC);
+  uname(&info);
+
+  if (!strcmp(info.sysname, "SunOS")) return (OSD_SUN);
+  if (!strcmp(info.sysname, "ULTRIX")) return (OSD_DEC);
+  if (!strncmp(info.sysname, "IRIX", 4)) return (OSD_SGI);
+  if (!strcmp(info.sysname, "HP-UX")) return (OSD_HP);
+  if (!strcmp(info.sysname, "UNIX_System_V")) return (OSD_NEC);
+  if (!strcmp(info.sysname, "VMS_POSIX")) return (OSD_VAX);
+  if (!strncmp(info.sysname, "OSF", 3)) return (OSD_DEC);
+  if (!strncmp(info.sysname, "Linux", 5)) return (OSD_LIN);
+  if (!strcmp(info.sysname, "FreeBSD")) return (OSD_LIN);
+  if (!strncmp(info.sysname, "AIX", 3)) return (OSD_AIX);
+  if (!strcmp(info.sysname, "Darwin")) return (OSD_MAC);
   return (OSD_Unavailable);
-#endif
+}
 }
 
 void OSD_Host::Reset(){
