@@ -219,16 +219,18 @@ Handle(CDM_Document) CDF_Application::Retrieve(const Handle(CDM_MetaData)& aMeta
   if(IsComponent) {
     Standard_SStream aMsg;
     switch (CanRetrieve(aMetaData)) {
-    case PCDM_RS_UnknownDocument: 
+    case PCDM_RS_UnknownDocument: {
       aMsg << "could not find the referenced document: " << aMetaData->Path() << "; not found."  <<(char)0 << endl;
       myRetrievableStatus = PCDM_RS_UnknownDocument;
       throw Standard_Failure(aMsg.str().c_str());
       break;
-    case PCDM_RS_PermissionDenied:      
+      }
+    case PCDM_RS_PermissionDenied: {
       aMsg << "Could not find the referenced document: " << aMetaData->Path() << "; permission denied. " <<(char)0 << endl;
       myRetrievableStatus = PCDM_RS_PermissionDenied;
       throw Standard_Failure(aMsg.str().c_str());
       break;
+      }
     default:
       break;
     }

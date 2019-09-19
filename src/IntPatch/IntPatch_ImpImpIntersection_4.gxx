@@ -1277,9 +1277,9 @@ Standard_Boolean CyCyAnalyticalIntersect( const IntSurf_Quadric& Quad1,
     break;
 
   case IntAna_Parabola:
-  case IntAna_Hyperbola:
+  case IntAna_Hyperbola: {
     throw Standard_Failure("IntCyCy(): Wrong intersection type!");
-
+  }
   case IntAna_Circle:
     // Circle is useful when we will work with trimmed surfaces
     // (two cylinders can be tangent by their basises, e.g. circle)

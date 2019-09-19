@@ -671,9 +671,10 @@ TopoDS_Shape BRepFill_Pipe::MakeShape(const TopoDS_Shape& S,
     }
 
   case TopAbs_SOLID :
-  case TopAbs_COMPSOLID :
+  case TopAbs_COMPSOLID : {
     throw Standard_DomainError("BRepFill_Pipe::profile contains solids");
     break;
+  }
 
   case TopAbs_COMPOUND :
     {
@@ -896,9 +897,10 @@ Standard_Integer BRepFill_Pipe::FindEdge(const TopoDS_Shape& S,
     }
 
   case TopAbs_SOLID :
-  case TopAbs_COMPSOLID :
+  case TopAbs_COMPSOLID : {
     throw Standard_DomainError("BRepFill_Pipe::SOLID or COMPSOLID");
     break;
+  }
   default:
     break;
   }
@@ -962,9 +964,10 @@ Standard_Integer BRepFill_Pipe::FindVertex(const TopoDS_Shape& S,
     }
 
   case TopAbs_SOLID :
-  case TopAbs_COMPSOLID :
+  case TopAbs_COMPSOLID : {
     throw Standard_DomainError("BRepFill_Pipe::SOLID or COMPSOLID");
     break;
+  }
   default:
     break;
   }

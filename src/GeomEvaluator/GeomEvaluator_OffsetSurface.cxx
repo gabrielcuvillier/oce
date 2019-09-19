@@ -253,7 +253,7 @@ void GeomEvaluator_OffsetSurface::D0(
       // if failed at parametric boundary, try taking derivative at shifted point
       if (! shiftPoint (theU, theV, aU, aV, myBaseSurf, myBaseAdaptor, aD1U, aD1V))
       {
-        throw false;
+        throw Standard_Failure();
       }
     }
   }
@@ -278,7 +278,7 @@ void GeomEvaluator_OffsetSurface::D1(
       // if failed at parametric boundary, try taking derivative at shifted point
       if (! shiftPoint (theU, theV, aU, aV, myBaseSurf, myBaseAdaptor, theD1U, theD1V))
       {
-        throw false;
+        throw Standard_Failure();
       }
     }
   }
@@ -306,7 +306,7 @@ void GeomEvaluator_OffsetSurface::D2(
       // if failed at parametric boundary, try taking derivative at shifted point
       if (! shiftPoint (theU, theV, aU, aV, myBaseSurf, myBaseAdaptor, theD1U, theD1V))
       {
-        throw false;
+        throw Standard_Failure();
       }
     }
   }
@@ -334,7 +334,7 @@ void GeomEvaluator_OffsetSurface::D3(
       // if failed at parametric boundary, try taking derivative at shifted point
       if (! shiftPoint (theU, theV, aU, aV, myBaseSurf, myBaseAdaptor, theD1U, theD1V))
       {
-        throw false;
+        throw Standard_Failure();
       }
     }
   }
@@ -364,7 +364,7 @@ gp_Vec GeomEvaluator_OffsetSurface::DN(
       // if failed at parametric boundary, try taking derivative at shifted point
       if (! shiftPoint (theU, theV, aU, aV, myBaseSurf, myBaseAdaptor, aD1U, aD1V))
       {
-        throw false;
+        throw Standard_Failure();
       }
     }
   }

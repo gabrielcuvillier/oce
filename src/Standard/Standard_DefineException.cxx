@@ -6,24 +6,12 @@
 #include <iostream>
 #include <exception>
 
-_DelayedTerminate::_DelayedTerminate() noexcept : myFailure(nullptr) { }
+_TerminateWithStandardFailure::_TerminateWithStandardFailure(Standard_Failure const & next) noexcept :
+    myFailureType(next.DynamicType()->Name()), myMessage(next.GetMessageString()) { }
 
-_DelayedTerminate::~_DelayedTerminate() noexcept {
-  if (myFailure) {
-    std::cerr << myFailure->DynamicType() << ": " << myFailure->GetMessageString();
-    myFailure = nullptr;
-  }
-  else {
-    std::cerr << "Unknown failure" << std::endl;
-  }
-
+_TerminateWithStandardFailure::~_TerminateWithStandardFailure() noexcept {
+  std::cerr << myFailureType << ": " << myMessage << std::endl;
   std::terminate();
 };
-
-Standard_Failure& _DelayedTerminate::operator,(Standard_Failure& theFailure) noexcept {
-  std::cout << "HERE" << std::endl;
-  this->myFailure = &theFailure;
-  return theFailure;
-}
 
 #endif

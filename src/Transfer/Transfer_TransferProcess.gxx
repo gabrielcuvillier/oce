@@ -995,20 +995,22 @@ Handle(Transfer_Binder) Transfer_TransferProcess::Transferring(const TheStart &s
       case Transfer_StatusRun :                   // ca y est, on boucle
         former->SetStatusExec(Transfer_StatusLoop);
         return former;
-      case Transfer_StatusError :                 // pas propre, ca ...
+      case Transfer_StatusError : {                 // pas propre, ca ...
         if (thetrace) {
           themessenger << "                  *** Transfer in Error Status  :" << endl;
           StartTrace(former, start, thelevel, 0);
 //	  (*themessenger->Out()) << flush;
         } else StartTrace(former, start, thelevel, 4);
         throw Transfer_TransferFailure("TransferProcess : Transfer in Error Status");
-      case Transfer_StatusLoop :                  // la boucle est bouclee ...
+      }
+      case Transfer_StatusLoop : {               // la boucle est bouclee ...
         if (thetrace) {
           themessenger << "                  *** Transfer  Head of Dead Loop  :" << endl;
           StartTrace(former, start, thelevel, 0);
 //	  (*themessenger->Out()) << flush;
         } else StartTrace(former, start, thelevel, 4);
         throw Transfer_TransferDeadLoop("TransferProcess : Transfer at Head of a Dead Loop");
+      }
     }
 #ifdef TRANSLOG
     cout << "Transfer,level "<<thelevel<<Message_Flush;

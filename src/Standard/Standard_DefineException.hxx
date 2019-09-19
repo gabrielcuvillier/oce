@@ -30,19 +30,20 @@
 // redefine throw/try/catch to specific exception hijacking code
 #if defined(__EMSCRIPTEN__)
 
-class _DelayedTerminate {
- public:
-  Standard_Failure* myFailure;
-  _DelayedTerminate() noexcept;
-  [[noreturn]] ~_DelayedTerminate() noexcept;
+#include <string>
 
-  // Overload of comma operator <= rationale is a bit tricky to explain, but this works.
-  Standard_Failure& operator,(Standard_Failure & theFailure) noexcept;
+class _TerminateWithStandardFailure {
+ private:
+  std::string myFailureType;
+  std::string myMessage;
+ public:
+  _TerminateWithStandardFailure(Standard_Failure const &) noexcept;
+  [[noreturn]] ~_TerminateWithStandardFailure() noexcept;
 };
 
-// 'throw' is redefined use _DelayedTerminate functionality
-// NB: notice the trailing "comma" operator, necessary for the functionality
-#define throw _DelayedTerminate(),
+// 'throw' is redefined use _TerminateWithStandardFailure functionality
+// NB: notice the assignment operator at the end. This is intended, to "absorb" the thrown failure object;
+#define throw _TerminateWithStandardFailure _absorb_failure =
 
 // 'try' is redefined to do nothing
 #define try

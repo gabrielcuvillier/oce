@@ -249,40 +249,41 @@ void StdLDrivers_DocumentRetrievalDriver::raiseOnStorageError (Storage_Error the
 
   case Storage_VSOpenError:
   case Storage_VSNotOpen:
-  case Storage_VSAlreadyOpen:
+  case Storage_VSAlreadyOpen: {
     myReaderStatus = PCDM_RS_OpenError;
     aMsg << "Stream Open Error" << endl;
     throw Standard_Failure(aMsg.str().c_str());
-
-  case Storage_VSModeError:
+  }
+  case Storage_VSModeError: {
     myReaderStatus = PCDM_RS_WrongStreamMode;
     aMsg << "Stream is opened with a wrong mode for operation" << endl;
     throw Standard_Failure(aMsg.str().c_str());
-
-  case Storage_VSSectionNotFound:
+  }
+  case Storage_VSSectionNotFound: {
     myReaderStatus = PCDM_RS_FormatFailure;
     aMsg << "Section is not found" << endl;
     throw Standard_Failure(aMsg.str().c_str());
-
-  case Storage_VSFormatError:
+  }
+  case Storage_VSFormatError: {
     myReaderStatus = PCDM_RS_FormatFailure;
     aMsg << "Wrong format error" << endl;
     throw Standard_Failure(aMsg.str().c_str());
-
-  case Storage_VSUnknownType:
+  }
+  case Storage_VSUnknownType: {
     myReaderStatus = PCDM_RS_TypeFailure;
     aMsg << "Try to read an unknown type" << endl;
     throw Standard_Failure(aMsg.str().c_str());
-
-  case Storage_VSTypeMismatch:
+  }
+  case Storage_VSTypeMismatch: {
     myReaderStatus = PCDM_RS_TypeFailure;
     aMsg << "Try to read a wrong primitive type" << endl;
     throw Standard_Failure(aMsg.str().c_str());
-
-  default:
+  }
+  default: {
     myReaderStatus = PCDM_RS_DriverFailure;
     aMsg << "Retrieval Driver Failure" << endl;
     throw Standard_Failure(aMsg.str().c_str());
+  }
   }
 }
 

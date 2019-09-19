@@ -884,20 +884,24 @@ void CDM_Document::Open(const Handle(CDM_Application)& anApplication)
 void CDM_Document::Close()
 {
   switch (CanClose()) {
-  case CDM_CCS_NotOpen: 
+  case CDM_CCS_NotOpen: {
     throw Standard_Failure("cannot close a document that has not been opened");
     break;
-  case CDM_CCS_UnstoredReferenced:
-     throw Standard_Failure("cannot close an unstored document which is referenced");
+  }
+  case CDM_CCS_UnstoredReferenced: {
+    throw Standard_Failure("cannot close an unstored document which is referenced");
     break;
-  case CDM_CCS_ModifiedReferenced:
+  }
+  case CDM_CCS_ModifiedReferenced: {
     throw Standard_Failure("cannot close a document which is referenced when "
-                            "the document has been modified since it was stored.");
+                           "the document has been modified since it was stored.");
     break;
-  case CDM_CCS_ReferenceRejection:
+  }
+  case CDM_CCS_ReferenceRejection: {
     throw Standard_Failure("cannot close this document because a document "
-                            "referencing it refuses");
+                           "referencing it refuses");
     break;
+  }
   default:
     break;
   }
