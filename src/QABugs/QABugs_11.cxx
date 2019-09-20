@@ -55,6 +55,7 @@
 #include <OSD_Exception_ACCESS_VIOLATION.hxx>
 #include <OSD_Exception_STACK_OVERFLOW.hxx>
 #include <OSD.hxx>
+#include <OSD_ThreadPool.hxx>
 #include <STEPCAFControl_Writer.hxx>
 #include <STEPControl_StepModelType.hxx>
 #include <Interface_Static.hxx>
@@ -950,56 +951,6 @@ static Standard_Integer OCC277bug (Draw_Interpretor& di, Standard_Integer nb, co
   return 0;
 }
 
-#include <ShapeAnalysis_Edge.hxx>
-
-static Standard_Integer OCC333bug (Draw_Interpretor& di, Standard_Integer n, const char ** a)
-{
-  if( n < 3) {
-    di<<"-1\n";
-    di << "Usage: " << a[0] << " edge1 edge2 [toler domaindist]\n";
-    return 1;
-  }
-  TopoDS_Shape Sh1 = DBRep::Get(a[1]);
-  TopoDS_Shape Sh2 = DBRep::Get(a[2]);
-  if(Sh1.IsNull() || Sh2.IsNull()) {
-    di<<"-2\n";
-    di<<"Invalid arguments\n";
-    return 1;
-  }
-  TopoDS_Edge e1 = TopoDS::Edge(Sh1);
-  TopoDS_Edge e2 = TopoDS::Edge(Sh2);
-  if(e1.IsNull() || e2.IsNull()) {
-    di<<"-3\n";
-    di<<"Invalid type of arguments\n";
-    return 1;
-  }
-  Standard_Real aTol = Precision::Confusion();
-  Standard_Real aDistDomain = 0.0;
-  Standard_Integer k = 3;
-  if(k < n)
-    aTol = Draw::Atof(a[k++]);
-  if(k < n)
-    aDistDomain = Draw::Atof(a[k++]);
-
-  ShapeAnalysis_Edge sae;
-  if(sae.CheckOverlapping(e1,e2,aTol,aDistDomain)) {
-    if(aDistDomain ==0.0) {
-      di<<"1\n";
-      di<<"Edges is overlaping comletly\n";
-    } else {
-      di<<"2\n";
-      di<<"Edges is overlaped\n";
-      di<<"with tolerance = "<<aTol<<"\n";
-      di<<"on segment length = "<<aDistDomain<<"\n";
-    }
-  } else {
-    di<<"3\n";
-    di<<"Edges is not overlaped\n";
-  }
-  return 0;
-}
-
-
 #include <DDocStd_DrawDocument.hxx>
 #include <TDataStd_Name.hxx>
 #include <Draw.hxx>
@@ -1043,7 +994,7 @@ static Standard_Integer OCC363 (Draw_Interpretor& di, Standard_Integer argc, con
       if ( ! seq.Value(i).FindAttribute ( TPrsStd_AISPresentation::GetID(), prs ) )
         prs = TPrsStd_AISPresentation::Set(seq.Value(i),XCAFPrs_Driver::GetID());
   }
-  catch(Standard_Failure) { di << "FAULTY OCC363 : Exception during reading document.\n";return 0;}
+  catch(Standard_Failure const&) { di << "FAULTY OCC363 : Exception during reading document.\n";return 0;}
 
   di << "OCC363 OK\n";
   return 0;
@@ -1177,7 +1128,7 @@ static Standard_Integer OCC377 (Draw_Interpretor& di, Standard_Integer argc, con
       else {di << "OCC377 FAULTY\n"; return 0;}
     }
   }
-  catch(Standard_Failure)
+  catch(Standard_Failure const&)
   {
     di << "OCC377 Exception";
   }
@@ -1233,7 +1184,7 @@ static Standard_Integer OCC22 (Draw_Interpretor& di, Standard_Integer argc, cons
     // 4.3. Create result Draw shape
     DBRep::Set(argv[1], aResultShape);
   }
-  catch (Standard_Failure) {di << "OCC22 Exception \n" ;return 0;}
+  catch (Standard_Failure const&) {di << "OCC22 Exception \n" ;return 0;}
 
   return 0;
 }
@@ -1245,6 +1196,7 @@ static Standard_Integer OCC22 (Draw_Interpretor& di, Standard_Integer argc, cons
 
 #include <TopTools_DataMapIteratorOfDataMapOfShapeShape.hxx>
 #include <BRepMesh_IncrementalMesh.hxx>
+#include <IMeshTools_Parameters.hxx>
 
 //=======================================================================
 //function : OCC24
@@ -1287,7 +1239,7 @@ static Standard_Integer OCC24 (Draw_Interpretor& di, Standard_Integer argc, cons
     DBRep::Set(argv[1], aResultShape);
 
   }
-  catch (Standard_Failure) {di << "OCC24 Exception \n" ;return 0;}
+  catch (Standard_Failure const&) {di << "OCC24 Exception \n" ;return 0;}
 
   return 0;
 }
@@ -1309,14 +1261,14 @@ static Standard_Integer OCC369(Draw_Interpretor& di, Standard_Integer argc, cons
     if(aShape.IsNull()) {di << "OCC369 FAULTY. Entry shape is NULL \n"; return 0;}
 
     // 3. Build mesh
-    BRepMesh_FastDiscret::Parameters aMeshParams;
-    aMeshParams.Relative = Standard_True;
+    IMeshTools_Parameters aMeshParams;
+    aMeshParams.Relative   = Standard_True;
     aMeshParams.Deflection = 0.2;
-    aMeshParams.Angle = M_PI / 6;
+    aMeshParams.Angle      = M_PI / 6.0;
     BRepMesh_IncrementalMesh aMesh(aShape, aMeshParams);
 
   }
-  catch (Standard_Failure) {di << "OCC369 Exception \n" ;return 0;}
+  catch (Standard_Failure const&) {di << "OCC369 Exception \n" ;return 0;}
 
   di << "OCC369 OK \n";
   return 0;
@@ -1345,15 +1297,15 @@ static Standard_Integer OCC524 (Draw_Interpretor& di, Standard_Integer argc, con
   math_Vector Vector(LowerVector, UpperVector, InitialValueVector);
   math_Matrix Matrix(LowerRowMatrix, UpperRowMatrix, LowerColMatrix, UpperColMatrix, InitialValueMatrix);
 
-  //Vector.Dump(cout);
-  //cout<<endl;
+  //Vector.Dump(std::cout);
+  //std::cout<<std::endl;
 
-  //Matrix.Dump(cout);
-  //cout<<endl;
+  //Matrix.Dump(std::cout);
+  //std::cout<<std::endl;
 
   Vector1.Multiply(Vector, Matrix);
 
-  //Vector1.Dump(cout);
+  //Vector1.Dump(std::cout);
   Standard_SStream aSStream1;
   Vector1.Dump(aSStream1);
   di << aSStream1;
@@ -1364,7 +1316,7 @@ static Standard_Integer OCC524 (Draw_Interpretor& di, Standard_Integer argc, con
   }
   Vector2.TMultiply(Vector, Matrix);
 
-  //Vector2.Dump(cout);
+  //Vector2.Dump(std::cout);
   Standard_SStream aSStream2;
   Vector2.Dump(aSStream2);
   di << aSStream2;
@@ -1501,7 +1453,7 @@ static Standard_Integer OCC669 (Draw_Interpretor& di, Standard_Integer argc, con
     return -1;
   }
   Standard_GUID guid(argv[1]);
-  //guid.ShallowDump(cout);
+  //guid.ShallowDump(std::cout);
   Standard_SStream aSStream;
   guid.ShallowDump(aSStream);
   di << aSStream;
@@ -1521,7 +1473,7 @@ static Standard_Integer OCC738_ShapeRef (Draw_Interpretor& di, Standard_Integer 
     return -1;
   }
   const Standard_GUID& guid = XCAFDoc::ShapeRefGUID ();
-  //guid.ShallowDump(cout);
+  //guid.ShallowDump(std::cout);
   Standard_SStream aSStream;
   guid.ShallowDump(aSStream);
   di << aSStream;
@@ -1539,7 +1491,7 @@ static Standard_Integer OCC738_Assembly (Draw_Interpretor& di, Standard_Integer 
     return -1;
   }
   const Standard_GUID& guid = XCAFDoc::AssemblyGUID ();
-  //guid.ShallowDump(cout);
+  //guid.ShallowDump(std::cout);
   Standard_SStream aSStream;
   guid.ShallowDump(aSStream);
   di << aSStream;
@@ -1559,7 +1511,7 @@ static Standard_Integer OCC739_DrawPresentation (Draw_Interpretor& di, Standard_
     return -1;
   }
   const Standard_GUID& guid = DDataStd_DrawPresentation::GetID() ;
-  //guid.ShallowDump(cout);
+  //guid.ShallowDump(std::cout);
   Standard_SStream aSStream;
   guid.ShallowDump(aSStream);
   di << aSStream;
@@ -1591,22 +1543,19 @@ static Standard_Integer OCC708 (Draw_Interpretor& di, Standard_Integer argc, con
   TCollection_AsciiString aName(argv[1]);
   Handle(AIS_InteractiveObject) AISObj;
 
-  if(!aMap.IsBound2(aName)) {
+  if (!aMap.Find2 (aName, AISObj)
+    || AISObj.IsNull())
+  {
     di << "Use 'vdisplay' before\n";
     return 1;
-  } else {
-    AISObj = Handle(AIS_InteractiveObject)::DownCast(aMap.Find2(aName));
-    if(AISObj.IsNull()){
-      di << argv[1] << " : No interactive object\n";
-      return 1;
-    } 
-    AISObj->ResetTransformation();
-
-    aContext->Erase(AISObj, updateviewer);
-    aContext->UpdateCurrentViewer();
-    aContext->Display(AISObj, updateviewer);
-    aContext->UpdateCurrentViewer();
   }
+
+  AISObj->ResetTransformation();
+
+  aContext->Erase(AISObj, updateviewer);
+  aContext->UpdateCurrentViewer();
+  aContext->Display(AISObj, updateviewer);
+  aContext->UpdateCurrentViewer();
   return 0;
 }
 
@@ -1628,7 +1577,7 @@ static Standard_Integer OCC670 (Draw_Interpretor& di, Standard_Integer argc, con
   }
   catch (Standard_Failure const& anException) {
     std::cout << "Caught successfully: ";
-    std::cout << anException << endl;
+    std::cout << anException << std::endl;
   }
   return 0;
 }
@@ -2189,7 +2138,7 @@ static Standard_Integer OCC6046 (Draw_Interpretor& di, Standard_Integer argc, co
     pv[i] = new math_Vector (1, sz, val);
     if ((i % (nb/10)) == 0) {
       di<<" "<<i;
-      //cout.flush();
+      //std::cout.flush();
       di<<"\n";
     }
   }
@@ -2199,7 +2148,7 @@ static Standard_Integer OCC6046 (Draw_Interpretor& di, Standard_Integer argc, co
     delete pv[i];
     if ((i % (nb/10)) == 0) {
       di<<" "<<i;
-      //cout.flush();
+      //std::cout.flush();
       di<<"\n";
     }
   }
@@ -2236,7 +2185,7 @@ static Standard_Integer OCC5698 (Draw_Interpretor& di, Standard_Integer argc, co
   // check that points are coinsiding
   Standard_Real error_dist = pnt.Distance(check_pnt);
   if (error_dist > Precision::Confusion()) {
-    //cout.precision(3);
+    //std::cout.precision(3);
     di<<"error_dist = "<<error_dist<<
       "  ( "<<error_dist/need_length*100<<" %)\n";
     return 0;
@@ -2265,7 +2214,7 @@ static Standard_Integer OCC6143 (Draw_Interpretor& di, Standard_Integer argc, co
 {
   if (argc != 1)
     {
-      cout << "Usage : " << argv[0] << "\n";
+      std::cout << "Usage : " << argv[0] << "\n";
       return 1;
     }
   Standard_Boolean Succes;
@@ -2276,9 +2225,9 @@ static Standard_Integer OCC6143 (Draw_Interpretor& di, Standard_Integer argc, co
   {//==== Test Divide ByZero (Integer) ========================================
     try{
       OCC_CATCH_SIGNALS
-      cout << "(Integer) Divide By Zero..." << endl;
+      std::cout << "(Integer) Divide By Zero..." << std::endl;
       di << "(Integer) Divide By Zero...";
-      //cout.flush();
+      //std::cout.flush();
       di << "\n";
       Standard_Integer res, a =4, b = 0 ;
       res = a / b;
@@ -2286,9 +2235,9 @@ static Standard_Integer OCC6143 (Draw_Interpretor& di, Standard_Integer argc, co
       Succes = Standard_False;
     }
 #if defined(SOLARIS) || defined(_WIN32)
-    catch(Standard_DivideByZero)
+    catch(Standard_DivideByZero const&)
 #else
-    catch(Standard_NumericError)
+    catch(Standard_NumericError const&)
 #endif
     {
       di << "Caught, OK\n";
@@ -2309,25 +2258,25 @@ static Standard_Integer OCC6143 (Draw_Interpretor& di, Standard_Integer argc, co
   {//==== Test Divide ByZero (Real) ===========================================
     try{
       OCC_CATCH_SIGNALS
-      cout << "(Real) Divide By Zero..." << endl;
+      std::cout << "(Real) Divide By Zero..." << std::endl;
       di << "(Real) Divide By Zero...";
-      //cout.flush();
+      //std::cout.flush();
       di << "\n";
       Standard_Real res, a= 4.0, b=0.0;
       res = a / b;
       di << "Error: 4.0 / 0.0 = " << res << " - no exception is raised!\n";
       Succes = Standard_False;
     }
-    catch(Standard_DivideByZero) // Solaris, Windows w/o SSE2
+    catch(Standard_DivideByZero const&) // Solaris, Windows w/o SSE2
     {
       di << "Caught, OK\n";
     }
-    catch(Standard_NumericError) // Linux, Windows with SSE2
+    catch(Standard_NumericError const&) // Linux, Windows with SSE2
     {
       di << "Caught, OK\n";
     }
     catch(Standard_Failure const& anException) {
-      //cout << " Caught (" << Standard_Failure::Caught() << ")... KO" << endl;
+      //std::cout << " Caught (" << Standard_Failure::Caught() << ")... KO" << std::endl;
       di << " Caught (";
       di << anException.GetMessageString();
       di << ")... KO\n";
@@ -2338,21 +2287,21 @@ static Standard_Integer OCC6143 (Draw_Interpretor& di, Standard_Integer argc, co
   {//==== Test Overflow (Integer) =============================================
     try{
       OCC_CATCH_SIGNALS
-      cout << "(Integer) Overflow..." << endl;
+      std::cout << "(Integer) Overflow..." << std::endl;
       di << "(Integer) Overflow...";
-      //cout.flush();
+      //std::cout.flush();
       di << "\n";
       Standard_Integer res, i=IntegerLast();
       res = i + 1;
-      //++++ cout << " -- "<<res<<"="<<i<<"+1   Does not Caught... KO"<< endl;
+      //++++ std::cout << " -- "<<res<<"="<<i<<"+1   Does not Caught... KO"<< std::endl;
       //++++ Succes = Standard_False;
       di << "Not caught: " << i << " + 1 = " << res << ", still OK\n";
     }
-    catch(Standard_Overflow) {
+    catch(Standard_Overflow const&) {
       di << "Caught, OK\n";
     }
     catch(Standard_Failure const& anException) {
-      //cout << " Caught (" << Standard_Failure::Caught() << ")... KO" << endl;
+      //std::cout << " Caught (" << Standard_Failure::Caught() << ")... KO" << std::endl;
       di << " Caught (";
       di << anException.GetMessageString();
       di << ")... KO\n";
@@ -2363,9 +2312,9 @@ static Standard_Integer OCC6143 (Draw_Interpretor& di, Standard_Integer argc, co
   {//==== Test Overflow (Real) ================================================ 
     try{
       OCC_CATCH_SIGNALS
-      cout << "(Real) Overflow..." << endl;
+      std::cout << "(Real) Overflow..." << std::endl;
       di << "(Real) Overflow...";
-      //cout.flush();
+      //std::cout.flush();
       di << "\n";
       Standard_Real res, r=RealLast();
       res = r * r;
@@ -2375,16 +2324,16 @@ static Standard_Integer OCC6143 (Draw_Interpretor& di, Standard_Integer argc, co
       di << "Error: " << r << "*" << r << " = " << res << " - no exception is raised!\n";
       Succes = Standard_False;
     }
-    catch(Standard_Overflow) // Solaris, Windows w/o SSE2
+    catch(Standard_Overflow const&) // Solaris, Windows w/o SSE2
     {
       di << "Caught, OK\n";
     }
-    catch(Standard_NumericError) // Linux, Windows with SSE2
+    catch(Standard_NumericError const&) // Linux, Windows with SSE2
     {
       di << "Caught, OK\n";
     }
     catch(Standard_Failure const& anException) {
-      //cout << " Caught (" << Standard_Failure::Caught() << ")... KO" << endl;
+      //std::cout << " Caught (" << Standard_Failure::Caught() << ")... KO" << std::endl;
       di << " Caught (";
       di << anException.GetMessageString();
       di << ")... KO\n";
@@ -2395,29 +2344,29 @@ static Standard_Integer OCC6143 (Draw_Interpretor& di, Standard_Integer argc, co
   {//==== Test Underflow (Real) ===============================================
     try{
       OCC_CATCH_SIGNALS
-      cout << "(Real) Underflow" << endl; // to have message in log even if process crashed
+      std::cout << "(Real) Underflow" << std::endl; // to have message in log even if process crashed
       di << "(Real) Underflow";
-      //cout.flush();
+      //std::cout.flush();
       di << "\n";
-      Standard_Real res, r=1.0e-308;
+      Standard_Real res, r = RealSmall();
       res = r * r;
       //res = res + 1.;
-      //++++ cout<<"-- "<<res<<"="<<r<<"*"<<r<<"   Does not Caught... KO"<<endl;
+      //++++ std::cout<<"-- "<<res<<"="<<r<<"*"<<r<<"   Does not Caught... KO"<<std::endl;
       //++++ Succes = Standard_False;
       di << "Not caught: " << r << "*" << r << " = " << res << ", still OK\n";
     }
-    catch(Standard_Underflow) // could be on Solaris, Windows w/o SSE2
+    catch(Standard_Underflow const&) // could be on Solaris, Windows w/o SSE2
     {
       di << "Exception caught, KO\n";
       Succes = Standard_False;
     }
-    catch(Standard_NumericError) // could be on Linux, Windows with SSE2
+    catch(Standard_NumericError const&) // could be on Linux, Windows with SSE2
     {
       di << "Exception caught, KO\n";
       Succes = Standard_False;
     }
     catch(Standard_Failure const& anException) {
-      //cout << " Caught (" << Standard_Failure::Caught() << ")... KO" << endl;
+      //std::cout << " Caught (" << Standard_Failure::Caught() << ")... KO" << std::endl;
       di << " Caught (";
       di << anException.GetMessageString();
       di << ")... KO\n";
@@ -2428,20 +2377,20 @@ static Standard_Integer OCC6143 (Draw_Interpretor& di, Standard_Integer argc, co
   {//==== Test Invalid Operation (Real) ===============================================
     try{
       OCC_CATCH_SIGNALS
-      cout << "(Real) Invalid Operation..." << endl;
+      std::cout << "(Real) Invalid Operation..." << std::endl;
       di << "(Real) Invalid Operation...";
-      //cout.flush();
+      //std::cout.flush();
       di << "\n";
       Standard_Real res, r=-1;
       res = sqrt(r);
       di << "Error: swrt(-1) = " << res << " - no exception is raised!\n";
       Succes = Standard_False;
     }
-    catch(Standard_NumericError) {
+    catch(Standard_NumericError const&) {
       di << "Caught, OK\n";
     }
     catch(Standard_Failure const& anException) {
-      //cout << " Caught (" << Standard_Failure::Caught() << ")... KO" << endl;
+      //std::cout << " Caught (" << Standard_Failure::Caught() << ")... KO" << std::endl;
       di << " Caught (";
       di << anException.GetMessageString();
       di << ")... KO\n";
@@ -2452,9 +2401,9 @@ static Standard_Integer OCC6143 (Draw_Interpretor& di, Standard_Integer argc, co
   {//==== Test Access Violation ===============================================
     try {
       OCC_CATCH_SIGNALS
-      cout << "Segmentation Fault..." << endl;
+      std::cout << "Segmentation Fault..." << std::endl;
       di << "Segmentation Fault...";
-      //cout.flush();
+      //std::cout.flush();
       di << "\n";
       int* pint=NULL;
       *pint = 4;
@@ -2462,14 +2411,14 @@ static Standard_Integer OCC6143 (Draw_Interpretor& di, Standard_Integer argc, co
       Succes = Standard_False;
     }
 #ifdef _WIN32
-    catch(OSD_Exception_ACCESS_VIOLATION)
+    catch(OSD_Exception_ACCESS_VIOLATION const&)
 #else
-    catch(OSD_SIGSEGV)
+    catch(OSD_SIGSEGV const&)
 #endif
     {
       di << "Caught, OK\n";
     } catch(Standard_Failure const& anException) {
-      //cout << " Caught (" << Standard_Failure::Caught() << ")... KO" << endl;
+      //std::cout << " Caught (" << Standard_Failure::Caught() << ")... KO" << std::endl;
       di << " Caught (";
       di << anException.GetMessageString();
       di << ")... KO\n";
@@ -2481,19 +2430,19 @@ static Standard_Integer OCC6143 (Draw_Interpretor& di, Standard_Integer argc, co
   {//==== Test Stack Overflow ===============================================
     try {
       OCC_CATCH_SIGNALS
-      cout << "Stack Overflow..." << endl;
+      std::cout << "Stack Overflow..." << std::endl;
       di << "Stack Overflow...";
-      //cout.flush();
+      //std::cout.flush();
       di << "\n";
       StackOverflow();
       di << "Error - no exception is raised!\n";
       Succes = Standard_False;
     }
-    catch(OSD_Exception_STACK_OVERFLOW) {
+    catch(OSD_Exception_STACK_OVERFLOW const&) {
       di << "Caught, OK\n";
     }
     catch(Standard_Failure const& anException) {
-      //cout << " Caught (" << Standard_Failure::Caught() << ")... KO" << endl;
+      //std::cout << " Caught (" << Standard_Failure::Caught() << ")... KO" << std::endl;
       di << " Caught (";
       di << anException.GetMessageString();
       di << ")... KO\n";
@@ -2510,6 +2459,68 @@ static Standard_Integer OCC6143 (Draw_Interpretor& di, Standard_Integer argc, co
 
   return 0;
 }
+
+//! Auxiliary functor.
+struct TestParallelFunctor
+{
+  TestParallelFunctor() : myNbNotRaised (0), myNbSigSegv (0), myNbUnknown (0) {}
+
+  Standard_Integer NbNotRaised() const { return myNbNotRaised; }
+  Standard_Integer NbSigSegv()   const { return myNbSigSegv; }
+  Standard_Integer NbUnknown()   const { return myNbUnknown; }
+
+  void operator() (int theThreadId, int theTaskId) const
+  {
+    (void )theThreadId;
+    (void )theTaskId;
+
+    // Test Access Violation
+    {
+      try {
+        OCC_CATCH_SIGNALS
+        int* pint = NULL;
+        *pint = 4;
+        Standard_Atomic_Increment (&myNbNotRaised);
+      }
+    #ifdef _WIN32
+      catch (OSD_Exception_ACCESS_VIOLATION const&)
+    #else
+      catch (OSD_SIGSEGV const&)
+    #endif
+      {
+        Standard_Atomic_Increment (&myNbSigSegv);
+      }
+      catch (Standard_Failure const& )
+      {
+        Standard_Atomic_Increment (&myNbUnknown);
+      }
+    }
+  }
+private:
+  mutable volatile Standard_Integer myNbNotRaised;
+  mutable volatile Standard_Integer myNbSigSegv;
+  mutable volatile Standard_Integer myNbUnknown;
+};
+
+static Standard_Integer OCC30775 (Draw_Interpretor& theDI, Standard_Integer theNbArgs, const char** )
+{
+  if (theNbArgs != 1)
+  {
+    std::cout << "Syntax error: wrong number of arguments\n";
+    return 1;
+  }
+
+  Handle(OSD_ThreadPool) aPool = new OSD_ThreadPool (4);
+  OSD_ThreadPool::Launcher aLauncher (*aPool, 4);
+  TestParallelFunctor aFunctor;
+  aLauncher.Perform (0, 100, aFunctor);
+  theDI << "NbRaised: "    << (aFunctor.NbSigSegv() + aFunctor.NbUnknown()) << "\n"
+        << "NbNotRaised: " << aFunctor.NbNotRaised() << "\n"
+        << "NbSigSeg: "    << aFunctor.NbSigSegv() << "\n"
+        << "NbUnknown: "   << aFunctor.NbUnknown() << "\n";
+  return 0;
+}
+
 #if defined(_MSC_VER)
 #pragma optimize( "", on )
 #endif
@@ -2560,12 +2571,12 @@ static Standard_Integer OCC7141 (Draw_Interpretor& di, Standard_Integer argc, co
     	writer.Write(aFilePath.ToCString());
     }
   }
-  catch(OSD_Exception_STACK_OVERFLOW) {
+  catch(OSD_Exception_STACK_OVERFLOW const&) {
     di << "Failed : STACK OVERFLOW\n\n";
   }
   catch (Standard_Failure const& anException) {
     di << "Failed :\n\n";
-    //cout << Standard_Failure::Caught() << endl;
+    //std::cout << Standard_Failure::Caught() << std::endl;
     di << anException.GetMessageString();
   }
   di << argv[0] << " : Finish\n";
@@ -2717,10 +2728,10 @@ static Standard_Integer OCC10138 (Draw_Interpretor& di, Standard_Integer argc, c
   Handle(TDataStd_RealArray) array;
   if (label1.FindAttribute(TDataStd_RealArray::GetID(), array) && 
       array->Lower() == LOWER && array->Upper() == UPPER)
-    cout<<"1: OK"<<endl;
+    std::cout<<"1: OK"<<std::endl;
   else
   {
-    cout<<"1: Failed.."<<endl;
+    std::cout<<"1: Failed.."<<std::endl;
     return 1;
   }
   doc->CommitCommand();
@@ -2734,11 +2745,11 @@ static Standard_Integer OCC10138 (Draw_Interpretor& di, Standard_Integer argc, c
   {  
     if (array->Value(i) != i)
     {
-      cout<<"2: Failed.."<<endl;
+      std::cout<<"2: Failed.."<<std::endl;
       return 2;
     }
   }
-  cout<<"2: OK"<<endl;
+  std::cout<<"2: OK"<<std::endl;
   doc->CommitCommand();
 
   //! 3. Re-init the array
@@ -2746,7 +2757,7 @@ static Standard_Integer OCC10138 (Draw_Interpretor& di, Standard_Integer argc, c
   array->Init(LOWER + 2, UPPER + 4);
   if (array->Lower() != LOWER + 2 && array->Upper() != UPPER + 4)
   {
-    cout<<"3: Failed.."<<endl;
+    std::cout<<"3: Failed.."<<std::endl;
     return 3;
   }
   for (i = LOWER + 2; i <= UPPER + 4; i++)
@@ -2755,11 +2766,11 @@ static Standard_Integer OCC10138 (Draw_Interpretor& di, Standard_Integer argc, c
   {  
     if (array->Value(i) != i)
     {
-      cout<<"3: Failed.."<<endl;
+      std::cout<<"3: Failed.."<<std::endl;
       return 3;
     }
   }
-  cout<<"3: OK"<<endl;
+  std::cout<<"3: OK"<<std::endl;
   doc->CommitCommand();
 
   //! 4. Change array
@@ -2772,11 +2783,11 @@ static Standard_Integer OCC10138 (Draw_Interpretor& di, Standard_Integer argc, c
   {  
     if (array->Value(i) != i)
     {
-      cout<<"4: Failed.."<<endl;
+      std::cout<<"4: Failed.."<<std::endl;
       return 4;
     }
   }
-  cout<<"4: OK"<<endl;
+  std::cout<<"4: OK"<<std::endl;
   doc->CommitCommand();
 
   //! 5. Copy the array
@@ -2785,24 +2796,24 @@ static Standard_Integer OCC10138 (Draw_Interpretor& di, Standard_Integer argc, c
   copier.Perform();
   if (!copier.IsDone())
   {
-    cout<<"5: Failed.."<<endl;
+    std::cout<<"5: Failed.."<<std::endl;
     return 5;
   }
   Handle(TDataStd_RealArray) array2;
   if (!label2.FindAttribute(TDataStd_RealArray::GetID(), array2))
   {
-    cout<<"5: Failed.."<<endl;
+    std::cout<<"5: Failed.."<<std::endl;
     return 5;
   }
   for (i = LOWER + 5; i <= UPPER + 5; i++)
   {  
     if (array->Value(i) != i)
     {
-      cout<<"5: Failed.."<<endl;
+      std::cout<<"5: Failed.."<<std::endl;
       return 5;
     }
   }
-  cout<<"5: OK"<<endl;
+  std::cout<<"5: OK"<<std::endl;
   doc->CommitCommand();
 
   //! 6. Undo/Redo
@@ -2811,7 +2822,7 @@ static Standard_Integer OCC10138 (Draw_Interpretor& di, Standard_Integer argc, c
   if (!label1.FindAttribute(TDataStd_RealArray::GetID(), array) ||
       label2.FindAttribute(TDataStd_RealArray::GetID(), array2))
   {
-    cout<<"6.a: Failed.."<<endl;
+    std::cout<<"6.a: Failed.."<<std::endl;
     return 6;
   }
   //! 6.b: undoes the 4th action: the array should be changed to (lower+2,upper+4)
@@ -2820,14 +2831,14 @@ static Standard_Integer OCC10138 (Draw_Interpretor& di, Standard_Integer argc, c
       array->Lower() != LOWER + 2 ||
       array->Upper() != UPPER + 4)
   {
-    cout<<"6.b: Failed.."<<endl;
+    std::cout<<"6.b: Failed.."<<std::endl;
     return 6;
   }
   for (i = LOWER + 2; i <= UPPER + 4; i++)
   {
     if (array->Value(i) != i)
     {
-      cout<<"6.b: Failed.."<<endl;
+      std::cout<<"6.b: Failed.."<<std::endl;
       return 6;
     }
   }
@@ -2837,14 +2848,14 @@ static Standard_Integer OCC10138 (Draw_Interpretor& di, Standard_Integer argc, c
       array->Lower() != LOWER ||
       array->Upper() != UPPER)
   {
-    cout<<"6.c: Failed.."<<endl;
+    std::cout<<"6.c: Failed.."<<std::endl;
     return 6;
   }
   for (i = LOWER; i <= UPPER; i++)
   {
     if (array->Value(i) != i)
     {
-      cout<<"6.c: Failed.."<<endl;
+      std::cout<<"6.c: Failed.."<<std::endl;
       return 6;
     }
   }
@@ -2855,25 +2866,25 @@ static Standard_Integer OCC10138 (Draw_Interpretor& di, Standard_Integer argc, c
       array->Lower() != LOWER ||
       array->Upper() != UPPER)
   {
-    cout<<"6.d: Failed.."<<endl;
+    std::cout<<"6.d: Failed.."<<std::endl;
     return 6;
   }
   for (i = LOWER; i <= UPPER; i++)
   {
     if (array->Value(i) != i)
     {
-      cout<<"6.d: Failed.."<<endl;
+      std::cout<<"6.d: Failed.."<<std::endl;
       return 6;
     }
   }
-  cout<<"6: OK"<<endl;
+  std::cout<<"6: OK"<<std::endl;
 
   //! 7. Re-set the array
   doc->OpenCommand();
   array = TDataStd_RealArray::Set(label1, LOWER + 1, UPPER + 1);
   if (array->Lower() != LOWER + 1 && array->Upper() != UPPER + 1)
   {
-    cout<<"7: Failed.."<<endl;
+    std::cout<<"7: Failed.."<<std::endl;
     return 7;
   }
   for (i = LOWER + 1; i <= UPPER + 1; i++)
@@ -2882,11 +2893,11 @@ static Standard_Integer OCC10138 (Draw_Interpretor& di, Standard_Integer argc, c
   {  
     if (array->Value(i) != i)
     {
-      cout<<"7: Failed.."<<endl;
+      std::cout<<"7: Failed.."<<std::endl;
       return 7;
     }
   }
-  cout<<"7: OK"<<endl;
+  std::cout<<"7: OK"<<std::endl;
   doc->CommitCommand();
 
   //! 8.Test of speed: set LOWER and UPPER equal to great integer number and 
@@ -2976,16 +2987,16 @@ static Standard_Integer OCC8797 (Draw_Interpretor& di, Standard_Integer argc, co
   GeomAdaptor_Curve adaptor_spline(spline);
   GCPnts_AbscissaPoint temp;
   l_abcissa=temp.Length(adaptor_spline);
-  cout<<"Length Spline(abcissa_Pnt): "<<l_abcissa<<endl;
+  std::cout<<"Length Spline(abcissa_Pnt): "<<l_abcissa<<std::endl;
 
   //length!! 2.
   TopoDS_Edge edge = BRepBuilderAPI_MakeEdge (spline);
   GProp_GProps prop;
   BRepGProp::LinearProperties(edge,prop);
   l_gprop=prop.Mass();
-  cout<<"Length Spline(GProp_GProps): "<<l_gprop<<endl;
+  std::cout<<"Length Spline(GProp_GProps): "<<l_gprop<<std::endl;
 
-  cout<<"Difference (abcissa_Pnt<->GProp_GProps): "<<l_gprop-l_abcissa<<endl;
+  std::cout<<"Difference (abcissa_Pnt<->GProp_GProps): "<<l_gprop-l_abcissa<<std::endl;
 
   return 0;
 }
@@ -3107,7 +3118,7 @@ static Standard_Integer OCC15489 (Draw_Interpretor& di, Standard_Integer argc, c
       gp_Pnt2d anOrigin = aLin2d.Location();
       di << "X_0 = " << anOrigin.X() << "   Y_0 = " << anOrigin.Y() << "\n" ;
     }
-  catch(Standard_ConstructionError)
+  catch(Standard_ConstructionError const&)
     {
       di << argv[0] << " Exception: Sqrt(A*A + B*B) <= Resolution from gp\n";
     }
@@ -4505,31 +4516,6 @@ static Standard_Integer OCC20627 (Draw_Interpretor& di, Standard_Integer argc, c
   return 0;
 }
 
-#include <Graphic3d_Vector.hxx>
-Standard_Integer OCC22762 (Draw_Interpretor& di, Standard_Integer argc, const char ** argv)
-{
-    if (argc!=7)
-	{
-	    di << "Wrong number of arguments\n";
-	    return -1;
-	}
-    Standard_Real X1_Pnt = Draw::Atof(argv[1]);
-    Standard_Real Y1_Pnt = Draw::Atof(argv[2]);
-    Standard_Real Z1_Pnt = Draw::Atof(argv[3]);
-    Standard_Real X2_Pnt = Draw::Atof(argv[4]);
-    Standard_Real Y2_Pnt = Draw::Atof(argv[5]);
-    Standard_Real Z2_Pnt = Draw::Atof(argv[6]);
-    
-    Graphic3d_Vector AV1(X1_Pnt, Y1_Pnt, Z1_Pnt);
-    Graphic3d_Vector AV2(X2_Pnt, Y2_Pnt, Z2_Pnt);
-     
-    di << "Result is: " << (Graphic3d_Vector::IsParallel(AV1, AV2) ? "true" : "false") << "\n" ;
-    return 0;
-}
-    
-    
-
-
 #include <IntCurvesFace_ShapeIntersector.hxx>
 #include <gp_Lin.hxx>
 Standard_Integer OCC17424 (Draw_Interpretor& di, Standard_Integer argc, const char ** argv)
@@ -4858,8 +4844,6 @@ void QABugs::Commands_11(Draw_Interpretor& theCommands) {
   //theCommands.Add("OCC277","OCC277", __FILE__, OCC277bug, group);
   theCommands.Add("OCC277","OCC277", __FILE__, OCC277bug, group);
 
-  theCommands.Add("OCC333","OCC333 edge1 edge2 [toler domaindist]; Check overlapping edges", __FILE__, OCC333bug, group);
-
   theCommands.Add("OCC363", "OCC363 document filename ", __FILE__, OCC363, group);
   // Must use OCC299
   //theCommands.Add("OCC372", "OCC372", __FILE__, OCC372, group);
@@ -4895,7 +4879,8 @@ void QABugs::Commands_11(Draw_Interpretor& theCommands) {
   theCommands.Add("OCC5739", "OCC5739 name shape step", __FILE__, OCC5739_UniAbs, group);
   theCommands.Add("OCC6046", "OCC6046 nb_of_vectors size", __FILE__, OCC6046, group);
   theCommands.Add("OCC5698", "OCC5698 wire", __FILE__, OCC5698, group);
-  theCommands.Add("OCC6143", "OCC6143", __FILE__, OCC6143, group);
+  theCommands.Add("OCC6143", "OCC6143 catching signals", __FILE__, OCC6143, group);
+  theCommands.Add("OCC30775", "OCC30775 catching signals in threads", __FILE__, OCC30775, group);
   theCommands.Add("OCC7141", "OCC7141 [nCount] aPath", __FILE__, OCC7141, group);
   theCommands.Add("OCC7372", "OCC7372", __FILE__, OCC7372, group);
   theCommands.Add("OCC8169", "OCC8169 edge1 edge2 plane", __FILE__, OCC8169, group);
@@ -4916,7 +4901,6 @@ void QABugs::Commands_11(Draw_Interpretor& theCommands) {
   theCommands.Add("OCC22301", "OCC22301", __FILE__, OCC22301, group);
   theCommands.Add("OCC22736", "OCC22736 X_mirrorFirstPoint Y_mirrorFirstPoint X_mirrorSecondPoint Y_mirrorSecondPoint X_p1 Y_p1 X_p2 Y_p2", __FILE__, OCC22736, group);
   theCommands.Add("OCC22744", "OCC22744", __FILE__, OCC22744, group);
-  theCommands.Add("OCC22762", "OCC22762 x1 y1 z1 x2 y2 z3", __FILE__, OCC22762, group);
   theCommands.Add("OCC22558", "OCC22558 x_vec y_vec z_vec x_dir y_dir z_dit x_pnt y_pnt z_pnt", __FILE__, OCC22558, group);
   theCommands.Add("CR23403", "CR23403 string", __FILE__, CR23403, group);
   theCommands.Add("OCC23429", "OCC23429 res shape tool [appr]", __FILE__, OCC23429, group);

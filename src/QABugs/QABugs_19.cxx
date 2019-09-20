@@ -16,7 +16,6 @@
 #include <QABugs.hxx>
 
 #include <AIS_InteractiveContext.hxx>
-#include <AIS_LocalContext.hxx>
 #include <AIS_Shape.hxx>
 #include <BRepAlgoAPI_Cut.hxx>
 #include <BRepOffsetAPI_MakePipe.hxx>
@@ -40,6 +39,7 @@
 #include <OSD_Parallel.hxx>
 #include <OSD_PerfMeter.hxx>
 #include <OSD_Timer.hxx>
+#include <OSD_ThreadPool.hxx>
 #include <Precision.hxx>
 #include <Prs3d_ShadingAspect.hxx>
 #include <Prs3d_Text.hxx>
@@ -54,10 +54,18 @@
 #include <XmlDrivers_DocumentRetrievalDriver.hxx>
 #include <XmlDrivers_DocumentStorageDriver.hxx>
 #include <TDataStd_Real.hxx>
+#include <Standard_Atomic.hxx>
+
+#ifdef HAVE_TBB
+  #include <tbb/parallel_for.h>
+  #include <tbb/parallel_for_each.h>
+  #include <tbb/blocked_range.h>
+#endif
 
 #include <cstdio>
 #include <cmath>
 #include <iostream>
+#include <random>
 
 #define QCOMPARE(val1, val2) \
   di << "Checking " #val1 " == " #val2 << \
@@ -389,23 +397,23 @@ static Standard_Address GeomConvertTest (Standard_Address data)
 
   GeomConvert_ApproxSurface aGAS (info->surf, 1e-4, GeomAbs_C1, GeomAbs_C1, 9, 9, 100, 1);
   if (!aGAS.IsDone()) {
-    cout << "Error: ApproxSurface is not done!" << endl;
+    std::cout << "Error: ApproxSurface is not done!" << std::endl;
     return 0;
   }
   const Handle(Geom_BSplineSurface)& aBSurf = aGAS.Surface();
   if (aBSurf.IsNull()) {
-    cout << "Error: BSplineSurface is not created!" << endl;
+    std::cout << "Error: BSplineSurface is not created!" << std::endl;
     return 0;
   }
-  cout << "Number of UPoles:" << aBSurf->NbUPoles();
+  std::cout << "Number of UPoles:" << aBSurf->NbUPoles();
   if (aBSurf->NbUPoles() == info->nbupoles)
   {
-    cout << ": OK" << endl;
+    std::cout << ": OK" << std::endl;
     return data; // any non-null pointer
   }
   else
   {
-    cout << ": Error, must be " << info->nbupoles << endl;
+    std::cout << ": Error, must be " << info->nbupoles << std::endl;
     return 0;
   }
 }
@@ -413,7 +421,7 @@ static Standard_Address GeomConvertTest (Standard_Address data)
 static Standard_Integer OCC23952sweep (Draw_Interpretor& di, Standard_Integer argc, const char ** argv)
 {
   if (argc != 3) {
-    cout << "Error: invalid number of arguments" << endl;
+    std::cout << "Error: invalid number of arguments" << std::endl;
     return 1;
   }
 
@@ -422,7 +430,7 @@ static Standard_Integer OCC23952sweep (Draw_Interpretor& di, Standard_Integer ar
   aStorage.surf = DrawTrSurf::GetSurface(argv[2]);
   if (aStorage.surf.IsNull())
   {
-    cout << "Error: " << argv[2] << " is not a DRAW surface!" << endl;
+    std::cout << "Error: " << argv[2] << " is not a DRAW surface!" << std::endl;
     return 0;
   }
 
@@ -463,19 +471,19 @@ static Standard_Address GeomIntSSTest (Standard_Address data)
   GeomInt_IntSS anInter;
   anInter.Perform (info->surf1, info->surf2, Precision::Confusion(), Standard_True);
   if (!anInter.IsDone()) {
-    cout << "An intersection is not done!" << endl;
+    std::cout << "An intersection is not done!" << std::endl;
     return 0;
   }
 
-  cout << "Number of Lines:" << anInter.NbLines();
+  std::cout << "Number of Lines:" << anInter.NbLines();
   if (anInter.NbLines() == info->nbsol)
   {
-    cout << ": OK" << endl;
+    std::cout << ": OK" << std::endl;
     return data; // any non-null pointer
   }
   else
   {
-    cout << ": Error, must be " << info->nbsol << endl;
+    std::cout << ": Error, must be " << info->nbsol << std::endl;
     return 0;
   }
 }
@@ -483,7 +491,7 @@ static Standard_Address GeomIntSSTest (Standard_Address data)
 static Standard_Integer OCC23952intersect (Draw_Interpretor& di, Standard_Integer argc, const char ** argv)
 {
   if (argc != 4) {
-    cout << "Error: invalid number of arguments" << endl;
+    std::cout << "Error: invalid number of arguments" << std::endl;
     return 1;
   }
 
@@ -493,7 +501,7 @@ static Standard_Integer OCC23952intersect (Draw_Interpretor& di, Standard_Intege
   aStorage.surf2 = DrawTrSurf::GetSurface(argv[3]);
   if (aStorage.surf1.IsNull() || aStorage.surf2.IsNull())
   {
-    cout << "Error: Either " << argv[2] << " or " << argv[3] << " is not a DRAW surface!" << endl;
+    std::cout << "Error: Either " << argv[2] << " or " << argv[3] << " is not a DRAW surface!" << std::endl;
     return 0;
   }
 
@@ -1256,43 +1264,6 @@ static Standard_Integer OCC24005 (Draw_Interpretor& theDI, Standard_Integer theN
   return 0;
 }
 
-#include <BRepAlgo_NormalProjection.hxx>
-static Standard_Integer OCC24012 (Draw_Interpretor& di, Standard_Integer argc, const char ** argv) 
-{
-	if (argc != 3) {
-		di << "Usage : " << argv[0] << " should be 2 arguments (face and edge)";
-		return 1;
-	}
-	
-	Handle(AIS_InteractiveContext) myAISContext = ViewerTest::GetAISContext();
-	if(myAISContext.IsNull()) {
-		di << "use 'vinit' command before " << argv[0] << "\n";
-		return 1;
-	}
-
-	TopoDS_Face m_Face1 = TopoDS::Face(DBRep::Get(argv[1]));
-	TopoDS_Edge m_Edge = TopoDS::Edge(DBRep::Get(argv[2]));
-	
-	BRepAlgo_NormalProjection anormpro(m_Face1);
-    anormpro.Add(m_Edge);
-    anormpro.SetDefaultParams();
-
-    //anormpro.Compute3d();
-    //anormpro.SetLimit();
-
-    anormpro.Build();
-
-    if (anormpro.IsDone())
-    {
-        TopoDS_Shape rshape = anormpro.Projection();
-		Handle(AIS_InteractiveObject) myShape = new AIS_Shape (rshape);
-		myAISContext->SetColor (myShape, Quantity_Color(Quantity_NOC_YELLOW), Standard_False);
-		myAISContext->Display (myShape, Standard_True);
-    }
-
-	return 0;
-}
-
 #include <BRepFeat_SplitShape.hxx>
 #include <ShapeAnalysis_ShapeContents.hxx>
 #include <BRepAlgo.hxx>
@@ -1533,25 +1504,6 @@ static Standard_Integer OCC24271 (Draw_Interpretor& di,
 #include <GeomInt_IntSS.hxx>
 #include <Geom_ConicalSurface.hxx>
 #include <Standard_ErrorHandler.hxx>
-//=======================================================================
-//function : OCC23972
-//purpose  : 
-//=======================================================================
-static void DoGeomIntSSTest (const Handle(Geom_Surface)& theSurf1,
-			     const Handle(Geom_Surface)& theSurf2,
-			     const Standard_Integer theNbSol,
-			     Draw_Interpretor& di)
-{
-  try {
-    OCC_CATCH_SIGNALS
-	 GeomInt_IntSS anInter;
-	 anInter.Perform (theSurf1, theSurf2, Precision::Confusion(), Standard_True);
-	 QVERIFY (anInter.IsDone());
-	 QCOMPARE (anInter.NbLines(), theNbSol);
-  } catch (...) {
-    QVERIFY (Standard_False);
-  }
-}
 
 namespace {
   static Handle(Geom_ConicalSurface) CreateCone (const gp_Pnt& theLoc,
@@ -1568,28 +1520,30 @@ namespace {
   }
 }
 
-static Standard_Integer OCC23972 (Draw_Interpretor& di,Standard_Integer n, const char**)
+static Standard_Integer OCC23972(Draw_Interpretor& /*theDI*/,
+                                 Standard_Integer theNArg, const char** theArgs)
 {
-  if (n != 1) return 1;
+  if (theNArg != 3) return 1;
 
-  //process specific cones, cannot read them from files because due to rounding the original error
-  //in math_FunctionRoots gets hidden
-  Handle(Geom_Surface) aS1 = CreateCone (
-					 gp_Pnt (123.694345356663, 789.9, 68.15),
-					 gp_Dir (-1, 3.48029791472957e-016, -8.41302743359754e-017),
-					 gp_Dir (-3.48029791472957e-016, -1, -3.17572289932207e-016),
-					 3.28206830417112,
-					 0.780868809443031,
-					 0.624695047554424);
-  Handle(Geom_Surface) aS2 = CreateCone (
-					 gp_Pnt (123.694345356663, 784.9, 68.15),
-					 gp_Dir (-1, -2.5209507537117e-016, -1.49772808948866e-016),
-					 gp_Dir (1.49772808948866e-016, 3.17572289932207e-016, -1),
-					 3.28206830417112,
-					 0.780868809443031,
-					 0.624695047554424);
+  //process specific cones, cannot read them from files because 
+  //due to rounding the original error in math_FunctionRoots gets hidden
+  const Handle(Geom_Surface) aS1 = CreateCone(
+                              gp_Pnt(123.694345356663, 789.9, 68.15),
+                              gp_Dir(-1, 3.48029791472957e-016, -8.41302743359754e-017),
+                              gp_Dir(-3.48029791472957e-016, -1, -3.17572289932207e-016),
+                              3.28206830417112,
+                              0.780868809443031,
+                              0.624695047554424);
+  const Handle(Geom_Surface) aS2 = CreateCone(
+                              gp_Pnt(123.694345356663, 784.9, 68.15),
+                              gp_Dir(-1, -2.5209507537117e-016, -1.49772808948866e-016),
+                              gp_Dir(1.49772808948866e-016, 3.17572289932207e-016, -1),
+                              3.28206830417112,
+                              0.780868809443031,
+                              0.624695047554424);
   
-  DoGeomIntSSTest (aS1, aS2, 2, di);
+  DrawTrSurf::Set(theArgs[1], aS1);
+  DrawTrSurf::Set(theArgs[2], aS2);
 
   return 0;
 }
@@ -1934,10 +1888,10 @@ static Standard_Integer OCC24755 (Draw_Interpretor& di, Standard_Integer n, cons
 
   TDF_AttributeIterator i (aLab);
   Handle(TDF_Attribute) anAttr = i.Value();
-  QCOMPARE (anAttr->IsKind (STANDARD_TYPE (TDataStd_Name)), Standard_True);
+  QCOMPARE (anAttr->IsKind (STANDARD_TYPE (TDataStd_Integer)), Standard_True);
   i.Next();
   anAttr = i.Value();
-  QCOMPARE (anAttr->IsKind (STANDARD_TYPE (TDataStd_Integer)), Standard_True);
+  QCOMPARE (anAttr->IsKind (STANDARD_TYPE (TDataStd_Name)), Standard_True);
   i.Next();
   anAttr = i.Value();
   QCOMPARE (anAttr->IsKind (STANDARD_TYPE (TDataStd_Real)), Standard_True);
@@ -1983,7 +1937,7 @@ static Standard_Integer OCC24834 (Draw_Interpretor& di, Standard_Integer n, cons
       aList.Append(MyStubObject(Standard::Allocate(aLargeBlockSize)));
     }
   }
-  catch (Standard_Failure)
+  catch (Standard_Failure const&)
   {
     di << "caught out of memory for large blocks: OK\n";
   }
@@ -2000,7 +1954,7 @@ static Standard_Integer OCC24834 (Draw_Interpretor& di, Standard_Integer n, cons
       aList.Append(MyStubObject(Standard::Allocate(aSmallBlockSize)));
     }
   }
-  catch (Standard_Failure)
+  catch (Standard_Failure const&)
   {
     di << "caught out of memory for small blocks: OK\n";
   }
@@ -2336,8 +2290,8 @@ static Standard_Integer OCC25043 (Draw_Interpretor& theDI,
     for (; anCheckIter.More(); anCheckIter.Next())
     {
       const BOPAlgo_CheckResult& aCurCheckRes = anCheckIter.Value();
-      const BOPCol_ListOfShape& aCurFaultyShapes = aCurCheckRes.GetFaultyShapes1();
-      BOPCol_ListIteratorOfListOfShape aFaultyIter(aCurFaultyShapes);
+      const TopTools_ListOfShape& aCurFaultyShapes = aCurCheckRes.GetFaultyShapes1();
+      TopTools_ListIteratorOfListOfShape aFaultyIter(aCurFaultyShapes);
       for (; aFaultyIter.More(); aFaultyIter.Next())
       {
         const TopoDS_Shape& aFaultyShape = aFaultyIter.Value();
@@ -2529,19 +2483,25 @@ static Standard_Integer OCC25340 (Draw_Interpretor& /*theDI*/,
 class ParallelTest_Saxpy
 {
 public:
-  typedef NCollection_Array1<Standard_Real> Vector;
-
   //! Constructor
-  ParallelTest_Saxpy(const Vector& theX, Vector& theY, Standard_Real theScalar)
-  : myX(theX),
-    myY(theY),
-    myScalar(theScalar)
+  ParallelTest_Saxpy (const NCollection_Array1<Standard_Real>& theX,
+                      NCollection_Array1<Standard_Real>& theY,
+                      Standard_Real theScalar)
+  : myX (theX), myY (theY), myScalar (theScalar) {}
+
+  int Begin() const { return 0; }
+  int End()   const { return myX.Size(); }
+
+  //! Dummy calculation
+  void operator() (Standard_Integer theIndex) const
   {
+    myY(theIndex) = myScalar * myX(theIndex) + myY(theIndex);
   }
 
   //! Dummy calculation
-  void operator() (const Standard_Integer theIndex) const
+  void operator() (Standard_Integer theThreadIndex, Standard_Integer theIndex) const
   {
+    (void )theThreadIndex;
     myY(theIndex) = myScalar * myX(theIndex) + myY(theIndex);
   }
 
@@ -2549,18 +2509,51 @@ private:
   ParallelTest_Saxpy( const ParallelTest_Saxpy& );
   ParallelTest_Saxpy& operator =( ParallelTest_Saxpy& );
 
-private:
-  const Vector&       myX;
-  Vector&             myY;
+protected:
+  const NCollection_Array1<Standard_Real>& myX;
+  NCollection_Array1<Standard_Real>& myY;
   const Standard_Real myScalar;
+};
+
+class ParallelTest_SaxpyBatch : private ParallelTest_Saxpy
+{
+public:
+  static const Standard_Integer THE_BATCH_SIZE = 10000000;
+
+  ParallelTest_SaxpyBatch (const NCollection_Array1<Standard_Real>& theX,
+                           NCollection_Array1<Standard_Real>& theY,
+                           Standard_Real theScalar)
+  : ParallelTest_Saxpy (theX, theY, theScalar),
+    myNbBatches ((int )Ceiling ((double )theX.Size() / THE_BATCH_SIZE)) {}
+
+  int Begin() const { return 0; }
+  int End()   const { return myNbBatches; }
+
+  void operator() (int theBatchIndex) const
+  {
+    const int aLower  = theBatchIndex * THE_BATCH_SIZE;
+    const int anUpper = Min (aLower + THE_BATCH_SIZE - 1, myX.Upper());
+    for (int i = aLower; i <= anUpper; ++i)
+    {
+      myY(i) = myScalar * myX(i) + myY(i);
+    }
+  }
+
+  void operator() (int theThreadIndex, int theBatchIndex) const
+  {
+    (void )theThreadIndex;
+    (*this)(theBatchIndex);
+  }
+private:
+  int myNbBatches;
 };
 
 //---------------------------------------------------------------------
 static Standard_Integer OCC24826(Draw_Interpretor& theDI,
-                                 Standard_Integer  trheArgc,
+                                 Standard_Integer  theArgc,
                                  const char**      theArgv)
 {
-  if ( trheArgc != 2 )
+  if ( theArgc != 2 )
   {
     theDI << "Usage: "
           << theArgv[0]
@@ -2573,38 +2566,240 @@ static Standard_Integer OCC24826(Draw_Interpretor& theDI,
 
   NCollection_Array1<Standard_Real> aX (0, aLength - 1);
   NCollection_Array1<Standard_Real> anY(0, aLength - 1);
-
   for ( Standard_Integer i = 0; i < aLength; ++i )
   {
     aX(i) = anY(i) = (Standard_Real) i;
   }
 
-  OSD_Timer aTimer;
-
-  aTimer.Start();
-
-  //! Serial proccesing
-  for ( Standard_Integer i = 0; i < aLength; ++i )
+  //! Serial processing
+  NCollection_Array1<Standard_Real> anY1 = anY;
+  Standard_Real aTimeSeq = 0.0;
   {
-    anY(i) = 1e-6 * aX(i) + anY(i);
+    OSD_Timer aTimer;
+    aTimer.Start();
+    const ParallelTest_Saxpy aFunctor (aX, anY1, 1e-6);
+    for (Standard_Integer i = 0; i < aLength; ++i)
+    {
+      aFunctor(i);
+    }
+
+    aTimer.Stop();
+    std::cout << "  Processing time (sequential mode): 1x [reference]\n";
+    aTimeSeq = aTimer.ElapsedTime();
+    aTimer.Show (std::cout);
   }
 
-  aTimer.Stop();
-  cout << "Processing time (sequential mode):\n";
-  aTimer.Show();
+  // Parallel processing
+  for (Standard_Integer aMode = 0; aMode <= 4; ++aMode)
+  {
+    NCollection_Array1<Standard_Real> anY2 = anY;
+    OSD_Timer aTimer;
+    aTimer.Start();
+    const char* aModeDesc = NULL;
+    const ParallelTest_Saxpy      aFunctor1 (aX, anY2, 1e-6);
+    const ParallelTest_SaxpyBatch aFunctor2 (aX, anY2, 1e-6);
+    switch (aMode)
+    {
+      case 0:
+      {
+        aModeDesc = "OSD_Parallel::For()";
+        OSD_Parallel::For (aFunctor1.Begin(), aFunctor1.End(), aFunctor1);
+        break;
+      }
+      case 1:
+      {
+        aModeDesc = "OSD_ThreadPool::Launcher";
+        OSD_ThreadPool::Launcher aLauncher (*OSD_ThreadPool::DefaultPool());
+        aLauncher.Perform (aFunctor1.Begin(), aFunctor1.End(), aFunctor1);
+        break;
+      }
+      case 2:
+      {
+        aModeDesc = "OSD_Parallel::Batched()";
+        OSD_Parallel::For (aFunctor2.Begin(), aFunctor2.End(), aFunctor2);
+        break;
+      }
+      case 3:
+      {
+        aModeDesc = "OSD_ThreadPool::Launcher, Batched";
+        OSD_ThreadPool::Launcher aLauncher (*OSD_ThreadPool::DefaultPool());
+        aLauncher.Perform (aFunctor2.Begin(), aFunctor2.End(), aFunctor2);
+        break;
+      }
+      case 4:
+      {
+    #ifdef HAVE_TBB
+        aModeDesc = "tbb::parallel_for";
+        tbb::parallel_for (aFunctor1.Begin(), aFunctor1.End(), aFunctor1);
+        break;
+    #else
+        continue;
+    #endif
+      }
+    }
+    aTimer.Stop();
+    std::cout << "  " << aModeDesc << ": "
+              << aTimeSeq / aTimer.ElapsedTime() << "x " << (aTimer.ElapsedTime() < aTimeSeq ? "[boost]" : "[slow-down]") << "\n";
+    aTimer.Show (std::cout);
 
-  const ParallelTest_Saxpy aFunctor(aX, anY, 1e-6);
+    for (Standard_Integer i = 0; i < aLength; ++i)
+    {
+      if (anY2(i) != anY1(i))
+      {
+        std::cerr << "Error: Parallel algorithm produced invalid result!\n";
+        break;
+      }
+    }
+  }
+  return 0;
+}
 
-  aTimer.Reset();
-  aTimer.Start();
+//! Initializes the given square matrix with values that are generated by the given generator function.
+template<class GeneratorT> void initRandMatrix (NCollection_Array2<double>& theMat, GeneratorT& theGen)
+{
+  for (int i = theMat.LowerRow(); i <= theMat.UpperRow(); ++i)
+  {
+    for (int j = theMat.LowerCol(); j <= theMat.UpperCol(); ++j)
+    {
+      theMat(i, j) = static_cast<double>(theGen());
+    }
+  }
+}
+
+//! Compute the product of two square matrices in parallel.
+class ParallelTest_MatMult
+{
+public:
+  ParallelTest_MatMult (const NCollection_Array2<double>& theMat1,
+                        const NCollection_Array2<double>& theMat2,
+                        NCollection_Array2<double>& theResult, int theSize)
+  : myMat1 (theMat1), myMat2 (theMat2), myResult (theResult), mySize (theSize) {}
+
+  int Begin() const { return 0; }
+  int End()   const { return mySize; }
+
+  void operator() (int theIndex) const
+  {
+    for (int j = 0; j < mySize; ++j)
+    {
+      double aTmp = 0;
+      for (int k = 0; k < mySize; ++k)
+      {
+        aTmp += myMat1(theIndex, k) * myMat2(k, j);
+      }
+      myResult(theIndex, j) = aTmp;
+    }
+  }
+
+  void operator() (int theThreadIndex, int theIndex) const
+  {
+    (void )theThreadIndex;
+    (*this)(theIndex);
+  }
+
+private:
+  ParallelTest_MatMult (const ParallelTest_MatMult& );
+  ParallelTest_MatMult& operator= (ParallelTest_MatMult& );
+
+protected:
+  const NCollection_Array2<double>& myMat1;
+  const NCollection_Array2<double>& myMat2;
+  NCollection_Array2<double>& myResult;
+  int mySize;
+};
+
+//---------------------------------------------------------------------
+static Standard_Integer OCC29935(Draw_Interpretor& ,
+                                 Standard_Integer  theArgc,
+                                 const char**      theArgv)
+{
+  if (theArgc != 2)
+  {
+    std::cout << "Syntax error: wrong number of arguments\n";
+    return 1;
+  }
+
+  // Generate data;
+  Standard_Integer aSize = Draw::Atoi (theArgv[1]);
+
+  opencascade::std::mt19937 aGen (42);
+  NCollection_Array2<double> aMat1     (0, aSize - 1, 0, aSize - 1);
+  NCollection_Array2<double> aMat2     (0, aSize - 1, 0, aSize - 1);
+  NCollection_Array2<double> aMatResRef(0, aSize - 1, 0, aSize - 1);
+  NCollection_Array2<double> aMatRes   (0, aSize - 1, 0, aSize - 1);
+  initRandMatrix (aMat1, aGen);
+  initRandMatrix (aMat2, aGen);
+
+  //! Serial processing
+  Standard_Real aTimeSeq = 0.0;
+  {
+    OSD_Timer aTimer;
+    aTimer.Start();
+    ParallelTest_MatMult aFunctor (aMat1, aMat2, aMatResRef, aSize);
+    for (int i = aFunctor.Begin(); i < aFunctor.End(); ++i)
+    {
+      aFunctor(i);
+    }
+
+    aTimer.Stop();
+    std::cout << "  Processing time (sequential mode): 1x [reference]\n";
+    aTimeSeq = aTimer.ElapsedTime();
+    aTimer.Show (std::cout);
+  }
 
   // Parallel processing
-  OSD_Parallel::For(0, aLength, aFunctor);
+  for (Standard_Integer aMode = 0; aMode <= 2; ++aMode)
+  {
+    aMatRes.Init (0.0);
 
-  aTimer.Stop();
-  cout << "Processing time (parallel mode):\n";
-  aTimer.Show();
+    OSD_Timer aTimer;
+    aTimer.Start();
+    const char* aModeDesc = NULL;
+    ParallelTest_MatMult aFunctor1 (aMat1, aMat2, aMatRes, aSize);
+    switch (aMode)
+    {
+      case 0:
+      {
+        aModeDesc = "OSD_Parallel::For()";
+        OSD_Parallel::For (aFunctor1.Begin(), aFunctor1.End(), aFunctor1);
+        break;
+      }
+      case 1:
+      {
+        aModeDesc = "OSD_ThreadPool::Launcher";
+        OSD_ThreadPool::Launcher aLauncher (*OSD_ThreadPool::DefaultPool());
+        aLauncher.Perform (aFunctor1.Begin(), aFunctor1.End(), aFunctor1);
+        break;
+      }
+      case 2:
+      {
+    #ifdef HAVE_TBB
+        aModeDesc = "tbb::parallel_for";
+        tbb::parallel_for (aFunctor1.Begin(), aFunctor1.End(), aFunctor1);
+        break;
+    #else
+        continue;
+    #endif
+      }
+    }
+    aTimer.Stop();
+    std::cout << "  " << aModeDesc << ": "
+              << aTimeSeq / aTimer.ElapsedTime() << "x " << (aTimer.ElapsedTime() < aTimeSeq ? "[boost]" : "[slow-down]") << "\n";
+    aTimer.Show (std::cout);
 
+    for (int i = 0; i < aSize; ++i)
+    {
+      for (int j = 0; j < aSize; ++j)
+      {
+        if (aMatRes(i, j) != aMatResRef(i, j))
+        {
+          std::cerr << "Error: Parallel algorithm produced invalid result!\n";
+          i = aSize;
+          break;
+        }
+      }
+    }
+  }
   return 0;
 }
 
@@ -2715,10 +2910,8 @@ static Standard_Integer OCC25413 (Draw_Interpretor& di, Standard_Integer narg , 
 #include <BRepAlgoAPI_Cut.hxx>
 #include <BRepAlgoAPI_Section.hxx>
 //
-#include <BOPTools.hxx>
-//
-#include <BOPCol_MapOfShape.hxx>
-#include <BOPCol_ListOfShape.hxx>
+#include <TopExp.hxx>
+#include <TopTools_MapOfShape.hxx>
 //=======================================================================
 //function : OCC25446
 //purpose  :
@@ -2755,7 +2948,7 @@ static Standard_Integer OCC25446 (Draw_Interpretor& theDI,
   aOp = (BOPAlgo_Operation)iOp;
   //
   Standard_Integer iErr;
-  BOPCol_ListOfShape aLS;
+  TopTools_ListOfShape aLS;
   BOPAlgo_PaveFiller aPF;
   //
   aLS.Append(aS1);
@@ -2800,14 +2993,14 @@ static Standard_Integer OCC25446 (Draw_Interpretor& theDI,
   const TopoDS_Shape& aRes = pBuilder->Shape();
   DBRep::Set(argv[1], aRes);
   //
-  BOPCol_MapOfShape aMapArgs, aMapShape;
-  BOPCol_MapIteratorOfMapOfShape aIt;
+  TopTools_MapOfShape aMapArgs, aMapShape;
+  TopTools_MapIteratorOfMapOfShape aIt;
   Standard_Boolean bIsDeletedHist, bIsDeletedMap;
   TopAbs_ShapeEnum aType;
   //
-  BOPTools::MapShapes(aS1, aMapArgs);
-  BOPTools::MapShapes(aS2, aMapArgs);
-  BOPTools::MapShapes(aRes, aMapShape);
+  TopExp::MapShapes(aS1, aMapArgs);
+  TopExp::MapShapes(aS2, aMapArgs);
+  TopExp::MapShapes(aRes, aMapShape);
   //
   aIt.Initialize(aMapArgs);
   for (; aIt.More(); aIt.Next()) {
@@ -2864,19 +3057,19 @@ struct OCC25545_Functor
 //function : OCC25545
 //purpose  : Tests data race when concurrently accessing TopLoc_Location::Transformation()
 //=======================================================================
-#ifdef HAVE_TBB
+
 static Standard_Integer OCC25545 (Draw_Interpretor& di, 
                                   Standard_Integer, 
                                   const char **)
 {
   // Place vertices in a vector, giving the i-th vertex the
   // transformation that translates it on the vector (i,0,0) from the origin.
-  size_t n = 1000;
+  Standard_Integer n = 1000;
   std::vector<TopoDS_Shape> aShapeVec (n);
   std::vector<TopLoc_Location> aLocVec (n);
   TopoDS_Shape aShape = BRepBuilderAPI_MakeVertex (gp::Origin ());
   aShapeVec[0] = aShape;
-  for (size_t i = 1; i < n; ++i) {
+  for (Standard_Integer i = 1; i < n; ++i) {
     gp_Trsf aT;
     aT.SetTranslation (gp_Vec (1, 0, 0));
     aLocVec[i] = aLocVec[i - 1] * aT;
@@ -2887,20 +3080,12 @@ static Standard_Integer OCC25545 (Draw_Interpretor& di,
   // concurrently
   OCC25545_Functor aFunc(aShapeVec);
 
-  //concurrently process
-  tbb::parallel_for (size_t (0), n, aFunc, tbb::simple_partitioner ());
+  // concurrently process
+  OSD_Parallel::For (0, n, aFunc);
+
   QVERIFY (!aFunc.myIsRaceDetected);
   return 0;
 }
-#else
-static Standard_Integer OCC25545 (Draw_Interpretor&, 
-                                  Standard_Integer, 
-                                  const char **argv)
-{
-  cout << "Test skipped: command " << argv[0] << " requires TBB library" << endl;
-  return 0;
-}
-#endif
 
 //=======================================================================
 //function : OCC25547
@@ -3075,7 +3260,7 @@ static Standard_Integer OCC26139 (Draw_Interpretor& theDI,
 #ifdef _WIN32
 #define EXCEPTION ...
 #else
-#define EXCEPTION Standard_Failure
+#define EXCEPTION Standard_Failure const&
 #endif
 
 static ShapeExtend_Status getStatusGap(const Handle(ShapeFix_Wire)&   theFix,
@@ -3103,7 +3288,7 @@ static Standard_Integer OCC24881 (Draw_Interpretor& di, Standard_Integer narg , 
     di<<"Usage: "<<a[0]<<" invalid number of arguments\n";
     return 1;
   }
-//    cout <<"FileName1: " << argv[1] <<endl;
+//    std::cout <<"FileName1: " << argv[1] <<std::endl;
 
   TopoDS_Shape aShape = DBRep::Get (a[1]);
 
@@ -3225,103 +3410,6 @@ static Standard_Integer OCC24881 (Draw_Interpretor& di, Standard_Integer narg , 
 		di <<aStatusItr.Value()<< "\n";
 	}
 	di << ("__________________________________") <<"\n";
-
-  return 0;
-}
-
-//=======================================================================
-//function : OCC26172
-//purpose  :
-//=======================================================================
-static Standard_Integer OCC26172 (Draw_Interpretor& theDI, Standard_Integer theArgNb, const char** theArgVec)
-{
-  if (theArgNb != 1)
-  {
-    std::cerr << "Error: wrong number of arguments! See usage:\n";
-    theDI.PrintHelp (theArgVec[0]);
-    return 1;
-  }
-
-  Handle(AIS_InteractiveContext) anAISContext = ViewerTest::GetAISContext();
-  if(anAISContext.IsNull())
-  {
-    std::cerr << "Error: no active view. Please call vinit.\n";
-    return 1;
-  }
-
-  gp_Pnt aStart (100, 100, 100);
-  gp_Pnt anEnd (300, 400, 600);
-  BRepBuilderAPI_MakeEdge anEdgeBuilder (aStart, anEnd);
-  TopoDS_Edge anEdge = anEdgeBuilder.Edge();
-  Handle(AIS_Shape) aTestAISShape = new AIS_Shape (anEdge);
-  anAISContext->Display (aTestAISShape, Standard_True);
-
-  // 2. activate it in selection modes
-  TColStd_SequenceOfInteger aModes;
-  aModes.Append (AIS_Shape::SelectionMode ((TopAbs_ShapeEnum) TopAbs_VERTEX));
-  aModes.Append (AIS_Shape::SelectionMode ((TopAbs_ShapeEnum) TopAbs_EDGE));
-
-  Standard_DISABLE_DEPRECATION_WARNINGS
-  anAISContext->OpenLocalContext();
-  Standard_ENABLE_DEPRECATION_WARNINGS
-  anAISContext->Deactivate (aTestAISShape);
-  anAISContext->Load (aTestAISShape, -1, true);
-  for (Standard_Integer anIt = 1; anIt <= aModes.Length(); ++anIt)
-  {
-    anAISContext->Activate (aTestAISShape, aModes (anIt));
-  }
-
-  // select entities in vertex selection mode
-  Handle(SelectMgr_Selection) aSelection = aTestAISShape->Selection (aModes (1));
-  Standard_DISABLE_DEPRECATION_WARNINGS
-  for (aSelection->Init(); aSelection->More(); aSelection->Next())
-  {
-    Handle(SelectBasics_SensitiveEntity) anEntity = aSelection->Sensitive()->BaseSensitive();
-    if (anEntity.IsNull())
-    {
-      continue;
-    }
-
-    Handle(SelectMgr_EntityOwner) anOwner =
-      Handle(SelectMgr_EntityOwner)::DownCast (anEntity->OwnerId());
-
-    if (anOwner.IsNull())
-    {
-      continue;
-    }
-
-    anAISContext->LocalContext()->AddOrRemoveSelected (anOwner);
-  }
-  Standard_ENABLE_DEPRECATION_WARNINGS
-
-  // select entities in edge selection mode
-  aSelection = aTestAISShape->Selection (aModes (2));
-  Standard_DISABLE_DEPRECATION_WARNINGS
-  for (aSelection->Init(); aSelection->More(); aSelection->Next())
-  {
-    Handle(SelectBasics_SensitiveEntity) anEntity = aSelection->Sensitive()->BaseSensitive();
-    if (anEntity.IsNull())
-    {
-      continue;
-    }
-
-    Handle(SelectMgr_EntityOwner) anOwner =
-      Handle(SelectMgr_EntityOwner)::DownCast (anEntity->OwnerId());
-
-    if (anOwner.IsNull())
-    {
-      continue;
-    }
-
-    anAISContext->LocalContext()->AddOrRemoveSelected (anOwner);
-  }
-  Standard_ENABLE_DEPRECATION_WARNINGS
-
-  // deactivate vertex mode and check clearing of outdated selection
-  anAISContext->Deactivate (aTestAISShape, aModes (1));
-  Standard_DISABLE_DEPRECATION_WARNINGS
-  anAISContext->LocalContext()->ClearOutdatedSelection (aTestAISShape, true);
-  Standard_ENABLE_DEPRECATION_WARNINGS
 
   return 0;
 }
@@ -3489,7 +3577,7 @@ static Standard_Integer OCC24923(
   const Standard_Real aDeviation = 
     1. - (Standard_Real)(aPointsNb - aFailedNb) / (Standard_Real)aPointsNb;
 
-  theDI << "Number of failed cases: " << aFailedNb << " (Total " << aPointsNb << ")\n";
+  theDI << "Number of incorrect cases: " << aFailedNb << " (Total " << aPointsNb << ")\n";
   if (aDeviation > aMaxDeviation)
   {
     theDI << "Failed. Number of incorrect results is too huge: " << 
@@ -3776,11 +3864,12 @@ Standard_Integer OCC26446 (Draw_Interpretor& di,
   aCurves.SetValue(1, aCurve2);
   aTolerances.SetValue(0, aTolConf);
 
+  Standard_Boolean closed_flag = Standard_False;
   GeomConvert::ConcatC1(aCurves,
                         aTolerances,
                         anIndices,
                         aConcatCurves,
-                        Standard_False,
+                        closed_flag,
                         aTolClosure);
 
   Handle(Geom_BSplineCurve) aResult =
@@ -4187,7 +4276,7 @@ static Standard_Integer OCC26313(Draw_Interpretor& di,Standard_Integer n,const c
     {
       DBRep::Set(a[1], gtrf.ModifiedShape(aSrcShape));
     }
-    catch(Standard_Failure)
+    catch(Standard_Failure const&)
     {
       di << "Error: Exception is thrown\n";
     }
@@ -4335,7 +4424,7 @@ static Standard_Integer OCC24537(
     aF.open(argv[1]);
     if (!aF.is_open())
     {
-      cout << "cannot create file " << argv[1] << endl;
+      std::cout << "cannot create file " << argv[1] << std::endl;
       return 1;
     }
   }
@@ -4547,7 +4636,7 @@ static Standard_Integer OCC24537(
     theDI << "Conversion was done OK";
   if (aF.is_open())
   {
-    cout << "the file " << argv[1] << " has been created" << endl;
+    std::cout << "the file " << argv[1] << " has been created" << std::endl;
     aF.close();
   }
   return 0;
@@ -4784,162 +4873,6 @@ static Standard_Integer OCC26746(
   return 0;     
 }
 
-DEFINE_STANDARD_HANDLE(QABugs_VertexFilter, SelectMgr_Filter)
-class QABugs_VertexFilter: public SelectMgr_Filter
-{
-public:
-  Standard_EXPORT QABugs_VertexFilter() : SelectMgr_Filter() {}
-
-  Standard_EXPORT virtual Standard_Boolean IsOk(const Handle(SelectMgr_EntityOwner)&) const
-  {
-    return Standard_False;
-  }
-};
-
-//=======================================================================
-//function : BUC26658 
-//purpose  : Checks selection in the context after using a selection filter
-//=======================================================================
-static Standard_Integer BUC26658 (Draw_Interpretor& theDI,
-                                  Standard_Integer  /*theNArg*/,
-                                  const char ** theArgVal)
-{
-  Handle(AIS_InteractiveContext) aContext = ViewerTest::GetAISContext();
-  if(aContext.IsNull()) {
-    theDI << "use 'vinit' command before " << theArgVal[0] << "\n";
-    return 1;
-  }
-
-  TopoDS_Shape aBoxShape = BRepPrimAPI_MakeBox(20,20,20).Shape();
-  Handle(AIS_Shape) anAISIO = new AIS_Shape(aBoxShape);
-
-  // visualization of the box in the local mode with possibility to
-  // select box vertices
-  Standard_DISABLE_DEPRECATION_WARNINGS
-  aContext->OpenLocalContext();
-  Standard_ENABLE_DEPRECATION_WARNINGS
-
-  int aDispMode = 0;// wireframe
-  anAISIO->SetDisplayMode(aDispMode);
-  aContext->Display(anAISIO, aDispMode, 0, false, true, AIS_DS_Displayed); 
-  theDI.Eval(" vfit");
-
-  aContext->Load(anAISIO, -1, true); /// load allowing decomposition
-  aContext->Deactivate(anAISIO);
-  aContext->Activate(anAISIO, AIS_Shape::SelectionMode(TopAbs_VERTEX), false);
-  aContext->UpdateCurrentViewer();
-
-  // select a point on the box
-  Handle(V3d_View) myV3dView = ViewerTest::CurrentView();
-  double Xv,Yv;
-  myV3dView->Project(20,20,0,Xv,Yv);
-  Standard_Integer Xp,Yp;
-  myV3dView->Convert(Xv,Yv,Xp,Yp);
-
-  aContext->MoveTo (Xp, Yp, myV3dView, Standard_False);
-  aContext->Select (Standard_False);
-  bool aHasSelected = false;
-  for (aContext->InitSelected(); aContext->MoreSelected() && !aHasSelected; aContext->NextSelected()) {
-    Handle(AIS_InteractiveObject) anIO = aContext->SelectedInteractive();
-    if (!anIO.IsNull()) {
-      const TopoDS_Shape aShape = aContext->SelectedShape();
-      if (!aShape.IsNull() && aShape.ShapeType() == TopAbs_VERTEX)
-        aHasSelected = true;
-    }
-  }
-  if (aHasSelected)
-     cout << "has selected vertex : OK"   << endl;
-  else {
-    theDI << "has selected vertex : bugged - Faulty\n";
-    return 1;
-  }
-  // filter to deny any selection in the viewer
-  Handle(QABugs_VertexFilter) aFilter = new QABugs_VertexFilter();
-  aContext->AddFilter(aFilter);
-
-  // update previous selection by hand
-  Standard_DISABLE_DEPRECATION_WARNINGS
-  aContext->LocalContext()->ClearOutdatedSelection(anAISIO, true);
-  Standard_ENABLE_DEPRECATION_WARNINGS
-
-  // check that there are no selected vertices
-  aContext->Select (Standard_True);
-  aHasSelected = false;
-  for (aContext->InitSelected(); aContext->MoreSelected() && !aHasSelected; aContext->NextSelected()) {
-    Handle(AIS_InteractiveObject) anIO = aContext->SelectedInteractive();
-    if (!anIO.IsNull()) {
-      const TopoDS_Shape aShape = aContext->SelectedShape();
-      if (!aShape.IsNull() && aShape.ShapeType() == TopAbs_VERTEX)
-        aHasSelected = true;
-    }
-  }
-  if (!aHasSelected) cout << "has no selected vertex after filter : OK"   << endl;
-  else {
-    theDI << "has no selected vertex after filter : bugged - Faulty\n";
-    return 1;
-  }
-
-  return 0;
-}
-
-//=======================================================================
-//function : OCC26945_open
-//purpose  : Opens local context and activates given standard selection mode
-//=======================================================================
-static Standard_Integer OCC26945_open (Draw_Interpretor& theDI, Standard_Integer theArgc, const char** theArgv)
-{
-  const Handle(AIS_InteractiveContext)& aCtx = ViewerTest::GetAISContext();
-  if (aCtx.IsNull())
-  {
-    std::cout << "No interactive context. Use 'vinit' command before " << theArgv[0] << "\n";
-    return 1;
-  }
-
-  if (theArgc < 2)
-  {
-    std::cout << "Not enough arguments. See usage:\n";
-    theDI.PrintHelp (theArgv[0]);
-    return 1;
-  }
-
-  const TopAbs_ShapeEnum aSelType = AIS_Shape::SelectionType (Draw::Atoi (theArgv[1]));
-  Standard_DISABLE_DEPRECATION_WARNINGS
-  Standard_Integer aLocalCtxIdx = aCtx->OpenLocalContext();
-  aCtx->ActivateStandardMode (aSelType);
-  Standard_ENABLE_DEPRECATION_WARNINGS
-  theDI << aLocalCtxIdx;
-
-  return 0;
-}
-
-//=======================================================================
-//function : OCC26945_close
-//purpose  : Closes local context with the id given
-//=======================================================================
-static Standard_Integer OCC26945_close (Draw_Interpretor& theDI, Standard_Integer theArgc, const char** theArgv)
-{
-  const Handle(AIS_InteractiveContext)& aCtx = ViewerTest::GetAISContext();
-  if (aCtx.IsNull())
-  {
-    std::cout << "No interactive context. Use 'vinit' command before " << theArgv[0] << "\n";
-    return 1;
-  }
-
-  if (theArgc < 2)
-  {
-    std::cout << "Not enough arguments. See usage:\n";
-    theDI.PrintHelp (theArgv[0]);
-    return 1;
-  }
-
-  const Standard_Integer aCtxToClose = Draw::Atoi (theArgv[1]);
-  Standard_DISABLE_DEPRECATION_WARNINGS
-  aCtx->CloseLocalContext (aCtxToClose);
-  Standard_ENABLE_DEPRECATION_WARNINGS
-
-  return 0;
-}
-
 //=======================================================================
 //function : OCC27048
 //purpose  : Calculate value of B-spline surface N times
@@ -4963,95 +4896,6 @@ static Standard_Integer OCC27048(Draw_Interpretor& theDI, Standard_Integer theAr
   for (; aN > 0; --aN)
     anAdaptor.Value(aU, aV);
 
-  return 0;
-}
-
-//========================================================================
-//function : OCC27065
-//purpose  : Tests overloaded method "Generated" of BRepOffsetAPI_MakePipe
-//========================================================================
-static Standard_Integer OCC27065(Draw_Interpretor& di,
-                                 Standard_Integer n, const char** a)
-{
-  if (n < 3) return 1;
-  BRep_Builder BB;
-
-  TopoDS_Shape SpineShape = DBRep::Get(a[1],TopAbs_WIRE);
-  if ( SpineShape.IsNull()) return 1;
-  TopoDS_Wire Spine = TopoDS::Wire(SpineShape);
-
-  TopoDS_Shape Profile = DBRep::Get(a[2]);
-  if ( Profile.IsNull()) return 1;
-
-  BRepOffsetAPI_MakePipe aPipeBuilder(Spine, Profile);
-  if (!aPipeBuilder.IsDone())
-  {
-    di << "Error: failed to create pipe\n";
-    return 1;
-  }
-
-  TopExp_Explorer Explo(Profile, TopAbs_SHELL);
-  TopoDS_Shape aShape;
-  TopTools_ListIteratorOfListOfShape itl;
-  if (Explo.More())
-  {
-    aShape = Explo.Current();
-    TopoDS_Compound res1;
-    BB.MakeCompound(res1);
-    itl.Initialize(aPipeBuilder.Generated(aShape));
-    for (; itl.More(); itl.Next())
-      BB.Add(res1, itl.Value());
-    DBRep::Set("res_shell", res1);
-  }
-
-  Explo.Init(Profile, TopAbs_FACE);
-  if (Explo.More())
-  {
-    aShape = Explo.Current();
-    TopoDS_Compound res2;
-    BB.MakeCompound(res2);
-    itl.Initialize(aPipeBuilder.Generated(aShape));
-    for (; itl.More(); itl.Next())
-      BB.Add(res2, itl.Value());
-    DBRep::Set("res_face", res2);
-  }
-  
-  Explo.Init(Profile, TopAbs_WIRE);
-  if (Explo.More())
-  {
-    aShape = Explo.Current();
-    TopoDS_Compound res3;
-    BB.MakeCompound(res3);
-    itl.Initialize(aPipeBuilder.Generated(aShape));
-    for (; itl.More(); itl.Next())
-      BB.Add(res3, itl.Value());
-    DBRep::Set("res_wire", res3);
-  }
-  
-  Explo.Init(Profile, TopAbs_EDGE);
-  if (Explo.More())
-  {
-    aShape = Explo.Current();
-    TopoDS_Compound res4;
-    BB.MakeCompound(res4);
-    itl.Initialize(aPipeBuilder.Generated(aShape));
-    for (; itl.More(); itl.Next())
-      BB.Add(res4, itl.Value());
-    DBRep::Set("res_edge", res4);
-  }
-  
-  Explo.Init(Profile, TopAbs_VERTEX);
-  if (Explo.More())
-  {
-    aShape = Explo.Current();
-    TopoDS_Compound res5;
-    BB.MakeCompound(res5);
-    itl.Initialize(aPipeBuilder.Generated(aShape));
-    for (; itl.More(); itl.Next())
-      BB.Add(res5, itl.Value());
-    DBRep::Set("res_vertex", res5);
-  }
-  
   return 0;
 }
 
@@ -5107,7 +4951,7 @@ static Standard_Integer OCC27523 (Draw_Interpretor& theDI, Standard_Integer theA
   aModes.Append (AIS_Shape::SelectionMode ((TopAbs_ShapeEnum) TopAbs_VERTEX));
 
   anAISContext->Deactivate (aTestAISShape);
-  anAISContext->Load (aTestAISShape, -1, true);
+  anAISContext->Load (aTestAISShape, -1);
   anAISContext->Activate (aTestAISShape, 0);
   anAISContext->Deactivate (aTestAISShape, 0);
 
@@ -5342,6 +5186,52 @@ static Standard_Integer OCC28310 (Draw_Interpretor& /*theDI*/, Standard_Integer 
   return 0;
 }
 
+// repetitive display and removal of multiple small objects in the viewer for 
+// test of memory leak in visualization (OCCT 6.9.0 - 7.0.0)
+static Standard_Integer OCC29412 (Draw_Interpretor& /*theDI*/, Standard_Integer theArgNb, const char** theArgVec)
+{
+  Handle(AIS_InteractiveContext) aCtx = ViewerTest::GetAISContext();
+  if (aCtx.IsNull())
+  {
+    std::cout << "Error: no active view.\n";
+    return 1;
+  }
+
+  const int aNbIters = (theArgNb <= 1 ? 10000 : Draw::Atoi (theArgVec[1]));
+  int aProgressPrev = -1;
+  for (int m_loopIndex = 0; m_loopIndex < aNbIters; m_loopIndex++)
+  {
+    gp_Pnt pos;
+    gp_Vec dir(0, 0,1);
+
+    gp_Ax2 center (pos, dir);
+    gp_Circ circle (center, 1);
+    Handle(AIS_Shape) feature;
+
+    BRepBuilderAPI_MakeEdge builder( circle );
+
+    if( builder.Error() == BRepBuilderAPI_EdgeDone )
+    {
+      TopoDS_Edge E1 = builder.Edge();
+      TopoDS_Shape W2 = BRepBuilderAPI_MakeWire(E1).Wire();
+      feature = new AIS_Shape(W2);
+      aCtx->Display (feature, true);
+    }
+
+    aCtx->CurrentViewer()->Update();
+    ViewerTest::CurrentView()->FitAll();
+    aCtx->Remove (feature, true);
+
+    const int aProgress = (m_loopIndex * 100) / aNbIters;
+    if (aProgress != aProgressPrev)
+    {
+      std::cerr << aProgress << "%\r";
+      aProgressPrev = aProgress;
+    }
+  }
+  return 0;
+}
+
 //========================================================================
 //function : Commands_19
 //purpose  :
@@ -5378,7 +5268,6 @@ void QABugs::Commands_19(Draw_Interpretor& theCommands) {
   theCommands.Add ("OCC23972", "OCC23972", __FILE__, OCC23972, group);
   theCommands.Add ("OCC24370", "OCC24370 edge pcurve surface prec", __FILE__, OCC24370, group);
   theCommands.Add ("OCC24533", "OCC24533", __FILE__, OCC24533, group);
-  theCommands.Add ("OCC24012", "OCC24012 face edge", __FILE__, OCC24012, group);
   theCommands.Add ("OCC24086", "OCC24086 face wire", __FILE__, OCC24086, group);
   theCommands.Add ("OCC24667", "OCC24667 result Wire_spine Profile [Mode [Approx]], no args to get help", __FILE__, OCC24667, group);
   theCommands.Add ("OCC24755", "OCC24755", __FILE__, OCC24755, group);
@@ -5394,7 +5283,8 @@ void QABugs::Commands_19(Draw_Interpretor& theCommands) {
                    "\nOCAF persistence without setting environment variables",
                    __FILE__, OCC24925, group);
   theCommands.Add ("OCC25043", "OCC25043 shape", __FILE__, OCC25043, group);
-  theCommands.Add ("OCC24826,", "This test performs simple saxpy test.\n Usage: OCC24826 length", __FILE__, OCC24826, group);
+  theCommands.Add ("OCC24826,", "This test performs simple saxpy test using multiple threads.\n Usage: OCC24826 length", __FILE__, OCC24826, group);
+  theCommands.Add ("OCC29935,", "This test performs product of two square matrices using multiple threads.\n Usage: OCC29935 size", __FILE__, OCC29935, group);
   theCommands.Add ("OCC24606", "OCC24606 : Tests ::FitAll for V3d view ('vfit' is for NIS view)", __FILE__, OCC24606, group);
   theCommands.Add ("OCC25202", "OCC25202 res shape numF1 face1 numF2 face2", __FILE__, OCC25202, group);
   theCommands.Add ("OCC7570", "OCC7570 shape", __FILE__, OCC7570, group);
@@ -5409,7 +5299,6 @@ void QABugs::Commands_19(Draw_Interpretor& theCommands) {
                    __FILE__, OCC25545, group);
   theCommands.Add ("OCC25547", "OCC25547", __FILE__, OCC25547, group);
   theCommands.Add ("OCC24881", "OCC24881 shape", __FILE__, OCC24881, group);
-  theCommands.Add ("OCC26172", "OCC26172", __FILE__, OCC26172, group);
   theCommands.Add ("xprojponf", "xprojponf p f", __FILE__, xprojponf, group);
   theCommands.Add ("OCC24923", "OCC24923", __FILE__, OCC24923, group);
   theCommands.Add ("OCC26139", "OCC26139 [-boxsize value] [-boxgrid value] [-compgrid value]", __FILE__, OCC26139, group);
@@ -5440,25 +5329,10 @@ void QABugs::Commands_19(Draw_Interpretor& theCommands) {
   theCommands.Add ("OCC25574", "OCC25574", __FILE__, OCC25574, group);
   theCommands.Add ("OCC26746", "OCC26746 torus [toler NbCheckedPoints] ", __FILE__, OCC26746, group);
 
-  theCommands.Add ("BUC26658", "BUC26658 unexpected selection in the context using a selection filter", __FILE__, BUC26658, group);
-  theCommands.Add ("OCC26945_open",
-                   "OCC26945 selectionModeToActivate"
-                   "\n\t\t: Opens a new local context with selectionModeToActivate activated."
-                   "\n\t\t: Prints the ID of newely opened local context in case of success.",
-                   __FILE__, OCC26945_open, group);
-  theCommands.Add ("OCC26945_close",
-                   "OCC26945 localCtxToClose"
-                   "\n\t\t: Closes local context with the ID localCtxToClose",
-                   __FILE__, OCC26945_close, group);
-
   theCommands.Add ("OCC27048",
                    "OCC27048 surf U V N\nCalculate value of surface N times in the point (U, V)",
                    __FILE__, OCC27048, group);
   
-  theCommands.Add ("OCC27065",
-                   "OCC27065 spine profile",
-                   __FILE__, OCC27065, group);
-
   theCommands.Add ("OCC27318",
                    "OCC27318: Creates a box that is not listed in map of AIS objects of ViewerTest",
                    __FILE__, OCC27318, group);
@@ -5480,5 +5354,6 @@ void QABugs::Commands_19(Draw_Interpretor& theCommands) {
   theCommands.Add("OCC28310",
                   "OCC28310: Tests validness of iterator in AIS_InteractiveContext after an removing object from it",
                   __FILE__, OCC28310, group);
+  theCommands.Add("OCC29412", "OCC29412 [nb cycles]: test display / remove of many small objects", __FILE__, OCC29412, group);
   return;
 }

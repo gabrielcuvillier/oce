@@ -22,7 +22,7 @@
 
 #include <Standard_Boolean.hxx>
 #include <CDF_Application.hxx>
-#include <CDM_MessageDriver.hxx>
+#include <Message_Messenger.hxx>
 #include <Standard_CString.hxx>
 #include <Standard_Integer.hxx>
 #include <Standard_IStream.hxx>
@@ -61,12 +61,13 @@ DEFINE_STANDARD_HANDLE(TDocStd_Application, CDF_Application)
 //! -   Initialization of document views.
 //! Note:
 //! If a client needs detailed information concerning
-//! the events during the Open/Store operation, MessageDriver
-//! inherited from CDM_MessageDriver of the
-//! corresponding application has to be implemented.
-//! If the MessageDriver is not defined all messages
-//! will be (by default) directed to
-//! CDM_NullMessageDriver and will be lost.
+//! the events during the Open/Store operation, a MessageDriver
+//! based on Message_PrinterOStream may be used. In case of need client
+//! can implement his own version inheriting from Message_Printer class 
+//! and add it to the Messanger.
+//! Also the trace level of messages can be tuned by setting trace level (SetTraceLevel (Gravity )) for the used Printer.
+//! By default, trace level is Message_Info, so that all messages are output.
+
 class TDocStd_Application : public CDF_Application
 {
 
@@ -79,8 +80,8 @@ public:
   //! by the application constructor
   Standard_EXPORT Standard_Boolean IsDriverLoaded() const;
 
-  //! Redefines message driver, by default outputs to cout.
-  Standard_EXPORT virtual Handle(CDM_MessageDriver) MessageDriver() Standard_OVERRIDE;
+  //! Redefines message driver, by default outputs to std::cout.
+  Standard_EXPORT virtual Handle(Message_Messenger) MessageDriver() Standard_OVERRIDE;
   
   //! Returns resource manager defining supported persistent formats.
   //!
@@ -214,7 +215,7 @@ public:
   //! Example:
   //! Standard_Integer insession = A->IsInSession(aDoc);
   //! if (insession > 0) {
-  //! cout << "document " << insession << " is already in session" << endl;
+  //! std::cout << "document " << insession << " is already in session" << std::endl;
   //! return 0;
   //! }
   Standard_EXPORT Standard_Integer IsInSession (const TCollection_ExtendedString& path) const;
@@ -269,7 +270,7 @@ public:
   DEFINE_STANDARD_RTTIEXT(TDocStd_Application,CDF_Application)
 
 protected:
-  Handle(CDM_MessageDriver) myMessageDriver;
+  Handle(Message_Messenger) myMessageDriver;
   Handle(Resource_Manager) myResources;
   Standard_Boolean myIsDriverLoaded;
 };

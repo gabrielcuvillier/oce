@@ -62,10 +62,8 @@ static Handle(TDataStd_ReferenceArray) SetAttr(const TDF_Label&     label,
 //function : TDataStd_ReferenceArray
 //purpose  : Empty Constructor
 //=======================================================================
-TDataStd_ReferenceArray::TDataStd_ReferenceArray() 
-{
-
-}
+TDataStd_ReferenceArray::TDataStd_ReferenceArray() : myID(GetID())
+{}
 
 //=======================================================================
 //function : Init
@@ -329,6 +327,6 @@ Standard_OStream& TDataStd_ReferenceArray::Dump (Standard_OStream& anOS) const
   anOS << "\nReferenceArray: ";
   Standard_Character sguid[Standard_GUID_SIZE_ALLOC];
   myID.ToCString(sguid);
-  anOS << sguid << endl;
+  anOS << sguid << std::endl;
   return anOS;
 }

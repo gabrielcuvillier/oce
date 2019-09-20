@@ -19,10 +19,18 @@
 
 #include <Aspect_Convert.hxx>
 #include <Aspect_WindowDefinitionError.hxx>
+#include <Message.hxx>
+#include <Message_Messenger.hxx>
 
-#include <GL/glx.h>
+//#include <X11/XF86keysym.h>
 
-IMPLEMENT_STANDARD_RTTIEXT(Xw_Window,Aspect_Window)
+#if defined(HAVE_EGL) || defined(HAVE_GLES2)
+  #include <EGL/egl.h>
+  #ifndef EGL_OPENGL_ES3_BIT
+    #define EGL_OPENGL_ES3_BIT 0x00000040
+  #endif
+#else
+  #include <GL/glx.h>
 
 namespace
 {
@@ -52,6 +60,10 @@ namespace
 
 }
 
+#endif
+
+IMPLEMENT_STANDARD_RTTIEXT(Xw_Window, Aspect_Window)
+
 // =======================================================================
 // function : Xw_Window
 // purpose  :
@@ -73,7 +85,6 @@ Xw_Window::Xw_Window (const Handle(Aspect_DisplayConnection)& theXDisplay,
   myYBottom  (thePxTop + thePxHeight),
   myIsOwnWin (Standard_True)
 {
-  int aDummy = 0;
   if (thePxWidth <= 0 || thePxHeight <= 0)
   {
     throw Aspect_WindowDefinitionError("Xw_Window, Coordinate(s) out of range");
@@ -83,17 +94,83 @@ Xw_Window::Xw_Window (const Handle(Aspect_DisplayConnection)& theXDisplay,
     throw Aspect_WindowDefinitionError("Xw_Window, X Display connection is undefined");
     return;
   }
-  else if (!glXQueryExtension (myDisplay->GetDisplay(), &aDummy, &aDummy))
-  {
-    throw Aspect_WindowDefinitionError("Xw_Window, GLX extension is unavailable");
-    return;
-  }
 
   Display* aDisp   = myDisplay->GetDisplay();
   int      aScreen = DefaultScreen(aDisp);
   Window   aParent = RootWindow   (aDisp, aScreen);
   XVisualInfo* aVisInfo = NULL;
 
+#if defined(HAVE_EGL) || defined(HAVE_GLES2)
+  EGLDisplay anEglDisplay = eglGetDisplay (aDisp);
+  EGLint aVerMajor = 0; EGLint aVerMinor = 0;
+  XVisualInfo aVisInfoTmp; memset (&aVisInfoTmp, 0, sizeof(aVisInfoTmp));
+  if (anEglDisplay != EGL_NO_DISPLAY
+   && eglInitialize (anEglDisplay, &aVerMajor, &aVerMinor) == EGL_TRUE)
+  {
+    EGLint aConfigAttribs[] =
+    {
+      EGL_RED_SIZE,     8,
+      EGL_GREEN_SIZE,   8,
+      EGL_BLUE_SIZE,    8,
+      EGL_ALPHA_SIZE,   0,
+      EGL_DEPTH_SIZE,   24,
+      EGL_STENCIL_SIZE, 8,
+    #if defined(HAVE_GLES2)
+      EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+    #else
+      EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
+    #endif
+      EGL_NONE
+    };
+
+    EGLint aNbConfigs = 0;
+    void* anEglConfig = NULL;
+    for (Standard_Integer aGlesVer = 3; aGlesVer >= 2; --aGlesVer)
+    {
+    #if defined(GL_ES_VERSION_2_0)
+      aConfigAttribs[6 * 2 + 1] = aGlesVer == 3 ? EGL_OPENGL_ES3_BIT : EGL_OPENGL_ES2_BIT;
+    #else
+      if (aGlesVer == 2)
+      {
+        break;
+      }
+    #endif
+
+      if (eglChooseConfig (anEglDisplay, aConfigAttribs, &anEglConfig, 1, &aNbConfigs) == EGL_TRUE
+       && anEglConfig != NULL)
+      {
+        break;
+      }
+      eglGetError();
+
+      aConfigAttribs[4 * 2 + 1] = 16; // try config with smaller depth buffer
+      if (eglChooseConfig (anEglDisplay, aConfigAttribs, &anEglConfig, 1, &aNbConfigs) == EGL_TRUE
+       && anEglConfig != NULL)
+      {
+        break;
+      }
+      eglGetError();
+    }
+
+    if (anEglConfig != NULL
+     && eglGetConfigAttrib (anEglDisplay, anEglConfig, EGL_NATIVE_VISUAL_ID, (EGLint* )&aVisInfoTmp.visualid) == EGL_TRUE)
+    {
+      int aNbVisuals = 0;
+      aVisInfoTmp.screen = DefaultScreen (aDisp);
+      aVisInfo = XGetVisualInfo (aDisp, VisualIDMask | VisualScreenMask, &aVisInfoTmp, &aNbVisuals);
+    }
+  }
+  if (aVisInfo == NULL)
+  {
+    Message::DefaultMessenger()->Send ("Warning: cannot choose Visual using EGL while creating Xw_Window", Message_Warning);
+  }
+#else
+  int aDummy = 0;
+  if (!glXQueryExtension (myDisplay->GetDisplay(), &aDummy, &aDummy))
+  {
+    throw Aspect_WindowDefinitionError("Xw_Window, GLX extension is unavailable");
+    return;
+  }
   if (myFBConfig == NULL)
   {
     // FBConfigs were added in GLX version 1.3
@@ -128,23 +205,31 @@ Xw_Window::Xw_Window (const Handle(Aspect_DisplayConnection)& theXDisplay,
     throw Aspect_WindowDefinitionError("Xw_Window, couldn't find compatible Visual (RGBA, double-buffered)");
     return;
   }
+#endif
 
   unsigned long aMask = 0;
   XSetWindowAttributes aWinAttr;
   memset(&aWinAttr, 0, sizeof(XSetWindowAttributes));
   aWinAttr.event_mask = ExposureMask | StructureNotifyMask;
   aMask |= CWEventMask;
-  aWinAttr.colormap = XCreateColormap(aDisp, aParent, aVisInfo->visual, AllocNone);
+  if (aVisInfo != NULL)
+  {
+    aWinAttr.colormap = XCreateColormap(aDisp, aParent, aVisInfo->visual, AllocNone);
+  }
   aWinAttr.border_pixel = 0;
   aWinAttr.override_redirect = False;
 
   myXWindow = XCreateWindow(aDisp, aParent,
                             myXLeft, myYTop, thePxWidth, thePxHeight,
-                            0, aVisInfo->depth,
+                            0, aVisInfo != NULL ? aVisInfo->depth : CopyFromParent,
                             InputOutput,
-                            aVisInfo->visual,
+                            aVisInfo != NULL ? aVisInfo->visual : CopyFromParent,
                             CWBorderPixel | CWColormap | CWEventMask | CWOverrideRedirect, &aWinAttr);
-  XFree (aVisInfo); aVisInfo = NULL;
+  if (aVisInfo != NULL)
+  {
+    XFree (aVisInfo);
+    aVisInfo = NULL;
+  }
   if (myXWindow == 0)
   {
     throw Aspect_WindowDefinitionError("Xw_Window, Unable to create window");
@@ -189,7 +274,6 @@ Xw_Window::Xw_Window (const Handle(Aspect_DisplayConnection)& theXDisplay,
   myYBottom  (512),
   myIsOwnWin (Standard_False)
 {
-  int aDummy = 0;
   if (theXWin == 0)
   {
     throw Aspect_WindowDefinitionError("Xw_Window, given invalid X window");
@@ -200,24 +284,25 @@ Xw_Window::Xw_Window (const Handle(Aspect_DisplayConnection)& theXDisplay,
     throw Aspect_WindowDefinitionError("Xw_Window, X Display connection is undefined");
     return;
   }
-  else if (!glXQueryExtension (myDisplay->GetDisplay(), &aDummy, &aDummy))
+#if !defined(HAVE_EGL) && !defined(HAVE_GLES2)
+  int aDummy = 0;
+  if (!glXQueryExtension (myDisplay->GetDisplay(), &aDummy, &aDummy))
   {
     myXWindow = 0;
     throw Aspect_WindowDefinitionError("Xw_Window, GLX extension is unavailable");
     return;
   }
+#endif
 
   Display* aDisp = myDisplay->GetDisplay();
 
   XWindowAttributes aWinAttr;
   XGetWindowAttributes (aDisp, myXWindow, &aWinAttr);
-  const int  aScreen      = DefaultScreen (aDisp);
-  const long aVisInfoMask = VisualIDMask | VisualScreenMask;
   XVisualInfo aVisInfoTmp;
   aVisInfoTmp.visualid = aWinAttr.visual->visualid;
-  aVisInfoTmp.screen   = aScreen;
+  aVisInfoTmp.screen   = DefaultScreen (aDisp);
   int aNbItems = 0;
-  XVisualInfo* aVisInfo = XGetVisualInfo (aDisp, aVisInfoMask, &aVisInfoTmp, &aNbItems);
+  XVisualInfo* aVisInfo = XGetVisualInfo (aDisp, VisualIDMask | VisualScreenMask, &aVisInfoTmp, &aNbItems);
   if (aVisInfo == NULL)
   {
     throw Aspect_WindowDefinitionError("Xw_Window, Visual is unavailable");
@@ -415,6 +500,191 @@ void Xw_Window::Size (Standard_Integer& theWidth,
   XGetWindowAttributes (myDisplay->GetDisplay(), myXWindow, &aWinAttr);
   theWidth  = aWinAttr.width;
   theHeight = aWinAttr.height;
+}
+
+// =======================================================================
+// function : SetTitle
+// purpose  :
+// =======================================================================
+void Xw_Window::SetTitle (const TCollection_AsciiString& theTitle)
+{
+  if (myXWindow != 0)
+  {
+    XStoreName (myDisplay->GetDisplay(), myXWindow, theTitle.ToCString());
+  }
+}
+
+// =======================================================================
+// function : InvalidateContent
+// purpose  :
+// =======================================================================
+void Xw_Window::InvalidateContent (const Handle(Aspect_DisplayConnection)& theDisp)
+{
+  if (myXWindow == 0)
+  {
+    return;
+  }
+
+  const Handle(Aspect_DisplayConnection)& aDisp = !theDisp.IsNull() ? theDisp : myDisplay;
+  Display* aDispX = aDisp->GetDisplay();
+
+  XEvent anEvent;
+  memset (&anEvent, 0, sizeof(anEvent));
+  anEvent.type = Expose;
+  anEvent.xexpose.window = myXWindow;
+  XSendEvent (aDispX, myXWindow, False, ExposureMask, &anEvent);
+  XFlush (aDispX);
+}
+
+// =======================================================================
+// function : VirtualKeyFromNative
+// purpose  :
+// =======================================================================
+Aspect_VKey Xw_Window::VirtualKeyFromNative (unsigned long theKey)
+{
+  if (theKey >= XK_0
+   && theKey <= XK_9)
+  {
+    return Aspect_VKey(theKey - XK_0 + Aspect_VKey_0);
+  }
+
+  if (theKey >= XK_A
+   && theKey <= XK_Z)
+  {
+    return Aspect_VKey(theKey - XK_A + Aspect_VKey_A);
+  }
+
+  if (theKey >= XK_a
+   && theKey <= XK_z)
+  {
+    return Aspect_VKey(theKey - XK_a + Aspect_VKey_A);
+  }
+
+  if (theKey >= XK_F1
+   && theKey <= XK_F24)
+  {
+    if (theKey <= XK_F12)
+    {
+      return Aspect_VKey(theKey - XK_F1 + Aspect_VKey_F1);
+    }
+    return Aspect_VKey_UNKNOWN;
+  }
+
+  switch (theKey)
+  {
+    case XK_space:
+      return Aspect_VKey_Space;
+    case XK_apostrophe:
+      return Aspect_VKey_Apostrophe;
+    case XK_comma:
+      return Aspect_VKey_Comma;
+    case XK_minus:
+      return Aspect_VKey_Minus;
+    case XK_period:
+      return Aspect_VKey_Period;
+    case XK_semicolon:
+      return Aspect_VKey_Semicolon;
+    case XK_equal:
+      return Aspect_VKey_Equal;
+    case XK_bracketleft:
+      return Aspect_VKey_BracketLeft;
+    case XK_backslash:
+      return Aspect_VKey_Backslash;
+    case XK_bracketright:
+      return Aspect_VKey_BracketRight;
+    case XK_BackSpace:
+      return Aspect_VKey_Backspace;
+    case XK_Tab:
+      return Aspect_VKey_Tab;
+    //case XK_Linefeed:
+    case XK_Return:
+    case XK_KP_Enter:
+      return Aspect_VKey_Enter;
+    //case XK_Pause:
+    //  return Aspect_VKey_Pause;
+    case XK_Escape:
+      return Aspect_VKey_Escape;
+    case XK_Home:
+      return Aspect_VKey_Home;
+    case XK_Left:
+      return Aspect_VKey_Left;
+    case XK_Up:
+      return Aspect_VKey_Up;
+    case XK_Right:
+      return Aspect_VKey_Right;
+    case XK_Down:
+      return Aspect_VKey_Down;
+    case XK_Prior:
+      return Aspect_VKey_PageUp;
+    case XK_Next:
+      return Aspect_VKey_PageDown;
+    case XK_End:
+      return Aspect_VKey_End;
+    //case XK_Insert:
+    //  return Aspect_VKey_Insert;
+    case XK_Menu:
+      return Aspect_VKey_Menu;
+    case XK_Num_Lock:
+      return Aspect_VKey_Numlock;
+    //case XK_KP_Delete:
+    //  return Aspect_VKey_NumDelete;
+    case XK_KP_Multiply:
+      return Aspect_VKey_NumpadMultiply;
+    case XK_KP_Add:
+      return Aspect_VKey_NumpadAdd;
+    //case XK_KP_Separator:
+    //  return Aspect_VKey_Separator;
+    case XK_KP_Subtract:
+      return Aspect_VKey_NumpadSubtract;
+    //case XK_KP_Decimal:
+    //  return Aspect_VKey_Decimal;
+    case XK_KP_Divide:
+      return Aspect_VKey_NumpadDivide;
+    case XK_Shift_L:
+    case XK_Shift_R:
+      return Aspect_VKey_Shift;
+    case XK_Control_L:
+    case XK_Control_R:
+      return Aspect_VKey_Control;
+    //case XK_Caps_Lock:
+    //  return Aspect_VKey_CapsLock;
+    case XK_Alt_L:
+    case XK_Alt_R:
+      return Aspect_VKey_Alt;
+    //case XK_Super_L:
+    //case XK_Super_R:
+    //  return Aspect_VKey_Super;
+    case XK_Delete:
+      return Aspect_VKey_Delete;
+
+    case 0x1008FF11: // XF86AudioLowerVolume
+      return Aspect_VKey_VolumeDown;
+    case 0x1008FF12: // XF86AudioMute
+      return Aspect_VKey_VolumeMute;
+    case 0x1008FF13: // XF86AudioRaiseVolume
+      return Aspect_VKey_VolumeUp;
+
+    case 0x1008FF14: // XF86AudioPlay
+      return Aspect_VKey_MediaPlayPause;
+    case 0x1008FF15: // XF86AudioStop
+      return Aspect_VKey_MediaStop;
+    case 0x1008FF16: // XF86AudioPrev
+      return Aspect_VKey_MediaPreviousTrack;
+    case 0x1008FF17: // XF86AudioNext
+      return Aspect_VKey_MediaNextTrack;
+
+    case 0x1008FF18: // XF86HomePage
+      return Aspect_VKey_BrowserHome;
+    case 0x1008FF26: // XF86Back
+      return Aspect_VKey_BrowserBack;
+    case 0x1008FF27: // XF86Forward
+      return Aspect_VKey_BrowserForward;
+    case 0x1008FF28: // XF86Stop
+      return Aspect_VKey_BrowserStop;
+    case 0x1008FF29: // XF86Refresh
+      return Aspect_VKey_BrowserRefresh;
+  }
+  return Aspect_VKey_UNKNOWN;
 }
 
 #endif //  Win32 or Mac OS X

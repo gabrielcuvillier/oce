@@ -20,7 +20,7 @@
 #include <BinObjMgt_Persistent.hxx>
 #include <BinObjMgt_RRelocationTable.hxx>
 #include <BinObjMgt_SRelocationTable.hxx>
-#include <CDM_MessageDriver.hxx>
+#include <Message_Messenger.hxx>
 #include <Standard_Type.hxx>
 #include <TCollection_AsciiString.hxx>
 #include <TCollection_ExtendedString.hxx>
@@ -123,7 +123,7 @@ static TopAbs_ShapeEnum CharToShapeType(const Standard_Character theCharType)
 //=======================================================================
 
 BinMNaming_NamingDriver::BinMNaming_NamingDriver
-                        (const Handle(CDM_MessageDriver)& theMsgDriver)
+                        (const Handle(Message_Messenger)& theMsgDriver)
      : BinMDF_ADriver (theMsgDriver, STANDARD_TYPE(TNaming_Naming)->Name())
 {
 }
@@ -222,27 +222,27 @@ Standard_Boolean BinMNaming_NamingDriver::Paste
           else {
             aMsg = TCollection_ExtendedString("BinMNaming_NamingDriver: "
                                               "Cannot retrieve Index of Name");
-            WriteMessage (aMsg); 
+            myMessageDriver->Send (aMsg, Message_Warning); 
           }
         } else {
           aMsg = TCollection_ExtendedString("BinMNaming_NamingDriver: "
                                             "Cannot retrieve reference on "
                                             "StopNamedShape");
-          WriteMessage (aMsg); 
+          myMessageDriver->Send (aMsg, Message_Warning); 
         }
       } else {
         aMsg = TCollection_ExtendedString("BinMNaming_NamingDriver: "
                                           "Cannot retrieve reference on "
                                           "Arguments of Name");
-	WriteMessage (aMsg);
+	myMessageDriver->Send (aMsg, Message_Warning);
 	  }
 
-    if(BinMNaming::DocumentVersion() > 3) {
+    if(theRelocTable.GetHeaderData()->StorageVersion().IntegerValue() > 3) {
 	TCollection_AsciiString entry;
 	ok = theSource >> entry;
 	if(ok) {
 #ifdef OCCT_DEBUG
-	  cout << "NamingDriver:: Retrieved Context Label = " << entry << " Ok = " << theSource.IsOK()  <<endl;
+	  std::cout << "NamingDriver:: Retrieved Context Label = " << entry << " Ok = " << theSource.IsOK()  <<std::endl;
 #endif
 	 
 //6. context label
@@ -254,7 +254,8 @@ Standard_Boolean BinMNaming_NamingDriver::Paste
 		aName.ContextLabel(tLab);
 	    }
 	}
-    if(BinMNaming::DocumentVersion() > 4 && BinMNaming::DocumentVersion() < 7) {
+    if(theRelocTable.GetHeaderData()->StorageVersion().IntegerValue() > 4 && 
+       theRelocTable.GetHeaderData()->StorageVersion().IntegerValue() < 7) {
           // Orientation processing - converting from old format
       Handle(TNaming_NamedShape) aNShape;
       if(anAtt->Label().FindAttribute(TNaming_NamedShape::GetID(), aNShape)) {
@@ -273,27 +274,24 @@ Standard_Boolean BinMNaming_NamingDriver::Paste
 		}
 	  }
 	}
-    if(BinMNaming::DocumentVersion() > 6) {
+    if(theRelocTable.GetHeaderData()->StorageVersion().IntegerValue() > 6) {
       ok = theSource >> anIndx;
       TopAbs_Orientation OrientationToApply(TopAbs_FORWARD);
       if(ok) {
         OrientationToApply = (TopAbs_Orientation)anIndx;
 		aName.Orientation(OrientationToApply);
 #ifdef OCCT_DEBUG
-	    cout << "NamingDriver:: Retrieved Orientation = " << OrientationToApply << " Ok = " << theSource.IsOK()  <<endl;
+	    std::cout << "NamingDriver:: Retrieved Orientation = " << OrientationToApply << " Ok = " << theSource.IsOK()  <<std::endl;
 #endif
 	  } else {
           aMsg = TCollection_ExtendedString("BinMNaming_NamingDriver: "
                                             "Cannot retrieve Name Orientation ");
-	  WriteMessage (aMsg);
+	  myMessageDriver->Send (aMsg, Message_Warning);
 	  }
 	}
 	}
 #ifdef OCCT_DEBUG
-      else if(BinMNaming::DocumentVersion() == -1)
-	cout << "Current DocVersion field is not initialized. "  <<endl;
-      else 
-	cout << "Current DocVersion = " << BinMNaming::DocumentVersion() <<endl;
+	      std::cout << "Current Document Format Version = " << theRelocTable.GetHeaderData()->StorageVersion().IntegerValue() <<std::endl;      
 #endif
 	}
   }

@@ -21,9 +21,12 @@
 
 #include <gp_Pnt.hxx>
 
+#include <OSD_Path.hxx>
 #include <Precision.hxx>
+#include <Standard_Overflow.hxx>
 
 #include <NCollection_Vector.hxx>
+#include <NCollection_IncAllocator.hxx>
 
 #define ItemType gp_Pnt
 #define Key1Type Standard_Real
@@ -71,9 +74,14 @@ DEFINE_SEQUENCE(QANCollection_SequenceFunc,QANCollection_BaseColFunc,ItemType)
 DEFINE_HSEQUENCE(QANCollection_HSequenceFunc,QANCollection_SequenceFunc)
 
 // HashCode and IsEquel must be defined for key types of maps
-Standard_Integer HashCode(const gp_Pnt thePnt, int theUpper)
+
+//! Computes a hash code for the point, in the range [1, theUpperBound]
+//! @param thePoint the point which hash code is to be computed
+//! @param theUpperBound the upper bound of the range a computing hash code must be within
+//! @return a computed hash code, in the range [1, theUpperBound]
+Standard_Integer HashCode (const gp_Pnt& thePoint, int theUpperBound)
 {
-  return HashCode(thePnt.X(),theUpper);
+  return HashCode (thePoint.X(), theUpperBound);
 }
 
 Standard_Boolean IsEqual(const gp_Pnt& theP1, const gp_Pnt& theP2)
@@ -237,6 +245,23 @@ static void TestList (QANCollection_ListFunc&     theL)
   // Assign
   AssignCollection (theL, aL);
 
+  // Different allocators
+  {
+    // The joining of list having different allocator can cause memory error
+    // if the fact of different allocator is not taken into account.
+    Handle(NCollection_IncAllocator) anAlloc = new NCollection_IncAllocator;
+    QANCollection_ListFunc aS2(anAlloc);
+    aS2.Append(anItem);
+    theL.Prepend(aS2);
+    aS2.Append(anItem);
+    theL.Append(aS2);
+    aS2.Append(anItem);
+    QANCollection_ListFunc::Iterator anIter(theL);
+    theL.InsertBefore(aS2, anIter);
+    aS2.Append(anItem);
+    theL.InsertAfter(aS2, anIter);
+  }
+
   // Clear
   aL.Clear();
 }
@@ -293,6 +318,22 @@ static void TestSequence (QANCollection_SequenceFunc& theS)
   // Assign
   AssignCollection (theS, aS);
 
+  // Different allocators
+  {
+    // The joining of sequence having different allocator can cause memory error
+    // if the fact of different allocator is not taken into account.
+    Handle(NCollection_IncAllocator) anAlloc = new NCollection_IncAllocator;
+    QANCollection_SequenceFunc aS2(anAlloc);
+    aS2.Append(anItem);
+    theS.Prepend(aS2);
+    aS2.Append(anItem);
+    theS.Append(aS2);
+    aS2.Append(anItem);
+    theS.InsertBefore(1, aS2);
+    aS2.Append(anItem);
+    theS.InsertAfter(1, aS2);
+  }
+
   // Clear
   aS.Clear();
 }
@@ -307,11 +348,11 @@ static void TestMap(QANCollection_MapFunc& theM, Draw_Interpretor& theDI)
     Standard_Integer i;
 
     printf ("Info: testing Map(l=%d)\n", iExt);
-    theM.Statistics(cout);
+    theM.Statistics(std::cout);
     // Resize
     theM.ReSize(8);
-    theM.Statistics(cout);
-    cout.flush();
+    theM.Statistics(std::cout);
+    std::cout.flush();
     // Constructor
     ////////////////////////////////QANCollection_Map aM;
     QANCollection_MapFunc aM;
@@ -330,7 +371,7 @@ static void TestMap(QANCollection_MapFunc& theM, Draw_Interpretor& theDI)
     else
     {
       aM.Remove(aKey);
-      cout << "      successfully removed item, l=%d\n" << aM.Size() << "\n";
+      std::cout << "      successfully removed item, l=%d\n" << aM.Size() << "\n";
     }
     // Copy constructor (including operator=)
     ////////////////////////////////QANCollection_Map aM2 = QANCollection_Map(aM);
@@ -375,11 +416,11 @@ static void TestDataMap  (QANCollection_DataMapFunc& theM)
   Standard_Integer i;
 
   printf ("Info: testing DataMap(l=%d)\n", iExt);
-  theM.Statistics(cout);
+  theM.Statistics(std::cout);
   // Resize
   theM.ReSize(8);
-  theM.Statistics(cout);
-  cout.flush();
+  theM.Statistics(std::cout);
+  std::cout.flush();
   // Constructor
   ////////////////////////////////QANCollection_DataMap aM;
   QANCollection_DataMapFunc aM;
@@ -426,11 +467,11 @@ static void TestDoubleMap  (QANCollection_DoubleMapFunc& theM)
   Standard_Integer i;
 
   printf ("Info: testing DoubleMap(l=%d)\n", iExt);
-  theM.Statistics(cout);
+  theM.Statistics(std::cout);
   // Resize
   theM.ReSize(8);
-  theM.Statistics(cout);
-  cout.flush();
+  theM.Statistics(std::cout);
+  std::cout.flush();
   // Constructor
   ////////////////////////////////QANCollection_DoubleMap aM;
   QANCollection_DoubleMapFunc aM;
@@ -489,11 +530,11 @@ static void TestIndexedMap  (QANCollection_IndexedMapFunc& theM)
   Standard_Integer i;
 
   printf ("Info: testing IndexedMap(l=%d)\n", iExt);
-  theM.Statistics(cout);
+  theM.Statistics(std::cout);
   // Resize
   theM.ReSize(8);
-  theM.Statistics(cout);
-  cout.flush();
+  theM.Statistics(std::cout);
+  std::cout.flush();
   // Constructor
   ////////////////////////////////QANCollection_IndexedMap aM;
   QANCollection_IndexedMapFunc aM;
@@ -550,11 +591,11 @@ static void TestIndexedDataMap  (QANCollection_IDMapFunc& theM)
   Standard_Integer i;
 
   printf ("Info: testing IndexedDataMap(l=%d)\n", iExt);
-  theM.Statistics(cout);
+  theM.Statistics(std::cout);
   // Resize
   theM.ReSize(8);
-  theM.Statistics(cout);
-  cout.flush();
+  theM.Statistics(std::cout);
+  std::cout.flush();
   // Constructor
   ////////////////////////////////QANCollection_IDMap aM;
   QANCollection_IDMapFunc aM;
@@ -681,6 +722,42 @@ static Standard_Integer QANColTestArray2(Draw_Interpretor& di, Standard_Integer 
   }
   QANCollection_Array2Func anArr2(LowerRow, UpperRow, LowerCol, UpperCol);
   TestArray2(anArr2);
+
+  // check resize
+  for (int aPass = 0; aPass <= 5; ++aPass)
+  {
+    Standard_Integer aNewLowerRow = LowerRow, aNewUpperRow = UpperRow, aNewLowerCol = LowerCol, aNewUpperCol = UpperCol;
+    switch (aPass)
+    {
+      case 0: aNewLowerRow -= 1; break;
+      case 1: aNewLowerCol -= 1; break;
+      case 2: aNewLowerRow -= 1; aNewLowerCol -= 1; break;
+      case 3: aNewUpperRow += 1; break;
+      case 4: aNewUpperCol += 1; break;
+      case 5: aNewUpperRow += 1; aNewUpperCol += 1; break;
+    }
+    QANCollection_Array2Func anArr2Copy = anArr2;
+    anArr2Copy.Resize (aNewLowerRow, aNewUpperRow, aNewLowerCol, aNewUpperCol, true);
+    const Standard_Integer aNbRowsMin = Min (anArr2.NbRows(),    anArr2Copy.NbRows());
+    const Standard_Integer aNbColsMin = Min (anArr2.NbColumns(), anArr2Copy.NbColumns());
+    for (Standard_Integer aRowIter = 0; aRowIter < aNbRowsMin; ++aRowIter)
+    {
+      for (Standard_Integer aColIter = 0; aColIter < aNbColsMin; ++aColIter)
+      {
+        const gp_Pnt& aPnt1 = anArr2    .Value (aRowIter +     anArr2.LowerRow(), aColIter +     anArr2.LowerCol());
+        const gp_Pnt& aPnt2 = anArr2Copy.Value (aRowIter + anArr2Copy.LowerRow(), aColIter + anArr2Copy.LowerCol());
+        if (!aPnt1.IsEqual (aPnt2, gp::Resolution()))
+        {
+          std::cerr << "Error: 2D array is not properly resized\n";
+          return 1;
+        }
+      }
+    }
+  }
+
+  QANCollection_Array2Func anArr2Copy2 = anArr2;
+  anArr2Copy2.Resize (LowerRow - 1, UpperRow - 1, LowerCol + 1, UpperCol + 1, false);
+
   return 0;
 }
 
@@ -788,14 +865,14 @@ static Standard_Integer QANColTestVector (Draw_Interpretor&, Standard_Integer, c
 
   aVec.Append(5);
   if (aVec(0) != 5)
-    std::cout << "Error: wrong value in original vector!" << endl;
+    std::cout << "Error: wrong value in original vector!" << std::endl;
   aVec2.Append(5);
   if (aVec2(0) != 5)
-    std::cout << "Error: wrong value in copy-constructed vector!" << endl;
+    std::cout << "Error: wrong value in copy-constructed vector!" << std::endl;
   aVec3.Append(5);
   if (aVec3(0) != 5)
-    std::cout << "Error: wrong value in copied vector!" << endl;
-  std::cout << "Test OK" << endl;
+    std::cout << "Error: wrong value in copied vector!" << std::endl;
+  std::cout << "Test OK" << std::endl;
 
   return 0;
 }
@@ -815,12 +892,454 @@ static Standard_Integer QANColTestSequence(Draw_Interpretor& di, Standard_Intege
   return 0;
 }
 
+//=======================================================================
+//function : QANColTestMove
+//purpose  : 
+//=======================================================================
+
+// Return array based on local C array buffer by value.
+// Note that this is expected to cause errors due
+// to the fact that returned copy will keep reference to the
+// buffer allocated in the stack of this function.
+// Unfortunately, this cannot be prevented due to the fact that
+// modern compilers use return value optimization in release mode
+// (object that is returned is constructed once at its target 
+// place and never copied).
+static NCollection_Array1<double> GetArrayByValue()
+{
+  const int aLen = 1024;
+  double aCArray[aLen];
+  NCollection_Array1<double> anArray (aCArray[0], 1, aLen);
+  for (int i = 1; i <= aLen; i++)
+    anArray.SetValue(i, i + 113.);
+  return anArray;
+}
+
+// check array for possible corruption
+static bool CheckArrayByValue(NCollection_Array1<double> theArray)
+{
+  for (int i = 1; i <= theArray.Length(); i++)
+  {
+    if (theArray.Value(i) != i + 113.)
+    {
+      std::cout << "Error at item " << i << ": value = " << theArray.Value(i) << ", expected " << i + 113. << std::endl;
+      return false;
+    }
+  }
+  return true;
+}
+
+static Standard_Integer QANColTestArrayMove (Draw_Interpretor& di, Standard_Integer argc, const char ** argv)
+{
+  if ( argc != 1) {
+    di << "Usage : " << argv[0] << "\n";
+    return 1;
+  }
+  NCollection_Array1<double> anArray = GetArrayByValue();
+  di << (CheckArrayByValue(anArray) ? "Error: memory corruption is not detected" : "Expected behavior: memory is corrupted");
+  return 0;
+}
+
+#include <math_BullardGenerator.hxx>
+#include <OSD_Timer.hxx>
+
+static inline double test_atof (const char* theStr) 
+{ 
+  return atof (theStr);
+}
+
+static inline double test_Atof (const char* theStr) 
+{ 
+  return Atof (theStr);
+}
+
+static inline double test_strtod (const char* theStr) 
+{ 
+  char *end;
+  return strtod (theStr, &end);
+}
+
+static inline double test_Strtod (const char* theStr) 
+{ 
+  char *end;
+  return Strtod (theStr, &end);
+}
+
+static inline double test_sscanf (const char* theStr) 
+{ 
+  double val = 0.;
+  sscanf (theStr, "%lf", &val);
+  return val; 
+}
+
+static int check_atof (const NCollection_Array2<char>& theStrings, const char* theFormat,
+                       double (*test_func)(const char*), Draw_Interpretor& di)
+{
+  int aNbErr = 0;
+  for (int i = 0; i < theStrings.UpperRow(); i++) 
+  {
+    const char *aStr= &theStrings(i,0);
+    char buff[256];
+    double aVal = test_func (aStr);
+    Sprintf (buff, theFormat, aVal);
+    if (strcasecmp (buff, &theStrings(i,0)))
+    {
+#if defined(_MSC_VER) && _MSC_VER < 1900
+      // MSVC < 2015 prints nan and inf as 1.#NAN or 1.INF, and noes not recognize nan or inf on read
+      if (strstr (aStr, "1.#") || strstr (aStr, "nan") || strstr (aStr, "inf") || 
+          strstr (aStr, "NAN") || strstr (aStr, "INF"))
+        continue;
+#endif
+      if (aNbErr < 5)
+      {
+        di << "Deviation parsing " << aStr << " and print back: " << buff << "\n";
+      }
+      aNbErr++;
+    }
+  }
+  return aNbErr;
+}
+
+// Test speed of standard and OCCT-specific (accelerated) functions to parse string to double
+static Standard_Integer QATestAtof (Draw_Interpretor& di, Standard_Integer argc, const char ** argv)
+{
+  int aNbToTest = Max (100, (argc > 1 ? Draw::Atoi(argv[1]) : 1000000));
+  int aNbDigits = (argc > 2 ? Draw::Atoi(argv[2]) : 10);
+  double aRangeMin = (argc > 3 ? Draw::Atof(argv[3]) : -1e9);
+  double aRangeMax = (argc > 4 ? Draw::Atof(argv[4]) : 1e9);
+
+  char aFormat[256];
+  Sprintf (aFormat, "%%.%dlg", Max (2, Min (20, aNbDigits)));
+
+  // prepare data
+  const int MAXLEN = 256;
+  NCollection_Array2<char> aValuesStr (0, aNbToTest - 1, 0, MAXLEN);
+  math_BullardGenerator aRandom;
+
+  if (aRangeMin < aRangeMax)
+  {
+    // random values within specified range
+//    std::default_random_engine aRandomEngine;
+//    std::uniform_real_distribution<double> aRandomDistr (aRangeMin, aRangeMax);
+    const uint64_t aMaxUInt64 = ~(uint64_t)0; // could be (not supported by old GCC): std::numeric_limits<uint64_t>::max()
+    for (int i = 0; i < aNbToTest; i++)
+    {
+//      double aVal = aRandomDistr (aRandomEngine);
+      uint64_t aIVal = ((uint64_t)aRandom.NextInt() << 32) + aRandom.NextInt();
+      double aVal = aRangeMin + (aIVal / (double)aMaxUInt64) * (aRangeMax - aRangeMin);
+      Sprintf(&aValuesStr(i,0), aFormat, aVal);
+    }
+  }
+  else
+  {
+    // special values
+    int i = 0;
+
+    strcpy (&aValuesStr(i++,0), "nan");
+    strcpy (&aValuesStr(i++,0), "nan(qnan)");
+    strcpy (&aValuesStr(i++,0), "NAN");
+    strcpy (&aValuesStr(i++,0), "-nan");
+    strcpy (&aValuesStr(i++,0), "-NAN");
+    strcpy (&aValuesStr(i++,0), "inf");
+    strcpy (&aValuesStr(i++,0), "INF");
+    strcpy (&aValuesStr(i++,0), "-inf");
+    strcpy (&aValuesStr(i++,0), "-INF");
+
+    strcpy (&aValuesStr(i++,0), "  ."); // standalone period should not be considered as a  number
+    strcpy (&aValuesStr(i++,0), "nanabcdef_128  xx"); // extra non-parenthised sequence after "nan"
+
+    strcpy (&aValuesStr(i++,0), "905791934.11394954"); // value that gets rounded in a wrong way by fast Strtod()
+    strcpy (&aValuesStr(i++,0), "9.343962790444495e+148"); // value where strtod() and Strtod() differ by 2 Epsilon
+
+    strcpy (&aValuesStr(i++,0), "     12345.67text"); // test for leading whitespaces and trailing text
+    strcpy (&aValuesStr(i++,0), "000.000"); // test for zero
+    strcpy (&aValuesStr(i++,0), "000.000e-0002"); // test for zero
+
+    strcpy (&aValuesStr(i++,0), "1000000000000000000000000000012345678901234567890"); // huge mantissa
+    strcpy (&aValuesStr(i++,0), "0000000000.00000000000000000012345678901234567890"); // leading zeros
+    strcpy (&aValuesStr(i++,0), "1.00000000000000000000000000012345678901234567890"); // long fractional part
+
+    strcpy (&aValuesStr(i++,0), "0.0000000001e318"); // large exponent but no overflow
+    strcpy (&aValuesStr(i++,0), "-1.7976931348623158e+308"); // -DBL_MAX 
+    strcpy (&aValuesStr(i++,0), "1.79769313486232e+308"); // overflow
+
+    strcpy (&aValuesStr(i++,0), "10000000000e-310"); // large negative exponent but no underflow
+    strcpy (&aValuesStr(i++,0), "1.1e-310"); // underflow
+    strcpy (&aValuesStr(i++,0), "0.000001e-310"); // underflow
+    strcpy (&aValuesStr(i++,0), "2.2250738585072014e-308"); // underflow, DBL_MIN
+    strcpy (&aValuesStr(i++,0), "2.2250738585e-308"); // underflow, value less than DBL_MIN
+
+    strcpy (&aValuesStr(i++,0), "2.2204460492503131e-016"); // DBL_EPSILON
+
+    // random binary data
+//    std::default_random_engine aRandomEngine;
+//    std::uniform_int_distribution<uint64_t> aRandomDistr (0, ~(uint64_t)0);
+    for (; i < aNbToTest; i++)
+    {
+      union {
+        uint64_t valint;
+        double valdbl;
+      } aVal;
+//      aVal.valint = aRandomDistr (aRandomEngine);
+      aVal.valint = ((uint64_t)aRandom.NextInt() << 32) + aRandom.NextInt();
+      Sprintf(&aValuesStr(i,0), aFormat, aVal.valdbl);
+    }
+  }
+
+  // test different methods
+#define TEST_ATOF(method) \
+  OSD_Timer aT_##method; aT_##method.Start(); \
+  double aRes_##method = 0.; \
+  for (int i = 0; i < aNbToTest; i++) { aRes_##method += test_##method (&aValuesStr(i,0)); } \
+  aT_##method.Stop()
+
+  TEST_ATOF(sscanf);
+  TEST_ATOF(strtod);
+  TEST_ATOF(atof);
+  TEST_ATOF(Strtod);
+  TEST_ATOF(Atof);
+#undef TEST_ATOF
+
+  // test different methods
+#define CHECK_ATOF(method) \
+  int aNbErr_##method = check_atof (aValuesStr, aFormat, test_##method, di); \
+  di << "Checking " << #method << ": " << aNbErr_##method << " deviations\n"
+
+  CHECK_ATOF(sscanf);
+  CHECK_ATOF(strtod);
+  CHECK_ATOF(atof);
+  CHECK_ATOF(Strtod);
+  CHECK_ATOF(Atof);
+#undef CHECK_ATOF
+
+/* compare results with atof */
+#ifdef _MSC_VER
+#define ISFINITE _finite
+#else
+#define ISFINITE std::isfinite
+#endif
+  int nbErr = 0;
+  for (int i = 0; i < aNbToTest; i++)
+  {
+    char *aStr = &aValuesStr(i,0), *anEndOCCT, *anEndStd;
+    double aRes = Strtod (aStr, &anEndOCCT);
+    double aRef = strtod (aStr, &anEndStd);
+    if (ISFINITE(aRes) != ISFINITE(aRef))
+    {
+      nbErr++;
+#if defined(_MSC_VER) && _MSC_VER < 1900
+      // MSVC < 2015 prints nan and inf as 1.#NAN or 1.INF, and noes not recognize nan or inf on read
+      if (strstr (aStr, "1.#") || strstr (aStr, "nan") || strstr (aStr, "inf") || 
+          strstr (aStr, "NAN") || strstr (aStr, "INF"))
+        continue;
+#endif
+      if (nbErr < 5)
+      {
+        char aBuff[256];
+        Sprintf (aBuff, "Error parsing %s: %.20lg / %.20lg\n", aStr, aRes, aRef);
+        di << aBuff;
+      }
+    }
+    else if (ISFINITE(aRef) && Abs (aRes - aRef) > Epsilon (aRef))
+    {
+      nbErr++;
+      if (nbErr < 5)
+      {
+        char aBuff[256];
+        Sprintf (aBuff, "Error parsing %s: %.20lg / %.20lg\n", aStr, aRes, aRef);
+        di << aBuff;
+        Sprintf (aBuff, "[Delta = %.8lg, Epsilon = %.8lg]\n", Abs (aRes - aRef), Epsilon (aRef));
+        di << aBuff;
+      }
+    }
+
+    // check that Strtod() and strtod() stop at the same place;
+    // this makes sense for reading special values such as "nan" and thus
+    // is not relevant for MSVC 2010 and earlier than do not support these
+#if ! defined(_MSC_VER) || _MSC_VER >= 1700
+    if (anEndOCCT != anEndStd)
+    {
+      nbErr++;
+      if (nbErr < 5)
+        di << "Error: different number of symbols parsed in " 
+           << aStr << ": " << (int)(anEndOCCT - aStr) << " / " << (int)(anEndStd - aStr) << "\n";
+    }
+#endif
+  }
+  di << "Total " << nbErr << " defiations from strtod() found\n"; 
+/* */
+
+  // print results
+  di << "Method\t      CPU\t  Elapsed   \t    Deviations \tChecksum\n";
+
+#define PRINT_RES(method) \
+  di << #method "\t" << aT_##method.UserTimeCPU() << "  \t" << aT_##method.ElapsedTime() << "\t" \
+  << aNbErr_##method << "\t" << aRes_##method << "\n"
+  PRINT_RES(sscanf);
+  PRINT_RES(strtod);
+  PRINT_RES(atof);
+  PRINT_RES(Strtod);
+  PRINT_RES(Atof);
+#undef PRINT_RES
+
+  return 0;
+}
+
+// Test operations with NCollection_Vec4 that caused generation of invalid code by GCC
+// due to reinterpret_cast conversions of Vec4 internal buffer to Vec3 (see #29825)
+static Standard_Integer QANColTestVec4 (Draw_Interpretor& theDI, Standard_Integer /*theNbArgs*/, const char** /*theArgVec*/)
+{
+  NCollection_Mat4<float> aMatrix;
+  aMatrix.Translate (NCollection_Vec3<float> (4.0f, 3.0f, 1.0f));
+
+  NCollection_Vec4<float> aPoints1[8];
+  for (int aX = 0; aX < 2; ++aX)
+  {
+    for (int aY = 0; aY < 2; ++aY)
+    {
+      for (int aZ = 0; aZ < 2; ++aZ)
+      {
+        aPoints1[aX * 2 * 2 + aY * 2 + aZ] = NCollection_Vec4<float> (-1.0f + 2.0f * float(aX),
+                                                                      -1.0f + 2.0f * float(aY),
+                                                                      -1.0f + 2.0f * float(aZ),
+                                                                       1.0f);
+      }
+    }
+  }
+
+  NCollection_Vec3<float> aPoints2[8];
+  for (int aPntIdx = 0; aPntIdx < 8; ++aPntIdx)
+  {
+    // NB: the evaluation of line below could be dropped by GCC optimizer
+    // while retrieving xyz() value the line after
+    aPoints1[aPntIdx] = aMatrix * aPoints1[aPntIdx];
+    aPoints2[aPntIdx] = aPoints1[aPntIdx].xyz() / aPoints1[aPntIdx].w();
+    //aPoints2[aPntIdx] = NCollection_Vec3<float> (aPoints1[aPntIdx].x(), aPoints1[aPntIdx].y(), aPoints1[aPntIdx].z()) / aPoints1[aPntIdx].w();
+  }
+
+  for (int aPntIter = 0; aPntIter < 8; ++aPntIter) { theDI << aPoints2[aPntIter].SquareModulus() << " "; }
+  if ((int )(aPoints2[7].SquareModulus() + 0.5f) != 45)
+  {
+    theDI << "Error: method 'NCollection_Vec4::xyz()' failed.";
+  }
+  return 0;
+}
+
+//! Print file path flags deduced from path string.
+static Standard_Integer QAOsdPathType (Draw_Interpretor& theDI, Standard_Integer theNbArgs, const char** theArgVec)
+{
+  if (theNbArgs != 2)
+  {
+    std::cout << "Syntax error: wrong number of arguments\n";
+    return 1;
+  }
+
+  TCollection_AsciiString aPath (theArgVec[1]);
+  if (OSD_Path::IsAbsolutePath (aPath.ToCString()))
+  {
+    theDI << "absolute ";
+  }
+  if (OSD_Path::IsRelativePath (aPath.ToCString()))
+  {
+    theDI << "relative ";
+  }
+  if (OSD_Path::IsUnixPath (aPath.ToCString()))
+  {
+    theDI << "unix ";
+  }
+  if (OSD_Path::IsDosPath (aPath.ToCString()))
+  {
+    theDI << "dos ";
+  }
+  if (OSD_Path::IsUncPath (aPath.ToCString()))
+  {
+    theDI << "unc ";
+  }
+  if (OSD_Path::IsNtExtendedPath (aPath.ToCString()))
+  {
+    theDI << "ntextended ";
+  }
+  if (OSD_Path::IsUncExtendedPath (aPath.ToCString()))
+  {
+    theDI << "uncextended ";
+  }
+  if (OSD_Path::IsRemoteProtocolPath (aPath.ToCString()))
+  {
+    theDI << "protocol ";
+  }
+  if (OSD_Path::IsContentProtocolPath (aPath.ToCString()))
+  {
+    theDI << "content ";
+  }
+  return 0;
+}
+
+//! Print file path part deduced from path string.
+static Standard_Integer QAOsdPathPart (Draw_Interpretor& theDI, Standard_Integer theNbArgs, const char** theArgVec)
+{
+  TCollection_AsciiString aPath;
+  enum PathPart
+  {
+    PathPart_NONE,
+    PathPart_Folder,
+    PathPart_FileName,
+  };
+  PathPart aPart = PathPart_NONE;
+  for (Standard_Integer anArgIter = 1; anArgIter < theNbArgs; ++anArgIter)
+  {
+    TCollection_AsciiString anArgCase (theArgVec[anArgIter]);
+    anArgCase.LowerCase();
+    if (aPart == PathPart_NONE
+     && anArgCase == "-folder")
+    {
+      aPart = PathPart_Folder;
+    }
+    else if (aPart == PathPart_NONE
+          && anArgCase == "-filename")
+    {
+      aPart = PathPart_FileName;
+    }
+    else if (aPath.IsEmpty())
+    {
+      aPath = theArgVec[anArgIter];
+    }
+    else
+    {
+      std::cout << "Syntax error at '" << theArgVec[anArgIter] << "'\n";
+      return 1;
+    }
+  }
+  if (aPath.IsEmpty()
+   || aPart == PathPart_NONE)
+  {
+    std::cout << "Syntax error: wrong number of arguments\n";
+    return 1;
+  }
+
+  TCollection_AsciiString aFolder, aFileName;
+  OSD_Path::FolderAndFileFromPath (aPath, aFolder, aFileName);
+  switch (aPart)
+  {
+    case PathPart_Folder:
+      theDI << aFolder;
+      return 0;
+    case PathPart_FileName:
+      theDI << aFileName;
+      return 0;
+    case PathPart_NONE:
+    default:
+      return 1;
+  }
+}
+
+
 void QANCollection::CommandsTest(Draw_Interpretor& theCommands) {
   const char *group = "QANCollection";
 
-  // from agvCollTest/src/CollectionEXE/FuncTestEXE.cxx
-  theCommands.Add("QANColTestArray1",         "QANColTestArray1",         __FILE__, QANColTestArray1,         group);  
-  theCommands.Add("QANColTestArray2",         "QANColTestArray2",         __FILE__, QANColTestArray2,         group);  
+  theCommands.Add("QANColTestArray1",         "QANColTestArray1 Lower Upper",
+    __FILE__, QANColTestArray1, group);
+  theCommands.Add("QANColTestArray2",         "QANColTestArray2 LowerRow UpperRow LowerCol UpperCol",
+    __FILE__, QANColTestArray2, group);  
   theCommands.Add("QANColTestMap",            "QANColTestMap",            __FILE__, QANColTestMap,            group);  
   theCommands.Add("QANColTestDataMap",        "QANColTestDataMap",        __FILE__, QANColTestDataMap,        group);  
   theCommands.Add("QANColTestDoubleMap",      "QANColTestDoubleMap",      __FILE__, QANColTestDoubleMap,      group);  
@@ -829,4 +1348,9 @@ void QANCollection::CommandsTest(Draw_Interpretor& theCommands) {
   theCommands.Add("QANColTestList",           "QANColTestList",           __FILE__, QANColTestList,           group);  
   theCommands.Add("QANColTestSequence",       "QANColTestSequence",       __FILE__, QANColTestSequence,       group);  
   theCommands.Add("QANColTestVector",         "QANColTestVector",         __FILE__, QANColTestVector,         group);  
+  theCommands.Add("QANColTestArrayMove",      "QANColTestArrayMove (is expected to give error)", __FILE__, QANColTestArrayMove, group);  
+  theCommands.Add("QANColTestVec4",           "QANColTestVec4 test Vec4 implementation", __FILE__, QANColTestVec4, group);
+  theCommands.Add("QATestAtof", "QATestAtof [nbvalues [nbdigits [min [max]]]]", __FILE__, QATestAtof, group);
+  theCommands.Add("QAOsdPathType",  "QAOsdPathType path : Print file path flags deduced from path string", __FILE__, QAOsdPathType, group);
+  theCommands.Add("QAOsdPathPart",  "QAOsdPathPart path [-folder][-fileName] : Print file path part", __FILE__, QAOsdPathPart, group);
 }

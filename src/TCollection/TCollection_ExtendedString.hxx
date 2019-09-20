@@ -100,7 +100,18 @@ public:
   
   //! Initializes a ExtendedString with another ExtendedString.
   Standard_EXPORT TCollection_ExtendedString(const TCollection_ExtendedString& astring);
-  
+
+#ifndef OCCT_NO_RVALUE_REFERENCE
+  //! Move constructor
+  TCollection_ExtendedString (TCollection_ExtendedString&& theOther)
+  : mystring (theOther.mystring),
+    mylength (theOther.mylength)
+  {
+    theOther.mystring = NULL;
+    theOther.mylength = 0;
+  }
+#endif
+
   //! Creation by converting an Ascii string to an extended
   //! string. The string is treated as having UTF-8 coding.
   //! If it is not a UTF-8 then each character is copied to ExtCharacter.
@@ -140,7 +151,15 @@ void operator = (const TCollection_ExtendedString& fromwhere)
 {
   Copy(fromwhere);
 }
-  
+
+  //! Exchange the data of two strings (without reallocating memory).
+  Standard_EXPORT void Swap (TCollection_ExtendedString& theOther);
+
+#ifndef OCCT_NO_RVALUE_REFERENCE
+  //! Move assignment operator
+  TCollection_ExtendedString& operator= (TCollection_ExtendedString&& theOther) { Swap (theOther); return *this; }
+#endif
+
   //! Frees memory allocated by ExtendedString.
   Standard_EXPORT ~TCollection_ExtendedString();
   
@@ -316,13 +335,16 @@ friend Standard_EXPORT Standard_OStream& operator << (Standard_OStream& astream,
   //! the bounds of this extended string.
   Standard_EXPORT Standard_ExtCharacter Value (const Standard_Integer where) const;
 
-  //! Returns a hashed value for the extended string within the range 1..theUpper.
+  //! Returns a hashed value for the extended string within the range 1 .. theUpper.
   //! Note: if string is ASCII, the computed value is the same as the value computed with the HashCode function on a
   //! TCollection_AsciiString string composed with equivalent ASCII characters.
+  //! @param theExtendedString the extended string which hash code is to be computed
+  //! @param theUpperBound the upper bound of the range a computing hash code must be within
+  //! @return a computed hash code, in the range [1, theUpperBound]
   static Standard_Integer HashCode (const TCollection_ExtendedString& theString,
-                                    const Standard_Integer theUpper)
+                                    const Standard_Integer theUpperBound)
   {
-    return ::HashCode (theString.ToExtString(), theUpper);
+    return ::HashCode (theString.ToExtString(), theUpperBound);
   }
 
   //! Returns true if the characters in this extended
@@ -357,11 +379,14 @@ private:
 
 };
 
-//! Compute hash code for extended string
-inline Standard_Integer HashCode (const TCollection_ExtendedString& theString,
-                                  const Standard_Integer theUpper)
+//! Computes a hash code for the given extended string, in the range [1, theUpperBound]
+//! @param theExtendedString the extended string which hash code is to be computed
+//! @param theUpperBound the upper bound of the range a computing hash code must be within
+//! @return a computed hash code, in the range [1, theUpperBound]
+inline Standard_Integer HashCode (const TCollection_ExtendedString& theExtendedString,
+                                  const Standard_Integer theUpperBound)
 {
-  return TCollection_ExtendedString::HashCode (theString, theUpper);
+  return TCollection_ExtendedString::HashCode (theExtendedString, theUpperBound);
 }
 
 #endif // _TCollection_ExtendedString_HeaderFile

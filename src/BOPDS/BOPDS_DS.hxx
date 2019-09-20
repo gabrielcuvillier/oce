@@ -19,37 +19,38 @@
 #include <Standard_DefineAlloc.hxx>
 #include <Standard_Handle.hxx>
 
-#include <BOPCol_BaseAllocator.hxx>
-#include <BOPCol_ListOfShape.hxx>
-#include <Standard_Integer.hxx>
-#include <BOPDS_VectorOfIndexRange.hxx>
-#include <BOPDS_VectorOfShapeInfo.hxx>
-#include <BOPCol_DataMapOfShapeInteger.hxx>
-#include <BOPDS_VectorOfListOfPaveBlock.hxx>
 #include <BOPDS_DataMapOfPaveBlockCommonBlock.hxx>
-#include <BOPDS_VectorOfFaceInfo.hxx>
-#include <BOPCol_DataMapOfIntegerInteger.hxx>
-#include <BOPCol_DataMapOfIntegerListOfInteger.hxx>
+#include <BOPDS_IndexedMapOfPaveBlock.hxx>
+#include <BOPDS_ListOfPave.hxx>
+#include <BOPDS_ListOfPaveBlock.hxx>
 #include <BOPDS_MapOfPair.hxx>
-#include <BOPDS_VectorOfInterfVV.hxx>
-#include <BOPDS_VectorOfInterfVE.hxx>
-#include <BOPDS_VectorOfInterfVF.hxx>
+#include <BOPDS_MapOfPaveBlock.hxx>
+#include <BOPDS_VectorOfFaceInfo.hxx>
+#include <BOPDS_VectorOfIndexRange.hxx>
 #include <BOPDS_VectorOfInterfEE.hxx>
 #include <BOPDS_VectorOfInterfEF.hxx>
-#include <BOPDS_VectorOfInterfFF.hxx>
-#include <BOPDS_VectorOfInterfVZ.hxx>
 #include <BOPDS_VectorOfInterfEZ.hxx>
+#include <BOPDS_VectorOfInterfFF.hxx>
 #include <BOPDS_VectorOfInterfFZ.hxx>
+#include <BOPDS_VectorOfInterfVE.hxx>
+#include <BOPDS_VectorOfInterfVF.hxx>
+#include <BOPDS_VectorOfInterfVV.hxx>
+#include <BOPDS_VectorOfInterfVZ.hxx>
 #include <BOPDS_VectorOfInterfZZ.hxx>
-#include <Standard_Real.hxx>
-#include <Standard_Boolean.hxx>
-#include <BOPDS_ListOfPaveBlock.hxx>
-#include <BOPDS_IndexedMapOfPaveBlock.hxx>
-#include <BOPDS_MapOfPaveBlock.hxx>
-#include <BOPCol_MapOfInteger.hxx>
-#include <BOPCol_ListOfInteger.hxx>
-#include <BOPDS_ListOfPave.hxx>
+#include <BOPDS_VectorOfListOfPaveBlock.hxx>
+#include <BOPDS_VectorOfShapeInfo.hxx>
+#include <NCollection_BaseAllocator.hxx>
 #include <Precision.hxx>
+#include <Standard_Boolean.hxx>
+#include <Standard_Integer.hxx>
+#include <Standard_Real.hxx>
+#include <TColStd_DataMapOfIntegerInteger.hxx>
+#include <TColStd_DataMapOfIntegerListOfInteger.hxx>
+#include <TColStd_ListOfInteger.hxx>
+#include <TColStd_MapOfInteger.hxx>
+#include <TopTools_DataMapOfShapeInteger.hxx>
+#include <TopTools_ListOfShape.hxx>
+
 class BOPDS_IndexRange;
 class BOPDS_ShapeInfo;
 class TopoDS_Shape;
@@ -92,7 +93,7 @@ Standard_EXPORT virtual ~BOPDS_DS();
 
   //! Contructor
   //! theAllocator - the allocator to manage the memory
-  Standard_EXPORT BOPDS_DS(const BOPCol_BaseAllocator& theAllocator);
+  Standard_EXPORT BOPDS_DS(const Handle(NCollection_BaseAllocator)& theAllocator);
   
 
   //! Clears the contents
@@ -100,17 +101,17 @@ Standard_EXPORT virtual ~BOPDS_DS();
   
 
   //! Selector
-  Standard_EXPORT const BOPCol_BaseAllocator& Allocator() const;
+  Standard_EXPORT const Handle(NCollection_BaseAllocator)& Allocator() const;
   
 
   //! Modifier
   //! Sets the arguments [theLS] of an operation
-  Standard_EXPORT void SetArguments (const BOPCol_ListOfShape& theLS);
+  Standard_EXPORT void SetArguments (const TopTools_ListOfShape& theLS);
   
 
   //! Selector
   //! Returns the arguments of an operation
-  Standard_EXPORT const BOPCol_ListOfShape& Arguments() const;
+  Standard_EXPORT const TopTools_ListOfShape& Arguments() const;
   
 
   //! Initializes the data structure for
@@ -273,27 +274,31 @@ Standard_EXPORT virtual ~BOPDS_DS();
   //! Update the state In of face with index theIndex
   Standard_EXPORT void UpdateFaceInfoIn (const Standard_Integer theIndex);
   
+  //! Update the state IN for all faces in the given map
+  Standard_EXPORT void UpdateFaceInfoIn (const TColStd_MapOfInteger& theFaces);
 
   //! Update the state On of face with index theIndex
   Standard_EXPORT void UpdateFaceInfoOn (const Standard_Integer theIndex);
   
+  //! Update the state ON for all faces in the given map
+  Standard_EXPORT void UpdateFaceInfoOn (const TColStd_MapOfInteger& theFaces);
 
   //! Selector
   //! Returns the state On
   //! [theMPB,theMVP] of face with index theIndex
-  Standard_EXPORT void FaceInfoOn (const Standard_Integer theIndex, BOPDS_IndexedMapOfPaveBlock& theMPB, BOPCol_MapOfInteger& theMVP);
+  Standard_EXPORT void FaceInfoOn (const Standard_Integer theIndex, BOPDS_IndexedMapOfPaveBlock& theMPB, TColStd_MapOfInteger& theMVP);
   
 
   //! Selector
   //! Returns the state In
   //! [theMPB,theMVP] of face with index theIndex
-  Standard_EXPORT void FaceInfoIn (const Standard_Integer theIndex, BOPDS_IndexedMapOfPaveBlock& theMPB, BOPCol_MapOfInteger& theMVP);
+  Standard_EXPORT void FaceInfoIn (const Standard_Integer theIndex, BOPDS_IndexedMapOfPaveBlock& theMPB, TColStd_MapOfInteger& theMVP);
   
 
   //! Selector
   //! Returns the indices of alone vertices
   //! for the face with index theIndex
-  Standard_EXPORT void AloneVertices (const Standard_Integer theF, BOPCol_ListOfInteger& theLI) const;
+  Standard_EXPORT void AloneVertices (const Standard_Integer theF, TColStd_ListOfInteger& theLI) const;
   
 
   //! Refine the state On for the all faces having
@@ -302,28 +307,32 @@ Standard_EXPORT virtual ~BOPDS_DS();
   //! ++
   Standard_EXPORT void RefineFaceInfoOn();
   
+  //! Removes any pave block from list of having IN state if it has also the state ON.
+  Standard_EXPORT void RefineFaceInfoIn();
 
-  //! Returns information about ON/IN subshapes of the given faces.
+  //! Returns information about ON/IN sub-shapes of the given faces.
   //! @param theMVOnIn  the indices of ON/IN vertices from both faces
+  //! @param theMVCommon the indices of common vertices for both faces
   //! @param thePBOnIn  all On/In pave blocks from both faces
   //! @param theCommonPB  the common pave blocks (that are shared by both faces).
-  Standard_EXPORT void SubShapesOnIn (const Standard_Integer theF1,
-                                      const Standard_Integer theF2,
-                                      BOPCol_MapOfInteger& theMVOnIn,
-                                      BOPDS_IndexedMapOfPaveBlock& thePBOnIn,
-                                      BOPDS_MapOfPaveBlock& theCommonPB) const;
+  Standard_EXPORT void SubShapesOnIn(const Standard_Integer theNF1,
+                                     const Standard_Integer theNF2,
+                                     TColStd_MapOfInteger& theMVOnIn,
+                                     TColStd_MapOfInteger& theMVCommon,
+                                     BOPDS_IndexedMapOfPaveBlock& thePBOnIn,
+                                     BOPDS_MapOfPaveBlock& theCommonPB) const;
   
 
   //! Returns the indices of edges that are  shared
   //! for the faces with indices theF1, theF2
   //!
   //! same domain shapes
-  Standard_EXPORT void SharedEdges (const Standard_Integer theF1, const Standard_Integer theF2, BOPCol_ListOfInteger& theLI, const BOPCol_BaseAllocator& theAllocator);
+  Standard_EXPORT void SharedEdges (const Standard_Integer theF1, const Standard_Integer theF2, TColStd_ListOfInteger& theLI, const Handle(NCollection_BaseAllocator)& theAllocator);
   
 
   //! Selector
   //! Returns the collection same domain shapes
-  Standard_EXPORT BOPCol_DataMapOfIntegerInteger& ShapesSD();
+  Standard_EXPORT TColStd_DataMapOfIntegerInteger& ShapesSD();
   
 
   //! Modifier
@@ -392,27 +401,23 @@ Standard_EXPORT virtual ~BOPDS_DS();
   
 
   //! Returns the number of types of the interferences
-    static Standard_Integer NbInterfTypes();
-  
+  static Standard_Integer NbInterfTypes();
 
   //! Modifier
   //! Adds the information about an interference between
   //! shapes with indices theI1, theI2 to the summary
   //! table of interferences
-    void AddInterf (const Standard_Integer theI1, const Standard_Integer theI2);
-  
+  Standard_Boolean AddInterf (const Standard_Integer theI1, const Standard_Integer theI2);
 
   //! Query
   //! Returns true if the shape with index theI
   //! is interferred
-  Standard_EXPORT Standard_Boolean HasInterf (const Standard_Integer theI) const;
-  
+  Standard_Boolean HasInterf (const Standard_Integer theI) const;
 
   //! Query
   //! Returns true if the shapes with indices theI1, theI2
   //! are interferred
-    Standard_Boolean HasInterf (const Standard_Integer theI1, const Standard_Integer theI2) const;
-  
+  Standard_Boolean HasInterf (const Standard_Integer theI1, const Standard_Integer theI2) const;
 
   //! Query
   //! Returns true if the shape with index theI1 is interfered
@@ -441,12 +446,6 @@ Standard_EXPORT virtual ~BOPDS_DS();
   //! Fills theLP with sorted paves
   //! of the shape with index theIndex
   Standard_EXPORT void Paves (const Standard_Integer theIndex, BOPDS_ListOfPave& theLP);
-  
-
-  //! Updates tolerance of the sub-shapes of the shape with index <theIndex>.
-  Standard_EXPORT void UpdateEdgeTolerance (const Standard_Integer theIndex,
-                                            const Standard_Real theTolerance,
-                                            const Standard_Real theFuzz = Precision::Confusion());
 
   //! Update the pave blocks for all shapes in data structure
   Standard_EXPORT void UpdatePaveBlocksWithSDVertices();
@@ -468,6 +467,13 @@ Standard_EXPORT virtual ~BOPDS_DS();
   //! of the existing vertices have been increased.
   Standard_EXPORT Standard_Boolean IsValidShrunkData(const Handle(BOPDS_PaveBlock)& thePB);
 
+  //! Computes bounding box <theBox> for the solid with DS-index <theIndex>.
+  //! The flag <theCheckInverted> enables/disables the check of the solid
+  //! for inverted status. By default the solids will be checked.
+  Standard_EXPORT void BuildBndBoxSolid (const Standard_Integer theIndex,
+                                         Bnd_Box& theBox,
+                                         const Standard_Boolean theCheckInverted = Standard_True);
+
 protected:
 
   
@@ -477,6 +483,10 @@ protected:
 
   //! Initializes the state of face with index theIndex
   Standard_EXPORT void InitFaceInfo (const Standard_Integer theIndex);
+
+  //! Initializes the FaceInfo structure for face with index theIndex with elements
+  //! having IN state for the face
+  Standard_EXPORT void InitFaceInfoIn (const Standard_Integer theIndex);
   
   Standard_EXPORT void InitShape (const Standard_Integer theIndex, const TopoDS_Shape& theS);
   
@@ -485,22 +495,18 @@ protected:
                                                      const Standard_Real theFuzz);
 
 
-  //! Computes bouding box <theBox> for the solid with DS-index <theIndex>
-  Standard_EXPORT void BuildBndBoxSolid (const Standard_Integer theIndex, Bnd_Box& theBox);
-
-
-  BOPCol_BaseAllocator myAllocator;
-  BOPCol_ListOfShape myArguments;
+  Handle(NCollection_BaseAllocator) myAllocator;
+  TopTools_ListOfShape myArguments;
   Standard_Integer myNbShapes;
   Standard_Integer myNbSourceShapes;
   BOPDS_VectorOfIndexRange myRanges;
   BOPDS_VectorOfShapeInfo myLines;
-  BOPCol_DataMapOfShapeInteger myMapShapeIndex;
+  TopTools_DataMapOfShapeInteger myMapShapeIndex;
   BOPDS_VectorOfListOfPaveBlock myPaveBlocksPool;
   BOPDS_DataMapOfPaveBlockCommonBlock myMapPBCB;
   BOPDS_VectorOfFaceInfo myFaceInfoPool;
-  BOPCol_DataMapOfIntegerInteger myShapesSD;
-  BOPCol_DataMapOfIntegerListOfInteger myMapVE;
+  TColStd_DataMapOfIntegerInteger myShapesSD;
+  TColStd_DataMapOfIntegerListOfInteger myMapVE;
   BOPDS_MapOfPair myInterfTB;
   BOPDS_VectorOfInterfVV myInterfVV;
   BOPDS_VectorOfInterfVE myInterfVE;
@@ -512,6 +518,7 @@ protected:
   BOPDS_VectorOfInterfEZ myInterfEZ;
   BOPDS_VectorOfInterfFZ myInterfFZ;
   BOPDS_VectorOfInterfZZ myInterfZZ;
+  TColStd_MapOfInteger myInterfered;
 
 
 private:

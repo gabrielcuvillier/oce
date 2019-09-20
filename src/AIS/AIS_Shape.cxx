@@ -19,7 +19,6 @@
 #include <AIS_GraphicTool.hxx>
 #include <AIS_InteractiveContext.hxx>
 #include <Aspect_TypeOfLine.hxx>
-#include <Bnd_Box.hxx>
 #include <BRep_Builder.hxx>
 #include <BRepBndLib.hxx>
 #include <BRepTools.hxx>
@@ -35,6 +34,8 @@
 #include <Graphic3d_MaterialAspect.hxx>
 #include <Graphic3d_SequenceOfGroup.hxx>
 #include <Graphic3d_Structure.hxx>
+#include <Message.hxx>
+#include <Message_Messenger.hxx>
 #include <HLRBRep.hxx>
 #include <OSD_Timer.hxx>
 #include <Precision.hxx>
@@ -47,7 +48,6 @@
 #include <Prs3d_ShadingAspect.hxx>
 #include <StdPrs_BndBox.hxx>
 #include <StdPrs_ToolTriangulatedShape.hxx>
-#include <PrsMgr_ModedPresentation.hxx>
 #include <Quantity_Color.hxx>
 #include <Select3D_SensitiveBox.hxx>
 #include <Select3D_SensitiveEntity.hxx>
@@ -64,19 +64,41 @@
 #include <StdSelect_DisplayMode.hxx>
 #include <TColStd_ListIteratorOfListOfInteger.hxx>
 #include <TopExp.hxx>
-#include <TopExp_Explorer.hxx>
-#include <TopoDS_Iterator.hxx>
-#include <TopoDS_Shape.hxx>
 
 IMPLEMENT_STANDARD_RTTIEXT(AIS_Shape,AIS_InteractiveObject)
 
-static Standard_Boolean IsInList(const TColStd_ListOfInteger& LL, const Standard_Integer aMode)
+// Auxiliary macros
+#define replaceAspectWithDef(theMap, theAspect) \
+  if (myDrawer->Link()->theAspect()->Aspect() != myDrawer->theAspect()->Aspect()) \
+  { \
+    theMap.Bind (myDrawer->theAspect()->Aspect(), myDrawer->Link()->theAspect()->Aspect()); \
+  }
+
+// Auxiliary macros for replaceWithNewOwnAspects()
+#define replaceAspectWithOwn(theMap, theAspect) \
+  if (myDrawer->Link()->theAspect()->Aspect() != myDrawer->theAspect()->Aspect()) \
+  { \
+    theMap.Bind (myDrawer->Link()->theAspect()->Aspect(), myDrawer->theAspect()->Aspect()); \
+  }
+
+//=======================================================================
+//function : replaceWithNewOwnAspects
+//purpose  :
+//=======================================================================
+void AIS_Shape::replaceWithNewOwnAspects()
 {
-  TColStd_ListIteratorOfListOfInteger It(LL);
-  for(;It.More();It.Next()){
-    if(It.Value()==aMode) 
-      return Standard_True;}
-  return Standard_False;
+  Graphic3d_MapOfAspectsToAspects aReplaceMap;
+
+  replaceAspectWithOwn (aReplaceMap, ShadingAspect);
+  replaceAspectWithOwn (aReplaceMap, LineAspect);
+  replaceAspectWithOwn (aReplaceMap, WireAspect);
+  replaceAspectWithOwn (aReplaceMap, FreeBoundaryAspect);
+  replaceAspectWithOwn (aReplaceMap, UnFreeBoundaryAspect);
+  replaceAspectWithOwn (aReplaceMap, SeenLineAspect);
+  replaceAspectWithOwn (aReplaceMap, FaceBoundaryAspect);
+  replaceAspectWithOwn (aReplaceMap, PointAspect);
+
+  replaceAspects (aReplaceMap);
 }
 
 //==================================================
@@ -96,28 +118,6 @@ AIS_Shape::AIS_Shape(const TopoDS_Shape& theShape)
 }
 
 //=======================================================================
-//function : Type
-//purpose  : 
-//=======================================================================
-AIS_KindOfInteractive AIS_Shape::Type() const 
-{return AIS_KOI_Shape;}
-
-
-//=======================================================================
-//function : Signature
-//purpose  : 
-//=======================================================================
-Standard_Integer AIS_Shape::Signature() const 
-{return 0;}
-
-//=======================================================================
-//function : AcceptShapeDecomposition
-//purpose  : 
-//=======================================================================
-Standard_Boolean AIS_Shape::AcceptShapeDecomposition() const 
-{return Standard_True;}
-
-//=======================================================================
 //function : Compute
 //purpose  : 
 //=======================================================================
@@ -134,12 +134,9 @@ void AIS_Shape::Compute(const Handle(PrsMgr_PresentationManager3d)& /*aPresentat
     aPrs->SetDisplayPriority(TheType+2);
   }
   // Shape vide -> Assemblage vide.
-  if (myshape.ShapeType() == TopAbs_COMPOUND) {
-    TopoDS_Iterator anExplor (myshape);
-
-    if (!anExplor.More()) {
-      return;
-    }
+  if (myshape.ShapeType() == TopAbs_COMPOUND && myshape.NbChildren() == 0)
+  {
+    return;
   }
 
   if (IsInfinite())
@@ -157,14 +154,11 @@ void AIS_Shape::Compute(const Handle(PrsMgr_PresentationManager3d)& /*aPresentat
         OCC_CATCH_SIGNALS
         StdPrs_WFShape::Add (aPrs, myshape, myDrawer);
       }
-      catch (Standard_Failure)
+      catch (Standard_Failure const& anException)
       {
-      #ifdef OCCT_DEBUG
-        cout << "AIS_Shape::Compute() failed" << endl;
-        cout << "a Shape should be incorrect : No Compute can be maked on it " << endl;
-      #endif
-        // presentation of the bounding box is calculated
-        //      Compute(aPresentationManager,aPrs,2);
+        Message::DefaultMessenger()->Send (TCollection_AsciiString()
+                                         + "Error: AIS_Shape::Compute() wireframe presentation builder has failed ("
+                                         + anException.GetMessageString() + ")", Message_Fail);
       }
       break;
     }
@@ -191,11 +185,11 @@ void AIS_Shape::Compute(const Handle(PrsMgr_PresentationManager3d)& /*aPresentat
                                  && !myDrawer->ShadingAspect()->Aspect()->TextureMap().IsNull(),
                                      myUVOrigin, myUVRepeat, myUVScale);
           }
-          catch (Standard_Failure)
+          catch (Standard_Failure const& anException)
           {
-          #ifdef OCCT_DEBUG
-            cout << "AIS_Shape::Compute() in ShadingMode failed" << endl;
-          #endif
+            Message::DefaultMessenger()->Send (TCollection_AsciiString()
+                                               + "Error: AIS_Shape::Compute() shaded presentation builder has failed ("
+                                               + anException.GetMessageString() + ")", Message_Fail);
             StdPrs_WFShape::Add (aPrs, myshape, myDrawer);
           }
         }
@@ -227,149 +221,86 @@ void AIS_Shape::Compute(const Handle(PrsMgr_PresentationManager3d)& /*aPresentat
 }
 
 //=======================================================================
-//function : Compute
-//purpose  : Hidden Line Removal
+//function : computeHlrPresentation
+//purpose  :
 //=======================================================================
-void AIS_Shape::Compute(const Handle(Prs3d_Projector)& aProjector,
-                        const Handle(Prs3d_Presentation)& aPresentation)
+void AIS_Shape::computeHlrPresentation (const Handle(Prs3d_Projector)& theProjector,
+                                        const Handle(Prs3d_Presentation)& thePrs,
+                                        const TopoDS_Shape& theShape,
+                                        const Handle(Prs3d_Drawer)& theDrawer)
 {
-  Compute(aProjector,aPresentation,myshape);
-}
-
-//=======================================================================
-//function : Compute
-//purpose  : 
-//=======================================================================
-
-void AIS_Shape::Compute(const Handle(Prs3d_Projector)&     aProjector,
-                        const Handle(Geom_Transformation)& TheTrsf,
-                        const Handle(Prs3d_Presentation)&  aPresentation)
-{
-  const TopLoc_Location& loc = myshape.Location();
-  TopoDS_Shape shbis = myshape.Located(TopLoc_Location(TheTrsf->Trsf())*loc);
-  Compute(aProjector,aPresentation,shbis);
-}
-
-//=======================================================================
-//function : Compute
-//purpose  : 
-//=======================================================================
-
-void AIS_Shape::Compute(const Handle(Prs3d_Projector)& aProjector,
-                        const Handle(Prs3d_Presentation)& aPresentation,
-                        const TopoDS_Shape& SH)
-{
-  if (SH.ShapeType() == TopAbs_COMPOUND) {
-    TopoDS_Iterator anExplor (SH);
-
-    if (!anExplor.More()) // Shape vide -> Assemblage vide.
-      return;
+  if (theShape.IsNull())
+  {
+    return;
   }
 
-  Handle (Prs3d_Drawer) defdrawer = GetContext()->DefaultDrawer();
-  if (defdrawer->DrawHiddenLine())
-    {myDrawer->EnableDrawHiddenLine();}
-  else {myDrawer->DisableDrawHiddenLine();}
-
-  Aspect_TypeOfDeflection prevdef = defdrawer->TypeOfDeflection();
-  defdrawer->SetTypeOfDeflection(Aspect_TOD_RELATIVE);
-
-  if (myDrawer->IsAutoTriangulation())
+  switch (theShape.ShapeType())
   {
-    // coefficients for calculation
-    Standard_Real aPrevAngle, aNewAngle, aPrevCoeff, aNewCoeff;
-    Standard_Boolean isOwnHLRDeviationAngle = OwnHLRDeviationAngle (aNewAngle, aPrevAngle);
-    Standard_Boolean isOwnHLRDeviationCoefficient = OwnHLRDeviationCoefficient (aNewCoeff, aPrevCoeff);
-    if (((Abs (aNewAngle - aPrevAngle) > Precision::Angular()) && isOwnHLRDeviationAngle) ||
-        ((Abs (aNewCoeff - aPrevCoeff) > Precision::Confusion()) && isOwnHLRDeviationCoefficient))
+    case TopAbs_VERTEX:
+    case TopAbs_EDGE:
+    case TopAbs_WIRE:
     {
-      BRepTools::Clean(SH);
+      thePrs->SetDisplayPriority (4);
+      StdPrs_WFShape::Add (thePrs, theShape, theDrawer);
+      return;
+    }
+    case TopAbs_COMPOUND:
+    {
+      if (theShape.NbChildren() == 0)
+      {
+        return;
+      }
+      break;
+    }
+    default:
+    {
+      break;
     }
   }
-  
+
+  const Handle(Prs3d_Drawer)& aDefDrawer = theDrawer->Link();
+  if (aDefDrawer->DrawHiddenLine())
   {
-    try {
+    theDrawer->EnableDrawHiddenLine();
+  }
+  else
+  {
+    theDrawer->DisableDrawHiddenLine();
+  }
+
+  const Aspect_TypeOfDeflection aPrevDef = aDefDrawer->TypeOfDeflection();
+  aDefDrawer->SetTypeOfDeflection (Aspect_TOD_RELATIVE);
+  if (theDrawer->IsAutoTriangulation())
+  {
+    StdPrs_ToolTriangulatedShape::ClearOnOwnDeflectionChange (theShape, theDrawer, Standard_True);
+  }
+
+  {
+    try
+    {
       OCC_CATCH_SIGNALS
-      switch (TypeOfHLR()) {
+      switch (theDrawer->TypeOfHLR())
+      {
         case Prs3d_TOH_Algo:
-          StdPrs_HLRShape::Add (aPresentation, SH, myDrawer, aProjector);
+          StdPrs_HLRShape::Add (thePrs, theShape, theDrawer, theProjector);
           break;
         case Prs3d_TOH_PolyAlgo:
         default:
-          StdPrs_HLRPolyShape::Add (aPresentation, SH, myDrawer, aProjector);
+          StdPrs_HLRPolyShape::Add (thePrs, theShape, theDrawer, theProjector);
           break;
       }
     }
-    catch (Standard_Failure) {
-#ifdef OCCT_DEBUG
-      cout <<"AIS_Shape::Compute(Proj) HLR Algorithm failed" << endl;
-#endif
-      StdPrs_WFShape::Add(aPresentation,SH,myDrawer);
+    catch (Standard_Failure const& anException)
+    {
+      Message::DefaultMessenger()->Send (TCollection_AsciiString()
+                                       + "Error: AIS_Shape::Compute() HLR Algorithm has failed ("
+                                       + anException.GetMessageString() + ")", Message_Fail);
+      StdPrs_WFShape::Add (thePrs, theShape, theDrawer);
     }
   }
 
-  defdrawer->SetTypeOfDeflection (prevdef);
+  aDefDrawer->SetTypeOfDeflection (aPrevDef);
 }
-
-//=======================================================================
-//function : SelectionType
-//purpose  : gives the type according to the Index of Selection Mode
-//=======================================================================
-
-TopAbs_ShapeEnum AIS_Shape::SelectionType(const Standard_Integer aMode)
-{
-  switch(aMode){
-  case 1:
-    return TopAbs_VERTEX;
-  case 2:
-    return TopAbs_EDGE;
-  case 3:
-    return TopAbs_WIRE;
-  case 4:
-    return TopAbs_FACE;
-  case 5:
-    return TopAbs_SHELL;
-  case 6:
-    return TopAbs_SOLID;
-  case 7:
-    return TopAbs_COMPSOLID;
-  case 8:
-    return TopAbs_COMPOUND;
-  case 0:
-  default:
-    return TopAbs_SHAPE;
-  }
-  
-}
-//=======================================================================
-//function : SelectionType
-//purpose  : gives the SelectionMode according to the Type od Decomposition...
-//=======================================================================
-Standard_Integer AIS_Shape::SelectionMode(const TopAbs_ShapeEnum aType)
-{
-  switch(aType){
-  case TopAbs_VERTEX:
-    return 1;
-  case TopAbs_EDGE:
-    return 2;
-  case TopAbs_WIRE:
-    return 3;
-  case  TopAbs_FACE:
-    return 4;
-  case TopAbs_SHELL:
-    return 5;
-  case TopAbs_SOLID:
-    return 6;
-  case TopAbs_COMPSOLID:
-    return 7;
-  case TopAbs_COMPOUND:
-    return 8;
-  case TopAbs_SHAPE:
-  default:
-    return 0;
-  }
-}
-
 
 //=======================================================================
 //function : ComputeSelection
@@ -380,11 +311,10 @@ void AIS_Shape::ComputeSelection(const Handle(SelectMgr_Selection)& aSelection,
                                               const Standard_Integer aMode)
 {
   if(myshape.IsNull()) return;
-  if (myshape.ShapeType() == TopAbs_COMPOUND) {
-    TopoDS_Iterator anExplor (myshape);
-
-    if (!anExplor.More()) // empty Shape -> empty Assembly.
-      return;
+  if (myshape.ShapeType() == TopAbs_COMPOUND && myshape.NbChildren() == 0)
+  {
+    // empty Shape -> empty Assembly.
+    return;
   }
 
   TopAbs_ShapeEnum TypOfSel = AIS_Shape::SelectionType(aMode);
@@ -393,7 +323,8 @@ void AIS_Shape::ComputeSelection(const Handle(SelectMgr_Selection)& aSelection,
 // POP protection against crash in low layers
 
   Standard_Real aDeflection = Prs3d::GetDeflection(shape, myDrawer);
-  try {  
+  try
+  {
     OCC_CATCH_SIGNALS
     StdSelect_BRepSelectionTool::Load(aSelection,
                                       this,
@@ -402,9 +333,14 @@ void AIS_Shape::ComputeSelection(const Handle(SelectMgr_Selection)& aSelection,
                                       aDeflection,
                                       myDrawer->HLRAngle(),
                                       myDrawer->IsAutoTriangulation());
-  } catch ( Standard_Failure ) {
-//    cout << "a Shape should be incorrect : A Selection on the Bnd  is activated   "<<endl;
-    if ( aMode == 0 ) {
+  }
+  catch (Standard_Failure const& anException)
+  {
+    Message::DefaultMessenger()->Send (TCollection_AsciiString()
+                                       + "Error: AIS_Shape::ComputeSelection(" + aMode + ") has failed ("
+                                       + anException.GetMessageString() + ")", Message_Fail);
+    if (aMode == 0)
+    {
       aSelection->Clear();
       Bnd_Box B = BoundingBox();
       Handle(StdSelect_BRepOwner) aOwner = new StdSelect_BRepOwner(shape,this);
@@ -434,65 +370,13 @@ Standard_Real AIS_Shape::Transparency() const {
 //purpose  :
 //=======================================================================
 
-void AIS_Shape::setColor (const Handle(Prs3d_Drawer)& theDrawer,
+bool AIS_Shape::setColor (const Handle(Prs3d_Drawer)& theDrawer,
                           const Quantity_Color&       theColor) const
 {
-  if (!theDrawer->HasOwnShadingAspect())
-  {
-    theDrawer->SetShadingAspect (new Prs3d_ShadingAspect());
-    if (theDrawer->HasLink())
-    {
-      *theDrawer->ShadingAspect()->Aspect() = *theDrawer->Link()->ShadingAspect()->Aspect();
-    }
-  }
-  if (!theDrawer->HasOwnLineAspect())
-  {
-    theDrawer->SetLineAspect (new Prs3d_LineAspect (Quantity_NOC_BLACK, Aspect_TOL_SOLID, 1.0));
-    if (theDrawer->HasLink())
-    {
-      *theDrawer->LineAspect()->Aspect() = *theDrawer->Link()->LineAspect()->Aspect();
-    }
-  }
-  if (!theDrawer->HasOwnWireAspect())
-  {
-    theDrawer->SetWireAspect (new Prs3d_LineAspect (Quantity_NOC_BLACK, Aspect_TOL_SOLID, 1.0));
-    if (theDrawer->HasLink())
-    {
-      *theDrawer->WireAspect()->Aspect() = *theDrawer->Link()->WireAspect()->Aspect();
-    }
-  }
-  if (!theDrawer->HasOwnPointAspect())
-  {
-    theDrawer->SetPointAspect (new Prs3d_PointAspect (Aspect_TOM_PLUS, Quantity_NOC_BLACK, 1.0));
-    if (theDrawer->HasLink())
-    {
-      *theDrawer->PointAspect()->Aspect() = *theDrawer->Link()->PointAspect()->Aspect();
-    }
-  }
-  if (!theDrawer->HasOwnFreeBoundaryAspect())
-  {
-    theDrawer->SetFreeBoundaryAspect (new Prs3d_LineAspect (Quantity_NOC_BLACK, Aspect_TOL_SOLID, 1.0));
-    if (theDrawer->HasLink())
-    {
-      *theDrawer->FreeBoundaryAspect()->Aspect() = *theDrawer->Link()->FreeBoundaryAspect()->Aspect();
-    }
-  }
-  if (!theDrawer->HasOwnUnFreeBoundaryAspect())
-  {
-    theDrawer->SetUnFreeBoundaryAspect (new Prs3d_LineAspect (Quantity_NOC_BLACK, Aspect_TOL_SOLID, 1.0));
-    if (theDrawer->HasLink())
-    {
-      *theDrawer->UnFreeBoundaryAspect()->Aspect() = *theDrawer->Link()->UnFreeBoundaryAspect()->Aspect();
-    }
-  }
-  if (!theDrawer->HasOwnSeenLineAspect())
-  {
-    theDrawer->SetSeenLineAspect (new Prs3d_LineAspect (Quantity_NOC_BLACK, Aspect_TOL_SOLID, 1.0));
-    if (theDrawer->HasLink())
-    {
-      *theDrawer->SeenLineAspect()->Aspect() = *theDrawer->Link()->SeenLineAspect()->Aspect();
-    }
-  }
+  bool toRecompute = false;
+  toRecompute = theDrawer->SetupOwnShadingAspect() || toRecompute;
+  toRecompute = theDrawer->SetOwnLineAspects() || toRecompute;
+  toRecompute = theDrawer->SetupOwnPointAspect() || toRecompute;
 
   // override color
   theDrawer->ShadingAspect()->SetColor (theColor, myCurrentFacingModel);
@@ -502,6 +386,8 @@ void AIS_Shape::setColor (const Handle(Prs3d_Drawer)& theDrawer,
   theDrawer->FreeBoundaryAspect()->SetColor (theColor);
   theDrawer->UnFreeBoundaryAspect()->SetColor (theColor);
   theDrawer->SeenLineAspect()->SetColor (theColor);
+  theDrawer->FaceBoundaryAspect()->SetColor (theColor);
+  return toRecompute;
 }
 
 //=======================================================================
@@ -511,48 +397,20 @@ void AIS_Shape::setColor (const Handle(Prs3d_Drawer)& theDrawer,
 
 void AIS_Shape::SetColor (const Quantity_Color& theColor)
 {
-  setColor (myDrawer, theColor);
+  const bool toRecompute = setColor (myDrawer, theColor);
   myDrawer->SetColor (theColor);
   hasOwnColor = Standard_True;
 
-  // modify shading presentation without re-computation
-  const PrsMgr_Presentations&        aPrsList     = Presentations();
-  Handle(Graphic3d_AspectFillArea3d) anAreaAspect = myDrawer->ShadingAspect()->Aspect();
-  Handle(Graphic3d_AspectLine3d)     aLineAspect  = myDrawer->LineAspect()->Aspect();
-  Handle(Graphic3d_AspectMarker3d)   aPointAspect = myDrawer->PointAspect()->Aspect();
-  for (Standard_Integer aPrsIt = 1; aPrsIt <= aPrsList.Length(); ++aPrsIt)
+  if (!toRecompute
+   || !myDrawer->HasLink())
   {
-    const PrsMgr_ModedPresentation& aPrsModed = aPrsList.Value (aPrsIt);
-    if (aPrsModed.Mode() != AIS_Shaded)
-    {
-      continue;
-    }
-
-    const Handle(Prs3d_Presentation)& aPrs = aPrsModed.Presentation()->Presentation();
-    for (Graphic3d_SequenceOfGroup::Iterator aGroupIt (aPrs->Groups()); aGroupIt.More(); aGroupIt.Next())
-    {
-      const Handle(Graphic3d_Group)& aGroup = aGroupIt.Value();
-
-      // Check if aspect of given type is set for the group, 
-      // because setting aspect for group with no already set aspect
-      // can lead to loss of presentation data
-      if (aGroup->IsGroupPrimitivesAspectSet (Graphic3d_ASPECT_FILL_AREA))
-      {
-        aGroup->SetGroupPrimitivesAspect (anAreaAspect);
-      }
-      if (aGroup->IsGroupPrimitivesAspectSet (Graphic3d_ASPECT_LINE))
-      {
-        aGroup->SetGroupPrimitivesAspect (aLineAspect);
-      }
-      if (aGroup->IsGroupPrimitivesAspectSet (Graphic3d_ASPECT_MARKER))
-      {
-        aGroup->SetGroupPrimitivesAspect (aPointAspect);
-      }
-    }
+    SynchronizeAspects();
   }
-
-  LoadRecomputable (AIS_WireFrame);
-  LoadRecomputable (2);
+  else
+  {
+    replaceWithNewOwnAspects();
+  }
+  recomputeComputed();
 }
 
 //=======================================================================
@@ -564,20 +422,27 @@ void AIS_Shape::UnsetColor()
 {
   if (!HasColor())
   {
-    myToRecomputeModes.Clear();
     return;
   }
+
   hasOwnColor = Standard_False;
   myDrawer->SetColor (myDrawer->HasLink() ? myDrawer->Link()->Color() : Quantity_Color (Quantity_NOC_WHITE));
 
+  Graphic3d_MapOfAspectsToAspects aReplaceMap;
   if (!HasWidth())
   {
-    Handle(Prs3d_LineAspect) anEmptyAsp;
-    myDrawer->SetLineAspect          (anEmptyAsp);
-    myDrawer->SetWireAspect          (anEmptyAsp);
-    myDrawer->SetFreeBoundaryAspect  (anEmptyAsp);
-    myDrawer->SetUnFreeBoundaryAspect(anEmptyAsp);
-    myDrawer->SetSeenLineAspect      (anEmptyAsp);
+    replaceAspectWithDef (aReplaceMap, LineAspect);
+    replaceAspectWithDef (aReplaceMap, WireAspect);
+    replaceAspectWithDef (aReplaceMap, FreeBoundaryAspect);
+    replaceAspectWithDef (aReplaceMap, UnFreeBoundaryAspect);
+    replaceAspectWithDef (aReplaceMap, SeenLineAspect);
+    replaceAspectWithDef (aReplaceMap, FaceBoundaryAspect);
+    myDrawer->SetLineAspect          (Handle(Prs3d_LineAspect)());
+    myDrawer->SetWireAspect          (Handle(Prs3d_LineAspect)());
+    myDrawer->SetFreeBoundaryAspect  (Handle(Prs3d_LineAspect)());
+    myDrawer->SetUnFreeBoundaryAspect(Handle(Prs3d_LineAspect)());
+    myDrawer->SetSeenLineAspect      (Handle(Prs3d_LineAspect)());
+    myDrawer->SetFaceBoundaryAspect  (Handle(Prs3d_LineAspect)());
   }
   else
   {
@@ -610,6 +475,12 @@ void AIS_Shape::UnsetColor()
       AIS_GraphicTool::GetLineColor (myDrawer->Link(), AIS_TOA_Seen,   aColor);
     }
     myDrawer->SeenLineAspect()->SetColor (aColor);
+    aColor = Quantity_NOC_BLACK;
+    if (myDrawer->HasLink())
+    {
+      AIS_GraphicTool::GetLineColor (myDrawer->Link(), AIS_TOA_FaceBoundary, aColor);
+    }
+    myDrawer->FaceBoundaryAspect()->SetColor (aColor);
   }
 
   if (!myDrawer->HasOwnShadingAspect())
@@ -653,43 +524,17 @@ void AIS_Shape::UnsetColor()
   }
   else
   {
+    replaceAspectWithDef (aReplaceMap, ShadingAspect);
     myDrawer->SetShadingAspect (Handle(Prs3d_ShadingAspect)());
   }
-  myDrawer->SetPointAspect (Handle(Prs3d_PointAspect)());
-
-  // modify shading presentation without re-computation
-  const PrsMgr_Presentations&        aPrsList  = Presentations();
-  Handle(Graphic3d_AspectFillArea3d) anAreaAsp = myDrawer->ShadingAspect()->Aspect();
-  Handle(Graphic3d_AspectLine3d)     aLineAsp  = myDrawer->LineAspect()->Aspect();
-  for (Standard_Integer aPrsIt = 1; aPrsIt <= aPrsList.Length(); ++aPrsIt)
+  if (myDrawer->HasOwnPointAspect())
   {
-    const PrsMgr_ModedPresentation& aPrsModed = aPrsList.Value (aPrsIt);
-    if (aPrsModed.Mode() != AIS_Shaded)
-    {
-      continue;
-    }
-
-    const Handle(Prs3d_Presentation)& aPrs = aPrsModed.Presentation()->Presentation();
-    for (Graphic3d_SequenceOfGroup::Iterator aGroupIt (aPrs->Groups()); aGroupIt.More(); aGroupIt.Next())
-    {
-      const Handle(Graphic3d_Group)& aGroup = aGroupIt.Value();
-
-      // Check if aspect of given type is set for the group,
-      // because setting aspect for group with no already set aspect
-      // can lead to loss of presentation data
-      if (aGroup->IsGroupPrimitivesAspectSet (Graphic3d_ASPECT_FILL_AREA))
-      {
-        aGroup->SetGroupPrimitivesAspect (anAreaAsp);
-      }
-      if (aGroup->IsGroupPrimitivesAspectSet (Graphic3d_ASPECT_LINE))
-      {
-        aGroup->SetGroupPrimitivesAspect (aLineAsp);
-      }
-    }
+    replaceAspectWithDef (aReplaceMap, PointAspect);
+    myDrawer->SetPointAspect (Handle(Prs3d_PointAspect)());
   }
-
-  LoadRecomputable (AIS_WireFrame);
-  LoadRecomputable (2);
+  replaceAspects (aReplaceMap);
+  SynchronizeAspects();
+  recomputeComputed();
 }
 
 //=======================================================================
@@ -697,49 +542,10 @@ void AIS_Shape::UnsetColor()
 //purpose  :
 //=======================================================================
 
-void AIS_Shape::setWidth (const Handle(Prs3d_Drawer)& theDrawer,
+bool AIS_Shape::setWidth (const Handle(Prs3d_Drawer)& theDrawer,
                           const Standard_Real         theLineWidth) const
 {
-  if (!theDrawer->HasOwnLineAspect())
-  {
-    theDrawer->SetLineAspect (new Prs3d_LineAspect (Quantity_NOC_BLACK, Aspect_TOL_SOLID, 1.0));
-    if (theDrawer->HasLink())
-    {
-      *theDrawer->LineAspect()->Aspect() = *theDrawer->Link()->LineAspect()->Aspect();
-    }
-  }
-  if (!theDrawer->HasOwnWireAspect())
-  {
-    theDrawer->SetWireAspect (new Prs3d_LineAspect (Quantity_NOC_BLACK, Aspect_TOL_SOLID, 1.0));
-    if (theDrawer->HasLink())
-    {
-      *theDrawer->WireAspect()->Aspect() = *theDrawer->Link()->WireAspect()->Aspect();
-    }
-  }
-  if (!theDrawer->HasOwnFreeBoundaryAspect())
-  {
-    theDrawer->SetFreeBoundaryAspect (new Prs3d_LineAspect (Quantity_NOC_BLACK, Aspect_TOL_SOLID, 1.0));
-    if (theDrawer->HasLink())
-    {
-      *theDrawer->FreeBoundaryAspect()->Aspect() = *theDrawer->Link()->FreeBoundaryAspect()->Aspect();
-    }
-  }
-  if (!theDrawer->HasOwnUnFreeBoundaryAspect())
-  {
-    theDrawer->SetUnFreeBoundaryAspect (new Prs3d_LineAspect (Quantity_NOC_BLACK, Aspect_TOL_SOLID, 1.0));
-    if (theDrawer->HasLink())
-    {
-      *theDrawer->UnFreeBoundaryAspect()->Aspect() = *theDrawer->Link()->UnFreeBoundaryAspect()->Aspect();
-    }
-  }
-  if (!theDrawer->HasOwnSeenLineAspect())
-  {
-    theDrawer->SetSeenLineAspect (new Prs3d_LineAspect (Quantity_NOC_BLACK, Aspect_TOL_SOLID, 1.0));
-    if (theDrawer->HasLink())
-    {
-      *theDrawer->SeenLineAspect()->Aspect() = *theDrawer->Link()->SeenLineAspect()->Aspect();
-    }
-  }
+  bool toRecompute = theDrawer->SetOwnLineAspects();
 
   // override width
   theDrawer->LineAspect()->SetWidth (theLineWidth);
@@ -747,6 +553,8 @@ void AIS_Shape::setWidth (const Handle(Prs3d_Drawer)& theDrawer,
   theDrawer->FreeBoundaryAspect()->SetWidth (theLineWidth);
   theDrawer->UnFreeBoundaryAspect()->SetWidth (theLineWidth);
   theDrawer->SeenLineAspect()->SetWidth (theLineWidth);
+  theDrawer->FaceBoundaryAspect()->SetWidth (theLineWidth);
+  return toRecompute;
 }
 
 //=======================================================================
@@ -756,10 +564,18 @@ void AIS_Shape::setWidth (const Handle(Prs3d_Drawer)& theDrawer,
 
 void AIS_Shape::SetWidth (const Standard_Real theLineWidth)
 {
-  setWidth (myDrawer, theLineWidth);
-  myOwnWidth = theLineWidth;
-  LoadRecomputable (AIS_WireFrame); // means that it is necessary to recompute only the wireframe....
-  LoadRecomputable (2);             // and the bounding box...
+  myOwnWidth = (Standard_ShortReal )theLineWidth;
+
+  if (!setWidth (myDrawer, theLineWidth)
+   || !myDrawer->HasLink())
+  {
+    SynchronizeAspects();
+  }
+  else
+  {
+    replaceWithNewOwnAspects();
+  }
+  recomputeComputed();
 }
 
 //=======================================================================
@@ -769,23 +585,28 @@ void AIS_Shape::SetWidth (const Standard_Real theLineWidth)
 
 void AIS_Shape::UnsetWidth()
 {
-  if (myOwnWidth == 0.0)
+  if (myOwnWidth == 0.0f)
   {
-    myToRecomputeModes.Clear();
     return;
   }
 
-  myOwnWidth = 0.0;
-
-  Handle(Prs3d_LineAspect) anEmptyAsp;
-
+  myOwnWidth = 0.0f;
   if (!HasColor())
   {
-    myDrawer->SetLineAspect          (anEmptyAsp);
-    myDrawer->SetWireAspect          (anEmptyAsp);
-    myDrawer->SetFreeBoundaryAspect  (anEmptyAsp);
-    myDrawer->SetUnFreeBoundaryAspect(anEmptyAsp);
-    myDrawer->SetSeenLineAspect      (anEmptyAsp);
+    Graphic3d_MapOfAspectsToAspects aReplaceMap;
+    replaceAspectWithDef (aReplaceMap, LineAspect);
+    replaceAspectWithDef (aReplaceMap, WireAspect);
+    replaceAspectWithDef (aReplaceMap, FreeBoundaryAspect);
+    replaceAspectWithDef (aReplaceMap, UnFreeBoundaryAspect);
+    replaceAspectWithDef (aReplaceMap, SeenLineAspect);
+    replaceAspectWithDef (aReplaceMap, FaceBoundaryAspect);
+    myDrawer->SetLineAspect          (Handle(Prs3d_LineAspect)());
+    myDrawer->SetWireAspect          (Handle(Prs3d_LineAspect)());
+    myDrawer->SetFreeBoundaryAspect  (Handle(Prs3d_LineAspect)());
+    myDrawer->SetUnFreeBoundaryAspect(Handle(Prs3d_LineAspect)());
+    myDrawer->SetSeenLineAspect      (Handle(Prs3d_LineAspect)());
+    myDrawer->SetFaceBoundaryAspect  (Handle(Prs3d_LineAspect)());
+    replaceAspects (aReplaceMap);
   }
   else
   {
@@ -799,8 +620,11 @@ void AIS_Shape::UnsetWidth()
       AIS_GraphicTool::GetLineWidth (myDrawer->Link(), AIS_TOA_UnFree) : 1.);
     myDrawer->SeenLineAspect()      ->SetWidth (myDrawer->HasLink() ?
       AIS_GraphicTool::GetLineWidth (myDrawer->Link(), AIS_TOA_Seen) : 1.);
+    myDrawer->FaceBoundaryAspect()      ->SetWidth (myDrawer->HasLink() ?
+      AIS_GraphicTool::GetLineWidth (myDrawer->Link(), AIS_TOA_FaceBoundary) : 1.);
+    SynchronizeAspects();
   }
-  LoadRecomputable (AIS_WireFrame);
+  recomputeComputed();
 }
 
 //=======================================================================
@@ -813,16 +637,9 @@ void AIS_Shape::setMaterial (const Handle(Prs3d_Drawer)&     theDrawer,
                              const Standard_Boolean          theToKeepColor,
                              const Standard_Boolean          theToKeepTransp) const
 {
-  const Quantity_Color aColor  = theDrawer->ShadingAspect()->Material     (myCurrentFacingModel).Color();
+  const Quantity_Color aColor  = theDrawer->ShadingAspect()->Color (myCurrentFacingModel);
   const Standard_Real  aTransp = theDrawer->ShadingAspect()->Transparency (myCurrentFacingModel);
-  if (!theDrawer->HasOwnShadingAspect())
-  {
-    theDrawer->SetShadingAspect (new Prs3d_ShadingAspect());
-    if (theDrawer->HasLink())
-    {
-      *theDrawer->ShadingAspect()->Aspect() = *theDrawer->Link()->ShadingAspect()->Aspect();
-    }
-  }
+  theDrawer->SetupOwnShadingAspect();
   theDrawer->ShadingAspect()->SetMaterial (theMaterial, myCurrentFacingModel);
 
   if (theToKeepColor)
@@ -842,37 +659,19 @@ void AIS_Shape::setMaterial (const Handle(Prs3d_Drawer)&     theDrawer,
 
 void AIS_Shape::SetMaterial (const Graphic3d_MaterialAspect& theMat)
 {
+  const bool toRecompute = !myDrawer->HasOwnShadingAspect();
   setMaterial (myDrawer, theMat, HasColor(), IsTransparent());
   hasOwnMaterial = Standard_True;
 
-  // modify shading presentation without re-computation
-  const PrsMgr_Presentations&        aPrsList  = Presentations();
-  Handle(Graphic3d_AspectFillArea3d) anAreaAsp = myDrawer->ShadingAspect()->Aspect();
-  for (Standard_Integer aPrsIt = 1; aPrsIt <= aPrsList.Length(); ++aPrsIt)
+  if (!toRecompute
+   || !myDrawer->HasLink())
   {
-    const PrsMgr_ModedPresentation& aPrsModed = aPrsList.Value (aPrsIt);
-    if (aPrsModed.Mode() != AIS_Shaded)
-    {
-      continue;
-    }
-
-    const Handle(Prs3d_Presentation)& aPrs = aPrsModed.Presentation()->Presentation();
-    for (Graphic3d_SequenceOfGroup::Iterator aGroupIt (aPrs->Groups()); aGroupIt.More(); aGroupIt.Next())
-    {
-      const Handle(Graphic3d_Group)& aGroup = aGroupIt.Value();
-
-      // Check if aspect of given type is set for the group, 
-      // because setting aspect for group with no already set aspect
-      // can lead to loss of presentation data
-      if (aGroup->IsGroupPrimitivesAspectSet (Graphic3d_ASPECT_FILL_AREA))
-      {
-        aGroup->SetGroupPrimitivesAspect (anAreaAsp);
-      }
-    }
+    SynchronizeAspects();
   }
-
-  myRecomputeEveryPrs = Standard_False; // no mode to recalculate  :only viewer update
-  myToRecomputeModes.Clear();
+  else
+  {
+    replaceWithNewOwnAspects();
+  }
 }
 
 //=======================================================================
@@ -905,37 +704,15 @@ void AIS_Shape::UnsetMaterial()
       myDrawer->ShadingAspect()->SetColor        (myDrawer->Color(),        myCurrentFacingModel);
       myDrawer->ShadingAspect()->SetTransparency (myDrawer->Transparency(), myCurrentFacingModel);
     }
+    SynchronizeAspects();
   }
   else
   {
+    Graphic3d_MapOfAspectsToAspects aReplaceMap;
+    replaceAspectWithDef (aReplaceMap, ShadingAspect);
     myDrawer->SetShadingAspect (Handle(Prs3d_ShadingAspect)());
+    replaceAspects (aReplaceMap);
   }
-  hasOwnMaterial = Standard_False;
-
-  // modify shading presentation without re-computation
-  const PrsMgr_Presentations&        aPrsList  = Presentations();
-  Handle(Graphic3d_AspectFillArea3d) anAreaAsp = myDrawer->ShadingAspect()->Aspect();
-  for (Standard_Integer aPrsIt = 1; aPrsIt <= aPrsList.Length(); ++aPrsIt)
-  {
-    const PrsMgr_ModedPresentation& aPrsModed = aPrsList.Value (aPrsIt);
-    if (aPrsModed.Mode() != AIS_Shaded)
-    {
-      continue;
-    }
-
-    const Handle(Prs3d_Presentation)& aPrs = aPrsModed.Presentation()->Presentation();
-    for (Graphic3d_SequenceOfGroup::Iterator aGroupIt (aPrs->Groups()); aGroupIt.More(); aGroupIt.Next())
-    {
-      const Handle(Graphic3d_Group)& aGroup = aGroupIt.Value();
-      if (aGroup->IsGroupPrimitivesAspectSet (Graphic3d_ASPECT_FILL_AREA))
-      {
-        aGroup->SetGroupPrimitivesAspect (anAreaAsp);
-      }
-    }
-  }
-
-  myRecomputeEveryPrs = Standard_False; // no mode to recalculate :only viewer update
-  myToRecomputeModes.Clear();  
 }
 
 //=======================================================================
@@ -946,15 +723,7 @@ void AIS_Shape::UnsetMaterial()
 void AIS_Shape::setTransparency (const Handle(Prs3d_Drawer)& theDrawer,
                                  const Standard_Real         theValue) const
 {
-  if (!theDrawer->HasOwnShadingAspect())
-  {
-    theDrawer->SetShadingAspect (new Prs3d_ShadingAspect());
-    if (theDrawer->HasLink())
-    {
-      *theDrawer->ShadingAspect()->Aspect() = *theDrawer->Link()->ShadingAspect()->Aspect();
-    }
-  }
-
+  theDrawer->SetupOwnShadingAspect();
   // override transparency
   theDrawer->ShadingAspect()->SetTransparency (theValue, myCurrentFacingModel);
 }
@@ -966,33 +735,19 @@ void AIS_Shape::setTransparency (const Handle(Prs3d_Drawer)& theDrawer,
 
 void AIS_Shape::SetTransparency (const Standard_Real theValue)
 {
+  const bool toRecompute = !myDrawer->HasOwnShadingAspect();
   setTransparency (myDrawer, theValue);
   myDrawer->SetTransparency ((Standard_ShortReal )theValue);
 
-  // modify shading presentation without re-computation
-  const PrsMgr_Presentations&        aPrsList  = Presentations();
-  Handle(Graphic3d_AspectFillArea3d) anAreaAsp = myDrawer->ShadingAspect()->Aspect();
-  for (Standard_Integer aPrsIt = 1; aPrsIt <= aPrsList.Length(); ++aPrsIt)
+  if (!toRecompute
+   || !myDrawer->HasLink())
   {
-    const PrsMgr_ModedPresentation& aPrsModed = aPrsList.Value (aPrsIt);
-    if (aPrsModed.Mode() != AIS_Shaded)
-    {
-      continue;
-    }
-
-    const Handle(Prs3d_Presentation)& aPrs = aPrsModed.Presentation()->Presentation();
-    for (Graphic3d_SequenceOfGroup::Iterator aGroupIt (aPrs->Groups()); aGroupIt.More(); aGroupIt.Next())
-    {
-      const Handle(Graphic3d_Group)& aGroup = aGroupIt.Value();
-      if (aGroup->IsGroupPrimitivesAspectSet (Graphic3d_ASPECT_FILL_AREA))
-      {
-        aGroup->SetGroupPrimitivesAspect (anAreaAsp);
-      }
-    }
+    SynchronizeAspects();
   }
-
-  myRecomputeEveryPrs = Standard_False; // no mode to recalculate - only viewer update
-  myToRecomputeModes.Clear();
+  else
+  {
+    replaceWithNewOwnAspects();
+  }
 }
 
 //=======================================================================
@@ -1012,48 +767,15 @@ void AIS_Shape::UnsetTransparency()
         || myDrawer->ShadingAspect()->Aspect()->ToMapTexture())
   {
     myDrawer->ShadingAspect()->SetTransparency (0.0, myCurrentFacingModel);
+    SynchronizeAspects();
   }
   else
   {
+    Graphic3d_MapOfAspectsToAspects aReplaceMap;
+    replaceAspectWithDef (aReplaceMap, ShadingAspect);
     myDrawer->SetShadingAspect (Handle(Prs3d_ShadingAspect)());
+    replaceAspects (aReplaceMap);
   }
-
-  // modify shading presentation without re-computation
-  const PrsMgr_Presentations&        aPrsList  = Presentations();
-  Handle(Graphic3d_AspectFillArea3d) anAreaAsp = myDrawer->ShadingAspect()->Aspect();
-  for (Standard_Integer aPrsIt = 1; aPrsIt <= aPrsList.Length(); ++aPrsIt)
-  {
-    const PrsMgr_ModedPresentation& aPrsModed = aPrsList.Value (aPrsIt);
-    if (aPrsModed.Mode() != AIS_Shaded)
-    {
-      continue;
-    }
-
-    const Handle(Prs3d_Presentation)& aPrs = aPrsModed.Presentation()->Presentation();
-    for (Graphic3d_SequenceOfGroup::Iterator aGroupIt (aPrs->Groups()); aGroupIt.More(); aGroupIt.Next())
-    {
-      const Handle(Graphic3d_Group)& aGroup = aGroupIt.Value();
-      if (aGroup->IsGroupPrimitivesAspectSet (Graphic3d_ASPECT_FILL_AREA))
-      {
-        aGroup->SetGroupPrimitivesAspect (anAreaAsp);
-      }
-    }
-  }
-
-  myRecomputeEveryPrs = Standard_False; // no mode to recalculate :only viewer update
-  myToRecomputeModes.Clear();
-}
-
-//=======================================================================
-//function : LoadRecomputable
-//purpose  : 
-//=======================================================================
-
-void AIS_Shape::LoadRecomputable(const Standard_Integer TheMode)
-{
-  myRecomputeEveryPrs = Standard_False;
-  if(!IsInList(myToRecomputeModes,TheMode))
-    myToRecomputeModes.Append(TheMode);
 }
 
 //=======================================================================
@@ -1063,17 +785,15 @@ void AIS_Shape::LoadRecomputable(const Standard_Integer TheMode)
 
 const Bnd_Box& AIS_Shape::BoundingBox()  
 {
-  if (myshape.ShapeType() == TopAbs_COMPOUND) {
-    TopoDS_Iterator anExplor (myshape);
-
-    if (!anExplor.More()) { // empty Shape  -> empty Assembly.
-      myBB.SetVoid();
-      return myBB;
-    }
+  if (myshape.ShapeType() == TopAbs_COMPOUND && myshape.NbChildren() == 0)
+  {
+    // empty Shape  -> empty Assembly.
+    myBB.SetVoid ();
+    return myBB;
   }
 
   if(myCompBB) {
-    BRepBndLib::AddClose(myshape, myBB);
+    BRepBndLib::Add (myshape, myBB, false);
     myCompBB = Standard_False;
   }
   return myBB;
@@ -1144,8 +864,7 @@ Standard_Boolean AIS_Shape::SetOwnHLRDeviationAngle ()
 void AIS_Shape::SetOwnDeviationCoefficient ( const Standard_Real  aCoefficient )
 {
   myDrawer->SetDeviationCoefficient( aCoefficient );
-  SetToUpdate(0) ; // WireFrame
-  SetToUpdate(1) ; // Shadding
+  SetToUpdate();
 }
 
 //=======================================================================
@@ -1164,11 +883,10 @@ void AIS_Shape::SetOwnHLRDeviationCoefficient ( const Standard_Real  aCoefficien
 //purpose  : 
 //=======================================================================
 
-void AIS_Shape::SetOwnDeviationAngle ( const Standard_Real  anAngle )
+void AIS_Shape::SetOwnDeviationAngle (const Standard_Real theAngle)
 {
-
-  myDrawer->SetDeviationAngle(anAngle );
-  SetToUpdate(0) ;   // WireFrame
+  myDrawer->SetDeviationAngle (theAngle);
+  SetToUpdate (AIS_WireFrame);
 }
 //=======================================================================
 //function : SetOwnDeviationAngle
@@ -1182,8 +900,7 @@ void AIS_Shape::SetAngleAndDeviation ( const Standard_Real  anAngle )
   SetOwnDeviationAngle(anAngle) ;
   SetOwnDeviationCoefficient(OutDefl) ;
   myInitAng = anAngle;
-  SetToUpdate(0);
-  SetToUpdate(1);
+  SetToUpdate();
 }
 
 //=======================================================================

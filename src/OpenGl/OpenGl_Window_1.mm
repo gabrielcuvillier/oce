@@ -19,6 +19,9 @@
 #define GL_GLEXT_LEGACY // To prevent inclusion of system glext.h on Mac OS X 10.6.8
 #endif
 
+// macOS 10.4 deprecated OpenGL framework - suppress useless warnings
+#define GL_SILENCE_DEPRECATION
+
 #import <TargetConditionals.h>
 
 #if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
@@ -162,7 +165,11 @@ OpenGl_Window::OpenGl_Window (const Handle(OpenGl_GraphicDriver)& theDriver,
           {
             continue;
           }
+
+          // deprecated since macOS 10.12 without replacement
+          Standard_DISABLE_DEPRECATION_WARNINGS
           anAttribs[aLastAttrib++] = NSOpenGLPFAStereo;
+          Standard_ENABLE_DEPRECATION_WARNINGS
         }
 
         anAttribs[aLastAttrib] = 0;

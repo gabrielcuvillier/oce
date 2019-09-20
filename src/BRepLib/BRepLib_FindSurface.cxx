@@ -152,7 +152,7 @@ static Standard_Boolean Is2DClosed(const TopoDS_Shape&         theShape,
     TopoDS_Vertex aV2 = TopExp::LastVertex( aLastEdge, Standard_True );
     return ( aV1.IsSame( aV2 ) && Is2DConnected( aLastEdge, aFisrtEdge, theSurface, theLocation));
   }
-  catch ( Standard_Failure )  {
+  catch (Standard_Failure const&)  {
     return Standard_False;
   }
 }
@@ -361,12 +361,9 @@ void BRepLib_FindSurface::Init(const TopoDS_Shape&    S,
     case GeomAbs_Ellipse:
     case GeomAbs_Hyperbola:
     case GeomAbs_Parabola:
-      if (c.GetType() == GeomAbs_Line)
-        // Two points on straight segment
-        iNbPoints=2;
-      else
-        // Four points on otheranalitical curves
-        iNbPoints=4;
+      // Two points on straight segment, Four points on otheranalitical curves
+      iNbPoints = (c.GetType() == GeomAbs_Line ? 2 : 4);
+      Standard_FALLTHROUGH
     default:
       { 
         // Put some points on other curves

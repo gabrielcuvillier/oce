@@ -49,7 +49,7 @@ add_executable (Ocaf WIN32 ${Ocaf_SOURCE_FILES}
                            ${Ocaf_RESOURCE_FILES} )
 
 
-set_property (TARGET Ocaf PROPERTY FOLDER Samples)
+set_property (TARGET Ocaf PROPERTY FOLDER "Samples/mfc")
 
 if (SINGLE_GENERATOR)
   install (TARGETS Ocaf DESTINATION "${INSTALL_DIR_BIN}")
@@ -67,4 +67,4 @@ include_directories (${CMAKE_BINARY_DIR}/inc
                      ${Ocaf_SRC_DIR}
                      ${MFC_STANDARD_SAMPLES_DIR}/Common)
 
-target_link_libraries (Ocaf mfcsample TKLCAF TKVCAF TKBO TKBin TKXml)
+target_link_libraries (Ocaf mfcsample TKLCAF TKVCAF TKBO TKBin TKXml TKBinL TKXmlL)

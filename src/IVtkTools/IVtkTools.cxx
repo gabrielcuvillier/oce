@@ -15,8 +15,16 @@
 
 #include <IVtkTools.hxx>
 #include <IVtkVTK_ShapeData.hxx>
+
+// prevent disabling some MSVC warning messages by VTK headers 
+#ifdef _MSC_VER
+#pragma warning(push)
+#endif
 #include <vtkLookupTable.h>
 #include <vtkMapper.h>
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 namespace IVtkTools
 {
@@ -116,7 +124,7 @@ void InitShapeMapper (vtkMapper* theMapper, vtkLookupTable* theColorTable)
 {
   theMapper->ScalarVisibilityOn();
   theMapper->SetScalarModeToUseCellFieldData();
-  theMapper->SelectColorArray (IVtkVTK_ShapeData::ARRNAME_MESH_TYPES);
+  theMapper->SelectColorArray (IVtkVTK_ShapeData::ARRNAME_MESH_TYPES());
   theMapper->SetColorModeToMapScalars();
   theMapper->SetScalarRange (theColorTable->GetRange());
   theMapper->SetLookupTable (theColorTable);

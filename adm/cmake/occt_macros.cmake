@@ -60,25 +60,27 @@ endmacro()
 # COMPILER variable
 macro (OCCT_MAKE_COMPILER_SHORT_NAME)
   if (MSVC)
-    if (MSVC70)
+    if ((MSVC_VERSION EQUAL 1300) OR (MSVC_VERSION EQUAL 1310))
       set (COMPILER vc7)
-    elseif (MSVC80)
+    elseif (MSVC_VERSION EQUAL 1400)
       set (COMPILER vc8)
-    elseif (MSVC90)
+    elseif (MSVC_VERSION EQUAL 1500)
       set (COMPILER vc9)
-    elseif (MSVC10)
+    elseif (MSVC_VERSION EQUAL 1600)
       set (COMPILER vc10)
-    elseif (MSVC11)
+    elseif (MSVC_VERSION EQUAL 1700)
       set (COMPILER vc11)
-    elseif (MSVC12)
+    elseif (MSVC_VERSION EQUAL 1800)
       set (COMPILER vc12)
-    elseif (MSVC14)
+    elseif (MSVC_VERSION EQUAL 1900)
       set (COMPILER vc14)
-    elseif (MSVC15)
+    elseif ((MSVC_VERSION GREATER 1900) AND (MSVC_VERSION LESS 2000))
       # Since Visual Studio 15 (2017), its version diverged from version of
       # compiler which is 14.1; as that compiler uses the same run-time as 14.0,
       # we keep its id as "vc14" to be compatibille
       set (COMPILER vc14)
+    else()
+      message (FATAL_ERROR "Unrecognized MSVC_VERSION")
     endif()
   elseif (DEFINED CMAKE_COMPILER_IS_GNUCC)
     set (COMPILER gcc)
@@ -161,13 +163,18 @@ function (FIND_PRODUCT_DIR ROOT_DIR PRODUCT_NAME RESULT)
   OCCT_MAKE_COMPILER_BITNESS()
 
   string (TOLOWER "${PRODUCT_NAME}" lower_PRODUCT_NAME)
-
-  list (APPEND SEARCH_TEMPLATES "^[^a-zA-Z]*${lower_PRODUCT_NAME}[^a-zA-Z]*${COMPILER}.*${COMPILER_BITNESS}")
-  list (APPEND SEARCH_TEMPLATES "^[^a-zA-Z]*${lower_PRODUCT_NAME}[^a-zA-Z]*[0-9.]+.*${COMPILER}.*${COMPILER_BITNESS}")
-  list (APPEND SEARCH_TEMPLATES "^[^a-zA-Z]*${lower_PRODUCT_NAME}[^a-zA-Z]*[0-9.]+.*${COMPILER_BITNESS}")
-  list (APPEND SEARCH_TEMPLATES "^[^a-zA-Z]*${lower_PRODUCT_NAME}[^a-zA-Z]*.*${COMPILER_BITNESS}")
-  list (APPEND SEARCH_TEMPLATES "^[^a-zA-Z]*${lower_PRODUCT_NAME}[^a-zA-Z]*[0-9.]+")
-  list (APPEND SEARCH_TEMPLATES "^[^a-zA-Z]*${lower_PRODUCT_NAME}[^a-zA-Z]*")
+  if ("${lower_PRODUCT_NAME}" STREQUAL "egl")
+    string (SUBSTRING "${lower_PRODUCT_NAME}" 1 -1 lower_PRODUCT_NAME)
+    list (APPEND SEARCH_TEMPLATES "[^gl]+${lower_PRODUCT_NAME}.*")
+  else()
+    list (APPEND SEARCH_TEMPLATES "^[^a-zA-Z]*${lower_PRODUCT_NAME}[^a-zA-Z]*${COMPILER}.*${COMPILER_BITNESS}")
+    list (APPEND SEARCH_TEMPLATES "^[^a-zA-Z]*${lower_PRODUCT_NAME}[^a-zA-Z]*[0-9.]+.*${COMPILER}.*${COMPILER_BITNESS}")
+    list (APPEND SEARCH_TEMPLATES "^[a-zA-Z]*[0-9]*-${lower_PRODUCT_NAME}[^a-zA-Z]*[0-9.]+.*${COMPILER}.*${COMPILER_BITNESS}")
+    list (APPEND SEARCH_TEMPLATES "^[^a-zA-Z]*${lower_PRODUCT_NAME}[^a-zA-Z]*[0-9.]+.*${COMPILER_BITNESS}")
+    list (APPEND SEARCH_TEMPLATES "^[^a-zA-Z]*${lower_PRODUCT_NAME}[^a-zA-Z]*.*${COMPILER_BITNESS}")
+    list (APPEND SEARCH_TEMPLATES "^[^a-zA-Z]*${lower_PRODUCT_NAME}[^a-zA-Z]*[0-9.]+")
+    list (APPEND SEARCH_TEMPLATES "^[^a-zA-Z]*${lower_PRODUCT_NAME}[^a-zA-Z]*")
+  endif()
 
   SUBDIRECTORY_NAMES ("${ROOT_DIR}" SUBDIR_NAME_LIST)
 
@@ -219,7 +226,7 @@ macro (OCCT_CONFIGURE_AND_INSTALL BEING_CONGIRUGED_FILE BUILD_NAME INSTALL_NAME 
     configure_file("${CMAKE_SOURCE_DIR}/${BEING_CONGIRUGED_FILE}" "${BUILD_NAME}" @ONLY)
   endif()
 
-  install(FILES "${PROJECT_BINARY_DIR}/${BUILD_NAME}" DESTINATION  "${DESTINATION_PATH}" RENAME ${INSTALL_NAME})
+  install(FILES "${OCCT_BINARY_DIR}/${BUILD_NAME}" DESTINATION  "${DESTINATION_PATH}" RENAME ${INSTALL_NAME})
 endmacro()
 
 macro (COLLECT_AND_INSTALL_OCCT_HEADER_FILES ROOT_TARGET_OCCT_DIR OCCT_BUILD_TOOLKITS OCCT_COLLECT_SOURCE_DIR OCCT_INSTALL_DIR_PREFIX)
@@ -267,7 +274,7 @@ macro (COLLECT_AND_INSTALL_OCCT_HEADER_FILES ROOT_TARGET_OCCT_DIR OCCT_BUILD_TOO
     list (LENGTH OCCT_ALL_FILE_NAMES ALL_FILES_NB)
     math (EXPR ALL_FILES_NB "${ALL_FILES_NB} - 1" )
 
-    # emit warnings if there is unprocessed headers
+    # emit warnings if there are unprocessed headers
     file (GLOB OCCT_ALL_FILES_IN_DIR "${OCCT_COLLECT_SOURCE_DIR}/${OCCT_PACKAGE}/*.*")
     file (GLOB OCCT_ALL_FILES_IN_PATCH_DIR "${BUILD_PATCH}/src/${OCCT_PACKAGE}/*.*")
 
@@ -300,8 +307,8 @@ macro (COLLECT_AND_INSTALL_OCCT_HEADER_FILES ROOT_TARGET_OCCT_DIR OCCT_BUILD_TOO
             list (APPEND OCCT_HEADER_FILES_COMPLETE ${OCCT_FILE_IN_DIR})
 
             # collect header files with name that does not contain its package one
-            string (FIND "${OCCT_FILE_NAME}" "${OCCT_PACKAGE}_" FOUND_INDEX)
-            if (NOT ${FOUND_INDEX} EQUAL 0)
+            string (REGEX MATCH "^${OCCT_PACKAGE}[_.]" IS_HEADER_MATHCING_PACKAGE "${OCCT_FILE_NAME}")
+            if (NOT IS_HEADER_MATHCING_PACKAGE)
               list (APPEND OCCT_HEADER_FILE_WITH_PROPER_NAMES "${OCCT_FILE_NAME}")
             endif()
           endif()
@@ -348,12 +355,12 @@ macro (COLLECT_AND_INSTALL_OCCT_HEADER_FILES ROOT_TARGET_OCCT_DIR OCCT_BUILD_TOO
     list (FIND OCCT_USED_PACKAGES ${PACKAGE_NAME} IS_HEADER_FOUND)
     if (NOT ${IS_HEADER_FOUND} EQUAL -1)
       if (NOT EXISTS "${OCCT_COLLECT_SOURCE_DIR}/${PACKAGE_NAME}/${HEADER_FILE_NAME}")
-        message (STATUS "Warning. ${OCCT_HEADER_FILE_OLD} is not presented in the sources and will be removed from ${ROOT_TARGET_OCCT_DIR}/inc")
+        message (STATUS "Warning. ${OCCT_HEADER_FILE_OLD} is not present in the sources and will be removed from ${ROOT_TARGET_OCCT_DIR}/inc")
         file (REMOVE "${OCCT_HEADER_FILE_OLD}")
       else()
         list (FIND OCCT_HEADER_FILE_NAMES_NOT_IN_FILES ${PACKAGE_NAME} IS_HEADER_FOUND)
         if (NOT ${IS_HEADER_FOUND} EQUAL -1)
-          message (STATUS "Warning. ${OCCT_HEADER_FILE_OLD} is presented in the sources but not involved in FILES and will be removed from ${ROOT_TARGET_OCCT_DIR}/inc")
+          message (STATUS "Warning. ${OCCT_HEADER_FILE_OLD} is present in the sources but not involved in FILES and will be removed from ${ROOT_TARGET_OCCT_DIR}/inc")
           file (REMOVE "${OCCT_HEADER_FILE_OLD}")
         endif()
       endif()
@@ -500,11 +507,11 @@ function (OCCT_TOOLKIT_FULL_DEP TOOLKIT_NAME TOOLKIT_FULL_DEPS)
   set (${TOOLKIT_FULL_DEPS} ${LOCAL_TOOLKIT_FULL_DEPS} PARENT_SCOPE)
 endfunction()
 
-# Function to get list of modules and toolkits from file adm/MODULES.
+# Function to get list of modules/toolkits/samples from file adm/${FILE_NAME}.
 # Creates list <$MODULE_LIST> to store list of MODULES and
-# <NAME_OF_MODULE>_TOOLKITS foreach module to store its toolkits.
-function (OCCT_MODULES_AND_TOOLKITS MODULE_LIST)
-  FILE_TO_LIST ("adm/MODULES" FILE_CONTENT)
+# <NAME_OF_MODULE>_TOOLKITS foreach module to store its toolkits, where "TOOLKITS" is defined by TOOLKITS_NAME_SUFFIX.
+function (OCCT_MODULES_AND_TOOLKITS FILE_NAME TOOLKITS_NAME_SUFFIX MODULE_LIST)
+  FILE_TO_LIST ("adm/${FILE_NAME}" FILE_CONTENT)
 
   foreach (CONTENT_LINE ${FILE_CONTENT})
     string (REPLACE " " ";" CONTENT_LINE ${CONTENT_LINE})
@@ -512,28 +519,10 @@ function (OCCT_MODULES_AND_TOOLKITS MODULE_LIST)
     list (REMOVE_AT CONTENT_LINE 0)
     list (APPEND ${MODULE_LIST} ${MODULE_NAME})
     # (!) REMOVE THE LINE BELOW (implicit variables)
-    set (${MODULE_NAME}_TOOLKITS ${CONTENT_LINE} PARENT_SCOPE)
+    set (${MODULE_NAME}_${TOOLKITS_NAME_SUFFIX} ${CONTENT_LINE} PARENT_SCOPE)
   endforeach()
 
   set (${MODULE_LIST} ${${MODULE_LIST}} PARENT_SCOPE)
-endfunction()
-
-# Function to get list of tools and toolkits from file adm/TOOLS.
-# Creates list <$TOOL_LIST> to store list of TOOLS and
-# <NAME_OF_TOOL>_TOOLKITS foreach tool to store its toolkits.
-function (OCCT_TOOLS_AND_TOOLKITS TOOL_LIST)
-  FILE_TO_LIST ("adm/TOOLS" FILE_CONTENT)
-
-  foreach (CONTENT_LINE ${FILE_CONTENT})
-    string (REPLACE " " ";" CONTENT_LINE ${CONTENT_LINE})
-    list (GET CONTENT_LINE 0 TOOL_NAME)
-    list (REMOVE_AT CONTENT_LINE 0)
-    list (APPEND ${TOOL_LIST} ${TOOL_NAME})
-    # (!) REMOVE THE LINE BELOW (implicit variables)
-    set (${TOOL_NAME}_TOOL_TOOLKITS ${CONTENT_LINE} PARENT_SCOPE)
-  endforeach()
-
-  set (${TOOL_LIST} ${${TOOL_LIST}} PARENT_SCOPE)
 endfunction()
 
 # Returns OCC version string from file Standard_Version.hxx (if available)
@@ -601,7 +590,7 @@ endmacro()
 # prior to version 3.3 not supporting per-configuration install paths
 # for install target files (see https://cmake.org/Bug/view.php?id=14317)
 macro (OCCT_UPDATE_TARGET_FILE)
-  if (NOT SINGLE_GENERATOR)
+  if (MSVC)
     OCCT_INSERT_CODE_FOR_TARGET ()
   endif()
 

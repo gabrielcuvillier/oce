@@ -26,6 +26,7 @@
 #include <Graphic3d_AspectText3d.hxx>
 #include <Graphic3d_GraphicDriver.hxx>
 #include <Graphic3d_ArrayOfTriangles.hxx>
+#include <Graphic3d_Text.hxx>
 #include <Prs3d_LineAspect.hxx>
 #include <Prs3d_Root.hxx>
 #include <Prs3d_ShadingAspect.hxx>
@@ -55,12 +56,8 @@ namespace
     theTris->AddVertex (gp_Pnt (theXLeft + theSizeX, theYBottom,            0.0), theColorBottom);
     theTris->AddVertex (gp_Pnt (theXLeft,            theYBottom + theSizeY, 0.0), theColorTop);
     theTris->AddVertex (gp_Pnt (theXLeft + theSizeX, theYBottom + theSizeY, 0.0), theColorTop);
-    theTris->AddEdge (aVertIndex);
-    theTris->AddEdge (aVertIndex + 1);
-    theTris->AddEdge (aVertIndex + 2);
-    theTris->AddEdge (aVertIndex + 1);
-    theTris->AddEdge (aVertIndex + 2);
-    theTris->AddEdge (aVertIndex + 3);
+    theTris->AddEdges (aVertIndex,     aVertIndex + 1, aVertIndex + 2);
+    theTris->AddEdges (aVertIndex + 1, aVertIndex + 2, aVertIndex + 3);
   }
 
   //! Compute hue angle from specified value.
@@ -81,6 +78,31 @@ namespace
     Standard_Real aLightness  = NCollection_Lerp<Standard_Real>::Interpolate (theHlsMin[1], theHlsMax[1], aValue);
     Standard_Real aSaturation = NCollection_Lerp<Standard_Real>::Interpolate (theHlsMin[2], theHlsMax[2], aValue);
     return Quantity_Color (AIS_ColorScale::hueToValidRange (aHue), aLightness, aSaturation, Quantity_TOC_HLS);
+  }
+
+  //! Return the index of discrete interval for specified value.
+  //! Note that when value lies exactly on the border between two intervals,
+  //! determining which interval to return is undefined operation;
+  //! Current implementation returns the following interval in this case.
+  //! @param theValue [in] value to map
+  //! @param theMin   [in] values range, lower value
+  //! @param theMax   [in] values range, upper value
+  //! @param theNbIntervals [in] number of discrete intervals
+  //! @return index of interval within [1, theNbIntervals] range
+  static Standard_Integer colorDiscreteInterval (Standard_Real theValue,
+                                                 Standard_Real theMin,
+                                                 Standard_Real theMax,
+                                                 Standard_Integer theNbIntervals)
+  {
+    if (Abs (theMax - theMin) <= Precision::Approximation())
+    {
+      return 1;
+    }
+
+    Standard_Integer anInterval = 1 + (Standard_Integer )Floor (Standard_Real (theNbIntervals) * (theValue - theMin) / (theMax - theMin));
+    // map the very upper value (theValue==theMax) to the largest color interval
+    anInterval = Min (anInterval, theNbIntervals);
+    return anInterval;
   }
 }
 
@@ -111,6 +133,10 @@ AIS_ColorScale::AIS_ColorScale()
   myTextHeight (20)
 {
   SetDisplayMode (0);
+  myDrawer->SetupOwnShadingAspect();
+  myDrawer->ShadingAspect()->Aspect()->SetShadingModel (Graphic3d_TOSM_UNLIT);
+  myDrawer->ShadingAspect()->Aspect()->SetAlphaMode (Graphic3d_AlphaMode_Opaque);
+  myDrawer->ShadingAspect()->Aspect()->SetInteriorColor (Quantity_NOC_WHITE);
 }
 
 //=======================================================================
@@ -347,21 +373,14 @@ Standard_Boolean AIS_ColorScale::FindColor (const Standard_Real theValue,
 
   if (myColorType == Aspect_TOCSD_USER)
   {
-    Standard_Integer anIndex = 0;
-    if (Abs (myMax - myMin) > Precision::Approximation())
-    {
-      anIndex = (theValue - myMin < Precision::Confusion()) 
-        ? 1
-        : Standard_Integer (Ceiling (( theValue - myMin ) / ( (myMax - myMin) / myNbIntervals)));
-    }
-
-    if (anIndex <= 0 || anIndex > myColors.Length())
+    const Standard_Integer anInterval = colorDiscreteInterval (theValue, myMin, myMax, myNbIntervals);
+    if (anInterval < myColors.Lower() || anInterval > myColors.Upper())
     {
       theColor = Quantity_Color();
       return Standard_False;
     }
 
-    theColor = myColors.Value (anIndex);
+    theColor = myColors.Value (anInterval);
     return Standard_True;
   }
 
@@ -385,13 +404,8 @@ Standard_Boolean AIS_ColorScale::FindColor (const Standard_Real theValue,
     return Standard_False;
   }
 
-  Standard_Real anInterval = 0.0;
-  if (Abs (theMax - theMin) > Precision::Approximation())
-  {
-    anInterval = Floor (Standard_Real (theColorsCount) * (theValue - theMin) / (theMax - theMin));
-  }
-
-  theColor = colorFromValueEx (anInterval, 0, theColorsCount - 1, theColorHlsMin, theColorHlsMax);
+  const Standard_Integer anInterval = colorDiscreteInterval (theValue, theMin, theMax, theColorsCount);
+  theColor = colorFromValueEx (anInterval - 1, 0, theColorsCount - 1, theColorHlsMin, theColorHlsMax);
   return Standard_True;
 }
 
@@ -462,15 +476,6 @@ void AIS_ColorScale::Compute (const Handle(PrsMgr_PresentationManager3d)& ,
   const Standard_Integer aBarTop     = myYPos + myHeight - aTitleOffset - aBarYOffset;
   const Standard_Integer aBarHeight  = aBarTop - aBarBottom;
 
-  // draw title
-  if (!myTitle.IsEmpty())
-  {
-    drawText (Prs3d_Root::CurrentGroup (thePrs), myTitle,
-              myXPos + mySpacing,
-              aBarTop + aBarYOffset,
-              Graphic3d_VTA_BOTTOM);
-  }
-
   TColStd_SequenceOfExtendedString aLabels;
   if (myLabelType == Aspect_TOCSD_USER)
   {
@@ -500,11 +505,27 @@ void AIS_ColorScale::Compute (const Handle(PrsMgr_PresentationManager3d)& ,
     aColorBreadth += aTextWidth;
   }
 
+  // draw title
+  Handle(Graphic3d_Group) aLabelsGroup;
+  if (!myTitle.IsEmpty()
+   || !aLabels.IsEmpty())
+  {
+    aLabelsGroup = thePrs->NewGroup();
+    aLabelsGroup->SetGroupPrimitivesAspect (myDrawer->TextAspect()->Aspect());
+  }
+  if (!myTitle.IsEmpty())
+  {
+    drawText (aLabelsGroup, myTitle,
+              myXPos + mySpacing,
+              aBarTop + aBarYOffset,
+              Graphic3d_VTA_BOTTOM);
+  }
+
   // draw colors
   drawColorBar (thePrs, aBarBottom, aBarHeight, aTextWidth, aColorBreadth);
 
   // draw Labels
-  drawLabels (thePrs, aLabels, aBarBottom, aBarHeight, aTextWidth, aColorBreadth);
+  drawLabels (aLabelsGroup, aLabels, aBarBottom, aBarHeight, aTextWidth, aColorBreadth);
 }
 
 //=======================================================================
@@ -631,7 +652,8 @@ void AIS_ColorScale::drawColorBar (const Handle(Prs3d_Presentation)& thePrs,
     }
   }
 
-  Handle(Graphic3d_Group) aGroup = Prs3d_Root::CurrentGroup (thePrs);
+  Handle(Graphic3d_Group) aGroup = thePrs->NewGroup();
+  aGroup->SetGroupPrimitivesAspect (myDrawer->ShadingAspect()->Aspect());
   aGroup->AddPrimitiveArray (aTriangles);
 
   const Quantity_Color aFgColor (hasOwnColor ? myDrawer->Color() : Quantity_NOC_WHITE);
@@ -646,7 +668,7 @@ void AIS_ColorScale::drawColorBar (const Handle(Prs3d_Presentation)& thePrs,
 //function : drawLabels
 //purpose  :
 //=======================================================================
-void AIS_ColorScale::drawLabels (const Handle(Prs3d_Presentation)& thePrs,
+void AIS_ColorScale::drawLabels (const Handle(Graphic3d_Group)& theGroup,
                                  const TColStd_SequenceOfExtendedString& theLabels,
                                  const Standard_Integer theBarBottom,
                                  const Standard_Integer theBarHeight,
@@ -720,14 +742,14 @@ void AIS_ColorScale::drawLabels (const Handle(Prs3d_Presentation)& thePrs,
     Standard_Integer aPos2 = aNbLabels - 1 - i2;
     if (aFilter && !(aPos1 % aFilter))
     {
-      drawText (Prs3d_Root::CurrentGroup (thePrs), theLabels.Value (i1 + 1),
+      drawText (theGroup, theLabels.Value (i1 + 1),
                 anXLeft, anYBottom + Standard_Integer(i1 * aStepY + anAscent),
                 Graphic3d_VTA_CENTER);
       aLast1 = i1;
     }
     if (aFilter && !(aPos2 % aFilter))
     {
-      drawText (Prs3d_Root::CurrentGroup (thePrs), theLabels.Value (i2 + 1),
+      drawText (theGroup, theLabels.Value (i2 + 1),
                 anXLeft, anYBottom + Standard_Integer(i2 * aStepY + anAscent),
                 Graphic3d_VTA_CENTER);
       aLast2 = i2;
@@ -750,7 +772,7 @@ void AIS_ColorScale::drawLabels (const Handle(Prs3d_Presentation)& thePrs,
 
   if (i0 != -1)
   {
-    drawText (Prs3d_Root::CurrentGroup (thePrs), theLabels.Value (i0 + 1),
+    drawText (theGroup, theLabels.Value (i0 + 1),
               anXLeft, anYBottom + Standard_Integer(i0 * aStepY + anAscent),
               Graphic3d_VTA_CENTER);
   }
@@ -773,8 +795,8 @@ void AIS_ColorScale::drawFrame (const Handle(Prs3d_Presentation)& thePrs,
   aPrim->AddVertex (theX,            theY, 0.0);
 
   Handle(Graphic3d_AspectLine3d) anAspect = new Graphic3d_AspectLine3d (theColor, Aspect_TOL_SOLID, 1.0);
-  Handle(Graphic3d_Group) aGroup = Prs3d_Root::CurrentGroup (thePrs);
-  aGroup->SetPrimitivesAspect (anAspect);
+  Handle(Graphic3d_Group) aGroup = thePrs->NewGroup();
+  aGroup->SetGroupPrimitivesAspect (anAspect);
   aGroup->AddPrimitiveArray (aPrim);
 }
 
@@ -788,17 +810,14 @@ void AIS_ColorScale::drawText (const Handle(Graphic3d_Group)& theGroup,
                                const Graphic3d_VerticalTextAlignment theVertAlignment)
 {
   const Handle(Prs3d_TextAspect)& anAspect = myDrawer->TextAspect();
-  theGroup->SetPrimitivesAspect (anAspect->Aspect());
-  theGroup->Text (theText,
-                  gp_Ax2 (gp_Pnt (theX, theY, 0.0), gp::DZ()),
-                  anAspect->Height(),
-                  anAspect->Angle(),
-                  anAspect->Orientation(),
-                  Graphic3d_HTA_LEFT,
-                  theVertAlignment,
-                  Standard_True,
-                  Standard_False); // has own anchor
 
+  Handle(Graphic3d_Text) aText = new Graphic3d_Text ((Standard_ShortReal)anAspect->Height());
+  aText->SetText (theText.ToExtString());
+  aText->SetOrientation (gp_Ax2 (gp_Pnt (theX, theY, 0.0), gp::DZ()));
+  aText->SetOwnAnchorPoint (Standard_False);
+  aText->SetVerticalAlignment (theVertAlignment);
+
+  theGroup->AddText (aText);
 }
 
 //=======================================================================

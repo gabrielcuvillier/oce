@@ -86,18 +86,26 @@ static Standard_Integer DDataStd_PNT (Draw_Interpretor& di,
 //purpose  : Rmdraw (name)
 //=======================================================================
 
-static Standard_Integer DDataStd_Rmdraw (Draw_Interpretor& di,
+static Standard_Integer DDataStd_Rmdraw (Draw_Interpretor& ,
 					      Standard_Integer nb, 
 					      const char** arg)
 {
-  if (nb == 2) { 
-    Handle(Draw_Drawable3D) D3D;
-    D3D = Draw::Get(arg[1],Standard_True);  
-    if (!D3D.IsNull()) dout.RemoveDrawable(D3D); 
+  if (nb != 2)
+  {
+    std::cout << "Syntax error: wrong number of arguments\n";
+    return 1;
+  }
+
+  if (Handle(Draw_Drawable3D) D3D = Draw::Get (arg[1]))
+  {
+    dout.RemoveDrawable (D3D);
     return 0;
   }
-  di << "DDataStd_Rmdraw : Error : not done\n";
-  return 1;
+  else
+  {
+    std::cout << "Syntax error: variable '" << arg[1] << "' not found\n";
+    return 1;
+  }
 }
 
 //=======================================================================
@@ -167,7 +175,7 @@ static Standard_Integer DDataStd_DrawDisplay (Draw_Interpretor& di,
 //     DDataStd_DrawPresentation::Display(L,Standard_True);
 //     return 0;
 //   }
-//   cout << "DDataStd_DrawRedisplay : Error" << endl;
+//   std::cout << "DDataStd_DrawRedisplay : Error" << std::endl;
 //   return 1;
 // }
 

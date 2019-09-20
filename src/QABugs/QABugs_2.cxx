@@ -32,7 +32,6 @@
 #include <gp_Pln.hxx>
 #include <BRep_Tool.hxx>
 #include <BRepAlgoAPI_Section.hxx>
-#include <BRepMesh_IncrementalMesh.hxx>
 #include <Precision.hxx>
 #include <Standard_ErrorHandler.hxx>
 
@@ -123,7 +122,7 @@ static Standard_Integer OCC527(Draw_Interpretor& di, Standard_Integer argc, cons
       }
     }
   }
-  catch (Standard_Failure) {di << "OCC527 Exception \n" ;return 0;}
+  catch (Standard_Failure const&) {di << "OCC527 Exception \n" ;return 0;}
   
   return 0;
 }

@@ -365,7 +365,7 @@ static Standard_Integer OCC332bug (Draw_Interpretor& di, Standard_Integer argc, 
     OCC_CATCH_SIGNALS
     di << " yes\n";
   }
-  catch (Standard_TypeMismatch) {
+  catch (Standard_TypeMismatch const&) {
     di << " no\n";
   }
 
@@ -657,7 +657,7 @@ static Standard_Integer OCC544 (Draw_Interpretor& di, Standard_Integer argc, con
     B.Add(wallSolid,TubeShell);
     di << " yes\n";
   }
-  catch (Standard_TypeMismatch) {
+  catch (Standard_TypeMismatch const&) {
     di << "Can't convert to shell...\n";
     TopExp_Explorer getSol;
     getSol.Init(SewIt.SewedShape(), TopAbs_SOLID);
@@ -932,7 +932,7 @@ static Standard_Integer OCC817 (Draw_Interpretor& di, Standard_Integer argc, con
       BRepGProp::VolumeProperties (SubvolumeSolid(l), subvolumeVProps);
       const Standard_Real vol = subvolumeVProps.Mass();
       const Standard_Boolean err = (vol > SubvolumeVol(l)) || (vol <= 0.0);
-      //cout << (err? "ERROR" : "Info") << ": final subvolume " << l << " volume = " << vol << endl;
+      //std::cout << (err? "ERROR" : "Info") << ": final subvolume " << l << " volume = " << vol << std::endl;
       if (err)
 	di << "ERROR: final subvolume " << l << " volume = " << vol << "\n";
       else

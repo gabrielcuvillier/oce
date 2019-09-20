@@ -117,7 +117,7 @@ macro (THIRDPARTY_PRODUCT PRODUCT_NAME HEADER_NAME LIBRARY_CSF_NAME LIBRARY_NAME
 
   foreach (LIBRARY_NAME ${${LIBRARY_CSF_NAME}})
     string (REPLACE "." "" LIBRARY_NAME_SUFFIX "${LIBRARY_NAME}")
-    if (BUILD_SHARED_LIBS)
+#    if (BUILD_SHARED_LIBS)
       # library
       if (NOT 3RDPARTY_${PRODUCT_NAME}_LIBRARY_${LIBRARY_NAME_SUFFIX} OR NOT EXISTS "${3RDPARTY_${PRODUCT_NAME}_LIBRARY_${LIBRARY_NAME_SUFFIX}}")
         set (CMAKE_FIND_LIBRARY_SUFFIXES .lib .so .dylib .a)
@@ -133,7 +133,7 @@ macro (THIRDPARTY_PRODUCT PRODUCT_NAME HEADER_NAME LIBRARY_CSF_NAME LIBRARY_NAME
         # set 3RDPARTY_${PRODUCT_NAME}_LIBRARY as notfound, otherwise find_library can't assign a new value to 3RDPARTY_${PRODUCT_NAME}_LIBRARY
         set (3RDPARTY_${PRODUCT_NAME}_LIBRARY_${LIBRARY_NAME_SUFFIX} "3RDPARTY_${PRODUCT_NAME}_LIBRARY_${LIBRARY_NAME_SUFFIX}-NOTFOUND" CACHE FILEPATH "The path to ${PRODUCT_NAME} library \"${LIBRARY_NAME}\"" FORCE)
 
-        if (3RDPARTY_${PRODUCT_NAME}_DIR AND EXISTS "${3RDPARTY_${PRODUCT_NAME}_DIR}")
+        if ((3RDPARTY_${PRODUCT_NAME}_DIR AND EXISTS "${3RDPARTY_${PRODUCT_NAME}_DIR}") OR (3RDPARTY_${PRODUCT_NAME}_LIBRARY_DIR_${LIBRARY_NAME} AND EXISTS "${3RDPARTY_${PRODUCT_NAME}_LIBRARY_DIR_${LIBRARY_NAME}}"))
           find_library (3RDPARTY_${PRODUCT_NAME}_LIBRARY_${LIBRARY_NAME_SUFFIX} NAMES ${LIBRARY_NAME}
                                                                                 PATHS "${3RDPARTY_${PRODUCT_NAME}_LIBRARY_DIR_${LIBRARY_NAME}}" "${3RDPARTY_${PRODUCT_NAME}_DIR}"
                                                                                 PATH_SUFFIXES ${${PRODUCT_NAME}_PATH_SUFFIXES}
@@ -167,7 +167,7 @@ macro (THIRDPARTY_PRODUCT PRODUCT_NAME HEADER_NAME LIBRARY_CSF_NAME LIBRARY_NAME
       if (3RDPARTY_${PRODUCT_NAME}_LIBRARY_DIR_${LIBRARY_NAME_SUFFIX} AND EXISTS "${3RDPARTY_${PRODUCT_NAME}_LIBRARY_DIR_${LIBRARY_NAME_SUFFIX}}")
         list (APPEND 3RDPARTY_LIBRARY_DIRS "${3RDPARTY_${PRODUCT_NAME}_LIBRARY_DIR_${LIBRARY_NAME_SUFFIX}}")
       else()
-        list (APPEND 3RDPARTY_NOT_INCLUDED 3RDPARTY_${PRODUCT_NAME}_LIBRARY_DIR_${LIBRARY_NAME_SUFFIX})
+        list (APPEND 3RDPARTY_NO_LIBS 3RDPARTY_${PRODUCT_NAME}_LIBRARY_DIR_${LIBRARY_NAME_SUFFIX})
 
         set (3RDPARTY_${PRODUCT_NAME}_LIBRARY_${LIBRARY_NAME_SUFFIX} "" CACHE FILEPATH "The path to ${PRODUCT_NAME} library \"${LIBRARY_NAME}\"" FORCE)
       endif()
@@ -181,9 +181,9 @@ macro (THIRDPARTY_PRODUCT PRODUCT_NAME HEADER_NAME LIBRARY_CSF_NAME LIBRARY_NAME
           # set 3RDPARTY_${PRODUCT_NAME}_DLL as notfound, otherwise find_library can't assign a new value to 3RDPARTY_${PRODUCT_NAME}_DLL
           set (3RDPARTY_${PRODUCT_NAME}_DLL_${LIBRARY_NAME_SUFFIX} "3RDPARTY_${PRODUCT_NAME}_DLL_${LIBRARY_NAME_SUFFIX}-NOTFOUND" CACHE FILEPATH "The path to ${PRODUCT_NAME} shared library \"${LIBRARY_NAME}\"" FORCE)
 
-          if (3RDPARTY_${PRODUCT_NAME}_DIR AND EXISTS "${3RDPARTY_${PRODUCT_NAME}_DIR}")
+          if ((3RDPARTY_${PRODUCT_NAME}_DIR AND EXISTS "${3RDPARTY_${PRODUCT_NAME}_DIR}") OR (3RDPARTY_${PRODUCT_NAME}_DLL_DIR_${LIBRARY_NAME} AND EXISTS "${3RDPARTY_${PRODUCT_NAME}_DLL_DIR_${LIBRARY_NAME}}"))
             find_library (3RDPARTY_${PRODUCT_NAME}_DLL_${LIBRARY_NAME_SUFFIX}  NAMES ${LIBRARY_NAME}
-                                                                               PATHS "${3RDPARTY_${PRODUCT_NAME}_DIR}"
+                                                                               PATHS "${3RDPARTY_${PRODUCT_NAME}_DLL_DIR_${LIBRARY_NAME}}" "${3RDPARTY_${PRODUCT_NAME}_DIR}"
                                                                                PATH_SUFFIXES bin  win${COMPILER_BITNESS}/${COMPILER}/bin
                                                                                NO_DEFAULT_PATH)
             if (3RDPARTY_${PRODUCT_NAME}_DLL_${LIBRARY_NAME_SUFFIX} STREQUAL "3RDPARTY_${PRODUCT_NAME}_DLL_${LIBRARY_NAME_SUFFIX}-NOTFOUND")
@@ -213,7 +213,7 @@ macro (THIRDPARTY_PRODUCT PRODUCT_NAME HEADER_NAME LIBRARY_CSF_NAME LIBRARY_NAME
         if (3RDPARTY_${PRODUCT_NAME}_DLL_DIR_${LIBRARY_NAME_SUFFIX} OR EXISTS "${3RDPARTY_${PRODUCT_NAME}_DLL_DIR_${LIBRARY_NAME_SUFFIX}}")
           list (APPEND 3RDPARTY_DLL_DIRS "${3RDPARTY_${PRODUCT_NAME}_DLL_DIR_${LIBRARY_NAME_SUFFIX}}")
         else()
-          list (APPEND 3RDPARTY_NOT_INCLUDED 3RDPARTY_${PRODUCT_NAME}_DLL_DIR_${LIBRARY_NAME_SUFFIX})
+          list (APPEND 3RDPARTY_NO_DLLS 3RDPARTY_${PRODUCT_NAME}_DLL_DIR_${LIBRARY_NAME_SUFFIX})
         endif()
       endif()
 
@@ -277,26 +277,6 @@ macro (THIRDPARTY_PRODUCT PRODUCT_NAME HEADER_NAME LIBRARY_CSF_NAME LIBRARY_NAME
             endif()
           endif()
 
-          if("${PRODUCT_NAME}" STREQUAL "GL2PS")
-            get_filename_component(GL2PSLIB ${3RDPARTY_${PRODUCT_NAME}_LIBRARY_${LIBRARY_NAME_SUFFIX}} NAME)
-
-            if (SINGLE_GENERATOR)
-              install (FILES "${ABS_PATH}" DESTINATION "${INSTALL_DIR_LIB}" RENAME ${GL2PSLIB}.1)
-            else()
-              install (FILES "${ABS_PATH}"
-                       CONFIGURATIONS Release
-                       DESTINATION "${INSTALL_DIR_LIB}"
-                       RENAME ${GL2PSLIB}.1)
-              install (FILES "${ABS_PATH}"
-                       CONFIGURATIONS RelWithDebInfo
-                       DESTINATION "${INSTALL_DIR_LIB}i"
-                       RENAME ${GL2PSLIB}.1)
-              install (FILES "${ABS_PATH}"
-                       CONFIGURATIONS Debug
-                       DESTINATION "${INSTALL_DIR_LIB}d"
-                       RENAME ${GL2PSLIB}.1)
-            endif()
-          endif()
         endif()
       else()
         # the library directory for using by the executable
@@ -311,7 +291,7 @@ macro (THIRDPARTY_PRODUCT PRODUCT_NAME HEADER_NAME LIBRARY_CSF_NAME LIBRARY_NAME
       endif()
 
       mark_as_advanced (3RDPARTY_${PRODUCT_NAME}_LIBRARY_${LIBRARY_NAME_SUFFIX} 3RDPARTY_${PRODUCT_NAME}_DLL_${LIBRARY_NAME_SUFFIX})
-    endif()
+#    endif()
   endforeach()
 endmacro()
 

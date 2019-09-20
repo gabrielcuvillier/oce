@@ -152,6 +152,12 @@ public:
   //! Standard_DEPRECATED("This method is deprecated - SetColor() should be called instead")
   Standard_EXPORT void SetAxisColor (const Quantity_Color& theColor);
 
+  //! Returns true if arrows are to be drawn
+  Standard_EXPORT Standard_Boolean ToDrawArrows() const;
+
+  //! Sets whether to draw the arrows in visualization
+  Standard_EXPORT void SetDrawArrows (const Standard_Boolean theToDraw);
+
   //! Sets priority of selection for owner of the given type
   void SetSelectionPriority (Prs3d_DatumParts thePart,
                              Standard_Integer thePriority)
@@ -218,11 +224,9 @@ protected:
 
 protected:
 
-  Standard_EXPORT void LoadRecomputable (const Standard_Integer theMode);
-
   //! Creates a sensitive entity for the datum part that will be used in selection owner creation.
-  Standard_EXPORT Handle(SelectBasics_SensitiveEntity) createSensitiveEntity (const Prs3d_DatumParts thePart,
-                                                     const Handle(SelectBasics_EntityOwner)& theOwner) const;
+  Standard_EXPORT Handle(Select3D_SensitiveEntity) createSensitiveEntity (const Prs3d_DatumParts thePart,
+                                                     const Handle(SelectMgr_EntityOwner)& theOwner) const;
 
   //! Computes presentation for display mode equal 1.
   Standard_EXPORT void computePresentation (const Handle(PrsMgr_PresentationManager3d)& thePrsMgr,

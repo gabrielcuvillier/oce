@@ -22,10 +22,9 @@
 #include <Standard_Handle.hxx>
 
 #include <OSD_Error.hxx>
-#include <Standard_Boolean.hxx>
-#include <Standard_Integer.hxx>
+#include <TCollection_AsciiString.hxx>
+
 class OSD_OSDError;
-class TCollection_AsciiString;
 class Quantity_Date;
 class OSD_Path;
 
@@ -39,15 +38,18 @@ class OSD_Process
 {
 public:
 
-  DEFINE_STANDARD_ALLOC
+  //! Return full path to the current process executable.
+  Standard_EXPORT static TCollection_AsciiString ExecutablePath();
 
+  //! Return full path to the folder containing current process executable with trailing separator.
+  Standard_EXPORT static TCollection_AsciiString ExecutableFolder();
+
+public:
+
+  DEFINE_STANDARD_ALLOC
   
   //! Initializes the object and prepare for a possible dump
   Standard_EXPORT OSD_Process();
-  
-  //! Issues a shell command
-  //! ShowWindow : flag to allow show/hide of the window ( only used on WNT )
-  Standard_EXPORT Standard_Integer Spawn (const TCollection_AsciiString& cmd, const Standard_Boolean ShowWindow = Standard_True);
   
   //! Returns the terminal used (vt100, vt200 ,sun-cmd ...)
   Standard_EXPORT void TerminalType (TCollection_AsciiString& Name);
@@ -82,28 +84,8 @@ public:
   //! Returns error number if 'Failed' is TRUE.
   Standard_EXPORT Standard_Integer Error() const;
 
-
-
-
-protected:
-
-
-
-
-
 private:
-
-
-
   OSD_Error myError;
-
-
 };
-
-
-
-
-
-
 
 #endif // _OSD_Process_HeaderFile

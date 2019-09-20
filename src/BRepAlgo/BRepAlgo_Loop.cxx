@@ -88,6 +88,15 @@ void BRepAlgo_Loop::Init(const TopoDS_Face& F)
 static void Bubble(const TopoDS_Edge&        E,
 		   TopTools_SequenceOfShape& Seq) 
 {
+  //Remove duplicates
+  for (Standard_Integer i = 1; i < Seq.Length(); i++)
+    for (Standard_Integer j = i+1; j <= Seq.Length(); j++)
+      if (Seq(i) == Seq(j))
+      {
+        Seq.Remove(j);
+        j--;
+      }
+  
   Standard_Boolean Invert   = Standard_True;
   Standard_Integer NbPoints = Seq.Length();
   Standard_Real    U1,U2;
@@ -189,7 +198,7 @@ static TopoDS_Vertex  UpdateClosedEdge(const TopoDS_Edge&         E,
     if (!VB[0].IsSame(VB[1])) {
 #ifdef OCCT_DEBUG_ALGO
       if (AffichLoop)
-	cout <<"Two different vertices on the closing vertex"<<endl;
+	std::cout <<"Two different vertices on the closing vertex"<<std::endl;
 #endif
     }
     else {
@@ -305,7 +314,7 @@ static Standard_Boolean  SelectEdge(const TopoDS_Face&    F,
 #ifdef OCCT_DEBUG_ALGO  
   if (AffichLoop) {
     if ( LE.Extent() > 2) {
-      cout <<"vertex on more than 2 edges in a face."<<endl;
+      std::cout <<"vertex on more than 2 edges in a face."<<std::endl;
     }
   }
 #endif
@@ -503,7 +512,7 @@ void BRepAlgo_Loop::Perform()
 
 #ifdef OCCT_DEBUG_ALGO
   if (AffichLoop) {
-    cout <<"NewLoop"<<endl;
+    std::cout <<"NewLoop"<<std::endl;
     NbLoops++;
 #ifdef DRAW
     sprintf(name,"FLoop_%d",NbLoops);
@@ -546,6 +555,7 @@ void BRepAlgo_Loop::Perform()
   TopTools_IndexedDataMapOfShapeListOfShape MVE;
 
   // add cut edges.
+  TopTools_MapOfShape Emap;
   for (itl.Initialize(myEdges); itl.More(); itl.Next())
   {
     const TopTools_ListOfShape* pLCE = myCutEdges.Seek (itl.Value());
@@ -553,6 +563,8 @@ void BRepAlgo_Loop::Perform()
     {
       for (itl1.Initialize(*pLCE); itl1.More(); itl1.Next()) {
         TopoDS_Edge& E = TopoDS::Edge(itl1.Value());
+        if (!Emap.Add(E))
+          continue;
         StoreInMVE(myFace,E,MVE,YaCouture,myVerticesForSubstitute);
       }
     }
@@ -570,7 +582,7 @@ void BRepAlgo_Loop::Perform()
 
 #ifdef DRAW
   if (AffichLoop) {
-    cout <<"NewLoop"<<endl;
+    std::cout <<"NewLoop"<<std::endl;
     Standard_Integer NbEdges = 1;
     TopTools_MapOfShape Done;
     for (Standard_Integer iV = 1; iV <= MVE.Extent(); iV++) {
@@ -673,9 +685,9 @@ void BRepAlgo_Loop::Perform()
     }
 #ifdef OCCT_DEBUG_ALGO
     else {
-      cout <<"BRepAlgo_Loop: Open Wire"<<endl;
+      std::cout <<"BRepAlgo_Loop: Open Wire"<<std::endl;
       if (AffichLoop)
-        cout << "OpenWire is : NW_"<<NbLoops<<"_"<<NbWires<<endl;
+        std::cout << "OpenWire is : NW_"<<NbLoops<<"_"<<NbWires<<std::endl;
       }
 #endif
 #ifdef DRAW

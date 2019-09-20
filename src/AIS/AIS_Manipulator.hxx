@@ -106,14 +106,17 @@ public:
   //! Constructs a manipulator object with input location and positions of axes and all parts to be displayed.
   Standard_EXPORT AIS_Manipulator (const gp_Ax2& thePosition);
 
-  //! Destructor.
-  Standard_EXPORT virtual ~AIS_Manipulator() {}
-
   //! Disable or enable visual parts for translation, rotation or scaling for some axis.
   //! By default all parts are enabled (will be displayed).
   //! @warning Enabling or disabling of visual parts of manipulator does not manage the manipulation (selection) mode.
   //! @warning Raises program error if axis index is < 0 or > 2.
   Standard_EXPORT void SetPart (const Standard_Integer theAxisIndex, const AIS_ManipulatorMode theMode, const Standard_Boolean theIsEnabled);
+
+  //! Disable or enable visual parts for translation, rotation or scaling for ALL axes.
+  //! By default all parts are enabled (will be displayed).
+  //! @warning Enabling or disabling of visual parts of manipulator does not manage the manipulation (selection) mode.
+  //! @warning Raises program error if axis index is < 0 or > 2.
+  Standard_EXPORT void SetPart (const AIS_ManipulatorMode theMode, const Standard_Boolean theIsEnabled);
 
   //! Behavior settings to be applied when performing transformation:
   //! - FollowTranslation - whether the manipulator will be moved together with an object.
@@ -215,18 +218,18 @@ public:
   //! @return true if manipulator is attached to some interactive object (has owning object).
   Standard_Boolean IsAttached() const { return HasOwner(); }
 
-  //! @return true if some part of manipulator is selected (tranformation mode is active, and owning object can be rtansformated).
+  //! @return true if some part of manipulator is selected (transformation mode is active, and owning object can be transformed).
   Standard_Boolean HasActiveMode() const { return IsAttached() && myCurrentMode != AIS_MM_None; }
 
   Standard_Boolean HasActiveTransformation() { return myHasStartedTransformation; }
 
-  gp_Trsf StartTransformation() const { return myStartTrsfs.Size() < 1 ? gp_Trsf() : myStartTrsfs(1); }
+  gp_Trsf StartTransformation() const { return !myStartTrsfs.IsEmpty() ? myStartTrsfs.First() : gp_Trsf(); }
 
-  gp_Trsf StartTransformation (const Standard_Integer theIndex) const
+  gp_Trsf StartTransformation (Standard_Integer theIndex) const
   {
     Standard_ProgramError_Raise_if (theIndex < 1 || theIndex > Objects()->Upper(),
       "AIS_Manipulator::StartTransformation(): theIndex is out of bounds");
-    return myStartTrsfs.Size() < 1 ? gp_Trsf() : myStartTrsfs (theIndex);
+    return !myStartTrsfs.IsEmpty() ? myStartTrsfs (theIndex) : gp_Trsf();
   }
 
 public: //! @name Configuration of graphical transformations
@@ -245,7 +248,7 @@ public: //! @name Configuration of graphical transformations
   //! Redefines transform persistence management to setup transformation for sub-presentation of axes.
   //! @warning this interactive object does not support custom transformation persistence when
   //! using \sa ZoomPersistence mode. In this mode the transformation persistence flags for
-  //! presentations are overriden by this class.
+  //! presentations are overridden by this class.
   //! @warning Invokes debug assertion to catch incompatible usage of the method with \sa ZoomPersistence mode,
   //! silently does nothing in release mode.
   //! @warning revise use of AdjustSize argument of of \sa AttachToObjects method
@@ -277,12 +280,14 @@ public:
   //! - FollowRotation - whether the manipulator will be rotated together with an object.
   struct BehaviorOnTransform {
 
-    BehaviorOnTransform() : FollowTranslation (Standard_True), FollowRotation (Standard_True) {}
+    BehaviorOnTransform() : FollowTranslation (Standard_True), FollowRotation (Standard_True), FollowDragging (Standard_True) {}
     BehaviorOnTransform& SetFollowTranslation (const Standard_Boolean theApply) { FollowTranslation = theApply; return *this; }
     BehaviorOnTransform& SetFollowRotation    (const Standard_Boolean theApply) { FollowRotation    = theApply; return *this; }
+    BehaviorOnTransform& SetFollowDragging    (const Standard_Boolean theApply) { FollowDragging    = theApply; return *this; }
 
     Standard_Boolean FollowTranslation;
     Standard_Boolean FollowRotation;
+    Standard_Boolean FollowDragging;
   };
 
   //! Sets behavior settings for transformation action carried on the manipulator,
@@ -298,18 +303,18 @@ public:
 public: //! @name Presentation computation
 
   //! Fills presentation.
-  //! @note Manipulator presentation does not use display mode and for all modes has the same presenatation.
+  //! @note Manipulator presentation does not use display mode and for all modes has the same presentation.
   Standard_EXPORT virtual void Compute (const Handle(PrsMgr_PresentationManager3d)& thePrsMgr,
                                         const Handle(Prs3d_Presentation)& thePrs,
                                         const Standard_Integer theMode = 0) Standard_OVERRIDE;
 
   //! Computes selection sensitive zones (triangulation) for manipulator.
-  //! @param theNode [in] Seldction mode that is treated as transformation mode.
+  //! @param theNode [in] Selection mode that is treated as transformation mode.
   Standard_EXPORT virtual void ComputeSelection (const Handle(SelectMgr_Selection)& theSelection,
                                                  const Standard_Integer theMode) Standard_OVERRIDE;
 
-  //! Disables auto highlighting to use HilightSelected() and HilightOwnerWithColor() overriden methods.
-  Standard_EXPORT virtual Standard_Boolean IsAutoHilight() const Standard_OVERRIDE
+  //! Disables auto highlighting to use HilightSelected() and HilightOwnerWithColor() overridden methods.
+  virtual Standard_Boolean IsAutoHilight() const Standard_OVERRIDE
   {
     return Standard_False;
   }
@@ -352,7 +357,7 @@ protected:
   Standard_EXPORT virtual void setLocalTransformation (const Handle(Geom_Transformation)& theTrsf) Standard_OVERRIDE;
   using AIS_InteractiveObject::SetLocalTransformation; // hide visibility
 
-protected: //! @name Auxilliary classes to fill presentation with proper primitives
+protected: //! @name Auxiliary classes to fill presentation with proper primitives
 
   class Quadric
   {
@@ -443,6 +448,29 @@ protected: //! @name Auxilliary classes to fill presentation with proper primiti
     Handle(Graphic3d_ArrayOfTriangles) myArray;
   };
 
+  class Sector : public Quadric
+  {
+  public:
+
+    Sector()
+      : Quadric(),
+      myRadius(0.0f)
+    { }
+
+    ~Sector() { }
+
+    void Init(const Standard_ShortReal theRadius,
+              const gp_Ax1&            thePosition,
+              const gp_Dir&            theXDirection,
+              const Standard_Integer   theSlicesNb = 5,
+              const Standard_Integer   theStacksNb = 5);
+
+  protected:
+
+    gp_Ax1             myPosition;
+    Standard_ShortReal myRadius;
+  };
+
   //! The class describes on axis sub-object.
   //! It includes sub-objects itself:
   //! -rotator
@@ -482,6 +510,11 @@ protected: //! @name Auxilliary classes to fill presentation with proper primiti
       {
         myHighlightRotator->SetTransformPersistence (theTrsfPers);
       }
+
+      if (!myHighlightDragger.IsNull())
+      {
+        myHighlightDragger->SetTransformPersistence(theTrsfPers);
+      }
     }
 
     void Transform (const Handle(Geom_Transformation)& theTransformation)
@@ -500,6 +533,11 @@ protected: //! @name Auxilliary classes to fill presentation with proper primiti
       {
         myHighlightRotator->SetTransformation (theTransformation);
       }
+
+      if (!myHighlightDragger.IsNull())
+      {
+        myHighlightDragger->SetTransformation(theTransformation);
+      }
     }
 
     Standard_Boolean HasTranslation() const { return myHasTranslation; }
@@ -508,11 +546,15 @@ protected: //! @name Auxilliary classes to fill presentation with proper primiti
 
     Standard_Boolean HasScaling() const { return myHasScaling; }
 
+    Standard_Boolean HasDragging() const { return myHasDragging; }
+
     void SetTranslation (const Standard_Boolean theIsEnabled) { myHasTranslation = theIsEnabled; }
 
     void SetRotation (const Standard_Boolean theIsEnabled) { myHasRotation = theIsEnabled; }
 
     void SetScaling (const Standard_Boolean theIsEnabled) { myHasScaling = theIsEnabled; }
+
+    void SetDragging(const Standard_Boolean theIsEnabled) { myHasDragging = theIsEnabled; }
 
     Quantity_Color Color() const { return myColor; }
 
@@ -528,11 +570,15 @@ protected: //! @name Auxilliary classes to fill presentation with proper primiti
 
     const Handle(Prs3d_Presentation)& ScalerHighlightPrs() const { return myHighlightScaler; }
 
+    const Handle(Prs3d_Presentation)& DraggerHighlightPrs() const { return myHighlightDragger; }
+
     const Handle(Graphic3d_Group)& TranslatorGroup() const { return myTranslatorGroup; }
 
     const Handle(Graphic3d_Group)& RotatorGroup() const { return myRotatorGroup; }
 
     const Handle(Graphic3d_Group)& ScalerGroup() const { return myScalerGroup; }
+
+    const Handle(Graphic3d_Group)& DraggerGroup() const { return myDraggerGroup; }
 
     const Handle(Graphic3d_ArrayOfTriangles)& TriangleArray() const { return myTriangleArray; }
 
@@ -567,6 +613,7 @@ protected: //! @name Auxilliary classes to fill presentation with proper primiti
   public:
 
     const gp_Pnt& TranslatorTipPosition() const { return myArrowTipPos; }
+    const Sector& DraggerSector() const { return mySector; }
     const Disk& RotatorDisk() const { return myCircle; }
     float RotatorDiskRadius() const { return myCircleRadius; }
     const Cube& ScalerCube() const { return myCube; }
@@ -590,11 +637,14 @@ protected: //! @name Auxilliary classes to fill presentation with proper primiti
     Standard_ShortReal myDiskThickness;
     Standard_ShortReal myIndent; //!< Gap between visual part of the manipulator.
 
+    Standard_Boolean myHasDragging;
+
   protected:
 
     Standard_Integer myFacettesNumber;
 
     gp_Pnt   myArrowTipPos;
+    Sector   mySector;
     Disk     myCircle;
     float    myCircleRadius;
     Cube     myCube;
@@ -603,10 +653,12 @@ protected: //! @name Auxilliary classes to fill presentation with proper primiti
     Handle(Graphic3d_Group) myTranslatorGroup;
     Handle(Graphic3d_Group) myScalerGroup;
     Handle(Graphic3d_Group) myRotatorGroup;
+    Handle(Graphic3d_Group) myDraggerGroup;
 
     Handle(Prs3d_Presentation) myHighlightTranslator;
     Handle(Prs3d_Presentation) myHighlightScaler;
     Handle(Prs3d_Presentation) myHighlightRotator;
+    Handle(Prs3d_Presentation) myHighlightDragger;
 
     Handle(Graphic3d_ArrayOfTriangles) myTriangleArray;
 
@@ -616,16 +668,16 @@ protected:
 
   Axis myAxes[3]; //!< Tree axes of the manipulator.
   Sphere myCenter; //!< Visual part displaying the center sphere of the manipulator.
-  gp_Ax2 myPosition; //!< Position of the manipualtor object. it displayes its location and position of its axes.
+  gp_Ax2 myPosition; //!< Position of the manipulator object. it displays its location and position of its axes.
 
   Standard_Integer myCurrentIndex; //!< Index of active axis.
-  AIS_ManipulatorMode myCurrentMode; //!< Name of active manipualtion mode.
+  AIS_ManipulatorMode myCurrentMode; //!< Name of active manipulation mode.
 
   Standard_Boolean myIsActivationOnDetection; //!< Manual activation of modes (not on parts selection).
   Standard_Boolean myIsZoomPersistentMode; //!< Zoom persistence mode activation.
   BehaviorOnTransform myBehaviorOnTransform; //!< Behavior settings applied on manipulator when transforming an object.
 
-protected: //! @name Fields for interactive trnasformation. Fields only for internal needs. They do not have public interface.
+protected: //! @name Fields for interactive transformation. Fields only for internal needs. They do not have public interface.
 
   NCollection_Sequence<gp_Trsf> myStartTrsfs; //!< Owning object transformation for start. It is used internally.
   Standard_Boolean myHasStartedTransformation; //!< Shows if transformation is processed (sequential calls of Transform()).
@@ -633,8 +685,11 @@ protected: //! @name Fields for interactive trnasformation. Fields only for inte
   gp_Pnt myStartPick; //! 3d point corresponding to start mouse pick.
   Standard_Real myPrevState; //! Previous value of angle during rotation.
 
-  //! Aspect used to colour current detected part and current selected part.
+  //! Aspect used to color current detected part and current selected part.
   Handle(Prs3d_ShadingAspect) myHighlightAspect;
+
+  //! Aspect used to color sector part when it's selected.
+  Handle(Prs3d_ShadingAspect) myDraggerHighlight;
 public:
 
   DEFINE_STANDARD_RTTIEXT(AIS_Manipulator, AIS_InteractiveObject)

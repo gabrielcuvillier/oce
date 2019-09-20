@@ -19,7 +19,6 @@
 #include <CDF_DirectoryIterator.hxx>
 #include <CDF_Session.hxx>
 #include <CDF_Store.hxx>
-#include <CDM_COutMessageDriver.hxx>
 #include <PCDM_RetrievalDriver.hxx>
 #include <PCDM_StorageDriver.hxx>
 #include <Plugin.hxx>
@@ -29,9 +28,7 @@
 #include <Standard_ErrorHandler.hxx>
 #include <Standard_NoSuchObject.hxx>
 #include <Standard_NotImplemented.hxx>
-#include <Standard_Type.hxx>
 #include <TCollection_ExtendedString.hxx>
-#include <TDF_Label.hxx>
 #include <TDocStd_Application.hxx>
 #include <TDocStd_Document.hxx>
 #include <TDocStd_Owner.hxx>
@@ -45,10 +42,9 @@ IMPLEMENT_STANDARD_RTTIEXT(TDocStd_Application,CDF_Application)
 //purpose  :
 //=======================================================================
 TDocStd_Application::TDocStd_Application()
-     : myIsDriverLoaded (Standard_True)
+        : myIsDriverLoaded (Standard_True)
 {
-  myMessageDriver = new CDM_COutMessageDriver;
-
+  myMessageDriver = CDM_Application::MessageDriver();
   Handle(CDF_Session) S;
   if (!CDF_Session::Exists()) S = new CDF_Session();
   else S = CDF_Session::CurrentSession();
@@ -58,7 +54,7 @@ TDocStd_Application::TDocStd_Application()
     OCC_CATCH_SIGNALS
     S->LoadDriver();
   }
-  catch (Plugin_Failure)
+  catch (Plugin_Failure const&)
   {
     myIsDriverLoaded = Standard_False;
   }
@@ -78,7 +74,7 @@ Standard_Boolean TDocStd_Application::IsDriverLoaded() const
 //function : MessageDriver
 //purpose  :
 //=======================================================================
-Handle(CDM_MessageDriver) TDocStd_Application::MessageDriver()
+Handle(Message_Messenger) TDocStd_Application::MessageDriver()
 {
   return myMessageDriver;
 }
@@ -304,15 +300,15 @@ PCDM_ReaderStatus TDocStd_Application::Open(const TCollection_ExtendedString& pa
 //    status = GetRetrieveStatus();
     if (!MessageDriver().IsNull()) {
 //      Standard_SStream aMsg;
-//      aMsg << Standard_Failure::Caught() << endl;
-//      cout << "TDocStd_Application::Open(): " << aMsg.rdbuf()->str() << endl;
+//      aMsg << Standard_Failure::Caught() << std::endl;
+//      std::cout << "TDocStd_Application::Open(): " << aMsg.rdbuf()->str() << std::endl;
       TCollection_ExtendedString aString (anException.GetMessageString());
-      MessageDriver()->Write(aString.ToExtString());
+      MessageDriver()->Send(aString.ToExtString(), Message_Fail);
     }
   }
   status = GetRetrieveStatus();
 #ifdef OCCT_DEBUG
-  cout<<"TDocStd_Application::Open(): The status = "<<status<<endl;
+  std::cout<<"TDocStd_Application::Open(): The status = "<<status<<std::endl;
 #endif
   return status;
 }
@@ -339,7 +335,7 @@ PCDM_ReaderStatus TDocStd_Application::Open (Standard_IStream& theIStream, Handl
     if (!MessageDriver().IsNull())
     {
       TCollection_ExtendedString aFailureMessage (anException.GetMessageString());
-      MessageDriver()->Write (aFailureMessage.ToExtString());
+      MessageDriver()->Send (aFailureMessage.ToExtString(), Message_Fail);
     }
   }
 
@@ -365,7 +361,7 @@ PCDM_StoreStatus TDocStd_Application::SaveAs(const Handle(TDocStd_Document)& D,c
     aMsg += directory;
     aMsg += " does not exist";
     if(!MessageDriver().IsNull())
-      MessageDriver()->Write(aMsg.ToExtString());
+      MessageDriver()->Send(aMsg.ToExtString(), Message_Fail);
     return storer.StoreStatus(); //CDF_SS_Failure;
   }
   storer.SetName (file);
@@ -376,13 +372,13 @@ PCDM_StoreStatus TDocStd_Application::SaveAs(const Handle(TDocStd_Document)& D,c
   catch (Standard_Failure const& anException) {
     if (!MessageDriver().IsNull()) {
       TCollection_ExtendedString aString (anException.GetMessageString());
-      MessageDriver()->Write(aString.ToExtString());
+      MessageDriver()->Send(aString.ToExtString(), Message_Fail);
     }
   }
   if(storer.StoreStatus() == PCDM_SS_OK)
     D->SetSaved();
 #ifdef OCCT_DEBUG
-  cout<<"TDocStd_Application::SaveAs(): The status = "<<storer.StoreStatus()<<endl;
+  std::cout<<"TDocStd_Application::SaveAs(): The status = "<<storer.StoreStatus()<<std::endl;
 #endif
   return storer.StoreStatus();
 }
@@ -417,7 +413,7 @@ PCDM_StoreStatus TDocStd_Application::SaveAs (const Handle(TDocStd_Document)& th
     if (!MessageDriver().IsNull())
     {
       TCollection_ExtendedString aString(anException.GetMessageString());
-      MessageDriver()->Write(aString.ToExtString());
+      MessageDriver()->Send(aString.ToExtString(), Message_Fail);
     }
   }
   return PCDM_SS_Failure;
@@ -439,7 +435,7 @@ PCDM_StoreStatus TDocStd_Application::Save (const Handle(TDocStd_Document)& D) {
     catch (Standard_Failure const& anException) {
       if (!MessageDriver().IsNull()) {
         TCollection_ExtendedString aString (anException.GetMessageString());
-        MessageDriver()->Write(aString.ToExtString());
+        MessageDriver()->Send(aString.ToExtString(), Message_Fail);
       }
     }
     if(storer.StoreStatus() == PCDM_SS_OK)
@@ -448,12 +444,12 @@ PCDM_StoreStatus TDocStd_Application::Save (const Handle(TDocStd_Document)& D) {
   } else {
     if(!MessageDriver().IsNull()) {
       TCollection_ExtendedString aMsg("Document has not been saved yet");
-      MessageDriver()->Write(aMsg.ToExtString());
+      MessageDriver()->Send(aMsg.ToExtString(), Message_Fail);
     }
     status = PCDM_SS_Failure;
   }
 #ifdef OCCT_DEBUG
-  cout<<"TDocStd_Application::Save(): The status = "<<status<<endl;
+  std::cout<<"TDocStd_Application::Save(): The status = "<<status<<std::endl;
 #endif
   return status;
 }
@@ -464,8 +460,8 @@ PCDM_StoreStatus TDocStd_Application::Save (const Handle(TDocStd_Document)& D) {
 //=======================================================================
 
 PCDM_StoreStatus TDocStd_Application::SaveAs(const Handle(TDocStd_Document)& D,
-					      const TCollection_ExtendedString& path,
-					      TCollection_ExtendedString& theStatusMessage) 
+                                             const TCollection_ExtendedString& path,
+                                             TCollection_ExtendedString& theStatusMessage) 
 { 
   TDocStd_PathParser tool (path);
   PCDM_StoreStatus aStatus = PCDM_SS_Failure;
@@ -484,7 +480,7 @@ PCDM_StoreStatus TDocStd_Application::SaveAs(const Handle(TDocStd_Document)& D,
     catch (Standard_Failure const& anException) {
       if (!MessageDriver().IsNull()) {
         TCollection_ExtendedString aString (anException.GetMessageString());
-        MessageDriver()->Write(aString.ToExtString());
+        MessageDriver()->Send(aString.ToExtString(), Message_Fail);
       }
     }
     if(storer.StoreStatus() == PCDM_SS_OK)
@@ -533,7 +529,7 @@ PCDM_StoreStatus TDocStd_Application::SaveAs (const Handle(TDocStd_Document)& th
     if (!MessageDriver().IsNull())
     {
       TCollection_ExtendedString aString(anException.GetMessageString());
-      MessageDriver()->Write(aString.ToExtString());
+      MessageDriver()->Send(aString.ToExtString(), Message_Fail);
     }
   }
   return PCDM_SS_Failure;
@@ -545,7 +541,7 @@ PCDM_StoreStatus TDocStd_Application::SaveAs (const Handle(TDocStd_Document)& th
 //=======================================================================
 
 PCDM_StoreStatus TDocStd_Application::Save (const Handle(TDocStd_Document)& D,
-					   TCollection_ExtendedString& theStatusMessage)
+                                            TCollection_ExtendedString& theStatusMessage)
 {  
   PCDM_StoreStatus status = PCDM_SS_OK;
   if (D->IsSaved()) {  
@@ -557,7 +553,7 @@ PCDM_StoreStatus TDocStd_Application::Save (const Handle(TDocStd_Document)& D,
     catch (Standard_Failure const& anException) {
       if (!MessageDriver().IsNull()) {
         TCollection_ExtendedString aString (anException.GetMessageString());
-        MessageDriver()->Write(aString.ToExtString());
+        MessageDriver()->Send(aString.ToExtString(), Message_Fail);
       }
     }
     if(storer.StoreStatus() == PCDM_SS_OK)

@@ -19,6 +19,8 @@
 #include <Bnd_Box.hxx>
 #include <BRep_Builder.hxx>
 #include <DBRep.hxx>
+#include <DDocStd.hxx>
+#include <DDocStd_DrawDocument.hxx>
 #include <Draw.hxx>
 #include <Draw_Interpretor.hxx>
 #include <Draw_PluginMacro.hxx>
@@ -40,7 +42,10 @@
 #include <Quantity_Color.hxx>
 #include <Quantity_HArray1OfColor.hxx>
 #include <Quantity_NameOfColor.hxx>
+#include <RWGltf_CafReader.hxx>
 #include <RWStl.hxx>
+#include <RWObj.hxx>
+#include <RWObj_CafReader.hxx>
 #include <SelectMgr_SelectionManager.hxx>
 #include <Standard_ErrorHandler.hxx>
 #include <StdSelect_ViewerSelector3d.hxx>
@@ -51,8 +56,12 @@
 #include <TColStd_Array1OfReal.hxx>
 #include <TColStd_HPackedMapOfInteger.hxx>
 #include <TColStd_MapIteratorOfPackedMapOfInteger.hxx>
+#include <TDataStd_Name.hxx>
+#include <TDocStd_Application.hxx>
 #include <TopoDS_Face.hxx>
 #include <TopoDS_Shape.hxx>
+#include <UnitsAPI.hxx>
+#include <UnitsMethods.hxx>
 #include <V3d_View.hxx>
 #include <ViewerTest.hxx>
 #include <VrmlAPI.hxx>
@@ -75,6 +84,126 @@
 extern Standard_Boolean VDisplayAISObject (const TCollection_AsciiString& theName,
                                            const Handle(AIS_InteractiveObject)& theAISObj,
                                            Standard_Boolean theReplaceIfExists = Standard_True);
+
+//=============================================================================
+//function : ReadGltf
+//purpose  : Reads glTF file
+//=============================================================================
+static Standard_Integer ReadGltf (Draw_Interpretor& theDI,
+                                  Standard_Integer theNbArgs,
+                                  const char** theArgVec)
+{
+  TCollection_AsciiString aDestName, aFilePath;
+  Standard_Boolean toUseExistingDoc = Standard_False;
+  Standard_Real aSystemUnitFactor = UnitsMethods::GetCasCadeLengthUnit() * 0.001;
+  Standard_Boolean toListExternalFiles = Standard_False;
+  Standard_Boolean isParallel = Standard_False;
+  Standard_Boolean isNoDoc = (TCollection_AsciiString(theArgVec[0]) == "readgltf");
+  for (Standard_Integer anArgIter = 1; anArgIter < theNbArgs; ++anArgIter)
+  {
+    TCollection_AsciiString anArgCase (theArgVec[anArgIter]);
+    anArgCase.LowerCase();
+    if (!isNoDoc
+     && (anArgCase == "-nocreate"
+      || anArgCase == "-nocreatedoc"))
+    {
+      toUseExistingDoc = Standard_True;
+      if (anArgIter + 1 < theNbArgs
+       && ViewerTest::ParseOnOff (theArgVec[anArgIter + 1], toUseExistingDoc))
+      {
+        ++anArgIter;
+      }
+    }
+    else if (anArgCase == "-parallel")
+    {
+      isParallel = Standard_True;
+      if (anArgIter + 1 < theNbArgs
+       && ViewerTest::ParseOnOff (theArgVec[anArgIter + 1], isParallel))
+      {
+        ++anArgIter;
+      }
+    }
+    else if (anArgCase == "-listexternalfiles"
+          || anArgCase == "-listexternals"
+          || anArgCase == "-listexternal"
+          || anArgCase == "-external"
+          || anArgCase == "-externalfiles")
+    {
+      toListExternalFiles = Standard_True;
+    }
+    else if (aDestName.IsEmpty())
+    {
+      aDestName = theArgVec[anArgIter];
+    }
+    else if (aFilePath.IsEmpty())
+    {
+      aFilePath = theArgVec[anArgIter];
+    }
+    else
+    {
+      std::cout << "Syntax error at '" << theArgVec[anArgIter] << "'\n";
+      return 1;
+    }
+  }
+  if (aFilePath.IsEmpty())
+  {
+    std::cout << "Syntax error: wrong number of arguments\n";
+    return 1;
+  }
+
+  Handle(Draw_ProgressIndicator) aProgress = new Draw_ProgressIndicator (theDI, 1);
+  Handle(TDocStd_Document) aDoc;
+  if (!toListExternalFiles
+   && !isNoDoc)
+  {
+    Handle(TDocStd_Application) anApp = DDocStd::GetApplication();
+    Standard_CString aNameVar = aDestName.ToCString();
+    DDocStd::GetDocument (aNameVar, aDoc, Standard_False);
+    if (aDoc.IsNull())
+    {
+      if (toUseExistingDoc)
+      {
+        std::cout << "Error: document with name " << aDestName << " does not exist\n";
+        return 1;
+      }
+      anApp->NewDocument (TCollection_ExtendedString ("BinXCAF"), aDoc);
+    }
+    else if (!toUseExistingDoc)
+    {
+      std::cout << "Error: document with name " << aDestName << " already exists\n";
+      return 1;
+    }
+  }
+
+  RWGltf_CafReader aReader;
+  aReader.SetSystemLengthUnit (aSystemUnitFactor);
+  aReader.SetSystemCoordinateSystem (RWMesh_CoordinateSystem_Zup);
+  aReader.SetDocument (aDoc);
+  aReader.SetParallel (isParallel);
+  if (toListExternalFiles)
+  {
+    aReader.ProbeHeader (aFilePath);
+    for (NCollection_IndexedMap<TCollection_AsciiString>::Iterator aFileIter (aReader.ExternalFiles()); aFileIter.More(); aFileIter.Next())
+    {
+      theDI << "\"" << aFileIter.Value() << "\" ";
+    }
+  }
+  else
+  {
+    aReader.Perform (aFilePath, aProgress);
+    if (isNoDoc)
+    {
+      DBRep::Set (aDestName.ToCString(), aReader.SingleShape());
+    }
+    else
+    {
+      Handle(DDocStd_DrawDocument) aDrawDoc = new DDocStd_DrawDocument (aDoc);
+      TDataStd_Name::Set (aDoc->GetData()->Root(), aDestName.ToCString());
+      Draw::Set (aDestName.ToCString(), aDrawDoc);
+    }
+  }
+  return 0;
+}
 
 static Standard_Integer writestl
 (Draw_Interpretor& di, Standard_Integer argc, const char** argv)
@@ -105,36 +234,265 @@ static Standard_Integer readstl(Draw_Interpretor& theDI,
                                 Standard_Integer theArgc,
                                 const char** theArgv)
 {
-  if (theArgc < 3)
+  TCollection_AsciiString aShapeName, aFilePath;
+  bool toCreateCompOfTris = false;
+  for (Standard_Integer anArgIter = 1; anArgIter < theArgc; ++anArgIter)
   {
-    theDI << "wrong number of parameters" << "\n";
-    return 1;
-  }
-  else
-  {
-    if (theArgc == 4 &&
-        strcmp("triangulation", theArgv[3]) == 0)
+    TCollection_AsciiString anArg (theArgv[anArgIter]);
+    anArg.LowerCase();
+    if (aShapeName.IsEmpty())
     {
-      // Read STL file to the triangulation.
-      Handle(Draw_ProgressIndicator) aProgress = new Draw_ProgressIndicator (theDI, 1);
-      Handle(Poly_Triangulation) aTriangulation = RWStl::ReadFile (theArgv[2], aProgress);
-
-      TopoDS_Face aFace;
-      BRep_Builder aB;
-      aB.MakeFace(aFace);
-      aB.UpdateFace(aFace, aTriangulation);
-      DBRep::Set(theArgv[1], aFace);
+      aShapeName = theArgv[anArgIter];
+    }
+    else if (aFilePath.IsEmpty())
+    {
+      aFilePath = theArgv[anArgIter];
+    }
+    else if (anArg == "-brep")
+    {
+      toCreateCompOfTris = true;
+      if (anArgIter + 1 < theArgc
+       && ViewerTest::ParseOnOff (theArgv[anArgIter + 1], toCreateCompOfTris))
+      {
+        ++anArgIter;
+      }
     }
     else
     {
-      TopoDS_Shape aShape;
-      Standard_DISABLE_DEPRECATION_WARNINGS
-      StlAPI::Read(aShape, theArgv[2]);
-      Standard_ENABLE_DEPRECATION_WARNINGS
-      DBRep::Set(theArgv[1], aShape);
+      std::cout << "Syntax error: unknown argument '" << theArgv[anArgIter] << "'\n";
+      return 1;
+    }
+  }
+  if (aFilePath.IsEmpty())
+  {
+    std::cout << "Syntax error: not enough arguments\n";
+    return 1;
+  }
+
+  TopoDS_Shape aShape;
+  if (!toCreateCompOfTris)
+  {
+    // Read STL file to the triangulation.
+    Handle(Draw_ProgressIndicator) aProgress = new Draw_ProgressIndicator (theDI, 1);
+    Handle(Poly_Triangulation) aTriangulation = RWStl::ReadFile (aFilePath.ToCString(), aProgress);
+
+    TopoDS_Face aFace;
+    BRep_Builder aB;
+    aB.MakeFace (aFace);
+    aB.UpdateFace (aFace, aTriangulation);
+    aShape = aFace;
+  }
+  else
+  {
+    Standard_DISABLE_DEPRECATION_WARNINGS
+    StlAPI::Read(aShape, aFilePath.ToCString());
+    Standard_ENABLE_DEPRECATION_WARNINGS
+  }
+  DBRep::Set (aShapeName.ToCString(), aShape);
+  return 0;
+}
+
+//! Parse RWMesh_CoordinateSystem enumeration.
+static Standard_Boolean parseCoordinateSystem (const char* theArg,
+                                               RWMesh_CoordinateSystem& theSystem)
+{
+  TCollection_AsciiString aCSStr (theArg);
+  aCSStr.LowerCase();
+  if (aCSStr == "zup")
+  {
+    theSystem = RWMesh_CoordinateSystem_Zup;
+  }
+  else if (aCSStr == "yup")
+  {
+    theSystem = RWMesh_CoordinateSystem_Yup;
+  }
+  else
+  {
+    return Standard_False;
+  }
+  return Standard_True;
+}
+
+//=============================================================================
+//function : ReadObj
+//purpose  : Reads OBJ file
+//=============================================================================
+static Standard_Integer ReadObj (Draw_Interpretor& theDI,
+                                 Standard_Integer theNbArgs,
+                                 const char** theArgVec)
+{
+  TCollection_AsciiString aDestName, aFilePath;
+  Standard_Boolean toUseExistingDoc = Standard_False;
+  Standard_Real aFileUnitFactor = -1.0;
+  RWMesh_CoordinateSystem aResultCoordSys = RWMesh_CoordinateSystem_Zup, aFileCoordSys = RWMesh_CoordinateSystem_Yup;
+  Standard_Boolean toListExternalFiles = Standard_False, isSingleFace = Standard_False, isSinglePrecision = Standard_False;
+  Standard_Boolean isNoDoc = (TCollection_AsciiString(theArgVec[0]) == "readobj");
+  for (Standard_Integer anArgIter = 1; anArgIter < theNbArgs; ++anArgIter)
+  {
+    TCollection_AsciiString anArgCase (theArgVec[anArgIter]);
+    anArgCase.LowerCase();
+    if (anArgIter + 1 < theNbArgs
+     && (anArgCase == "-unit"
+      || anArgCase == "-units"
+      || anArgCase == "-fileunit"
+      || anArgCase == "-fileunits"))
+    {
+      const TCollection_AsciiString aUnitStr (theArgVec[++anArgIter]);
+      aFileUnitFactor = UnitsAPI::AnyToSI (1.0, aUnitStr.ToCString());
+      if (aFileUnitFactor <= 0.0)
+      {
+        std::cout << "Syntax error: wrong length unit '" << aUnitStr << "'\n";
+        return 1;
+      }
+    }
+    else if (anArgIter + 1 < theNbArgs
+          && (anArgCase == "-filecoordinatesystem"
+           || anArgCase == "-filecoordsystem"
+           || anArgCase == "-filecoordsys"))
+    {
+      if (!parseCoordinateSystem (theArgVec[++anArgIter], aFileCoordSys))
+      {
+        std::cout << "Syntax error: unknown coordinate system '" << theArgVec[anArgIter] << "'\n";
+        return 1;
+      }
+    }
+    else if (anArgIter + 1 < theNbArgs
+          && (anArgCase == "-resultcoordinatesystem"
+           || anArgCase == "-resultcoordsystem"
+           || anArgCase == "-resultcoordsys"
+           || anArgCase == "-rescoordsys"))
+    {
+      if (!parseCoordinateSystem (theArgVec[++anArgIter], aResultCoordSys))
+      {
+        std::cout << "Syntax error: unknown coordinate system '" << theArgVec[anArgIter] << "'\n";
+        return 1;
+      }
+    }
+    else if (anArgCase == "-singleprecision"
+          || anArgCase == "-singleprec")
+    {
+      isSinglePrecision = Standard_True;
+      if (anArgIter + 1 < theNbArgs
+       && ViewerTest::ParseOnOff (theArgVec[anArgIter + 1], isSinglePrecision))
+      {
+        ++anArgIter;
+      }
+    }
+    else if (isNoDoc
+          && (anArgCase == "-singleface"
+           || anArgCase == "-singletriangulation"))
+    {
+      isSingleFace = Standard_True;
+    }
+    else if (!isNoDoc
+          && (anArgCase == "-nocreate"
+           || anArgCase == "-nocreatedoc"))
+    {
+      toUseExistingDoc = Standard_True;
+      if (anArgIter + 1 < theNbArgs
+       && ViewerTest::ParseOnOff (theArgVec[anArgIter + 1], toUseExistingDoc))
+      {
+        ++anArgIter;
+      }
+    }
+    else if (anArgCase == "-listexternalfiles"
+          || anArgCase == "-listexternals"
+          || anArgCase == "-listexternal"
+          || anArgCase == "-external"
+          || anArgCase == "-externalfiles")
+    {
+      toListExternalFiles = Standard_True;
+    }
+    else if (aDestName.IsEmpty())
+    {
+      aDestName = theArgVec[anArgIter];
+    }
+    else if (aFilePath.IsEmpty())
+    {
+      aFilePath = theArgVec[anArgIter];
+    }
+    else
+    {
+      std::cout << "Syntax error at '" << theArgVec[anArgIter] << "'\n";
+      return 1;
+    }
+  }
+  if (aFilePath.IsEmpty())
+  {
+    std::cout << "Syntax error: wrong number of arguments\n";
+    return 1;
+  }
+
+  Handle(Draw_ProgressIndicator) aProgress = new Draw_ProgressIndicator (theDI, 1);
+  Handle(TDocStd_Document) aDoc;
+  if (!isNoDoc
+   && !toListExternalFiles)
+  {
+    Handle(TDocStd_Application) anApp = DDocStd::GetApplication();
+    Standard_CString aNameVar = aDestName.ToCString();
+    DDocStd::GetDocument (aNameVar, aDoc, Standard_False);
+    if (aDoc.IsNull())
+    {
+      if (toUseExistingDoc)
+      {
+        std::cout << "Error: document with name " << aDestName << " does not exist\n";
+        return 1;
+      }
+      anApp->NewDocument (TCollection_ExtendedString ("BinXCAF"), aDoc);
+    }
+    else if (!toUseExistingDoc)
+    {
+      std::cout << "Error: document with name " << aDestName << " already exists\n";
+      return 1;
     }
   }
 
+  RWObj_CafReader aReader;
+  aReader.SetSinglePrecision (isSinglePrecision);
+  aReader.SetSystemLengthUnit (UnitsMethods::GetCasCadeLengthUnit() * 0.001);
+  aReader.SetSystemCoordinateSystem (aResultCoordSys);
+  aReader.SetFileLengthUnit (aFileUnitFactor);
+  aReader.SetFileCoordinateSystem (aFileCoordSys);
+  aReader.SetDocument (aDoc);
+  if (isSingleFace)
+  {
+    RWObj_TriangulationReader aSimpleReader;
+    aSimpleReader.SetSinglePrecision (isSinglePrecision);
+    aSimpleReader.SetCreateShapes (Standard_False);
+    aSimpleReader.SetTransformation (aReader.CoordinateSystemConverter());
+    aSimpleReader.Read (aFilePath.ToCString(), aProgress);
+
+    Handle(Poly_Triangulation) aTriangulation = aSimpleReader.GetTriangulation();
+    TopoDS_Face aFace;
+    BRep_Builder aBuiler;
+    aBuiler.MakeFace (aFace);
+    aBuiler.UpdateFace (aFace, aTriangulation);
+    DBRep::Set (aDestName.ToCString(), aFace);
+    return 0;
+  }
+
+  if (toListExternalFiles)
+  {
+    aReader.ProbeHeader (aFilePath);
+    for (NCollection_IndexedMap<TCollection_AsciiString>::Iterator aFileIter (aReader.ExternalFiles()); aFileIter.More(); aFileIter.Next())
+    {
+      theDI << "\"" << aFileIter.Value() << "\" ";
+    }
+  }
+  else
+  {
+    aReader.Perform (aFilePath, aProgress);
+    if (isNoDoc)
+    {
+      DBRep::Set (aDestName.ToCString(), aReader.SingleShape());
+    }
+    else
+    {
+      Handle(DDocStd_DrawDocument) aDrawDoc = new DDocStd_DrawDocument (aDoc);
+      TDataStd_Name::Set (aDoc->GetData()->Root(), aDestName.ToCString());
+      Draw::Set (aDestName.ToCString(), aDrawDoc);
+    }
+  }
   return 0;
 }
 
@@ -193,10 +551,10 @@ static Standard_Integer loadvrml
     VrmlData_DataMapOfShapeAppearance aShapeAppMap;
 
     //-----------------------------------------------------------
-    filebuf aFic;
-    istream aStream (&aFic);
+    std::filebuf aFic;
+    std::istream aStream (&aFic);
 
-    if (aFic.open(argv[2], ios::in)) {
+    if (aFic.open(argv[2], std::ios::in)) {
 
       // Get path of the VRML file.
       OSD_Path aPath(argv[2]);
@@ -214,6 +572,8 @@ static Standard_Integer loadvrml
       }
 
       VrmlData_Scene aScene;
+      Standard_Real anOCCUnit = UnitsMethods::GetCasCadeLengthUnit();
+      aScene.SetLinearScale(1000. / anOCCUnit);
 
       aScene.SetVrmlDir (aVrmlDir);
       aScene << aStream;
@@ -531,13 +891,6 @@ static Standard_Integer mdisplay
         di << "The context is null\n";
       else
       {
-        Standard_DISABLE_DEPRECATION_WARNINGS
-        if (aContext->HasOpenedContext())
-        {
-          aContext->CloseLocalContext();
-        }
-        Standard_ENABLE_DEPRECATION_WARNINGS
-
         aContext->Display (aMesh, Standard_True);
       }
     }
@@ -561,13 +914,6 @@ static Standard_Integer merase
         di << "The context is null\n";
       else
       {
-        Standard_DISABLE_DEPRECATION_WARNINGS
-        if (aContext->HasOpenedContext())
-        {
-          aContext->CloseLocalContext();
-        }
-        Standard_ENABLE_DEPRECATION_WARNINGS
-
         aContext->Erase (aMesh, Standard_True);
       }
     }
@@ -854,7 +1200,7 @@ static Standard_Integer meshcolors( Draw_Interpretor& di,
               try {
                 OCC_CATCH_SIGNALS
                 aScaleValue = (aCoords.Value(1) - (Standard_Real) aMinX) / aDelta;
-              } catch(Standard_Failure) {
+              } catch(Standard_Failure const&) {
                 aScaleValue = 0;
               }
 
@@ -879,7 +1225,7 @@ static Standard_Integer meshcolors( Draw_Interpretor& di,
         }
       }
   }
-  catch ( Standard_Failure )
+  catch ( Standard_Failure const& )
   {
     di << "Error\n";
   }
@@ -1198,7 +1544,7 @@ static Standard_Integer mesh_edge_width( Draw_Interpretor& di,
       aDrawer->SetDouble( MeshVS_DA_EdgeWidth, aWidth );
       anIC->Redisplay (aMesh, Standard_True);
   }
-  catch ( Standard_Failure )
+  catch ( Standard_Failure const& )
   {
     di << "Error\n";
   }
@@ -1245,10 +1591,44 @@ void  XSDRAWSTLVRML::InitCommands (Draw_Interpretor& theCommands)
   const char* g = "XSTEP-STL/VRML";  // Step transfer file commands
   //XSDRAW::LoadDraw(theCommands);
 
+  theCommands.Add ("ReadGltf",
+                   "ReadGltf Doc file [-parallel {on|off}] [-listExternalFiles] [-noCreateDoc]"
+                   "\n\t\t: Read glTF file into XDE document."
+                   "\n\t\t:   -listExternalFiles do not read mesh and only list external files"
+                   "\n\t\t:   -noCreateDoc read into existing XDE document",
+                   __FILE__, ReadGltf, g);
+  theCommands.Add ("readgltf",
+                   "readgltf shape file"
+                   "\n\t\t: Same as ReadGltf but reads glTF file into a shape instead of a document.",
+                   __FILE__, ReadGltf, g);
   theCommands.Add ("writevrml", "shape file [version VRML#1.0/VRML#2.0 (1/2): 2 by default] [representation shaded/wireframe/both (0/1/2): 1 by default]",__FILE__,writevrml,g);
   theCommands.Add ("writestl",  "shape file [ascii/binary (0/1) : 1 by default] [InParallel (0/1) : 0 by default]",__FILE__,writestl,g);
-  theCommands.Add ("readstl",   "shape file [triangulation: no by default]",__FILE__,readstl,g);
+  theCommands.Add ("readstl",
+                   "readstl shape file [-brep]"
+                   "\n\t\t: Reads STL file and creates a new shape with specified name."
+                   "\n\t\t: When -brep is specified, creates a Compound of per-triangle Faces."
+                   "\n\t\t: Single triangulation-only Face is created otherwise (default).",
+                   __FILE__, readstl, g);
   theCommands.Add ("loadvrml" , "shape file",__FILE__,loadvrml,g);
+  theCommands.Add ("ReadObj",
+                   "ReadObj Doc file [-fileCoordSys {Zup|Yup}] [-fileUnit Unit]"
+           "\n\t\t:                  [-resultCoordSys {Zup|Yup}] [-singlePrecision]"
+           "\n\t\t:                  [-listExternalFiles] [-noCreateDoc]"
+           "\n\t\t: Read OBJ file into XDE document."
+           "\n\t\t:   -fileUnit       length unit of OBJ file content;"
+           "\n\t\t:   -fileCoordSys   coordinate system defined by OBJ file; Yup when not specified."
+           "\n\t\t:   -resultCoordSys result coordinate system; Zup when not specified."
+           "\n\t\t:   -singlePrecision truncate vertex data to single precision during read; FALSE by default."
+           "\n\t\t:   -listExternalFiles do not read mesh and only list external files."
+           "\n\t\t:   -noCreateDoc    read into existing XDE document.",
+                   __FILE__, ReadObj, g);
+  theCommands.Add ("readobj",
+                   "readobj shape file [-fileCoordSys {Zup|Yup}] [-fileUnit Unit]"
+           "\n\t\t:                    [-resultCoordSys {Zup|Yup}] [-singlePrecision]"
+           "\n\t\t:                    [-singleFace]"
+           "\n\t\t: Same as ReadObj but reads OBJ file into a shape instead of a document."
+           "\n\t\t:   -singleFace merge OBJ content into a single triangulation Face.",
+           __FILE__, ReadObj, g);
 
   theCommands.Add ("meshfromstl",     "creates MeshVS_Mesh from STL file",            __FILE__, createmesh,      g );
   theCommands.Add ("mesh3delem",      "creates 3d element mesh to test",              __FILE__, create3d,        g );

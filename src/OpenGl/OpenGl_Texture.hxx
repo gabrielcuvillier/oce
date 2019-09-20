@@ -15,11 +15,12 @@
 #ifndef _OpenGl_Texture_H__
 #define _OpenGl_Texture_H__
 
+#include <Graphic3d_CubeMap.hxx>
 #include <OpenGl_GlCore13.hxx>
 #include <OpenGl_NamedResource.hxx>
 #include <OpenGl_Sampler.hxx>
-#include <Graphic3d_TypeOfTexture.hxx>
 #include <Graphic3d_TextureUnit.hxx>
+#include <Graphic3d_TypeOfTexture.hxx>
 
 class Graphic3d_TextureParams;
 class Image_PixMap;
@@ -289,6 +290,11 @@ public:
   //! Helpful constants
   static const GLuint NO_TEXTURE = 0;
 
+  //! Return pixel size of pixel format in bytes.
+  //! Note that this method considers that OpenGL natively supports this pixel format,
+  //! which might be not the case - in the latter case, actual pixel size might differ!
+  Standard_EXPORT static Standard_Size PixelSizeOfPixelFormat (Standard_Integer theInternalFormat);
+
 public:
 
   //! Create uninitialized texture.
@@ -332,6 +338,12 @@ public:
   inline GLenum GetFormat() const
   {
     return myTextFormat;
+  }
+  
+  //! @return texture format (sized)
+  GLint SizedFormat() const
+  {
+    return mySizedFormat;
   }
 
   //! Return true for GL_RED and GL_ALPHA formats.
@@ -411,6 +423,12 @@ public:
                              const Graphic3d_TypeOfTexture theType,
                              const Image_PixMap*           theImage = NULL);
 
+  //! Initialize the texture with Graphic3d_TextureMap.
+  //! It is an universal way to initialize.
+  //! Sitable initialization method will be chosen. 
+  Standard_EXPORT bool Init (const Handle(OpenGl_Context)&       theCtx,
+                             const Handle(Graphic3d_TextureMap)& theTextureMap);
+
   //! Initialize the 2D multisampling texture using glTexImage2DMultisample().
   Standard_EXPORT bool Init2DMultisample (const Handle(OpenGl_Context)& theCtx,
                                           const GLsizei                 theNbSamples,
@@ -435,15 +453,52 @@ public:
                                const Standard_Integer        theSizeZ,
                                const void*                   thePixels);
 
+  //! Initializes 6 sides of cubemap.
+  //! If theCubeMap is not NULL then size and format will be taken from it
+  //! and corresponding arguments will be ignored.
+  //! Otherwise this parametres will be taken from arguments.
+  //! theToGenMipmap allows to generate mipmaped cubemap.
+  Standard_EXPORT bool InitCubeMap (const Handle(OpenGl_Context)&    theCtx,
+                                    const Handle(Graphic3d_CubeMap)& theCubeMap,
+                                    Standard_Size                    theSize = 0,
+                                    Image_Format                     theFormat = Image_Format_RGB,
+                                    Standard_Boolean                 theToGenMipmap = Standard_False);
+
+  //! The same InitCubeMap but there is another order of arguments.
+  bool InitCubeMap (const Handle(OpenGl_Context)&    theCtx,
+                    const Handle(Graphic3d_CubeMap)& theCubeMap,
+                    Standard_Boolean                 theToGenMipmap,
+                    Standard_Size                    theSize = 0,
+                    Image_Format                     theFormat = Image_Format_RGB)
+  {
+    return InitCubeMap (theCtx, theCubeMap, theSize, theFormat, theToGenMipmap);
+  }
+
   //! @return true if texture was generated within mipmaps
   Standard_Boolean HasMipmaps() const { return myHasMipmaps; }
 
-  //! Return texture type and format by Image_PixMap data format.
+  //! Return texture type and format by Image_Format.
   Standard_EXPORT static bool GetDataFormat (const Handle(OpenGl_Context)& theCtx,
-                                             const Image_PixMap&           theData,
+                                             const Image_Format            theFromat,
                                              GLint&                        theTextFormat,
                                              GLenum&                       thePixelFormat,
                                              GLenum&                       theDataType);
+
+  //! Return texture type and format by Image_PixMap data format.
+  static bool GetDataFormat (const Handle(OpenGl_Context)& theCtx,
+                             const Image_PixMap&           theData,
+                             GLint&                        theTextFormat,
+                             GLenum&                       thePixelFormat,
+                             GLenum&                       theDataType)
+  {
+    return GetDataFormat (theCtx, theData.Format(), theTextFormat, thePixelFormat, theDataType);
+  }
+
+  //! Returns estimated GPU memory usage for holding data without considering overheads and allocation alignment rules.
+  Standard_EXPORT virtual Standard_Size EstimatedDataSize() const Standard_OVERRIDE;
+
+  //! Returns TRUE for point sprite texture.
+  virtual bool IsPointSprite() const { return false; }
 
 protected:
 
@@ -460,6 +515,8 @@ protected:
   GLsizei          mySizeY;      //!< texture height
   GLsizei          mySizeZ;      //!< texture depth
   GLenum           myTextFormat; //!< texture format - GL_RGB, GL_RGBA,...
+  GLint            mySizedFormat;//!< internal (sized) texture format
+  Standard_Integer myNbSamples;  //!< number of MSAA samples
   Standard_Boolean myHasMipmaps; //!< flag indicates that texture was uploaded with mipmaps
   bool             myIsAlpha;    //!< indicates alpha format
 

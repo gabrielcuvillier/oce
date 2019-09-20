@@ -19,12 +19,14 @@
 #include <BndLib_Add2dCurve.hxx>
 #include <BRep_Builder.hxx>
 #include <BRep_CurveRepresentation.hxx>
-#include <BRep_ListIteratorOfListOfCurveRepresentation.hxx>
+#include <BRep_GCurve.hxx>
+#include <BRep_ListOfCurveRepresentation.hxx>
 #include <BRep_TEdge.hxx>
 #include <BRep_Tool.hxx>
 #include <BRepTools.hxx>
 #include <BRepTools_MapOfVertexPnt2d.hxx>
 #include <BRepTools_ShapeSet.hxx>
+#include <BRepAdaptor_Surface.hxx>
 #include <ElCLib.hxx>
 #include <Geom2d_Curve.hxx>
 #include <Geom2dAdaptor_Curve.hxx>
@@ -55,7 +57,6 @@
 #include <TopoDS_CompSolid.hxx>
 #include <TopoDS_Edge.hxx>
 #include <TopoDS_Face.hxx>
-#include <TopoDS_Iterator.hxx>
 #include <TopoDS_Shape.hxx>
 #include <TopoDS_Shell.hxx>
 #include <TopoDS_Solid.hxx>
@@ -64,6 +65,8 @@
 #include <TopTools_SequenceOfShape.hxx>
 #include <GeomLib_CheckCurveOnSurface.hxx>
 #include <errno.h>
+
+
 //=======================================================================
 //function : UVBounds
 //purpose  : 
@@ -526,131 +529,44 @@ void BRepTools::Update(const TopoDS_Shape& S)
   }
 }
 
-
 //=======================================================================
 //function : UpdateFaceUVPoints
-//purpose  : reset the UV points of a  Face
+//purpose  : Reset the UV points of edges on the Face
 //=======================================================================
-
-void  BRepTools::UpdateFaceUVPoints(const TopoDS_Face& F)
+void  BRepTools::UpdateFaceUVPoints(const TopoDS_Face& theF)
 {
-  // Recompute for each edge the two UV points in order to have the same
-  // UV point on connected edges.
+  // For each edge of the face <F> reset the UV points to the bounding
+  // points of the parametric curve of the edge on the face.
 
-  // First edge loop, store the vertices in a Map with their 2d points
-
-  BRepTools_MapOfVertexPnt2d theVertices;
-  TopoDS_Iterator expE,expV;
-  TopoDS_Iterator EdgeIt,VertIt;
-  TColStd_SequenceOfReal aFSeq, aLSeq;
-  TColGeom2d_SequenceOfCurve aCSeq;
-  TopTools_SequenceOfShape aShSeq;
-  gp_Pnt2d P;
-  Standard_Integer i;
-  // a 3d tolerance for UV !!
-  Standard_Real tolerance = BRep_Tool::Tolerance(F);
-  TColgp_SequenceOfPnt2d emptySequence;
-  
-  for (expE.Initialize(F); expE.More(); expE.Next()) {
-    if(expE.Value().ShapeType() != TopAbs_WIRE)
-      continue;
-    
-    EdgeIt.Initialize(expE.Value());
-    for( ; EdgeIt.More(); EdgeIt.Next())
-    {
-      const TopoDS_Edge& E = TopoDS::Edge(EdgeIt.Value());
-      Standard_Real f,l;
-      Handle(Geom2d_Curve) C = BRep_Tool::CurveOnSurface(E,F,f,l);
-
-      aFSeq.Append(f);
-      aLSeq.Append(l);
-      aCSeq.Append(C);
-      aShSeq.Append(E);
-
-      if (C.IsNull()) continue;
-
-      for (expV.Initialize(E.Oriented(TopAbs_FORWARD)); 
-           expV.More(); expV.Next()) {
-        
-        const TopoDS_Vertex& V = TopoDS::Vertex(expV.Value());
-        
-        TopAbs_Orientation Vori = V.Orientation();
-        if ( Vori == TopAbs_INTERNAL ) {
-          continue;
-        }
-        
-        Standard_Real p = BRep_Tool::Parameter(V,E,F);
-        C->D0(p,P);
-        if (!theVertices.IsBound(V)) 
-          theVertices.Bind(V,emptySequence);
-        TColgp_SequenceOfPnt2d& S = theVertices(V);
-        for (i = 1; i <= S.Length(); i++) {
-          if (P.Distance(S(i)) < tolerance) break;
-        }
-        if (i > S.Length())
-          S.Append(P);
-      }
-    }
-  }
- 
-  // second edge loop, update the edges 2d points
-  TopoDS_Vertex Vf,Vl;
-  gp_Pnt2d Pf,Pl;
-
-  for(Standard_Integer j = 1; j <= aShSeq.Length(); j++)
+  // Get surface of the face
+  TopLoc_Location aLoc;
+  const Handle(Geom_Surface)& aSurf = BRep_Tool::Surface(theF, aLoc);
+  // Iterate on edges and reset UV points
+  TopExp_Explorer anExpE(theF, TopAbs_EDGE);
+  for (; anExpE.More(); anExpE.Next())
   {
-    const TopoDS_Edge& E = TopoDS::Edge(aShSeq.Value(j));
-    const Handle(Geom2d_Curve)& C = aCSeq.Value(j);
-    if (C.IsNull()) continue;
-    
-    TopExp::Vertices(E,Vf,Vl);
-    if (Vf.IsNull()) {
-      Pf.SetCoord(RealLast(),RealLast());
-    }
-    else {
-      if ( Vf.Orientation() == TopAbs_INTERNAL ) {
-        continue;
-      }
-      const TColgp_SequenceOfPnt2d& seqf = theVertices(Vf);
-      if (seqf.Length() == 1) 
-        Pf = seqf(1);
-      else {
-        C->D0(aFSeq.Value(j),Pf);
-        for (i = 1; i <= seqf.Length(); i++) {
-          if (Pf.Distance(seqf(i)) <= tolerance) {
-            Pf = seqf(i);
-            break;
-          }
-        }
-      }
-    }
-    if (Vl.IsNull()) {
-      Pl.SetCoord(RealLast(),RealLast());
-    }
-    else {
-      if ( Vl.Orientation() == TopAbs_INTERNAL ) {
-        continue;
-      }
-      const TColgp_SequenceOfPnt2d& seql = theVertices(Vl);
-      if (seql.Length() == 1) 
-        Pl = seql(1);
-      else {
-        C->D0(aLSeq.Value(j),Pl);
-        for (i = 1; i <= seql.Length(); i++) {
-          if (Pl.Distance(seql(i)) <= tolerance) {
-            Pl = seql(i);
-            break;
-          }
-        }
-      }
-    }
+    const TopoDS_Edge& aE = TopoDS::Edge(anExpE.Current());
 
-    // set the correct points
-    BRep_Tool::SetUVPoints(E,F,Pf,Pl);
+    const Handle(BRep_TEdge)& TE = *((Handle(BRep_TEdge)*)&aE.TShape());
+    if (TE->Locked())
+      return;
+
+    const TopLoc_Location aELoc = aLoc.Predivided(aE.Location());
+    // Edge representations
+    BRep_ListOfCurveRepresentation& aLCR = TE->ChangeCurves();
+    BRep_ListIteratorOfListOfCurveRepresentation itLCR(aLCR);
+    for (; itLCR.More(); itLCR.Next())
+    {
+      Handle(BRep_GCurve) GC = Handle(BRep_GCurve)::DownCast(itLCR.Value());
+      if (!GC.IsNull() && GC->IsCurveOnSurface(aSurf, aELoc))
+      {
+        // Update UV points
+        GC->Update();
+        break;
+      }
+    }
   }
 }
-
-
 
 //=======================================================================
 //function : Compare
@@ -768,7 +684,7 @@ void  BRepTools::Write(const TopoDS_Shape& Sh, Standard_OStream& S,
 //=======================================================================
 
 void  BRepTools::Read(TopoDS_Shape& Sh, 
-                      istream& S, 
+                      std::istream& S, 
                       const BRep_Builder& B,
                       const Handle(Message_ProgressIndicator)& PR)
 {
@@ -787,9 +703,10 @@ Standard_Boolean  BRepTools::Write(const TopoDS_Shape& Sh,
                                    const Standard_CString File,
                                    const Handle(Message_ProgressIndicator)& PR)
 {
-  ofstream os;
-  OSD_OpenStream(os, File, ios::out);
-  if (!os.rdbuf()->is_open()) return Standard_False;
+  std::ofstream os;
+  OSD_OpenStream(os, File, std::ios::out);
+  if (!os.is_open() || !os.good())
+    return Standard_False;
 
   Standard_Boolean isGood = (os.good() && !os.eof());
   if(!isGood)
@@ -824,9 +741,9 @@ Standard_Boolean BRepTools::Read(TopoDS_Shape& Sh,
                                  const BRep_Builder& B,
                                  const Handle(Message_ProgressIndicator)& PR)
 {
-  filebuf fic;
-  istream in(&fic);
-  OSD_OpenStream (fic, File, ios::in);
+  std::filebuf fic;
+  std::istream in(&fic);
+  OSD_OpenStream (fic, File, std::ios::in);
   if(!fic.is_open()) return Standard_False;
   
   BRepTools_ShapeSet SS(B);
@@ -874,7 +791,59 @@ void BRepTools::Clean(const TopoDS_Shape& theShape)
 
     aBuilder.UpdateFace(aFace, aNullTriangulation);
   }
+
+  // Iterate over all edges seeking for 3d polygons
+  Handle (Poly_Polygon3D) aNullPoly3d;
+  TopExp_Explorer aEdgeIt (theShape, TopAbs_EDGE);
+  for (; aEdgeIt.More (); aEdgeIt.Next ())
+  {
+    const TopoDS_Edge& aEdge = TopoDS::Edge (aEdgeIt.Current ());
+
+    TopLoc_Location aLoc;
+    Handle (Poly_Polygon3D) aPoly3d = BRep_Tool::Polygon3D (aEdge, aLoc);
+    if (aPoly3d.IsNull ())
+      continue;
+
+    aBuilder.UpdateEdge (aEdge, aNullPoly3d);  
+  }
 }
+//=======================================================================
+//function : CleanGeometry
+//purpose  : 
+//=======================================================================
+
+void BRepTools::CleanGeometry(const TopoDS_Shape& theShape)
+{
+  if (theShape.IsNull())
+    return;
+
+  BRep_Builder aBuilder;
+
+  for (TopExp_Explorer aFaceIt(theShape, TopAbs_FACE); aFaceIt.More(); aFaceIt.Next())
+  {
+    TopLoc_Location aLocation;
+    const TopoDS_Face& aFace = TopoDS::Face(aFaceIt.Current());
+    const Handle(Geom_Surface)& aSurface = BRep_Tool::Surface(aFace, aLocation);
+
+    for (TopExp_Explorer aEdgeIt(aFace, TopAbs_EDGE); aEdgeIt.More(); aEdgeIt.Next())
+    {
+      const TopoDS_Edge& anEdge = TopoDS::Edge(aEdgeIt.Current());
+      aBuilder.UpdateEdge(anEdge, Handle(Geom2d_Curve)(), aSurface,
+        aLocation, BRep_Tool::Tolerance(anEdge));
+    }
+
+    aBuilder.UpdateFace(aFace, Handle(Geom_Surface)(), aFace.Location(), BRep_Tool::Tolerance(aFace));
+  }
+
+  for (TopExp_Explorer aEdgeIt2(theShape, TopAbs_EDGE); aEdgeIt2.More(); aEdgeIt2.Next())
+  {
+    const TopoDS_Edge& anEdge = TopoDS::Edge(aEdgeIt2.Current());
+
+    aBuilder.UpdateEdge(anEdge, Handle(Geom_Curve)(),
+      TopLoc_Location(), BRep_Tool::Tolerance(anEdge));
+  }
+}
+
 
 //=======================================================================
 //function : RemoveUnusedPCurves
@@ -976,6 +945,39 @@ Standard_Boolean BRepTools::IsReallyClosed(const TopoDS_Edge& E,
     }
   }
   return nbocc == 2;
+}
+
+//=======================================================================
+//function : DetectClosedness
+//purpose  : 
+//=======================================================================
+
+void BRepTools::DetectClosedness(const TopoDS_Face& theFace,
+                                 Standard_Boolean&  theUclosed,
+                                 Standard_Boolean&  theVclosed)
+{
+  theUclosed = theVclosed = Standard_False;
+  
+  TopExp_Explorer Explo(theFace, TopAbs_EDGE);
+  for (; Explo.More(); Explo.Next())
+  {
+    const TopoDS_Edge& anEdge = TopoDS::Edge(Explo.Current());
+    if (BRep_Tool::IsClosed(anEdge, theFace) &&
+        BRepTools::IsReallyClosed(anEdge, theFace))
+    {
+      Standard_Real fpar, lpar;
+      Handle(Geom2d_Curve) PCurve1 = BRep_Tool::CurveOnSurface(anEdge, theFace, fpar, lpar);
+      Handle(Geom2d_Curve) PCurve2 = BRep_Tool::CurveOnSurface(TopoDS::Edge(anEdge.Reversed()),
+                                                               theFace, fpar, lpar);
+      gp_Pnt2d Point1 = PCurve1->Value(fpar);
+      gp_Pnt2d Point2 = PCurve2->Value(fpar);
+      Standard_Boolean IsUiso = (Abs(Point1.X() - Point2.X()) > Abs(Point1.Y() - Point2.Y()));
+      if (IsUiso)
+        theUclosed = Standard_True;
+      else
+        theVclosed = Standard_True;
+    }
+  }
 }
 
 //=======================================================================

@@ -56,11 +56,14 @@ void RWStepVisual_RWDraughtingModel::ReadStep (const Handle(StepData_StepReaderD
   if ( data->ReadSubList (num, 2, "representation.items", ach, sub2) ) {
     Standard_Integer num2 = sub2;
     Standard_Integer nb0 = data->NbParams(num2);
-    aRepresentation_Items = new StepRepr_HArray1OfRepresentationItem (1, nb0);
-    for ( Standard_Integer i0=1; i0 <= nb0; i0++ ) {
-      Handle(StepRepr_RepresentationItem) anIt0;
-      data->ReadEntity (num2, i0, "representation.items", ach, STANDARD_TYPE(StepRepr_RepresentationItem), anIt0);
-      aRepresentation_Items->SetValue(i0, anIt0);
+    if (nb0 > 0)
+    {
+      aRepresentation_Items = new StepRepr_HArray1OfRepresentationItem (1, nb0);
+      for ( Standard_Integer i0=1; i0 <= nb0; i0++ ) {
+        Handle(StepRepr_RepresentationItem) anIt0;
+        data->ReadEntity (num2, i0, "representation.items", ach, STANDARD_TYPE(StepRepr_RepresentationItem), anIt0);
+        aRepresentation_Items->SetValue(i0, anIt0);
+      }
     }
   }
 
@@ -87,7 +90,7 @@ void RWStepVisual_RWDraughtingModel::WriteStep (StepData_StepWriter& SW,
   SW.Send (ent->StepRepr_Representation::Name());
 
   SW.OpenSub();
-  for (Standard_Integer i1=1; i1 <= ent->StepRepr_Representation::Items()->Length(); i1++ ) {
+  for (Standard_Integer i1=1; i1 <= ent->StepRepr_Representation::NbItems(); i1++ ) {
     Handle(StepRepr_RepresentationItem) Var0 = ent->StepRepr_Representation::Items()->Value(i1);
     SW.Send (Var0);
   }
@@ -107,7 +110,7 @@ void RWStepVisual_RWDraughtingModel::Share (const Handle(StepVisual_DraughtingMo
 
   // Inherited fields of Representation
 
-  for (Standard_Integer i1=1; i1 <= ent->StepRepr_Representation::Items()->Length(); i1++ ) {
+  for (Standard_Integer i1=1; i1 <= ent->StepRepr_Representation::NbItems(); i1++ ) {
     Handle(StepRepr_RepresentationItem) Var0 = ent->StepRepr_Representation::Items()->Value(i1);
     iter.AddItem (Var0);
   }

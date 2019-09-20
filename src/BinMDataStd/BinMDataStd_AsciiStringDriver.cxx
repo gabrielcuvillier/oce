@@ -19,7 +19,7 @@
 #include <BinObjMgt_Persistent.hxx>
 #include <BinObjMgt_RRelocationTable.hxx>
 #include <BinObjMgt_SRelocationTable.hxx>
-#include <CDM_MessageDriver.hxx>
+#include <Message_Messenger.hxx>
 #include <Standard_Type.hxx>
 #include <TDataStd_AsciiString.hxx>
 #include <TDF_Attribute.hxx>
@@ -32,7 +32,7 @@ IMPLEMENT_STANDARD_RTTIEXT(BinMDataStd_AsciiStringDriver,BinMDF_ADriver)
 //purpose  :
 //=======================================================================
 BinMDataStd_AsciiStringDriver::BinMDataStd_AsciiStringDriver
-                         (const Handle(CDM_MessageDriver)& theMessageDriver)
+                         (const Handle(Message_Messenger)& theMessageDriver)
      : BinMDF_ADriver (theMessageDriver, STANDARD_TYPE(TDataStd_AsciiString)->Name())
 {
 }
@@ -55,14 +55,14 @@ Handle(TDF_Attribute) BinMDataStd_AsciiStringDriver::NewEmpty() const
 Standard_Boolean BinMDataStd_AsciiStringDriver::Paste
                          (const BinObjMgt_Persistent&  Source,
                           const Handle(TDF_Attribute)& Target,
-                          BinObjMgt_RRelocationTable&  /*RelocTable*/) const
+                          BinObjMgt_RRelocationTable&  RelocTable) const
 {
   Handle(TDataStd_AsciiString) aStrAtt = Handle(TDataStd_AsciiString)::DownCast(Target);
   TCollection_AsciiString aString;
   Standard_Boolean ok = Source >> aString;
   if (ok)
     aStrAtt->Set( aString );
-  if(BinMDataStd::DocumentVersion() > 8) { // process user defined guid
+  if(RelocTable.GetHeaderData()->StorageVersion().IntegerValue() > 8) { // process user defined guid
 	const Standard_Integer& aPos = Source.Position();
 	Standard_GUID aGuid;
 	ok = Source >> aGuid;	

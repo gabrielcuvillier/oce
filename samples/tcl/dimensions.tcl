@@ -19,7 +19,7 @@ restore $aBotLoc b
 vinit View1 w=768 h=768
 vclear
 vsetdispmode 0
-vsetcolorbg 255 255 255
+vbackground -color WHITE
 vbottom
 
 puts "Getting cut projection..."
@@ -59,7 +59,7 @@ vdimension ad_1 -angle -shapes as_38 as_49 -color black
 vdimension ad_2 -angle -shapes bs_24 bs_25 -color black
 vdimension ad_3 -angle -shapes as_48 as_43 -color black
 
-puts "Changing text and arrow paramaters of dimensions..."
+puts "Changing text and arrow parameters of dimensions..."
 foreach i $aList {
   vdimparam $i -text 3d sh 6 -arrowlength 4 -arrowangle $anArrAngle
 }

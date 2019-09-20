@@ -76,8 +76,8 @@ static Draw_SaveAndRestore* Draw_First = NULL;
 Draw_SaveAndRestore::Draw_SaveAndRestore
   (const char* name,
    Standard_Boolean (*test)(const Handle(Draw_Drawable3D)&),
-  void (*save)(const Handle(Draw_Drawable3D)&, ostream&),
-  Handle(Draw_Drawable3D) (*restore) (istream&),
+  void (*save)(const Handle(Draw_Drawable3D)&, std::ostream&),
+  Handle(Draw_Drawable3D) (*restore) (std::istream&),
   Standard_Boolean display) :
   myName(name),
   myTest(test),
@@ -93,10 +93,10 @@ Standard_Boolean Draw_SaveAndRestore::Test(const Handle(Draw_Drawable3D)&d)
 {return (*myTest) (d);}
 
 void Draw_SaveAndRestore::Save(const Handle(Draw_Drawable3D)& d, 
-			       ostream& os) const
+			       std::ostream& os) const
 { (*mySave) (d,os);}
 
-Handle(Draw_Drawable3D) Draw_SaveAndRestore::Restore(istream& is) const
+Handle(Draw_Drawable3D) Draw_SaveAndRestore::Restore(std::istream& is) const
 {return (*myRestore) (is);}
 
 //=======================================================================
@@ -109,18 +109,18 @@ static Standard_Boolean numtest(const Handle(Draw_Drawable3D)& d)
 }
 
 static void numsave (const Handle(Draw_Drawable3D)& theDrawable,
-                     ostream&                       theStream)
+                     std::ostream&                       theStream)
 {
   Handle(Draw_Number) aNum = Handle(Draw_Number)::DownCast (theDrawable);
-  ios::fmtflags aFlags = theStream.flags();
-  theStream.setf      (ios::scientific);
+  std::ios::fmtflags aFlags = theStream.flags();
+  theStream.setf      (std::ios::scientific);
   theStream.precision (15);
   theStream.width     (30);
   theStream << aNum->Value() << "\n";
   theStream.setf      (aFlags);
 }
 
-static Handle(Draw_Drawable3D) numrestore (istream& is)
+static Handle(Draw_Drawable3D) numrestore (std::istream& is)
 {
   Standard_Real val;
   is >> val;
@@ -141,12 +141,12 @@ static Standard_Integer save(Draw_Interpretor& di, Standard_Integer n, const cha
 {
   if (n <= 2) return 1;
 
-
   const char* name = a[2];
-  ofstream os;
+  std::ofstream os;
   os.precision(15);
-  OSD_OpenStream(os, name, ios::out);
-  if (!os.rdbuf()->is_open()) {
+  OSD_OpenStream(os, name, std::ios::out);
+  if (!os.is_open() || !os.good())
+  {
     di << "Cannot open file for writing "<<name;
     return 1;
   }
@@ -208,9 +208,9 @@ static Standard_Integer restore(Draw_Interpretor& di, Standard_Integer n, const 
   const char* fname = a[1];
   const char* name  = a[2];
   
-  filebuf fic;
-  istream in(&fic);
-  OSD_OpenStream (fic, fname, ios::in);
+  std::filebuf fic;
+  std::istream in(&fic);
+  OSD_OpenStream (fic, fname, std::ios::in);
   if (!fic.is_open()) {
     di << "Cannot open file for reading : "<<fname;
     return 1;
@@ -239,7 +239,7 @@ static Standard_Integer restore(Draw_Interpretor& di, Standard_Integer n, const 
     {
       //assume that this file stores a DBRep_DrawableShape variable
       tool = aDBRepTool;
-      in.seekg(0, ios::beg);
+      in.seekg(0, std::ios::beg);
     }
 
     if (tool)
@@ -308,7 +308,7 @@ static Standard_Integer erase(Draw_Interpretor& di, Standard_Integer n, const ch
 	Handle(Draw_Drawable3D) D = Draw::Get(a[i]);
 	if (D.IsNull()) {
 	  if ((a[i][0] == '.') && (a[i][1] == '\0'))
-	    cout << "Missed !!!" << endl;
+	    std::cout << "Missed !!!" << std::endl;
 	  return 0;
 	}
       }
@@ -388,7 +388,7 @@ static Standard_Integer draw(Draw_Interpretor& , Standard_Integer n, const char*
   if (n < 3) return 1;
   Standard_Integer id = Draw::Atoi(a[1]);
   if (!dout.HasView(id)) {
-    cout << "bad view number in draw"<<endl;
+    std::cout << "bad view number in draw"<<std::endl;
     return 1;
   }
   Standard_Integer mo = Draw::Atoi(a[2]);
@@ -587,7 +587,7 @@ static Standard_Integer set(Draw_Interpretor& di, Standard_Integer n, const char
 static Standard_Integer dsetenv(Draw_Interpretor& /*di*/, Standard_Integer argc, const char** argv)
 {
   if (argc < 2) {
-    cout << "Use: " << argv[0] << " {varname} [value]" << endl;
+    std::cout << "Use: " << argv[0] << " {varname} [value]" << std::endl;
     return 1;
   }
 
@@ -610,7 +610,7 @@ static Standard_Integer dsetenv(Draw_Interpretor& /*di*/, Standard_Integer argc,
 static Standard_Integer dgetenv(Draw_Interpretor& di, Standard_Integer argc, const char** argv)
 {
   if (argc < 2) {
-    cout << "Use: " << argv[0] << " {varname}" << endl;
+    std::cout << "Use: " << argv[0] << " {varname}" << std::endl;
     return 1;
   }
 
@@ -627,7 +627,7 @@ static Standard_Integer dgetenv(Draw_Interpretor& di, Standard_Integer argc, con
 static Standard_Integer isdraw(Draw_Interpretor& di, Standard_Integer n, const char** a)
 {
   if (n != 2) return 1;
-  Handle(Draw_Drawable3D) D = Draw::Get(a[1],Standard_False);
+  Handle(Draw_Drawable3D) D = Draw::Get (a[1]);
   if (D.IsNull())
     di << "0";
   else
@@ -643,7 +643,7 @@ static Standard_Integer isdraw(Draw_Interpretor& di, Standard_Integer n, const c
 Standard_Integer isprot(Draw_Interpretor& di, Standard_Integer n, const char** a)
 {
   if (n != 2) return 1;
-  Handle(Draw_Drawable3D) D = Draw::Get(a[1],Standard_False);
+  Handle(Draw_Drawable3D) D = Draw::Get(a[1]);
   if (D.IsNull())
     di << "0";
   else {
@@ -786,7 +786,7 @@ void Draw::Set(const Standard_CString name,
     Handle(Draw_Drawable3D) anOldD(reinterpret_cast<Draw_Drawable3D*>(aCD));
     if (!anOldD.IsNull()) {
       if (theVariables.Contains(anOldD) && anOldD->Protected()) {
-        cout << "variable is protected" << endl;
+        std::cout << "variable is protected" << std::endl;
         return;
       }
       anOldD.Nullify();
@@ -814,75 +814,63 @@ void Draw::Set(const Standard_CString name,
 //function : Set
 //purpose  : 
 //=======================================================================
-void Draw::Set(const Standard_CString Name, const Standard_Real val)
+void Draw::Set(const Standard_CString theName, const Standard_Real theValue)
 {
-  if ((Name[0] == '.') && (Name[1] == '\0')) return;
-  Standard_CString aName = Name;
-  Handle(Draw_Drawable3D) D = Draw::Get(aName,Standard_False);
-  Handle(Draw_Number) N;
-  if (!D.IsNull()) {
-    N = Handle(Draw_Number)::DownCast(D);
-  }
-  if (N.IsNull()) {
-    N = new Draw_Number(val);
-    Draw::Set(aName,N,Standard_False);
+  if (Handle(Draw_Number) aNumber = Handle(Draw_Number)::DownCast (Draw::GetExisting (theName)))
+  {
+    aNumber->Value (theValue);
   }
   else
-    N->Value(val);
+  {
+    aNumber = new Draw_Number (theValue);
+    Draw::Set (theName, aNumber, Standard_False);
+  }
 }
+
 //=======================================================================
-//function : Get
-//purpose  : 
+//function : getDrawable
+//purpose  :
 //=======================================================================
-Handle(Draw_Drawable3D) Draw::Get(Standard_CString& name, 
-			          const Standard_Boolean )
+Handle(Draw_Drawable3D) Draw::getDrawable (Standard_CString& theName,
+                                           Standard_Boolean theToAllowPick)
 {
-  Standard_Boolean pick = ((name[0] == '.') && (name[1] == '\0'));
-  Handle(Draw_Drawable3D) D;
-  if (pick) {
-    cout << "Pick an object" << endl;
-    dout.Select(p_id,p_X,p_Y,p_b);
-    dout.Pick(p_id,p_X,p_Y,5,D,0);
-    if (!D.IsNull()) {
-      if (D->Name()) {
-	name = p_Name = D->Name();
-	//p_Name = (char *)D->Name();
-      }
-    }
+  const Standard_Boolean toPick = ((theName[0] == '.') && (theName[1] == '\0'));
+  if (!toPick)
+  {
+    ClientData aCD = Tcl_VarTraceInfo (Draw::GetInterpretor().Interp(), theName, TCL_TRACE_UNSETS | TCL_TRACE_WRITES, tracevar, NULL);
+    Handle(Draw_Drawable3D) aDrawable = reinterpret_cast<Draw_Drawable3D*>(aCD);
+    return theVariables.Contains (aDrawable)
+         ? aDrawable
+         : Handle(Draw_Drawable3D)();
   }
-  else {
-    ClientData aCD =
-      Tcl_VarTraceInfo(Draw::GetInterpretor().Interp(),name,TCL_TRACE_UNSETS | TCL_TRACE_WRITES,
-                       tracevar, NULL);
-    D = reinterpret_cast<Draw_Drawable3D*>(aCD);
-    if (!theVariables.Contains(D))
-      D.Nullify();
-#if 0
-    if (D.IsNull() && complain)
-      cout <<name<<" does not exist"<<endl;
-#endif
+  else if (!theToAllowPick)
+  {
+    return Handle(Draw_Drawable3D)();
   }
-  return D;
+
+  std::cout << "Pick an object" << std::endl;
+  Handle(Draw_Drawable3D) aDrawable;
+  dout.Select (p_id, p_X, p_Y, p_b);
+  dout.Pick (p_id, p_X, p_Y, 5, aDrawable, 0);
+  if (!aDrawable.IsNull()
+    && aDrawable->Name() != NULL)
+  {
+    theName = p_Name = aDrawable->Name();
+  }
+  return aDrawable;
 }
 
 //=======================================================================
 //function : Get
 //purpose  : 
 //=======================================================================
-Standard_Boolean Draw::Get(const Standard_CString name, 
-			   Standard_Real& val)
+Standard_Boolean Draw::Get (const Standard_CString theName,
+                            Standard_Real& theValue)
 {
-  if ((name[0] == '.') && (name[1] == '\0')) {
-    return Standard_False;
-  }
-  Standard_CString aName = name;
-  Handle(Draw_Drawable3D) D = Draw::Get(aName,Standard_False);
-  if (!D.IsNull()) {
-    Handle(Draw_Number) N = Handle(Draw_Number)::DownCast(D);
-    if (!N.IsNull()) {
-      val = N->Value();
-      return Standard_True;
-    }
+  if (Handle(Draw_Number) aNumber = Handle(Draw_Number)::DownCast (Draw::GetExisting (theName)))
+  {
+    theValue = aNumber->Value();
+    return Standard_True;
   }
   return Standard_False;
 }
@@ -970,7 +958,7 @@ static Standard_Real ParseValue(char*& name)
     name++;
     x = Parse(name);
     if (*name != ')') 
-      cout << "Mismatched parenthesis" << endl;
+      std::cout << "Mismatched parenthesis" << std::endl;
     name++;
     break;
 
@@ -1020,7 +1008,7 @@ static Standard_Real ParseValue(char*& name)
 	      q++;
 	    }
 	    if (pc > 0) {
-	      cout << "Unclosed parenthesis"<< endl;
+	      std::cout << "Unclosed parenthesis"<< std::endl;
 	      x = 0;
 	    }
 	    else {
@@ -1056,7 +1044,7 @@ static Standard_Real ParseValue(char*& name)
 		  aCommands.Reset();
 		}
 		if (aCommands.Eval(name) != 0) {
-		  cout << "Call of function " << name << " failed" << endl;
+		  std::cout << "Call of function " << name << " failed" << std::endl;
 		  x = 0;
 		}
 		else
@@ -1134,9 +1122,10 @@ static Standard_Real Parse(char*& name)
     }
   }
 }
+
 //=======================================================================
-//function : Atof
-//purpose  : 
+// function : Atof
+// purpose  :
 //=======================================================================
 Standard_Real Draw::Atof(const Standard_CString name)
 {
@@ -1144,6 +1133,7 @@ Standard_Real Draw::Atof(const Standard_CString name)
   char* n = new char[1+strlen(name)];
   char* b = n;
   strcpy(n,name);
+  Draw_ParseFailed = Standard_False;
   Standard_Real x = Parse(n);
   while ((*n == ' ') || (*n == '\t')) n++;
   if (*n) Draw_ParseFailed = Standard_True;
@@ -1151,10 +1141,51 @@ Standard_Real Draw::Atof(const Standard_CString name)
   return x;
 }
 
+//=======================================================================
+// function : ParseReal
+// purpose  :
+//=======================================================================
+bool Draw::ParseReal (const Standard_CString theExpressionString, Standard_Real& theParsedRealValue)
+{
+  const Standard_Real aParsedRealValue = Atof (theExpressionString);
+  if (Draw_ParseFailed)
+  {
+    Draw_ParseFailed = Standard_False;
+    return false;
+  }
+  theParsedRealValue = aParsedRealValue;
+  return true;
+}
+
+//=======================================================================
+// function : Atoi
+// purpose  :
+//=======================================================================
 Standard_Integer Draw::Atoi(const Standard_CString name)
 {
-  return (Standard_Integer ) Draw::Atof(name);
+  return (Standard_Integer) Draw::Atof(name);
 }
+
+//=======================================================================
+// function : ParseInteger
+// purpose  :
+//=======================================================================
+bool Draw::ParseInteger (const Standard_CString theExpressionString, Standard_Integer& theParsedIntegerValue)
+{
+  Standard_Real aParsedRealValue = 0.0;
+  if (!ParseReal (theExpressionString, aParsedRealValue))
+  {
+    return false;
+  }
+  const Standard_Integer aParsedIntegerValue = static_cast<Standard_Integer> (aParsedRealValue);
+  if (static_cast<Standard_Real> (aParsedIntegerValue) != aParsedRealValue)
+  {
+    return false;
+  }
+  theParsedIntegerValue = aParsedIntegerValue;
+  return true;
+}
+
 //=======================================================================
 //function : Set
 //purpose  : set a TCL var

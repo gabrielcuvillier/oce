@@ -28,7 +28,7 @@ const Standard_CString MAGICNUMBER = "FSDFILE";
 const Standard_CString ENDOFNORMALEXTENDEDSECTION = "BEGIN_REF_SECTION";
 const Standard_Integer SIZEOFNORMALEXTENDEDSECTION = 16;
 
-//#define USEOSDREAL 1
+#define USEOSDREAL 1
 
 //=======================================================================
 //function : FSD_File
@@ -91,18 +91,18 @@ Storage_Error FSD_File::Open(const TCollection_AsciiString& aName,const Storage_
       }
       case Storage_VSRead:
       {
-        // ios::nocreate is not portable
-        anOpenMode = ios::in;
+        // std::ios::nocreate is not portable
+        anOpenMode = std::ios::in;
         break;
       }
       case Storage_VSWrite:
       {
-        anOpenMode = ios::out;
+        anOpenMode = std::ios::out;
         break;
       }
       case Storage_VSReadWrite:
       {
-        anOpenMode = ios::in | ios::out;
+        anOpenMode = std::ios::in | std::ios::out;
         break;
       }
     }
@@ -175,20 +175,6 @@ void FSD_File::FlushEndOfLine()
 {
   TCollection_AsciiString aDummy;
   ReadLine (aDummy); // flush is nothing more than to read till the line-break
-/*  static char Buffer[8192];
-  char c;
-  Standard_Boolean IsEnd = Standard_False;
-
-  while (!IsEnd && !FSD_File::IsEnd()) {
-    Buffer[0] = '\0';
-    myStream.get(Buffer,8192,'\n');
-
-    if (myStream.get(c) && c != '\n') {
-    }
-    else {
-      IsEnd = Standard_True;
-    }
-  }*/
 }
 
 //=======================================================================
@@ -294,7 +280,7 @@ void FSD_File::ReadExtendedLine(TCollection_ExtendedString& buffer)
 
 void FSD_File::ReadChar(TCollection_AsciiString& buffer, const Standard_Size rsize)
 {
-  char             c;
+  char c = '\0';
   Standard_Size ccount = 0;
 
   buffer.Clear();
@@ -525,10 +511,10 @@ Storage_BaseDriver& FSD_File::GetCharacter(Standard_Character& aValue)
   unsigned short i = 0;
   if (!(myStream >> i)) {
     // SGI : donne une erreur mais a une bonne valeur pour les caracteres ecrits
-    //       signes (-80 fait ios::badbit, mais la variable i est initialisee)
+    //       signes (-80 fait std::ios::badbit, mais la variable i est initialisee)
     //
     if (i == 0) throw Storage_StreamTypeMismatchError();
-    myStream.clear(ios::goodbit); // .clear(0) is not portable
+    myStream.clear(std::ios::goodbit); // .clear(0) is not portable
   }
   aValue = (char)i;
 
@@ -609,7 +595,7 @@ Storage_BaseDriver& FSD_File::GetShortReal(Standard_ShortReal& aValue)
   if (!(myStream >> realbuffer)) throw Storage_StreamTypeMismatchError();
   if (!OSD::CStringToReal(realbuffer,r)) throw Storage_StreamTypeMismatchError();
 
-  aValue = r;
+  aValue = (Standard_ShortReal)r;
 
   return *this;
 #else
@@ -1248,7 +1234,7 @@ Storage_Error FSD_File::BeginReadDataSection()
 void FSD_File::ReadPersistentObjectHeader(Standard_Integer& aRef,
 					  Standard_Integer& aType) 
 {
-  char c;
+  char c = '\0';
 
   myStream.get(c);
 
@@ -1281,7 +1267,7 @@ void FSD_File::ReadPersistentObjectHeader(Standard_Integer& aRef,
   }
 
   if (!(myStream >> aType)) throw Storage_StreamTypeMismatchError();
-//  cout << "REF:" << aRef << " TYPE:"<< aType << endl;
+//  std::cout << "REF:" << aRef << " TYPE:"<< aType << std::endl;
 }
 
 //=======================================================================
@@ -1291,7 +1277,7 @@ void FSD_File::ReadPersistentObjectHeader(Standard_Integer& aRef,
 
 void FSD_File::BeginReadPersistentObjectData() 
 {
-  char c;
+  char c = '\0';
   myStream.get(c);
   while (c != '(') {
     if (IsEnd() || (c != ' ') || (c == '\n')) {
@@ -1300,7 +1286,7 @@ void FSD_File::BeginReadPersistentObjectData()
     myStream.get(c);
   }
 
-//cout << "BeginReadPersistentObjectData" << endl;
+//std::cout << "BeginReadPersistentObjectData" << std::endl;
 }
 
 //=======================================================================
@@ -1310,8 +1296,7 @@ void FSD_File::BeginReadPersistentObjectData()
 
 void FSD_File::BeginReadObjectData() 
 {
-
-  char c;
+  char c = '\0';
   myStream.get(c);
   while (c != '(') {
     if (IsEnd() || (c != ' ') || (c == '\n')) {
@@ -1320,7 +1305,7 @@ void FSD_File::BeginReadObjectData()
     myStream.get(c);
   }
 
-//  cout << "BeginReadObjectData" << endl;
+//  std::cout << "BeginReadObjectData" << std::endl;
 }
 
 //=======================================================================
@@ -1330,8 +1315,7 @@ void FSD_File::BeginReadObjectData()
 
 void FSD_File::EndReadObjectData() 
 {
-
-  char c;
+  char c = '\0';
   myStream.get(c);
   while (c != ')') {
     if (IsEnd() || (c != ' ') || (c == '\n')) {
@@ -1340,7 +1324,7 @@ void FSD_File::EndReadObjectData()
     myStream.get(c);
   }
 
-//  cout << "EndReadObjectData" << endl;
+//  std::cout << "EndReadObjectData" << std::endl;
 }
 
 //=======================================================================
@@ -1350,8 +1334,7 @@ void FSD_File::EndReadObjectData()
 
 void FSD_File::EndReadPersistentObjectData() 
 {
-
-  char c;
+  char c = '\0';
 
   myStream.get(c);
   while (c != ')') {
@@ -1368,7 +1351,7 @@ void FSD_File::EndReadPersistentObjectData()
     }
     myStream.get(c);
   }
-//  cout << "EndReadPersistentObjectData" << endl;
+//  std::cout << "EndReadPersistentObjectData" << std::endl;
 }
 
 //=======================================================================

@@ -21,8 +21,7 @@
 #include <BOPDS_Interf.hxx>
 #include <BOPDS_IteratorSI.hxx>
 
-#include <BOPCol_NCVector.hxx>
-#include <BOPCol_Parallel.hxx>
+#include <BOPTools_Parallel.hxx>
 
 #include <BRep_Tool.hxx>
 #include <BRepClass3d_SolidClassifier.hxx>
@@ -30,8 +29,10 @@
 #include <IntTools_Context.hxx>
 
 #include <gp_Pnt.hxx>
-#include <TopoDS_Vertex.hxx>
+
+#include <NCollection_Vector.hxx>
 #include <TopAbs_State.hxx>
+#include <TopoDS_Vertex.hxx>
 #include <TopoDS_Face.hxx>
 #include <TopoDS_Solid.hxx>
 
@@ -114,19 +115,8 @@ class BOPAlgo_VertexSolid  {
   Handle(IntTools_Context) myContext;
 };
 //=======================================================================
-typedef BOPCol_NCVector
-  <BOPAlgo_VertexSolid> BOPAlgo_VectorOfVertexSolid; 
-//
-typedef BOPCol_ContextFunctor 
-  <BOPAlgo_VertexSolid,
-  BOPAlgo_VectorOfVertexSolid,
-  Handle(IntTools_Context), 
-  IntTools_Context> BOPAlgo_VertexSolidFunctor;
-//
-typedef BOPCol_ContextCnt 
-  <BOPAlgo_VertexSolidFunctor,
-  BOPAlgo_VectorOfVertexSolid,
-  Handle(IntTools_Context)> BOPAlgo_VertexSolidCnt;
+typedef NCollection_Vector<BOPAlgo_VertexSolid> BOPAlgo_VectorOfVertexSolid;
+
 /////////////////////////////////////////////////////////////////////////
 //=======================================================================
 //class    : BOPAlgo_ShapeSolid
@@ -184,17 +174,8 @@ class BOPAlgo_ShapeSolid  {
   BOPDS_DS* myDS;
 };
 //=======================================================================
-typedef BOPCol_NCVector
-  <BOPAlgo_ShapeSolid> BOPAlgo_VectorOfShapeSolid; 
-//
-typedef BOPCol_Functor 
-  <BOPAlgo_ShapeSolid,
-  BOPAlgo_VectorOfShapeSolid> BOPAlgo_ShapeSolidFunctor;
-//
-typedef BOPCol_Cnt 
-  <BOPAlgo_ShapeSolidFunctor,
-  BOPAlgo_VectorOfShapeSolid> BOPAlgo_ShapeSolidCnt;
-//
+typedef NCollection_Vector<BOPAlgo_ShapeSolid> BOPAlgo_VectorOfShapeSolid;
+
 /////////////////////////////////////////////////////////////////////////
 //=======================================================================
 //class    : BOPAlgo_SolidSolid
@@ -224,18 +205,7 @@ class BOPAlgo_SolidSolid : public  BOPAlgo_ShapeSolid {
   };
 };
 //=======================================================================
-typedef BOPCol_NCVector
-  <BOPAlgo_SolidSolid> BOPAlgo_VectorOfSolidSolid; 
-//
-typedef BOPCol_Functor 
-  <BOPAlgo_SolidSolid,
-  BOPAlgo_VectorOfSolidSolid> BOPAlgo_SolidSolidFunctor;
-//
-typedef BOPCol_Cnt 
-  <BOPAlgo_SolidSolidFunctor,
-  BOPAlgo_VectorOfSolidSolid> BOPAlgo_SolidSolidCnt;
-//
-/////////////////////////////////////////////////////////////////////////
+typedef NCollection_Vector<BOPAlgo_SolidSolid> BOPAlgo_VectorOfSolidSolid;
 
 //=======================================================================
 //function : PerformVZ
@@ -277,15 +247,15 @@ void BOPAlgo_CheckerSI::PerformVZ()
     const TopoDS_Vertex& aV=*((TopoDS_Vertex*)&myDS->Shape(nVSD));
     const TopoDS_Solid& aZ=*((TopoDS_Solid*)&myDS->Shape(nZ));
     //
-    BOPAlgo_VertexSolid& aVertexSolid=aVVS.Append1();
+    BOPAlgo_VertexSolid& aVertexSolid=aVVS.Appended();
     aVertexSolid.SetIndices(nV, nZ);
     aVertexSolid.SetVertex(aV);
     aVertexSolid.SetSolid(aZ);
   }
   //
-  aNbVVS=aVVS.Extent();
+  aNbVVS=aVVS.Length();
   //=============================================================
-  BOPAlgo_VertexSolidCnt::Perform(myRunParallel, aVVS, myContext);
+  BOPTools_Parallel::Perform (myRunParallel, aVVS, myContext);
   //=============================================================
   for (k=0; k < aNbVVS; ++k) {
     const BOPAlgo_VertexSolid& aVertexSolid=aVVS(k);
@@ -293,7 +263,7 @@ void BOPAlgo_CheckerSI::PerformVZ()
     if (aState==TopAbs_IN)  {
       aVertexSolid.Indices(nV, nZ);
       //
-      BOPDS_InterfVZ& aVZ=aVZs.Append1();
+      BOPDS_InterfVZ& aVZ=aVZs.Appended();
       aVZ.SetIndices(nV, nZ);
       //
       myDS->AddInterf(nV, nZ);
@@ -336,14 +306,14 @@ void BOPAlgo_CheckerSI::PerformZZ()
   for (; myIterator->More(); myIterator->Next()) {
     myIterator->Value(nZ1, nZ);
     //
-    BOPAlgo_SolidSolid& aSolidSolid=aVSolidSolid.Append1();
+    BOPAlgo_SolidSolid& aSolidSolid=aVSolidSolid.Appended();
     aSolidSolid.SetIndices(nZ1, nZ);
     aSolidSolid.SetDS(myDS);
   }
   //
-  aNbSolidSolid=aVSolidSolid.Extent();
+  aNbSolidSolid=aVSolidSolid.Length();
   //======================================================
-  BOPAlgo_SolidSolidCnt::Perform(myRunParallel, aVSolidSolid);
+  BOPTools_Parallel::Perform (myRunParallel, aVSolidSolid);
   //======================================================
   //
   BOPDS_VectorOfInterfZZ& aZZs=myDS->InterfZZ();
@@ -356,7 +326,7 @@ void BOPAlgo_CheckerSI::PerformZZ()
     if (bHasInterf) {
       aSolidSolid.Indices(nZ1, nZ);
       //
-      BOPDS_InterfZZ& aZZ=aZZs.Append1();
+      BOPDS_InterfZZ& aZZ=aZZs.Appended();
       aZZ.SetIndices(nZ1, nZ);
       //
       myDS->AddInterf(nZ1, nZ);
@@ -383,14 +353,14 @@ void BOPAlgo_CheckerSI::PerformSZ(const TopAbs_ShapeEnum aTS)
   for (; myIterator->More(); myIterator->Next()) {
     myIterator->Value(nS, nZ);
     //
-    BOPAlgo_ShapeSolid& aShapeSolid=aVShapeSolid.Append1();
+    BOPAlgo_ShapeSolid& aShapeSolid=aVShapeSolid.Appended();
     aShapeSolid.SetIndices(nS, nZ);
     aShapeSolid.SetDS(myDS);
   }
   //
-  aNbShapeSolid=aVShapeSolid.Extent();
+  aNbShapeSolid=aVShapeSolid.Length();
   //======================================================
-  BOPAlgo_ShapeSolidCnt::Perform(myRunParallel, aVShapeSolid);
+  BOPTools_Parallel::Perform (myRunParallel, aVShapeSolid);
   //======================================================
   //
   BOPDS_VectorOfInterfEZ& aEZs=myDS->InterfEZ();
@@ -410,11 +380,11 @@ void BOPAlgo_CheckerSI::PerformSZ(const TopAbs_ShapeEnum aTS)
       aShapeSolid.Indices(nS, nZ);
       //
       if (aTS==TopAbs_EDGE) {
-        BOPDS_InterfEZ& aEZ=aEZs.Append1();
+        BOPDS_InterfEZ& aEZ=aEZs.Appended();
         aEZ.SetIndices(nS, nZ);
       }
       else  {//if (aTS==TopAbs_FACE)
-        BOPDS_InterfFZ& aFZ=aFZs.Append1();
+        BOPDS_InterfFZ& aFZ=aFZs.Appended();
         aFZ.SetIndices(nS, nZ);
       }
       //

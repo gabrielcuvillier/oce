@@ -17,17 +17,16 @@
 
 #include <AIS_InteractiveContext.hxx>
 #include <AIS_ManipulatorOwner.hxx>
+#include <Extrema_ExtElC.hxx>
 #include <gce_MakeDir.hxx>
-#include <GeomAPI_ExtremaCurveCurve.hxx>
-#include <GeomAPI_IntCS.hxx>
 #include <Geom_Circle.hxx>
-#include <Geom_Line.hxx>
-#include <Geom_Plane.hxx>
 #include <Geom_Transformation.hxx>
+#include <IntAna_IntConicQuad.hxx>
 #include <Prs3d_Arrow.hxx>
 #include <Prs3d_Root.hxx>
 #include <Prs3d_ShadingAspect.hxx>
 #include <Prs3d_ToolDisk.hxx>
+#include <Prs3d_ToolSector.hxx>
 #include <Prs3d_ToolSphere.hxx>
 #include <Select3D_SensitiveCircle.hxx>
 #include <Select3D_SensitivePoint.hxx>
@@ -43,6 +42,84 @@ IMPLEMENT_STANDARD_RTTIEXT(AIS_Manipulator, AIS_InteractiveObject)
 
 IMPLEMENT_HSEQUENCE(AIS_ManipulatorObjectSequence)
 
+namespace
+{
+  //! Return Ax1 for specified direction of Ax2.
+  static gp_Ax1 getAx1FromAx2Dir (const gp_Ax2& theAx2,
+                                  int theIndex)
+  {
+    switch (theIndex)
+    {
+      case 0: return gp_Ax1 (theAx2.Location(), theAx2.XDirection());
+      case 1: return gp_Ax1 (theAx2.Location(), theAx2.YDirection());
+      case 2: return theAx2.Axis();
+    }
+    throw Standard_ProgramError ("AIS_Manipulator - Invalid axis index");
+  }
+
+  //! Auxiliary tool for filtering picking ray.
+  class ManipSensRotation
+  {
+  public:
+    //! Main constructor.
+    ManipSensRotation (const gp_Dir& thePlaneNormal) : myPlaneNormal (thePlaneNormal), myAngleTol (10.0 * M_PI / 180.0) {}
+
+    //! Checks if picking ray can be used for detection.
+    Standard_Boolean isValidRay (const SelectBasics_SelectingVolumeManager& theMgr) const
+    {
+      if (theMgr.GetActiveSelectionType() != SelectBasics_SelectingVolumeManager::Point)
+      {
+        return Standard_False;
+      }
+
+      const gp_Vec aRay (theMgr.GetNearPickedPnt(), theMgr.GetFarPickedPnt());
+      return !aRay.IsNormal (myPlaneNormal, myAngleTol);
+    }
+  private:
+    gp_Dir        myPlaneNormal;
+    Standard_Real myAngleTol;
+  };
+
+  //! Sensitive circle with filtering picking ray.
+  class ManipSensCircle : public Select3D_SensitiveCircle, public ManipSensRotation
+  {
+  public:
+    //! Main constructor.
+    ManipSensCircle (const Handle(SelectMgr_EntityOwner)& theOwnerId,
+                     const Handle(Geom_Circle)& theCircle,
+                     const Standard_Integer theNbPnts)
+    : Select3D_SensitiveCircle (theOwnerId, theCircle, Standard_False, theNbPnts),
+      ManipSensRotation (theCircle->Position().Direction()) {}
+
+    //! Checks whether the circle overlaps current selecting volume
+    virtual Standard_Boolean Matches (SelectBasics_SelectingVolumeManager& theMgr,
+                                      SelectBasics_PickResult& thePickResult) Standard_OVERRIDE
+    {
+      return isValidRay (theMgr)
+          && Select3D_SensitiveCircle::Matches (theMgr, thePickResult);
+    }
+  };
+
+  //! Sensitive triangulation with filtering picking ray.
+  class ManipSensTriangulation : public Select3D_SensitiveTriangulation, public ManipSensRotation
+  {
+  public:
+    ManipSensTriangulation (const Handle(SelectMgr_EntityOwner)& theOwnerId,
+                            const Handle(Poly_Triangulation)& theTrg,
+                            const gp_Dir& thePlaneNormal)
+    : Select3D_SensitiveTriangulation (theOwnerId, theTrg, TopLoc_Location(), Standard_True),
+      ManipSensRotation (thePlaneNormal) {}
+
+    //! Checks whether the circle overlaps current selecting volume
+    virtual Standard_Boolean Matches (SelectBasics_SelectingVolumeManager& theMgr,
+                                      SelectBasics_PickResult& thePickResult) Standard_OVERRIDE
+    {
+      return isValidRay (theMgr)
+          && Select3D_SensitiveTriangulation::Matches (theMgr, thePickResult);
+    }
+  };
+}
+
 //=======================================================================
 //function : init
 //purpose  : 
@@ -55,7 +132,7 @@ void AIS_Manipulator::init()
   myAxes[2] = Axis (gp::OZ(), Quantity_NOC_BLUE1);
 
   Graphic3d_MaterialAspect aShadingMaterial;
-  aShadingMaterial.SetReflectionModeOff (Graphic3d_TOR_SPECULAR);
+  aShadingMaterial.SetSpecularColor(Quantity_NOC_BLACK);
   aShadingMaterial.SetMaterialType (Graphic3d_MATERIAL_ASPECT);
 
   myDrawer->SetShadingAspect (new Prs3d_ShadingAspect());
@@ -65,15 +142,27 @@ void AIS_Manipulator::init()
 
   Graphic3d_MaterialAspect aHilightMaterial;
   aHilightMaterial.SetColor (Quantity_NOC_AZURE);
-  aHilightMaterial.SetReflectionModeOff (Graphic3d_TOR_AMBIENT);
-  aHilightMaterial.SetReflectionModeOff (Graphic3d_TOR_DIFFUSE);
-  aHilightMaterial.SetReflectionModeOff (Graphic3d_TOR_SPECULAR);
-  aHilightMaterial.SetReflectionModeOff (Graphic3d_TOR_EMISSION);
+  aHilightMaterial.SetAmbientColor (Quantity_NOC_BLACK);
+  aHilightMaterial.SetDiffuseColor (Quantity_NOC_BLACK);
+  aHilightMaterial.SetSpecularColor(Quantity_NOC_BLACK);
+  aHilightMaterial.SetEmissiveColor(Quantity_NOC_BLACK);
   aHilightMaterial.SetMaterialType (Graphic3d_MATERIAL_ASPECT);
 
   myHighlightAspect = new Prs3d_ShadingAspect();
   myHighlightAspect->Aspect()->SetInteriorStyle (Aspect_IS_SOLID);
   myHighlightAspect->SetMaterial (aHilightMaterial);
+
+  Graphic3d_MaterialAspect aDraggerMaterial;
+  aDraggerMaterial.SetAmbientColor (Quantity_NOC_BLACK);
+  aDraggerMaterial.SetDiffuseColor (Quantity_NOC_BLACK);
+  aDraggerMaterial.SetSpecularColor(Quantity_NOC_BLACK);
+  aDraggerMaterial.SetMaterialType(Graphic3d_MATERIAL_ASPECT);
+
+  myDraggerHighlight = new Prs3d_ShadingAspect();
+  myDraggerHighlight->Aspect()->SetInteriorStyle(Aspect_IS_SOLID);
+  myDraggerHighlight->SetMaterial(aDraggerMaterial);
+
+  myDraggerHighlight->SetTransparency(0.5);
 
   SetSize (100);
   SetZLayer (Graphic3d_ZLayerId_Topmost);
@@ -94,10 +183,11 @@ Handle(Prs3d_Presentation) AIS_Manipulator::getHighlightPresentation (const Hand
 
   switch (anOwner->Mode())
   {
-    case AIS_MM_Translation: return myAxes[anOwner->Index()].TranslatorHighlightPrs();
-    case AIS_MM_Rotation   : return myAxes[anOwner->Index()].RotatorHighlightPrs();
-    case AIS_MM_Scaling    : return myAxes[anOwner->Index()].ScalerHighlightPrs();
-    case AIS_MM_None       : break;
+    case AIS_MM_Translation     : return myAxes[anOwner->Index()].TranslatorHighlightPrs();
+    case AIS_MM_Rotation        : return myAxes[anOwner->Index()].RotatorHighlightPrs();
+    case AIS_MM_Scaling         : return myAxes[anOwner->Index()].ScalerHighlightPrs();
+    case AIS_MM_TranslationPlane: return myAxes[anOwner->Index()].DraggerHighlightPrs();
+    case AIS_MM_None            : break;
   }
 
   return aDummyPrs;
@@ -118,10 +208,11 @@ Handle(Graphic3d_Group) AIS_Manipulator::getGroup (const Standard_Integer theInd
 
   switch (theMode)
   {
-    case AIS_MM_Translation: return myAxes[theIndex].TranslatorGroup();
-    case AIS_MM_Rotation   : return myAxes[theIndex].RotatorGroup();
-    case AIS_MM_Scaling    : return myAxes[theIndex].ScalerGroup();
-    case AIS_MM_None       : break;
+    case AIS_MM_Translation     : return myAxes[theIndex].TranslatorGroup();
+    case AIS_MM_Rotation        : return myAxes[theIndex].RotatorGroup();
+    case AIS_MM_Scaling         : return myAxes[theIndex].ScalerGroup();
+    case AIS_MM_TranslationPlane: return myAxes[theIndex].DraggerGroup();
+    case AIS_MM_None            : break;
   }
 
   return aDummyGroup;
@@ -190,8 +281,24 @@ void AIS_Manipulator::SetPart (const Standard_Integer theAxisIndex, const AIS_Ma
       myAxes[theAxisIndex].SetScaling (theIsEnabled);
       break;
 
+    case AIS_MM_TranslationPlane:
+      myAxes[theAxisIndex].SetDragging(theIsEnabled);
+      break;
+
     case AIS_MM_None:
       break;
+  }
+}
+
+//=======================================================================
+//function : SetPart
+//purpose  : 
+//=======================================================================
+void AIS_Manipulator::SetPart (const AIS_ManipulatorMode theMode, const Standard_Boolean theIsEnabled)
+{
+  for (Standard_Integer anIt = 0; anIt < 3; ++anIt)
+  {
+    SetPart (anIt, theMode, theIsEnabled);
   }
 }
 
@@ -312,6 +419,7 @@ void AIS_Manipulator::Attach (const Handle(AIS_ManipulatorObjectSequence)& theOb
     EnableMode (AIS_MM_Rotation);
     EnableMode (AIS_MM_Translation);
     EnableMode (AIS_MM_Scaling);
+    EnableMode (AIS_MM_TranslationPlane);
   }
 }
 
@@ -384,69 +492,87 @@ Standard_Boolean AIS_Manipulator::ObjectTransformation (const Standard_Integer t
   // Initialize start reference data
   if (!myHasStartedTransformation)
   {
-    Handle(AIS_ManipulatorObjectSequence) anObjects = Objects();
     myStartTrsfs.Clear();
-    for (Standard_Integer anIt = anObjects->Lower(); anIt <= anObjects->Upper(); ++anIt)
+    Handle(AIS_ManipulatorObjectSequence) anObjects = Objects();
+    for (AIS_ManipulatorObjectSequence::Iterator anObjIter (*anObjects); anObjIter.More(); anObjIter.Next())
     {
-      myStartTrsfs.Append (anObjects->Value (anIt)->LocalTransformation());
+      myStartTrsfs.Append (anObjIter.Value()->LocalTransformation());
     }
     myStartPosition = myPosition;
   }
 
   // Get 3d point with projection vector
-  Graphic3d_Vec3d anInputPoint;
-  Graphic3d_Vec3d aProj;
+  Graphic3d_Vec3d anInputPoint, aProj;
   theView->ConvertWithProj (theMaxX, theMaxY, anInputPoint.x(), anInputPoint.y(), anInputPoint.z(), aProj.x(), aProj.y(), aProj.z());
-  gp_Lin anInputLine (gp_Pnt (anInputPoint.x(), anInputPoint.y(), anInputPoint.z()), gp_Dir (aProj.x(), aProj.y(), aProj.z()));
-  gp_Pnt aNewPosition = gp::Origin();
-
+  const gp_Lin anInputLine (gp_Pnt (anInputPoint.x(), anInputPoint.y(), anInputPoint.z()), gp_Dir (aProj.x(), aProj.y(), aProj.z()));
   switch (myCurrentMode)
   {
     case AIS_MM_Translation:
+    case AIS_MM_Scaling:
     {
-      gp_Lin aLine (myStartPick, myAxes[myCurrentIndex].Position().Direction());
-      Handle(Geom_Curve) anInputCurve = new Geom_Line (anInputLine);
-      Handle(Geom_Curve) aCurve = new Geom_Line (aLine);
-      GeomAPI_ExtremaCurveCurve anExtrema (anInputCurve, aCurve);
-      gp_Pnt aP1, aP2;
-      anExtrema.NearestPoints (aP1, aP2);
-      aNewPosition = aP2;
+      const gp_Lin aLine (myStartPosition.Location(), myAxes[myCurrentIndex].Position().Direction());
+      Extrema_ExtElC anExtrema (anInputLine, aLine, Precision::Angular());
+      if (!anExtrema.IsDone()
+        || anExtrema.IsParallel()
+        || anExtrema.NbExt() != 1)
+      {
+        // translation cannot be done co-directed with camera
+        return Standard_False;
+      }
 
+      Extrema_POnCurv anExPnts[2];
+      anExtrema.Points (1, anExPnts[0], anExPnts[1]);
+      const gp_Pnt aNewPosition = anExPnts[1].Value();
       if (!myHasStartedTransformation)
       {
         myStartPick = aNewPosition;
         myHasStartedTransformation = Standard_True;
         return Standard_True;
       }
-
-      if (aNewPosition.Distance (myStartPick) < Precision::Confusion())
+      else if (aNewPosition.Distance (myStartPick) < Precision::Confusion())
       {
         return Standard_False;
       }
 
       gp_Trsf aNewTrsf;
-      aNewTrsf.SetTranslation (gp_Vec(myStartPick, aNewPosition));
-      theTrsf *= aNewTrsf;
-      break;
+      if (myCurrentMode == AIS_MM_Translation)
+      {
+        aNewTrsf.SetTranslation (gp_Vec(myStartPick, aNewPosition));
+        theTrsf *= aNewTrsf;
+      }
+      else if (myCurrentMode == AIS_MM_Scaling)
+      {
+        if (aNewPosition.Distance (myStartPosition.Location()) < Precision::Confusion())
+        {
+          return Standard_False;
+        }
+
+        Standard_Real aCoeff = myStartPosition.Location().Distance (aNewPosition)
+                             / myStartPosition.Location().Distance (myStartPick);
+        aNewTrsf.SetScale (myPosition.Location(), aCoeff);
+        theTrsf = aNewTrsf;
+      }
+      return Standard_True;
     }
     case AIS_MM_Rotation:
     {
-      Handle(Geom_Curve) anInputCurve = new Geom_Line (anInputLine);
-      Handle(Geom_Surface) aSurface = new Geom_Plane (myPosition.Location(), myAxes[myCurrentIndex].Position().Direction());
-      GeomAPI_IntCS aIntersector (anInputCurve, aSurface);
-      if (!aIntersector.IsDone() || aIntersector.NbPoints() < 1)
+      const gp_Pnt aPosLoc   = myStartPosition.Location();
+      const gp_Ax1 aCurrAxis = getAx1FromAx2Dir (myStartPosition, myCurrentIndex);
+      IntAna_IntConicQuad aIntersector (anInputLine, gp_Pln (aPosLoc, aCurrAxis.Direction()), Precision::Angular(), Precision::Intersection());
+      if (!aIntersector.IsDone()
+        || aIntersector.IsParallel()
+        || aIntersector.NbPoints() < 1)
       {
         return Standard_False;
       }
 
-      aNewPosition = aIntersector.Point (1);
-
+      const gp_Pnt aNewPosition = aIntersector.Point (1);
       if (!myHasStartedTransformation)
       {
         myStartPick = aNewPosition;
         myHasStartedTransformation = Standard_True;
-        gp_Dir aStartAxis = gce_MakeDir (myPosition.Location(), myStartPick);
-        myPrevState = aStartAxis.AngleWithRef (gce_MakeDir(myPosition.Location(), aNewPosition), myAxes[myCurrentIndex].Position().Direction());
+        gp_Dir aStartAxis = gce_MakeDir (aPosLoc, myStartPick);
+        myPrevState = aStartAxis.AngleWithRef (gce_MakeDir(aPosLoc, aNewPosition), aCurrAxis.Direction());
         return Standard_True;
       }
 
@@ -455,17 +581,17 @@ Standard_Boolean AIS_Manipulator::ObjectTransformation (const Standard_Integer t
         return Standard_False;
       }
 
-      gp_Dir aStartAxis = myPosition.Location().IsEqual (myStartPick, Precision::Confusion())
-        ? myAxes[(myCurrentIndex + 1) % 3].Position().Direction()
-        : gce_MakeDir (myPosition.Location(), myStartPick);
+      gp_Dir aStartAxis = aPosLoc.IsEqual (myStartPick, Precision::Confusion())
+        ? getAx1FromAx2Dir (myStartPosition, (myCurrentIndex + 1) % 3).Direction()
+        : gce_MakeDir (aPosLoc, myStartPick);
 
-      gp_Dir aCurrentAxis = gce_MakeDir (myPosition.Location(), aNewPosition);
-      Standard_Real anAngle = aStartAxis.AngleWithRef (aCurrentAxis, myAxes[myCurrentIndex].Position().Direction());
+      gp_Dir aCurrentAxis = gce_MakeDir (aPosLoc, aNewPosition);
+      Standard_Real anAngle = aStartAxis.AngleWithRef (aCurrentAxis, aCurrAxis.Direction());
 
       // Change value of an angle if it should have different sign.
       if (anAngle * myPrevState < 0 && Abs (anAngle) < M_PI_2)
       {
-        Standard_ShortReal aSign = myPrevState > 0 ? -1.0f : 1.0f;
+        Standard_Real aSign = myPrevState > 0 ? -1.0 : 1.0;
         anAngle = aSign * (M_PI * 2 - anAngle);
       }
 
@@ -475,20 +601,22 @@ Standard_Boolean AIS_Manipulator::ObjectTransformation (const Standard_Integer t
       }
 
       gp_Trsf aNewTrsf;
-      aNewTrsf.SetRotation (myAxes[myCurrentIndex].Position(), anAngle);
+      aNewTrsf.SetRotation (aCurrAxis, anAngle);
       theTrsf *= aNewTrsf;
       myPrevState = anAngle;
-      break;
+      return Standard_True;
     }
-    case AIS_MM_Scaling:
+    case AIS_MM_TranslationPlane:
     {
-      gp_Lin aLine (myStartPosition.Location(), myAxes[myCurrentIndex].Position().Direction());
-      Handle(Geom_Curve) anInputCurve = new Geom_Line (anInputLine);
-      Handle(Geom_Curve) aCurve = new Geom_Line (aLine);
-      GeomAPI_ExtremaCurveCurve anExtrema (anInputCurve, aCurve);
-      gp_Pnt aTmp;
-      anExtrema.NearestPoints (aTmp, aNewPosition);
+      const gp_Pnt aPosLoc = myStartPosition.Location();
+      const gp_Ax1 aCurrAxis = getAx1FromAx2Dir(myStartPosition, myCurrentIndex);
+      IntAna_IntConicQuad aIntersector(anInputLine, gp_Pln(aPosLoc, aCurrAxis.Direction()), Precision::Angular(), Precision::Intersection());
+      if (!aIntersector.IsDone() || aIntersector.NbPoints() < 1)
+      {
+        return Standard_False;
+      }
 
+      const gp_Pnt aNewPosition = aIntersector.Point(1);
       if (!myHasStartedTransformation)
       {
         myStartPick = aNewPosition;
@@ -496,25 +624,22 @@ Standard_Boolean AIS_Manipulator::ObjectTransformation (const Standard_Integer t
         return Standard_True;
       }
 
-      if (aNewPosition.Distance (myStartPick) < Precision::Confusion() 
-       || aNewPosition.Distance (myStartPosition.Location()) < Precision::Confusion())
+      if (aNewPosition.Distance(myStartPick) < Precision::Confusion())
       {
         return Standard_False;
       }
 
-      Standard_Real aCoeff = myStartPosition.Location().Distance (aNewPosition)
-                           / myStartPosition.Location().Distance (myStartPick);
       gp_Trsf aNewTrsf;
-      aNewTrsf.SetScale (myPosition.Location(), aCoeff);
-
-      theTrsf = aNewTrsf;
-      break;
+      aNewTrsf.SetTranslation(gp_Vec(myStartPick, aNewPosition));
+      theTrsf *= aNewTrsf;
+      return Standard_True;
     }
     case AIS_MM_None:
+    {
       return Standard_False;
+    }
   }
-
-  return Standard_True;
+  return Standard_False;
 }
 
 //=======================================================================
@@ -544,18 +669,19 @@ void AIS_Manipulator::StopTransform (const Standard_Boolean theToApply)
   }
 
   myHasStartedTransformation = Standard_False;
-
-  if (!theToApply)
+  if (theToApply)
   {
-    Handle(AIS_ManipulatorObjectSequence) anObjects = Objects();
-
-    for (Standard_Integer anIt = anObjects->Lower(); anIt <= anObjects->Upper(); ++anIt)
-    {
-      anObjects->Value (anIt)->SetLocalTransformation (myStartTrsfs(anIt));
-    }
-
-    SetPosition (myStartPosition);
+    return;
   }
+
+  Handle(AIS_ManipulatorObjectSequence) anObjects = Objects();
+  AIS_ManipulatorObjectSequence::Iterator anObjIter (*anObjects);
+  NCollection_Sequence<gp_Trsf>::Iterator aTrsfIter (myStartTrsfs);
+  for (; anObjIter.More(); anObjIter.Next(), aTrsfIter.Next())
+  {
+    anObjIter.ChangeValue()->SetLocalTransformation (aTrsfIter.Value());
+  }
+  SetPosition (myStartPosition);
 }
 
 //=======================================================================
@@ -569,15 +695,32 @@ void AIS_Manipulator::Transform (const gp_Trsf& theTrsf)
     return;
   }
 
-  Handle(AIS_ManipulatorObjectSequence) anObjects = Objects();
-
-  for (Standard_Integer anIt = anObjects->Lower(); anIt <= anObjects->Upper(); ++anIt)
   {
-    anObjects->Value (anIt)->SetLocalTransformation (theTrsf * myStartTrsfs(anIt));
+    Handle(AIS_ManipulatorObjectSequence) anObjects = Objects();
+    AIS_ManipulatorObjectSequence::Iterator anObjIter (*anObjects);
+    NCollection_Sequence<gp_Trsf>::Iterator aTrsfIter (myStartTrsfs);
+    for (; anObjIter.More(); anObjIter.Next(), aTrsfIter.Next())
+    {
+      const Handle(AIS_InteractiveObject)& anObj = anObjIter.ChangeValue();
+      const gp_Trsf& anOldTrsf = aTrsfIter.Value();
+      const Handle(Geom_Transformation)& aParentTrsf = anObj->CombinedParentTransformation();
+      if (!aParentTrsf.IsNull()
+        && aParentTrsf->Form() != gp_Identity)
+      {
+        // recompute local transformation relative to parent transformation
+        const gp_Trsf aNewLocalTrsf = aParentTrsf->Trsf().Inverted() * theTrsf * aParentTrsf->Trsf() * anOldTrsf;
+        anObj->SetLocalTransformation (aNewLocalTrsf);
+      }
+      else
+      {
+        anObj->SetLocalTransformation (theTrsf * anOldTrsf);
+      }
+    }
   }
 
-  if ((myCurrentMode == AIS_MM_Translation && myBehaviorOnTransform.FollowTranslation)
-   || (myCurrentMode == AIS_MM_Rotation    && myBehaviorOnTransform.FollowRotation))
+  if ((myCurrentMode == AIS_MM_Translation      && myBehaviorOnTransform.FollowTranslation)
+   || (myCurrentMode == AIS_MM_Rotation         && myBehaviorOnTransform.FollowRotation)
+   || (myCurrentMode == AIS_MM_TranslationPlane && myBehaviorOnTransform.FollowDragging))
   {
     gp_Pnt aPos  = myStartPosition.Location().Transformed (theTrsf);
     gp_Dir aVDir = myStartPosition.Direction().Transformed (theTrsf);
@@ -613,10 +756,9 @@ void AIS_Manipulator::SetPosition (const gp_Ax2& thePosition)
    || !myPosition.XDirection().IsEqual (thePosition.XDirection(), Precision::Angular()))
   {
     myPosition = thePosition;
-    myAxes[0].SetPosition (gp_Ax1 (myPosition.Location(), myPosition.XDirection()));
-    myAxes[1].SetPosition (gp_Ax1 (myPosition.Location(), myPosition.YDirection()));
-    myAxes[2].SetPosition (gp_Ax1 (myPosition.Location(), myPosition.Direction()));
-
+    myAxes[0].SetPosition (getAx1FromAx2Dir (thePosition, 0));
+    myAxes[1].SetPosition (getAx1FromAx2Dir (thePosition, 1));
+    myAxes[2].SetPosition (getAx1FromAx2Dir (thePosition, 2));
     updateTransformation();
   }
 }
@@ -706,8 +848,13 @@ void AIS_Manipulator::DeactivateCurrentMode()
     Handle(Prs3d_ShadingAspect) anAspect = new Prs3d_ShadingAspect();
     anAspect->Aspect()->SetInteriorStyle (Aspect_IS_SOLID);
     anAspect->SetMaterial (myDrawer->ShadingAspect()->Material());
-    anAspect->SetTransparency (myDrawer->ShadingAspect()->Transparency());
-    anAspect->SetColor (myAxes[myCurrentIndex].Color());
+    if (myCurrentMode == AIS_MM_TranslationPlane)
+      anAspect->SetTransparency(1.0);
+    else
+    {
+      anAspect->SetTransparency(myDrawer->ShadingAspect()->Transparency());
+      anAspect->SetColor(myAxes[myCurrentIndex].Color());
+    }
 
     aGroup->SetGroupPrimitivesAspect (anAspect->Aspect());
   }
@@ -802,14 +949,14 @@ void AIS_Manipulator::Compute (const Handle(PrsMgr_PresentationManager3d)& thePr
 
   // Display center
   myCenter.Init (myAxes[0].AxisRadius() * 2.0f, gp::Origin());
-  aGroup = Prs3d_Root::NewGroup (thePrs);
+  aGroup = thePrs->NewGroup ();
   aGroup->SetPrimitivesAspect (myDrawer->ShadingAspect()->Aspect());
   aGroup->AddPrimitiveArray (myCenter.Array());
 
   for (Standard_Integer anIt = 0; anIt < 3; ++anIt)
   {
     // Display axes
-    aGroup = Prs3d_Root::NewGroup (thePrs);
+    aGroup = thePrs->NewGroup ();
 
     Handle(Prs3d_ShadingAspect) anAspectAx = new Prs3d_ShadingAspect (new Graphic3d_AspectFillArea3d(*anAspect->Aspect()));
     anAspectAx->SetColor (myAxes[anIt].Color());
@@ -852,7 +999,13 @@ void AIS_Manipulator::HilightSelected (const Handle(PrsMgr_PresentationManager3d
     return;
   }
 
-  aGroup->SetGroupPrimitivesAspect (myHighlightAspect->Aspect());
+  if (anOwner->Mode() == AIS_MM_TranslationPlane)
+  {
+    myDraggerHighlight->SetColor(myAxes[anOwner->Index()].Color());
+    aGroup->SetGroupPrimitivesAspect(myDraggerHighlight->Aspect());
+  }
+  else
+    aGroup->SetGroupPrimitivesAspect(myHighlightAspect->Aspect());
 
   myCurrentIndex = anOwner->Index();
   myCurrentMode = anOwner->Mode();
@@ -881,13 +1034,26 @@ void AIS_Manipulator::HilightOwnerWithColor (const Handle(PrsMgr_PresentationMan
   {
     return;
   }
-  aPresentation->Highlight (theStyle);
+
+  aPresentation->CStructure()->ViewAffinity = thePM->StructureManager()->ObjectAffinity (Handle(Standard_Transient) (this));
+
+  if (anOwner->Mode() == AIS_MM_TranslationPlane)
+  {
+    Handle(Prs3d_Drawer) aStyle = new Prs3d_Drawer();
+    aStyle->SetColor (myAxes[anOwner->Index()].Color());
+    aStyle->SetTransparency (0.5);
+    aPresentation->Highlight (aStyle);
+  }
+  else
+  {
+    aPresentation->Highlight (theStyle);
+  }
+
   for (Graphic3d_SequenceOfGroup::Iterator aGroupIter (aPresentation->Groups());
        aGroupIter.More(); aGroupIter.Next())
   {
     Handle(Graphic3d_Group)& aGrp = aGroupIter.ChangeValue();
-    if (!aGrp.IsNull()
-     && aGrp->IsGroupPrimitivesAspectSet (Graphic3d_ASPECT_FILL_AREA))
+    if (!aGrp.IsNull())
     {
       aGrp->SetGroupPrimitivesAspect (myHighlightAspect->Aspect());
     }
@@ -930,10 +1096,14 @@ void AIS_Manipulator::ComputeSelection (const Handle(SelectMgr_Selection)& theSe
   {
     for (Standard_Integer anIt = 0; anIt < 3; ++anIt)
     {
+      if (!myAxes[anIt].HasTranslation())
+      {
+        continue;
+      }
       const Axis& anAxis = myAxes[anIt];
       if (aMode != AIS_MM_None)
       {
-        anOwner = new AIS_ManipulatorOwner(this, anIt, AIS_MM_Translation, 9);
+        anOwner = new AIS_ManipulatorOwner (this, anIt, AIS_MM_Translation, 9);
       }
       // define sensitivity by line
       Handle(Select3D_SensitiveSegment) aLine = new Select3D_SensitiveSegment (anOwner, gp::Origin(), anAxis.TranslatorTipPosition());
@@ -951,6 +1121,10 @@ void AIS_Manipulator::ComputeSelection (const Handle(SelectMgr_Selection)& theSe
   {
     for (Standard_Integer anIt = 0; anIt < 3; ++anIt)
     {
+      if (!myAxes[anIt].HasRotation())
+      {
+        continue;
+      }
       const Axis& anAxis = myAxes[anIt];
       if (aMode != AIS_MM_None)
       {
@@ -958,11 +1132,11 @@ void AIS_Manipulator::ComputeSelection (const Handle(SelectMgr_Selection)& theSe
       }
       // define sensitivity by circle
       Handle(Geom_Circle) aGeomCircle = new Geom_Circle (gp_Ax2 (gp::Origin(), anAxis.ReferenceAxis().Direction()), anAxis.RotatorDiskRadius());
-      Handle(Select3D_SensitiveCircle) aCircle = new Select3D_SensitiveCircle (anOwner, aGeomCircle, Standard_False, anAxis.FacettesNumber());
+      Handle(Select3D_SensitiveCircle) aCircle = new ManipSensCircle (anOwner, aGeomCircle, anAxis.FacettesNumber());
       aCircle->SetSensitivityFactor (15);
       theSelection->Add (aCircle);
       // enlarge sensitivity by triangulation
-      Handle(Select3D_SensitiveTriangulation) aTri = new Select3D_SensitiveTriangulation (anOwner, myAxes[anIt].RotatorDisk().Triangulation(), TopLoc_Location(), Standard_True);
+      Handle(Select3D_SensitiveTriangulation) aTri = new ManipSensTriangulation (anOwner, myAxes[anIt].RotatorDisk().Triangulation(), anAxis.ReferenceAxis().Direction());
       theSelection->Add (aTri);
     }
   }
@@ -971,6 +1145,10 @@ void AIS_Manipulator::ComputeSelection (const Handle(SelectMgr_Selection)& theSe
   {
     for (Standard_Integer anIt = 0; anIt < 3; ++anIt)
     {
+      if (!myAxes[anIt].HasScaling())
+      {
+        continue;
+      }
       if (aMode != AIS_MM_None)
       {
         anOwner = new AIS_ManipulatorOwner (this, anIt, AIS_MM_Scaling, 9);
@@ -982,6 +1160,38 @@ void AIS_Manipulator::ComputeSelection (const Handle(SelectMgr_Selection)& theSe
       // enlarge sensitivity by triangulation
       Handle(Select3D_SensitiveTriangulation) aTri = new Select3D_SensitiveTriangulation (anOwner, myAxes[anIt].ScalerCube().Triangulation(), TopLoc_Location(), Standard_True);
       theSelection->Add (aTri);
+    }
+  }
+
+  if (aMode == AIS_MM_TranslationPlane || aMode == AIS_MM_None)
+  {
+    for (Standard_Integer anIt = 0; anIt < 3; ++anIt)
+    {
+      if (!myAxes[anIt].HasDragging())
+      {
+        continue;
+      }
+      if (aMode != AIS_MM_None)
+      {
+        anOwner = new AIS_ManipulatorOwner(this, anIt, AIS_MM_TranslationPlane, 9);
+      }
+
+      // define sensitivity by two crossed lines
+      gp_Pnt aP1, aP2;
+      aP1 = myAxes[((anIt + 1) % 3)].TranslatorTipPosition();
+      aP2 = myAxes[((anIt + 2) % 3)].TranslatorTipPosition();
+      gp_XYZ aMidP = (aP1.XYZ() + aP2.XYZ()) / 2.0;
+
+      Handle(Select3D_SensitiveSegment) aLine1 = new Select3D_SensitiveSegment(anOwner, aP1, aP2);
+      aLine1->SetSensitivityFactor(10);
+      theSelection->Add(aLine1);
+      Handle(Select3D_SensitiveSegment) aLine2 = new Select3D_SensitiveSegment(anOwner, gp::Origin(), aMidP);
+      aLine2->SetSensitivityFactor(10);
+      theSelection->Add(aLine2);
+
+      // enlarge sensitivity by triangulation
+      Handle(Select3D_SensitiveTriangulation) aTri = new Select3D_SensitiveTriangulation(anOwner, myAxes[anIt].DraggerSector().Triangulation(), TopLoc_Location(), Standard_True);
+      theSelection->Add(aTri);
     }
   }
 }
@@ -1100,6 +1310,24 @@ void AIS_Manipulator::Cube::addTriangle (const Standard_Integer theIndex,
 }
 
 //=======================================================================
+//class    : Sector
+//function : Init
+//purpose  : 
+//=======================================================================
+void AIS_Manipulator::Sector::Init (const Standard_ShortReal theRadius,
+                                    const gp_Ax1&            thePosition,
+                                    const gp_Dir&            theXDirection,
+                                    const Standard_Integer   theSlicesNb,
+                                    const Standard_Integer   theStacksNb)
+{
+  Prs3d_ToolSector aTool(theRadius, theSlicesNb, theStacksNb);
+  gp_Ax3 aSystem(thePosition.Location(), thePosition.Direction(), theXDirection);
+  gp_Trsf aTrsf;
+  aTrsf.SetTransformation(aSystem, gp_Ax3());
+  aTool.FillArray(myArray, myTriangulation, aTrsf);
+}
+
+//=======================================================================
 //class    : Axis
 //function : Constructor
 //purpose  : 
@@ -1119,6 +1347,7 @@ AIS_Manipulator::Axis::Axis (const gp_Ax1& theAxis,
   myInnerRadius (myLength + myBoxSize),
   myDiskThickness (myBoxSize * 0.5f),
   myIndent (0.2f),
+  myHasDragging(Standard_True),
   myFacettesNumber (20),
   myCircleRadius (myLength + myBoxSize + myBoxSize * 0.5f * 0.5f)
 {
@@ -1147,7 +1376,7 @@ void AIS_Manipulator::Axis::Compute (const Handle(PrsMgr_PresentationManager)& t
                                                myAxisRadius * 1.5,
                                                anArrowLength,
                                                myFacettesNumber);
-    myTranslatorGroup = Prs3d_Root::NewGroup (thePrs);
+    myTranslatorGroup = thePrs->NewGroup ();
     myTranslatorGroup->SetGroupPrimitivesAspect (theAspect->Aspect());
     myTranslatorGroup->AddPrimitiveArray (myTriangleArray);
 
@@ -1159,8 +1388,11 @@ void AIS_Manipulator::Axis::Compute (const Handle(PrsMgr_PresentationManager)& t
     {
       myHighlightTranslator->Clear();
     }
-    Handle(Graphic3d_Group) aGroup = Prs3d_Root::CurrentGroup (myHighlightTranslator);
-    aGroup->AddPrimitiveArray (myTriangleArray);
+    {
+      Handle(Graphic3d_Group) aGroup = Prs3d_Root::CurrentGroup (myHighlightTranslator);
+      aGroup->SetGroupPrimitivesAspect (theAspect->Aspect());
+      aGroup->AddPrimitiveArray (myTriangleArray);
+    }
   }
 
   if (myHasScaling)
@@ -1168,7 +1400,7 @@ void AIS_Manipulator::Axis::Compute (const Handle(PrsMgr_PresentationManager)& t
     myCubePos = myReferenceAxis.Direction().XYZ() * (myLength + myIndent);
     myCube.Init (gp_Ax1 (myCubePos, myReferenceAxis.Direction()), myBoxSize);
 
-    myScalerGroup = Prs3d_Root::NewGroup (thePrs);
+    myScalerGroup = thePrs->NewGroup ();
     myScalerGroup->SetGroupPrimitivesAspect (theAspect->Aspect());
     myScalerGroup->AddPrimitiveArray (myCube.Array());
 
@@ -1180,15 +1412,18 @@ void AIS_Manipulator::Axis::Compute (const Handle(PrsMgr_PresentationManager)& t
     {
       myHighlightScaler->Clear();
     }
-    Handle(Graphic3d_Group) aGroup = Prs3d_Root::CurrentGroup (myHighlightScaler);
-    aGroup->AddPrimitiveArray (myCube.Array());
+    {
+      Handle(Graphic3d_Group) aGroup = Prs3d_Root::CurrentGroup (myHighlightScaler);
+      aGroup->SetGroupPrimitivesAspect (theAspect->Aspect());
+      aGroup->AddPrimitiveArray (myCube.Array());
+    }
   }
 
   if (myHasRotation)
   {
     myCircleRadius = myInnerRadius + myIndent * 2 + myDiskThickness * 0.5f;
     myCircle.Init (myInnerRadius + myIndent * 2, myInnerRadius + myDiskThickness + myIndent * 2, gp_Ax1(gp::Origin(), myReferenceAxis.Direction()), myFacettesNumber * 2);
-    myRotatorGroup = Prs3d_Root::NewGroup (thePrs);
+    myRotatorGroup = thePrs->NewGroup ();
     myRotatorGroup->SetGroupPrimitivesAspect (theAspect->Aspect());
     myRotatorGroup->AddPrimitiveArray (myCircle.Array());
 
@@ -1200,7 +1435,42 @@ void AIS_Manipulator::Axis::Compute (const Handle(PrsMgr_PresentationManager)& t
     {
       myHighlightRotator->Clear();
     }
-    Handle(Graphic3d_Group) aGroup = Prs3d_Root::CurrentGroup (myHighlightRotator);
-    Prs3d_Root::CurrentGroup (myHighlightRotator)->AddPrimitiveArray (myCircle.Array());
+    {
+      Handle(Graphic3d_Group) aGroup = Prs3d_Root::CurrentGroup (myHighlightRotator);
+      aGroup->SetGroupPrimitivesAspect (theAspect->Aspect());
+      aGroup->AddPrimitiveArray (myCircle.Array());
+    }
+  }
+
+  if (myHasDragging)
+  {
+    gp_Dir aXDirection;
+    if (myReferenceAxis.Direction().X() > 0)
+      aXDirection = gp::DY();
+    else if (myReferenceAxis.Direction().Y() > 0)
+      aXDirection = gp::DZ();
+    else
+      aXDirection = gp::DX();
+
+    mySector.Init(myInnerRadius + myIndent * 2, gp_Ax1(gp::Origin(), myReferenceAxis.Direction()), aXDirection, myFacettesNumber * 2);
+    myDraggerGroup = thePrs->NewGroup();
+
+    Handle(Graphic3d_AspectFillArea3d) aFillArea = new Graphic3d_AspectFillArea3d();
+    myDraggerGroup->SetGroupPrimitivesAspect(aFillArea);
+    myDraggerGroup->AddPrimitiveArray(mySector.Array());
+
+    if (myHighlightDragger.IsNull())
+    {
+      myHighlightDragger = new Prs3d_Presentation(thePrsMgr->StructureManager());
+    }
+    else
+    {
+      myHighlightDragger->Clear();
+    }
+    {
+      Handle(Graphic3d_Group) aGroup = Prs3d_Root::CurrentGroup(myHighlightDragger);
+      aGroup->SetGroupPrimitivesAspect(aFillArea);
+      aGroup->AddPrimitiveArray(mySector.Array());
+    }
   }
 }

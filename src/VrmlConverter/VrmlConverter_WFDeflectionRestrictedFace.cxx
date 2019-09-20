@@ -60,8 +60,8 @@ static Standard_Real GetDeflection(const Handle(BRepAdaptor_HSurface)& aFace,
 	  diagonal =1000000.;
 	  theRequestedDeflection = aDrawer->DeviationCoefficient() * diagonal;  
 	}
-//      cout << "diagonal = " << diagonal << endl;
-//      cout << "theRequestedDeflection = " << theRequestedDeflection << endl;
+//      std::cout << "diagonal = " << diagonal << std::endl;
+//      std::cout << "theRequestedDeflection = " << theRequestedDeflection << std::endl;
     }
   else 
     {
@@ -144,8 +144,7 @@ void VrmlConverter_WFDeflectionRestrictedFace::Add
   gp_Pnt dummypnt;
   for (ToolRst.Init(); ToolRst.More(); ToolRst.Next()) {
     TopAbs_Orientation Orient = ToolRst.Orientation();
-    if ( Orient == TopAbs_FORWARD || Orient == TopAbs_REVERSED ) {
-      Adaptor2d_Curve2dPtr TheRCurve = ToolRst.Value();
+      const Adaptor2d_Curve2d* TheRCurve = &ToolRst.Value();
       if (TheRCurve->GetType() != GeomAbs_Line) {
         GCPnts_QuasiUniformDeflection UDP(*TheRCurve, Deflection);
 	if (UDP.IsDone()) {
@@ -165,7 +164,7 @@ void VrmlConverter_WFDeflectionRestrictedFace::Add
 	  }
 	}
 	else {
-	  cout << "Cannot evaluate curve on surface"<<endl;
+	  std::cout << "Cannot evaluate curve on surface"<<std::endl;
 	}
       }
       else {
@@ -178,7 +177,6 @@ void VrmlConverter_WFDeflectionRestrictedFace::Add
 	else
 	  isobuild.Trim(P2,P1);
       }
-    }
   }
 
   // draw the isos

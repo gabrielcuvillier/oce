@@ -42,16 +42,15 @@
 #include <BinMDataStd_UAttributeDriver.hxx>
 #include <BinMDataStd_VariableDriver.hxx>
 #include <BinMDF_ADriverTable.hxx>
-#include <CDM_MessageDriver.hxx>
+#include <Message_Messenger.hxx>
 
-static Standard_Integer myDocumentVersion = -1;
 //=======================================================================
 //function : AddDrivers
 //purpose  : 
 //=======================================================================
 
 void BinMDataStd::AddDrivers (const Handle(BinMDF_ADriverTable)& theDriverTable,
-                              const Handle(CDM_MessageDriver)&   theMsgDriver)
+                              const Handle(Message_Messenger)&   theMsgDriver)
 {
   theDriverTable->AddDriver (new BinMDataStd_CommentDriver     (theMsgDriver) );
   theDriverTable->AddDriver (new BinMDataStd_ExpressionDriver  (theMsgDriver) );
@@ -80,21 +79,4 @@ void BinMDataStd::AddDrivers (const Handle(BinMDF_ADriverTable)& theDriverTable,
   theDriverTable->AddDriver (new BinMDataStd_NamedDataDriver     (theMsgDriver) );
   theDriverTable->AddDriver (new BinMDataStd_AsciiStringDriver   (theMsgDriver) );
   theDriverTable->AddDriver (new BinMDataStd_IntPackedMapDriver  (theMsgDriver) );
-}
-
-//=======================================================================
-//function : SetDocumentVersion
-//purpose  : Sets current document version
-//=======================================================================
-void BinMDataStd::SetDocumentVersion(const Standard_Integer theVersion)
-{
-  myDocumentVersion = theVersion;
-}
-//=======================================================================
-//function : DocumentVersion
-//purpose  : Retrieved document version
-//=======================================================================
-Standard_Integer BinMDataStd::DocumentVersion()
-{
-  return myDocumentVersion;
 }

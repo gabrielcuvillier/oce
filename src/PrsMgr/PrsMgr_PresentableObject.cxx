@@ -16,20 +16,19 @@
 
 #include <PrsMgr_PresentableObject.hxx>
 
+#include <Graphic3d_AspectFillArea3d.hxx>
 #include <Prs3d_Drawer.hxx>
+#include <Prs3d_LineAspect.hxx>
+#include <Prs3d_PointAspect.hxx>
 #include <Prs3d_Presentation.hxx>
 #include <Prs3d_Projector.hxx>
-#include <PrsMgr_ModedPresentation.hxx>
+#include <Prs3d_ShadingAspect.hxx>
+#include <PrsMgr_Presentation.hxx>
+#include <PrsMgr_PresentationManager.hxx>
 #include <Standard_NotImplemented.hxx>
-#include <TColStd_ListIteratorOfListOfInteger.hxx>
 #include <TColStd_MapOfInteger.hxx>
 
 IMPLEMENT_STANDARD_RTTIEXT(PrsMgr_PresentableObject, Standard_Transient)
-
-namespace
-{
-  static const gp_Trsf THE_IDENTITY_TRSF;
-}
 
 //=======================================================================
 //function : getIdentityTrsf
@@ -37,6 +36,7 @@ namespace
 //=======================================================================
 const gp_Trsf& PrsMgr_PresentableObject::getIdentityTrsf()
 {
+  static const gp_Trsf THE_IDENTITY_TRSF;
   return THE_IDENTITY_TRSF;
 }
 
@@ -45,11 +45,19 @@ const gp_Trsf& PrsMgr_PresentableObject::getIdentityTrsf()
 //purpose  :
 //=======================================================================
 PrsMgr_PresentableObject::PrsMgr_PresentableObject (const PrsMgr_TypeOfPresentation3d theType)
-: myDrawer (new Prs3d_Drawer()),
+: myParent (NULL),
+  myDrawer (new Prs3d_Drawer()),
   myTypeOfPresentation3d (theType),
+  //
+  myCurrentFacingModel (Aspect_TOFM_BOTH_SIDE),
+  myOwnWidth (0.0f),
+  hasOwnColor (Standard_False),
+  hasOwnMaterial (Standard_False),
+  //
+  myInfiniteState (Standard_False),
   myIsMutable (Standard_False),
   myHasOwnPresentations (Standard_True),
-  myParent (NULL)
+  myToPropagateVisualState (Standard_True)
 {
   myDrawer->SetDisplayMode (-1);
 }
@@ -60,6 +68,14 @@ PrsMgr_PresentableObject::PrsMgr_PresentableObject (const PrsMgr_TypeOfPresentat
 //=======================================================================
 PrsMgr_PresentableObject::~PrsMgr_PresentableObject()
 {
+  for (PrsMgr_Presentations::Iterator aPrsIter (myPresentations); aPrsIter.More(); aPrsIter.Next())
+  {
+    // should never happen - assertion can be used
+    const Handle(PrsMgr_Presentation)& aPrs3d = aPrsIter.Value();
+    aPrs3d->Erase();
+    aPrs3d->myPresentableObject = NULL;
+  }
+
   for (PrsMgr_ListOfPresentableObjectsIter anIter (myChildren); anIter.More(); anIter.Next())
   {
     anIter.Value()->SetCombinedParentTransform (Handle(Geom_Transformation)());
@@ -75,22 +91,11 @@ void PrsMgr_PresentableObject::Fill (const Handle(PrsMgr_PresentationManager)& t
                                      const Handle(PrsMgr_Presentation)&        thePrs,
                                      const Standard_Integer                    theMode)
 {
-  Handle(Prs3d_Presentation) aStruct3d = thePrs->Presentation();
+  const Handle(Prs3d_Presentation)& aStruct3d = thePrs;
   Compute (thePrsMgr, aStruct3d, theMode);
-  UpdateTransformation (aStruct3d);
+  aStruct3d->SetTransformation (myTransformation);
   aStruct3d->SetClipPlanes (myClipPlanes);
   aStruct3d->SetTransformPersistence (TransformPersistence());
-}
-
-//=======================================================================
-//function : Compute
-//purpose  :
-//=======================================================================
-void PrsMgr_PresentableObject::Compute (const Handle(PrsMgr_PresentationManager)& /*aPresentationManager*/,
-                                        const Handle(Prs3d_Presentation)& /*aPresentation*/,
-                                        const Standard_Integer /*aMode*/)
-{
-  throw Standard_NotImplemented("cannot compute in a 3d visualizer");
 }
 
 //=======================================================================
@@ -115,80 +120,101 @@ void PrsMgr_PresentableObject::Compute(const Handle(Prs3d_Projector)& /* aProjec
 }
 
 //=======================================================================
-//function : Update
-//purpose  : 
-//=======================================================================
-void PrsMgr_PresentableObject::Update (const Standard_Boolean AllModes) {
-  Standard_Integer l = myPresentations.Length();
-  Handle(PrsMgr_PresentationManager) PM; 
-  for (Standard_Integer i=1; i <= l; i++) {
-    PM = myPresentations(i).Presentation()->PresentationManager();
-    if(AllModes) 
-      PM->Update(this,myPresentations(i).Mode());
-    else{
-      if(PM->IsDisplayed(this,myPresentations(i).Mode()) ||
-	 PM->IsHighlighted(this,myPresentations(i).Mode())){
-	PM->Update(this,myPresentations(i).Mode());
-      }
-      else
-	SetToUpdate(myPresentations(i).Mode());
-    }
-  }
-}
-
-//=======================================================================
-//function : Update
-//purpose  : 
-//=======================================================================
-void PrsMgr_PresentableObject::Update (const Standard_Integer aMode, const Standard_Boolean ClearOther) {
-  Standard_Integer l = myPresentations.Length();
-  for (Standard_Integer i=1; i <= l; i++) {
-    if( myPresentations(i).Mode() == aMode){
-       Handle(PrsMgr_PresentationManager) PM=
-	 myPresentations(i).Presentation()->PresentationManager();
-       
-       if(PM->IsDisplayed(this,aMode) ||
-	  PM->IsHighlighted(this,aMode)){
-	 PM->Update(this,aMode);
-	 myPresentations(i).Presentation()->SetUpdateStatus(Standard_False);
-	 
-       }
-       else
-	 SetToUpdate(myPresentations(i).Mode());
-     }
-    
-  }
-  if(ClearOther) {
-    PrsMgr_Presentations save;
-    save =  myPresentations; 
-    myPresentations.Clear();
-    for (Standard_Integer i=1; i <= l; i++) {
-      if( save(i).Mode() == aMode) myPresentations.Append(save(i));
-    }
-  }
-
-}
-
-//=======================================================================
-//function : SetToUpdate
-//purpose  : 
-//=======================================================================
-void PrsMgr_PresentableObject::SetToUpdate(const Standard_Integer aMode)
-{
-  for(Standard_Integer IP =1; IP<=myPresentations.Length();IP++){
-    if(myPresentations(IP).Mode()==aMode)
-      myPresentations(IP).Presentation()->SetUpdateStatus(Standard_True);
-  }
-}
-
-//=======================================================================
-//function : SetToUpdate
+//function : ToBeUpdated
 //purpose  :
 //=======================================================================
-void PrsMgr_PresentableObject::SetToUpdate()
+Standard_Boolean PrsMgr_PresentableObject::ToBeUpdated (Standard_Boolean theToIncludeHidden) const
 {
-  for(Standard_Integer IP =1; IP<=myPresentations.Length();IP++){
-    myPresentations(IP).Presentation()->SetUpdateStatus(Standard_True);
+  for (PrsMgr_Presentations::Iterator aPrsIter (myPresentations); aPrsIter.More(); aPrsIter.Next())
+  {
+    const Handle(PrsMgr_Presentation)& aModedPrs = aPrsIter.Value();
+    if (aModedPrs->MustBeUpdated())
+    {
+      if (theToIncludeHidden)
+      {
+        return Standard_True;
+      }
+
+      Handle(PrsMgr_PresentationManager) aPrsMgr = aModedPrs->PresentationManager();
+      if (aPrsMgr->IsDisplayed  (this, aModedPrs->Mode())
+       || aPrsMgr->IsHighlighted(this, aModedPrs->Mode()))
+      {
+        return Standard_True;
+      }
+    }
+  }
+  return Standard_False;
+}
+
+//=======================================================================
+//function : UpdatePresentations
+//purpose  :
+//=======================================================================
+Standard_Boolean PrsMgr_PresentableObject::UpdatePresentations (Standard_Boolean theToIncludeHidden)
+{
+  Standard_Boolean hasUpdates = Standard_False;
+  for (PrsMgr_Presentations::Iterator aPrsIter (myPresentations); aPrsIter.More(); aPrsIter.Next())
+  {
+    const Handle(PrsMgr_Presentation)& aModedPrs = aPrsIter.Value();
+    if (aModedPrs->MustBeUpdated())
+    {
+      Handle(PrsMgr_PresentationManager) aPrsMgr = aModedPrs->PresentationManager();
+      if (theToIncludeHidden
+       || aPrsMgr->IsDisplayed  (this, aModedPrs->Mode())
+       || aPrsMgr->IsHighlighted(this, aModedPrs->Mode()))
+      {
+        hasUpdates = Standard_True;
+        aPrsMgr->Update (this, aModedPrs->Mode());
+      }
+    }
+  }
+  return hasUpdates;
+}
+
+//=======================================================================
+//function : Update
+//purpose  :
+//=======================================================================
+void PrsMgr_PresentableObject::Update (Standard_Integer theMode, Standard_Boolean theToClearOther)
+{
+  for (PrsMgr_Presentations::Iterator aPrsIter (myPresentations); aPrsIter.More();)
+  {
+    if (aPrsIter.Value()->Mode() == theMode)
+    {
+      Handle(PrsMgr_PresentationManager) aPrsMgr = aPrsIter.Value()->PresentationManager();
+      if (aPrsMgr->IsDisplayed  (this, theMode)
+       || aPrsMgr->IsHighlighted(this, theMode))
+      {
+        aPrsMgr->Update (this, theMode);
+        aPrsIter.Value()->SetUpdateStatus (Standard_False);
+      }
+      else
+      {
+        SetToUpdate (aPrsIter.Value()->Mode());
+      }
+    }
+    else if (theToClearOther)
+    {
+      myPresentations.Remove (aPrsIter);
+      continue;
+    }
+    aPrsIter.Next();
+  }
+}
+
+//=======================================================================
+//function : SetToUpdate
+//purpose  : 
+//=======================================================================
+void PrsMgr_PresentableObject::SetToUpdate (Standard_Integer theMode)
+{
+  for (PrsMgr_Presentations::Iterator aPrsIter (myPresentations); aPrsIter.More(); aPrsIter.Next())
+  {
+    if (theMode == -1
+     || aPrsIter.Value()->Mode() == theMode)
+    {
+      aPrsIter.ChangeValue()->SetUpdateStatus (Standard_True);
+    }
   }
 }
 
@@ -196,19 +222,18 @@ void PrsMgr_PresentableObject::SetToUpdate()
 //function : ToBeUpdated
 //purpose  : gets the list of modes to be updated
 //=======================================================================
-void PrsMgr_PresentableObject::ToBeUpdated(TColStd_ListOfInteger& OutList) const
+void PrsMgr_PresentableObject::ToBeUpdated (TColStd_ListOfInteger& theOutList) const
 {
-  OutList.Clear();
-  // on dimensionne les buckets a la taille de la seq.
+  theOutList.Clear();
   TColStd_MapOfInteger MI(myPresentations.Length()); 
-  
-  for(Standard_Integer IP =1; IP<=myPresentations.Length();IP++){
-    const PrsMgr_ModedPresentation& MP = myPresentations(IP);
-    if(MP.Presentation()->MustBeUpdated())
-      if(!MI.Contains(MP.Mode())){
-        OutList.Append(MP.Mode());
-        MI.Add(MP.Mode());
-      }
+  for (PrsMgr_Presentations::Iterator aPrsIter (myPresentations); aPrsIter.More(); aPrsIter.Next())
+  {
+    const Handle(PrsMgr_Presentation)& aModedPrs = aPrsIter.Value();
+    if (aModedPrs->MustBeUpdated()
+     && MI.Add (aModedPrs->Mode()))
+    {
+      theOutList.Append (aModedPrs->Mode());
+    }
   }
 }
 
@@ -219,12 +244,12 @@ void PrsMgr_PresentableObject::ToBeUpdated(TColStd_ListOfInteger& OutList) const
 void PrsMgr_PresentableObject::SetTypeOfPresentation (const PrsMgr_TypeOfPresentation3d theType)
 {
   myTypeOfPresentation3d = theType;
-  for(Standard_Integer aPrsIter = 1; aPrsIter <= myPresentations.Length(); ++aPrsIter)
+  for (PrsMgr_Presentations::Iterator aPrsIter (myPresentations); aPrsIter.More(); aPrsIter.Next())
   {
-    const Handle(PrsMgr_Presentation)& aPrs  = myPresentations (aPrsIter).Presentation();
-    aPrs->Presentation()->SetVisual (myTypeOfPresentation3d == PrsMgr_TOP_ProjectorDependant
-                                   ? Graphic3d_TOS_COMPUTED
-                                   : Graphic3d_TOS_ALL);
+    const Handle(PrsMgr_Presentation)& aPrs  = aPrsIter.Value();
+    aPrs->SetVisual (myTypeOfPresentation3d == PrsMgr_TOP_ProjectorDependant
+                   ? Graphic3d_TOS_COMPUTED
+                   : Graphic3d_TOS_ALL);
   }
 }
 
@@ -285,9 +310,9 @@ void PrsMgr_PresentableObject::UpdateTransformation()
     myInvTransformation = myLocalTransformation->Trsf().Inverted();
   }
 
-  for (Standard_Integer aPrsIter = 1; aPrsIter <= myPresentations.Length(); ++aPrsIter)
+  for (PrsMgr_Presentations::Iterator aPrsIter (myPresentations); aPrsIter.More(); aPrsIter.Next())
   {
-    myPresentations (aPrsIter).Presentation()->SetTransformation (myTransformation);
+    aPrsIter.ChangeValue()->SetTransformation (myTransformation);
   }
 
   for (PrsMgr_ListOfPresentableObjectsIter aChildIter (myChildren); aChildIter.More(); aChildIter.Next())
@@ -297,12 +322,16 @@ void PrsMgr_PresentableObject::UpdateTransformation()
 }
 
 //=======================================================================
-//function : UpdateTransformation
-//purpose  : 
+//function : recomputeComputed
+//purpose  :
 //=======================================================================
-void PrsMgr_PresentableObject::UpdateTransformation(const Handle(Prs3d_Presentation)& P)
+void PrsMgr_PresentableObject::recomputeComputed() const
 {
-  P->SetTransformation (myTransformation);
+  for (PrsMgr_Presentations::Iterator aPrsIter (myPresentations); aPrsIter.More(); aPrsIter.Next())
+  {
+    const Handle(PrsMgr_Presentation)& aPrs3d = aPrsIter.Value();
+    aPrs3d->ReCompute();
+  }
 }
 
 //=======================================================================
@@ -312,15 +341,11 @@ void PrsMgr_PresentableObject::UpdateTransformation(const Handle(Prs3d_Presentat
 void PrsMgr_PresentableObject::SetTransformPersistence (const Handle(Graphic3d_TransformPers)& theTrsfPers)
 {
   myTransformPersistence = theTrsfPers;
-  for (Standard_Integer aPrsIter = 1; aPrsIter <= myPresentations.Length(); ++aPrsIter)
+  for (PrsMgr_Presentations::Iterator aPrsIter (myPresentations); aPrsIter.More(); aPrsIter.Next())
   {
-    const Handle(PrsMgr_Presentation)& aPrs3d = myPresentations (aPrsIter).Presentation();
-    if (!aPrs3d.IsNull()
-     && !aPrs3d->Presentation().IsNull())
-    {
-      aPrs3d->Presentation()->SetTransformPersistence (myTransformPersistence);
-      aPrs3d->Presentation()->ReCompute();
-    }
+    const Handle(PrsMgr_Presentation)& aPrs3d = aPrsIter.Value();
+    aPrs3d->SetTransformPersistence (myTransformPersistence);
+    aPrs3d->ReCompute();
   }
 }
 
@@ -384,6 +409,17 @@ void PrsMgr_PresentableObject::AddChild (const Handle(PrsMgr_PresentableObject)&
 }
 
 //=======================================================================
+//function : AddChildWithCurrentTransformation
+//purpose  : 
+//=======================================================================
+void PrsMgr_PresentableObject::AddChildWithCurrentTransformation(const Handle(PrsMgr_PresentableObject)& theObject)
+{
+  gp_Trsf aTrsf = Transformation().Inverted() * theObject->Transformation();
+  theObject->SetLocalTransformation(aTrsf);
+  AddChild(theObject);
+}
+
+//=======================================================================
 //function : RemoveChild
 //purpose  : 
 //=======================================================================
@@ -403,6 +439,17 @@ void PrsMgr_PresentableObject::RemoveChild (const Handle(PrsMgr_PresentableObjec
 }
 
 //=======================================================================
+//function : RemoveChildWithRestoreTransformation
+//purpose  : 
+//=======================================================================
+void PrsMgr_PresentableObject::RemoveChildWithRestoreTransformation(const Handle(PrsMgr_PresentableObject)& theObject)
+{
+  gp_Trsf aTrsf = theObject->Transformation();
+  RemoveChild(theObject);
+  theObject->SetLocalTransformation(aTrsf);
+}
+
+//=======================================================================
 //function : SetZLayer
 //purpose  :
 //=======================================================================
@@ -414,26 +461,11 @@ void PrsMgr_PresentableObject::SetZLayer (const Graphic3d_ZLayerId theLayerId)
   }
 
   myDrawer->SetZLayer (theLayerId);
-  for (Standard_Integer aPrsIter = 1; aPrsIter <= myPresentations.Length(); ++aPrsIter)
+  for (PrsMgr_Presentations::Iterator aPrsIter (myPresentations); aPrsIter.More(); aPrsIter.Next())
   {
-    const PrsMgr_ModedPresentation& aModedPrs = myPresentations (aPrsIter);
-    if (aModedPrs.Presentation().IsNull()
-     || aModedPrs.Presentation()->Presentation().IsNull())
-    {
-      continue;
-    }
-
-    aModedPrs.Presentation()->Presentation()->SetZLayer (theLayerId);
+    const Handle(PrsMgr_Presentation)& aModedPrs = aPrsIter.Value();
+    aModedPrs->SetZLayer (theLayerId);
   }
-}
-
-//=======================================================================
-//function : ZLayer
-//purpose  :
-//=======================================================================
-Graphic3d_ZLayerId PrsMgr_PresentableObject::ZLayer() const
-{
-  return myDrawer->ZLayer();
 }
 
 // =======================================================================
@@ -493,19 +525,29 @@ void PrsMgr_PresentableObject::SetClipPlanes (const Handle(Graphic3d_SequenceOfH
 // =======================================================================
 void PrsMgr_PresentableObject::UpdateClipping()
 {
-  // affect generated structures
-  for (Standard_Integer aPrsIt = 1; aPrsIt <= myPresentations.Length(); ++aPrsIt)
+  for (PrsMgr_Presentations::Iterator aPrsIter (myPresentations); aPrsIter.More(); aPrsIter.Next())
   {
-    // pass over presentation manager 3d mechanism right to the structures -
-    // we do not interested in display mode collections.
-    const PrsMgr_ModedPresentation& aModedPrs = myPresentations (aPrsIt);
-    if (aModedPrs.Presentation().IsNull()
-     || aModedPrs.Presentation()->Presentation().IsNull())
-    {
-      continue;
-    }
+    const Handle(PrsMgr_Presentation)& aModedPrs = aPrsIter.Value();
+    aModedPrs->SetClipPlanes (myClipPlanes);
+  }
+}
 
-    aModedPrs.Presentation()->Presentation()->SetClipPlanes (myClipPlanes);
+//=======================================================================
+//function : SetInfiniteState
+//purpose  :
+//=======================================================================
+void PrsMgr_PresentableObject::SetInfiniteState (const Standard_Boolean theFlag)
+{
+  if (myInfiniteState == theFlag)
+  {
+    return;
+  }
+
+  myInfiniteState = theFlag;
+  for (PrsMgr_Presentations::Iterator aPrsIter (myPresentations); aPrsIter.More(); aPrsIter.Next())
+  {
+    const Handle(PrsMgr_Presentation)& aModedPrs = aPrsIter.Value();
+    aModedPrs->SetInfiniteState (theFlag);
   }
 }
 
@@ -521,26 +563,11 @@ void PrsMgr_PresentableObject::SetMutable (const Standard_Boolean theIsMutable)
   }
 
   myIsMutable = theIsMutable;
-  for (Standard_Integer aPrsIter = 1; aPrsIter <= myPresentations.Length(); ++aPrsIter)
+  for (PrsMgr_Presentations::Iterator aPrsIter (myPresentations); aPrsIter.More(); aPrsIter.Next())
   {
-    const PrsMgr_ModedPresentation& aModedPrs = myPresentations (aPrsIter);
-    if (aModedPrs.Presentation().IsNull()
-     || aModedPrs.Presentation()->Presentation().IsNull())
-    {
-      continue;
-    }
-
-    aModedPrs.Presentation()->Presentation()->SetMutable (theIsMutable);
+    const Handle(PrsMgr_Presentation)& aModedPrs = aPrsIter.Value();
+    aModedPrs->SetMutable (theIsMutable);
   }
-}
-
-// =======================================================================
-// function : SetAttributes
-// purpose  :
-// =======================================================================
-void PrsMgr_PresentableObject::SetAttributes (const Handle(Prs3d_Drawer)& theDrawer)
-{
-  myDrawer = theDrawer;
 }
 
 // =======================================================================
@@ -555,4 +582,258 @@ void PrsMgr_PresentableObject::UnsetAttributes()
     aDrawer->Link(myDrawer->Link());
   }
   myDrawer = aDrawer;
+
+  hasOwnColor    = Standard_False;
+  hasOwnMaterial = Standard_False;
+  myOwnWidth     = 0.0f;
+  myDrawer->SetTransparency (0.0f);
+}
+
+//=======================================================================
+//function : SetHilightMode
+//purpose  :
+//=======================================================================
+void PrsMgr_PresentableObject::SetHilightMode (const Standard_Integer theMode)
+{
+  if (myHilightDrawer.IsNull())
+  {
+    myHilightDrawer = new Prs3d_Drawer();
+    myHilightDrawer->Link (myDrawer);
+    myHilightDrawer->SetAutoTriangulation (Standard_False);
+    myHilightDrawer->SetColor (Quantity_NOC_GRAY80);
+    myHilightDrawer->SetZLayer(Graphic3d_ZLayerId_UNKNOWN);
+  }
+  if (myDynHilightDrawer.IsNull())
+  {
+    myDynHilightDrawer = new Prs3d_Drawer();
+    myDynHilightDrawer->Link (myDrawer);
+    myDynHilightDrawer->SetColor (Quantity_NOC_CYAN1);
+    myDynHilightDrawer->SetAutoTriangulation (Standard_False);
+    myDynHilightDrawer->SetZLayer(Graphic3d_ZLayerId_Top);
+  }
+  myHilightDrawer   ->SetDisplayMode (theMode);
+  myDynHilightDrawer->SetDisplayMode (theMode);
+}
+
+//=======================================================================
+//function : SynchronizeAspects
+//purpose  :
+//=======================================================================
+void PrsMgr_PresentableObject::SynchronizeAspects()
+{
+  for (PrsMgr_Presentations::Iterator aPrsIter (myPresentations); aPrsIter.More(); aPrsIter.Next())
+  {
+    const Handle(PrsMgr_Presentation)& aPrs3d = aPrsIter.ChangeValue();
+    for (Graphic3d_SequenceOfGroup::Iterator aGroupIter (aPrs3d->Groups()); aGroupIter.More(); aGroupIter.Next())
+    {
+      if (!aGroupIter.Value().IsNull())
+      {
+        aGroupIter.ChangeValue()->SynchronizeAspects();
+      }
+    }
+  }
+}
+
+//=======================================================================
+//function : replaceAspects
+//purpose  :
+//=======================================================================
+void PrsMgr_PresentableObject::replaceAspects (const Graphic3d_MapOfAspectsToAspects& theMap)
+{
+  if (theMap.IsEmpty())
+  {
+    return;
+  }
+
+  for (PrsMgr_Presentations::Iterator aPrsIter (myPresentations); aPrsIter.More(); aPrsIter.Next())
+  {
+    const Handle(PrsMgr_Presentation)& aPrs3d = aPrsIter.ChangeValue();
+    for (Graphic3d_SequenceOfGroup::Iterator aGroupIter (aPrs3d->Groups()); aGroupIter.More(); aGroupIter.Next())
+    {
+      if (!aGroupIter.Value().IsNull())
+      {
+        aGroupIter.ChangeValue()->ReplaceAspects (theMap);
+      }
+    }
+  }
+}
+
+//=======================================================================
+//function : BoundingBox
+//purpose  :
+//=======================================================================
+void PrsMgr_PresentableObject::BoundingBox (Bnd_Box& theBndBox)
+{
+  if (myDrawer->DisplayMode() == -1)
+  {
+    if (!myPresentations.IsEmpty())
+    {
+      const Handle(PrsMgr_Presentation)& aPrs3d = myPresentations.First();
+      const Graphic3d_BndBox3d& aBndBox = aPrs3d->CStructure()->BoundingBox();
+      if (aBndBox.IsValid())
+      {
+        theBndBox.Update (aBndBox.CornerMin().x(), aBndBox.CornerMin().y(), aBndBox.CornerMin().z(),
+                          aBndBox.CornerMax().x(), aBndBox.CornerMax().y(), aBndBox.CornerMax().z());
+      }
+      else
+      {
+        theBndBox.SetVoid();
+      }
+      return;
+    }
+
+    for (PrsMgr_ListOfPresentableObjectsIter aPrsIter (myChildren); aPrsIter.More(); aPrsIter.Next())
+    {
+      if (const Handle(PrsMgr_PresentableObject)& aChild = aPrsIter.Value())
+      {
+        Bnd_Box aBox;
+        aChild->BoundingBox (aBox);
+        theBndBox.Add (aBox);
+      }
+    }
+    return;
+  }
+
+  for (PrsMgr_Presentations::Iterator aPrsIter (myPresentations); aPrsIter.More(); aPrsIter.Next())
+  {
+    const Handle(PrsMgr_Presentation)& aPrs3d = aPrsIter.ChangeValue();
+    if (aPrs3d->Mode() == myDrawer->DisplayMode())
+    {
+      const Graphic3d_BndBox3d& aBndBox = aPrs3d->CStructure()->BoundingBox();
+      if (aBndBox.IsValid())
+      {
+        theBndBox.Update (aBndBox.CornerMin().x(), aBndBox.CornerMin().y(), aBndBox.CornerMin().z(),
+                          aBndBox.CornerMax().x(), aBndBox.CornerMax().y(), aBndBox.CornerMax().z());
+      }
+      else
+      {
+        theBndBox.SetVoid();
+      }
+      return;
+    }
+  }
+}
+
+//=======================================================================
+//function : Material
+//purpose  :
+//=======================================================================
+Graphic3d_NameOfMaterial PrsMgr_PresentableObject::Material() const
+{
+  return myDrawer->ShadingAspect()->Material().Name();
+}
+
+//=======================================================================
+//function : SetMaterial
+//purpose  :
+//=======================================================================
+void PrsMgr_PresentableObject::SetMaterial (const Graphic3d_MaterialAspect& theMaterial)
+{
+  myDrawer->SetupOwnShadingAspect();
+  myDrawer->ShadingAspect()->SetMaterial (theMaterial);
+  hasOwnMaterial = Standard_True;
+}
+
+//=======================================================================
+//function : UnsetMaterial
+//purpose  :
+//=======================================================================
+void PrsMgr_PresentableObject::UnsetMaterial()
+{
+  if (!HasMaterial())
+  {
+    return;
+  }
+
+  if (HasColor() || IsTransparent())
+  {
+    if (myDrawer->HasLink())
+    {
+      myDrawer->ShadingAspect()->SetMaterial (myDrawer->Link()->ShadingAspect()->Aspect()->BackMaterial());
+    }
+
+    if (HasColor())
+    {
+      SetColor (myDrawer->Color());
+    }
+
+    if (IsTransparent())
+    {
+      SetTransparency (myDrawer->Transparency());
+    }
+  }
+  else
+  {
+    myDrawer->SetShadingAspect (Handle(Prs3d_ShadingAspect)());
+  }
+
+  hasOwnMaterial = Standard_False;
+}
+
+//=======================================================================
+//function : SetTransparency
+//purpose  :
+//=======================================================================
+void PrsMgr_PresentableObject::SetTransparency (const Standard_Real theValue)
+{
+  myDrawer->SetupOwnShadingAspect();
+  myDrawer->ShadingAspect()->Aspect()->ChangeFrontMaterial().SetTransparency (Standard_ShortReal(theValue));
+  myDrawer->ShadingAspect()->Aspect()->ChangeBackMaterial() .SetTransparency (Standard_ShortReal(theValue));
+  myDrawer->SetTransparency (Standard_ShortReal(theValue));
+}
+
+//=======================================================================
+//function : UnsetTransparency
+//purpose  :
+//=======================================================================
+void PrsMgr_PresentableObject::UnsetTransparency()
+{
+  if (HasColor() || HasMaterial())
+  {
+    myDrawer->ShadingAspect()->Aspect()->ChangeFrontMaterial().SetTransparency (0.0f);
+    myDrawer->ShadingAspect()->Aspect()->ChangeBackMaterial() .SetTransparency (0.0f);
+  }
+  else
+  {
+    myDrawer->SetShadingAspect (Handle(Prs3d_ShadingAspect)());
+  }
+  myDrawer->SetTransparency (0.0f);
+}
+
+//=======================================================================
+//function : SetPolygonOffsets
+//purpose  :
+//=======================================================================
+void PrsMgr_PresentableObject::SetPolygonOffsets (const Standard_Integer   theMode,
+                                                  const Standard_ShortReal theFactor,
+                                                  const Standard_ShortReal theUnits)
+{
+  myDrawer->SetupOwnShadingAspect();
+  myDrawer->ShadingAspect()->Aspect()->SetPolygonOffsets (theMode, theFactor, theUnits);
+  SynchronizeAspects();
+}
+
+//=======================================================================
+//function : HasPolygonOffsets
+//purpose  :
+//=======================================================================
+Standard_Boolean PrsMgr_PresentableObject::HasPolygonOffsets() const
+{
+  return !(myDrawer->HasOwnShadingAspect()
+        || (myDrawer->HasLink()
+         && myDrawer->ShadingAspect() == myDrawer->Link()->ShadingAspect()));
+}
+
+//=======================================================================
+//function : PolygonOffsets
+//purpose  :
+//=======================================================================
+void PrsMgr_PresentableObject::PolygonOffsets (Standard_Integer&   theMode,
+                                               Standard_ShortReal& theFactor,
+                                               Standard_ShortReal& theUnits) const
+{
+  if (HasPolygonOffsets())
+  {
+    myDrawer->ShadingAspect()->Aspect()->PolygonOffsets (theMode, theFactor, theUnits);
+  }
 }

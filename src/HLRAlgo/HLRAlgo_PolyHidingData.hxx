@@ -23,7 +23,7 @@
 
 #include <Standard_Integer.hxx>
 #include <Standard_Real.hxx>
-#include <gp_XYZ.hxx>
+
 
 //! Data structure of a set of Hiding Triangles.
 class HLRAlgo_PolyHidingData

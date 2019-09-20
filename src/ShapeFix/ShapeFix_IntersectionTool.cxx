@@ -253,6 +253,8 @@ Standard_Boolean ShapeFix_IntersectionTool::SplitEdge1(const Handle(ShapeExtend_
                                                        const Standard_Real preci,
                                                        ShapeFix_DataMapOfShapeBox2d& boxes) const
 {
+  Standard_ASSERT_RETURN (num > 0 && num <= sewd->NbEdges(), "Edge index out of range", Standard_False);
+
   TopoDS_Edge edge = sewd->Edge(num);
   TopoDS_Edge newE1, newE2;
   if(!SplitEdge(edge,param,vert,face,newE1,newE2,preci)) return Standard_False;
@@ -460,7 +462,7 @@ Standard_Boolean ShapeFix_IntersectionTool::UnionVertexes(const Handle(ShapeExte
       // union vertexes V1F and V2F
       B.UpdateVertex(V1F,tolv);
       TopoDS_Edge NewE = sbe.CopyReplaceVertices(edge2,V1F,V2L);
-//      cout<<"union vertexes V1F and V2F"<<endl;
+//      std::cout<<"union vertexes V1F and V2F"<<std::endl;
 //      gp_Pnt Ptmp = BRep_Tool::Pnt(V1F);
 //      B.MakeVertex(V,Ptmp,tolv);
 //      myContext->Replace(V1F,V);
@@ -523,7 +525,7 @@ Standard_Boolean ShapeFix_IntersectionTool::UnionVertexes(const Handle(ShapeExte
       // union vertexes V1F and V2L
       B.UpdateVertex(V1F,tolv);
       TopoDS_Edge NewE = sbe.CopyReplaceVertices(edge2,V2F,V1F);
-//      cout<<"union vertexes V1F and V2L"<<endl;
+//      std::cout<<"union vertexes V1F and V2L"<<std::endl;
 //      gp_Pnt Ptmp = BRep_Tool::Pnt(V1F);
 //      B.MakeVertex(V,Ptmp,tolv);
 //      myContext->Replace(V1F,V);
@@ -587,7 +589,7 @@ Standard_Boolean ShapeFix_IntersectionTool::UnionVertexes(const Handle(ShapeExte
       // union vertexes V1L and V2F
       B.UpdateVertex(V1L,tolv);
       TopoDS_Edge NewE = sbe.CopyReplaceVertices(edge2,V1L,V2L);
-//      cout<<"union vertexes V1L and V2F"<<endl;
+//      std::cout<<"union vertexes V1L and V2F"<<std::endl;
 //      gp_Pnt Ptmp = BRep_Tool::Pnt(V1L);
 //      B.MakeVertex(V,Ptmp,tolv);
 //      myContext->Replace(V1L,V);
@@ -650,7 +652,7 @@ Standard_Boolean ShapeFix_IntersectionTool::UnionVertexes(const Handle(ShapeExte
       // union vertexes V1L and V2L
       B.UpdateVertex(V1L,tolv);
       TopoDS_Edge NewE = sbe.CopyReplaceVertices(edge2,V2F,V1L);
-//      cout<<"union vertexes V1L and V2L"<<endl;
+//      std::cout<<"union vertexes V1L and V2L"<<std::endl;
 //      gp_Pnt Ptmp = BRep_Tool::Pnt(V1L);
 //      B.MakeVertex(V,Ptmp,tolv);
 //      myContext->Replace(V1L,V);
@@ -1801,24 +1803,22 @@ Standard_Boolean ShapeFix_IntersectionTool::FixIntersectingWires
                       }
                     }
                     if( akey1==0 && akey2==0 ) {
+                      int num1split2 = num1; // what edge to split by point 2
                       if(SplitEdge1(sewd1, face, num1, p11, NewV1, tolV1, boxes1)) {
                         NbModif++;
-                      }
-                      tmpE = sewd1->Edge(num1);
-                      Standard_Real a,b;
-                      Handle(Geom2d_Curve) c2d;
-                      sae.PCurve(tmpE,face,c2d,a,b,Standard_False);
-                      if( (a-p12)*(b-p12)>0 ) { // p12 - external for [a,b] => split next edge
-                        if(SplitEdge1(sewd1, face, num1+1, p12, NewV2, tolV2, boxes1) ) {
-                          NbModif++;
-                          numseg1=num1+1;
+                        tmpE = sewd1->Edge (num1);
+                        Standard_Real a, b;
+                        Handle (Geom2d_Curve) c2d;
+                        sae.PCurve (tmpE, face, c2d, a, b, Standard_False);
+                        if ((a - p12)*(b - p12) > 0)
+                        { // p12 - external for [a,b] => split next edge
+                          num1split2++;
                         }
                       }
-                      else {
-                        if(SplitEdge1(sewd1, face, num1, p12, NewV2, tolV2, boxes1) ) {
-                          NbModif++;
-                          numseg1=num1+1;
-                        }
+                      if (SplitEdge1 (sewd1, face, num1split2, p12, NewV2, tolV2, boxes1))
+                      {
+                        NbModif++;
+                        numseg1=num1+1;
                       }
                     }
                     SegE = sewd1->Edge(numseg1); // get edge from segment
@@ -1885,25 +1885,23 @@ Standard_Boolean ShapeFix_IntersectionTool::FixIntersectingWires
                       }
                     }
                     if( akey1==0 && akey2==0 ) {
+                      int num2split2 = num2;
                       if(SplitEdge1(sewd2, face, num2, p21, NewV1, tolV1, boxes2)) {
                         NbModif++;
                         numseg2=num2+1;
-                      }
-                      tmpE = sewd2->Edge(num2);
-                      Standard_Real a,b;
-                      Handle(Geom2d_Curve) c2d;
-                      sae.PCurve(tmpE,face,c2d,a,b,Standard_False);
-                      if( (a-p22)*(b-p22)>0 ) { // p22 - external for [a,b] => split next edge
-                        if(SplitEdge1(sewd2, face, num2+1, p22, NewV2, tolV2, boxes2) ) {
-                          NbModif++;
-                          numseg2=num2+1;
+                        tmpE = sewd2->Edge (num2);
+                        Standard_Real a, b;
+                        Handle (Geom2d_Curve) c2d;
+                        sae.PCurve (tmpE, face, c2d, a, b, Standard_False);
+                        if ((a - p22)*(b - p22) > 0)
+                        { // p22 - external for [a,b] => split next edge
+                          num2split2++;
                         }
                       }
-                      else {
-                        if(SplitEdge1(sewd2, face, num2, p22, NewV2, tolV2, boxes2) ) {
-                          NbModif++;
-                          numseg2=num2+1;
-                        }
+                      if (SplitEdge1 (sewd2, face, num2split2, p22, NewV2, tolV2, boxes2))
+                      {
+                        NbModif++;
+                        numseg2 = num2 + 1;
                       }
                     }
                     tmpE = sewd2->Edge(numseg2);

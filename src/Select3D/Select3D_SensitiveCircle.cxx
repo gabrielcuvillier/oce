@@ -58,7 +58,7 @@ namespace
 //function : Select3D_SensitiveCircle (constructor)
 //purpose  : Definition of a sensitive circle
 //=======================================================================
-Select3D_SensitiveCircle::Select3D_SensitiveCircle(const Handle(SelectBasics_EntityOwner)& theOwnerId,
+Select3D_SensitiveCircle::Select3D_SensitiveCircle(const Handle(SelectMgr_EntityOwner)& theOwnerId,
                                                    const Handle(Geom_Circle)& theCircle,
                                                    const Standard_Boolean theIsFilled,
                                                    const Standard_Integer theNbPnts)
@@ -116,7 +116,7 @@ Select3D_SensitiveCircle::Select3D_SensitiveCircle(const Handle(SelectBasics_Ent
 //function : Select3D_SensitiveCircle (constructor)
 //purpose  : Definition of a sensitive arc
 //=======================================================================
-Select3D_SensitiveCircle::Select3D_SensitiveCircle (const Handle(SelectBasics_EntityOwner)& theOwnerId,
+Select3D_SensitiveCircle::Select3D_SensitiveCircle (const Handle(SelectMgr_EntityOwner)& theOwnerId,
                                                     const Handle(Geom_Circle)& theCircle,
                                                     const Standard_Real theU1,
                                                     const Standard_Real theU2,
@@ -174,7 +174,7 @@ Select3D_SensitiveCircle::Select3D_SensitiveCircle (const Handle(SelectBasics_En
 //function : Select3D_SensitiveCircle
 //purpose  :
 //=======================================================================
-Select3D_SensitiveCircle::Select3D_SensitiveCircle(const Handle(SelectBasics_EntityOwner)& theOwnerId,
+Select3D_SensitiveCircle::Select3D_SensitiveCircle(const Handle(SelectMgr_EntityOwner)& theOwnerId,
                                                    const Handle(TColgp_HArray1OfPnt)& thePnts3d,
                                                    const Standard_Boolean theIsFilled)
 : Select3D_SensitivePoly (theOwnerId, thePnts3d, static_cast<Standard_Boolean> (!theIsFilled)),
@@ -199,7 +199,7 @@ Select3D_SensitiveCircle::Select3D_SensitiveCircle(const Handle(SelectBasics_Ent
 //purpose  :
 //=======================================================================
 
-Select3D_SensitiveCircle::Select3D_SensitiveCircle(const Handle(SelectBasics_EntityOwner)& theOwnerId,
+Select3D_SensitiveCircle::Select3D_SensitiveCircle(const Handle(SelectMgr_EntityOwner)& theOwnerId,
                                                    const TColgp_Array1OfPnt& thePnts3d,
                                                    const Standard_Boolean theIsFilled)
 : Select3D_SensitivePoly (theOwnerId, thePnts3d, !theIsFilled),
@@ -238,14 +238,10 @@ void Select3D_SensitiveCircle::BVH()
 Standard_Boolean Select3D_SensitiveCircle::Matches (SelectBasics_SelectingVolumeManager& theMgr,
                                                     SelectBasics_PickResult& thePickResult)
 {
-  Standard_Real aDepth     = RealLast();
-  Standard_Real aDistToCOG = RealLast();
-
   if (mySensType == Select3D_TOS_BOUNDARY)
   {
     if (!Select3D_SensitivePoly::Matches (theMgr, thePickResult))
     {
-      thePickResult = SelectBasics_PickResult (aDepth, aDistToCOG);
       return Standard_False;
     }
   }
@@ -255,24 +251,21 @@ Standard_Boolean Select3D_SensitiveCircle::Matches (SelectBasics_SelectingVolume
     Points3D (anArrayOfPnt);
     if (!theMgr.IsOverlapAllowed())
     {
-      thePickResult = SelectBasics_PickResult (aDepth, aDistToCOG);
       for (Standard_Integer aPntIdx = anArrayOfPnt->Lower(); aPntIdx <= anArrayOfPnt->Upper(); ++aPntIdx)
       {
-        if (!theMgr.Overlaps (anArrayOfPnt->Value (aPntIdx)))
+        if (!theMgr.Overlaps (anArrayOfPnt->Value(aPntIdx)))
+        {
           return Standard_False;
+        }
       }
       return Standard_True;
     }
 
-    if (!theMgr.Overlaps (anArrayOfPnt, Select3D_TOS_INTERIOR, aDepth))
+    if (!theMgr.Overlaps (anArrayOfPnt, Select3D_TOS_INTERIOR, thePickResult))
     {
-      thePickResult = SelectBasics_PickResult (aDepth, aDistToCOG);
       return Standard_False;
     }
-    else
-    {
-      thePickResult = SelectBasics_PickResult (aDepth, theMgr.DistToGeometryCenter (myCenter3D));
-    }
+    thePickResult.SetDistToGeomCenter(distanceToCOG(theMgr));
   }
 
   return Standard_True;

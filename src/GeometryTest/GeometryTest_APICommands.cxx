@@ -90,7 +90,7 @@ static Standard_Integer proj (Draw_Interpretor& di, Standard_Integer n, const ch
 {
   if ( n < 5)
   {
-    cout << " Use proj curve/surf x y z [{extrema algo: g(grad)/t(tree)}|{u v}]" << endl;
+    std::cout << " Use proj curve/surf x y z [{extrema algo: g(grad)/t(tree)}|{u v}]" << std::endl;
     return 1;
   }
 
@@ -155,7 +155,7 @@ static Standard_Integer proj (Draw_Interpretor& di, Standard_Integer n, const ch
 
     if(proj.NbPoints() == 0)
     {
-      cout << "No project point was found." << endl;
+      std::cout << "No project point was found." << std::endl;
       return 0;
     }
 
@@ -286,50 +286,176 @@ static Standard_Integer grilapp(Draw_Interpretor& di, Standard_Integer n, const 
 
 static Standard_Integer surfapp(Draw_Interpretor& di, Standard_Integer n, const char** a)
 {
-  if ( n < 5 ) return 1;
+  if (n < 5) return 1;
 
-  Standard_Integer i,j;
+  Standard_Integer i, j;
   Standard_Integer Nu = Draw::Atoi(a[2]);
   Standard_Integer Nv = Draw::Atoi(a[3]);
-  TColgp_Array2OfPnt Points (1, Nu, 1, Nv);
+  TColgp_Array2OfPnt Points(1, Nu, 1, Nv);
+  Standard_Boolean IsPeriodic = Standard_False;
+  Standard_Boolean RemoveLast = Standard_False;
 
-  if ( n == 5) {
+  if (n >= 5 && n <= 6) {
     Handle(Geom_Surface) Surf = DrawTrSurf::GetSurface(a[4]);
-    if ( Surf.IsNull()) return 1;
+    if (Surf.IsNull()) return 1;
 
     Standard_Real U, V, U1, V1, U2, V2;
-    Surf->Bounds( U1, U2, V1, V2);
-    for ( j = 1; j <= Nv; j++) {
-      V = V1 + (j-1) * (V2-V1) / (Nv-1);
-      for ( i = 1; i <= Nu; i++) {
-	U = U1 + (i-1) * (U2-U1) / (Nu-1);
-	Points(i,j) = Surf->Value(U,V);
+    Surf->Bounds(U1, U2, V1, V2);
+    for (j = 1; j <= Nv; j++) {
+      V = V1 + (j - 1) * (V2 - V1) / (Nv - 1);
+      for (i = 1; i <= Nu; i++) {
+        U = U1 + (i - 1) * (U2 - U1) / (Nu - 1);
+        Points(i, j) = Surf->Value(U, V);
       }
-    } 
+    }
+    if (n == 6)
+    {
+      Standard_Integer ip = Draw::Atoi(a[5]);
+      if (ip > 0) IsPeriodic = Standard_True;
+    }
+    if (IsPeriodic)
+    {
+      for (j = 1; j <= Nv; j++)
+      {
+        Standard_Real d = Points(1, j).Distance(Points(Nu, j));
+        if (d <= Precision::Confusion())
+        {
+          RemoveLast = Standard_True;
+          break;
+        }
+      }
+    }
   }
-  else if ( n >= 16) {
+  else if (n >= 16) {
     Standard_Integer Count = 4;
-    for ( j = 1; j <= Nv; j++) {
-      for ( i = 1; i <= Nu; i++) {
-	if ( Count > n) return 1;
-	Points(i,j) = gp_Pnt(Draw::Atof(a[Count]),Draw::Atof(a[Count+1]),Draw::Atof(a[Count+2]));
-	Count += 3;
+    for (j = 1; j <= Nv; j++) {
+      for (i = 1; i <= Nu; i++) {
+        if (Count > n) return 1;
+        Points(i, j) = gp_Pnt(Draw::Atof(a[Count]), Draw::Atof(a[Count + 1]), Draw::Atof(a[Count + 2]));
+        Count += 3;
       }
     }
   }
   char name[100];
   Standard_Integer Count = 1;
-  for ( j = 1; j <= Nv; j++) {
-    for ( i = 1; i <= Nu; i++) {
-      Sprintf(name,"point_%d",Count++);
+  for (j = 1; j <= Nv; j++) {
+    for (i = 1; i <= Nu; i++) {
+      Sprintf(name, "point_%d", Count++);
       char* temp = name; // portage WNT
-      DrawTrSurf::Set(temp,Points(i,j));
+      DrawTrSurf::Set(temp, Points(i, j));
     }
-  } 
+  }
 
-  Handle(Geom_BSplineSurface) S = GeomAPI_PointsToBSplineSurface(Points);
-  DrawTrSurf::Set(a[1],S);
-  di << a[1];
+  GeomAPI_PointsToBSplineSurface anApprox;
+  if (RemoveLast)
+  {
+    TColgp_Array2OfPnt Points1(1, Nu - 1, 1, Nv);
+    for (j = 1; j <= Nv; j++)
+    {
+      for (i = 1; i <= Nu - 1; i++) {
+        Points1(i, j) = Points(i, j);
+      }
+    }
+    anApprox.Init(Points1, Approx_ChordLength, 3, 8, GeomAbs_C2, 1.e-3, IsPeriodic);
+  }
+  else
+  {
+    anApprox.Init(Points, Approx_ChordLength, 3, 8, GeomAbs_C2, 1.e-3, IsPeriodic);
+  }
+
+  if (anApprox.IsDone())
+  {
+    Handle(Geom_BSplineSurface) S = anApprox.Surface();
+    DrawTrSurf::Set(a[1], S);
+    di << a[1];
+  }
+
+  return 0;
+}
+
+//=======================================================================
+//function : surfint
+//purpose  : 
+//=======================================================================
+
+static Standard_Integer surfint(Draw_Interpretor& di, Standard_Integer n, const char** a)
+{
+  if (n < 5) return 1;
+
+  Handle(Geom_Surface) Surf = DrawTrSurf::GetSurface(a[2]);
+  if (Surf.IsNull()) return 1;
+  Standard_Integer i, j;
+  Standard_Integer Nu = Draw::Atoi(a[3]);
+  Standard_Integer Nv = Draw::Atoi(a[4]);
+  TColgp_Array2OfPnt Points(1, Nu, 1, Nv);
+
+  Standard_Real U, V, U1, V1, U2, V2;
+  Surf->Bounds(U1, U2, V1, V2);
+  for (j = 1; j <= Nv; j++) {
+    V = V1 + (j - 1) * (V2 - V1) / (Nv - 1);
+    for (i = 1; i <= Nu; i++) {
+      U = U1 + (i - 1) * (U2 - U1) / (Nu - 1);
+      Points(i, j) = Surf->Value(U, V);
+    }
+  }
+
+  char name[100];
+  Standard_Integer Count = 1;
+  for (j = 1; j <= Nv; j++) {
+    for (i = 1; i <= Nu; i++) {
+      Sprintf(name, "point_%d", Count++);
+      char* temp = name; // portage WNT
+      DrawTrSurf::Set(temp, Points(i, j));
+    }
+  }
+
+  Standard_Boolean IsPeriodic = Standard_False;
+  if (n > 5)
+  {
+    Standard_Integer ip = Draw::Atoi(a[5]);
+    if (ip > 0) IsPeriodic = Standard_True;
+  }
+  Standard_Boolean RemoveLast = Standard_False;
+  if (IsPeriodic)
+  {
+    for (j = 1; j <= Nv; j++)
+    {
+      Standard_Real d = Points(1, j).Distance(Points(Nu, j));
+      if (d <= Precision::Confusion())
+      {
+        RemoveLast = Standard_True;
+        break;
+      }
+    }
+  }
+  const Approx_ParametrizationType ParType = Approx_ChordLength;
+  GeomAPI_PointsToBSplineSurface anApprox;
+  if (RemoveLast)
+  {
+    TColgp_Array2OfPnt Points1(1, Nu-1, 1, Nv);
+    for (j = 1; j <= Nv; j++)
+    {
+      for (i = 1; i <= Nu-1; i++) {
+        Points1(i, j) = Points(i, j);
+      }
+    }
+    anApprox.Interpolate(Points1, ParType, IsPeriodic);
+  }
+  else
+  {
+    anApprox.Interpolate(Points, ParType, IsPeriodic);
+  }
+  if (anApprox.IsDone())
+  {
+    Handle(Geom_BSplineSurface) S = anApprox.Surface();
+    DrawTrSurf::Set(a[1], S);
+    di << a[1];
+  }
+  else
+  {
+    di << "Interpolation not done \n";
+  }
+
 
   return 0;
 }
@@ -347,13 +473,9 @@ static Standard_Integer extrema(Draw_Interpretor& di, Standard_Integer n, const 
     return 1;
   }
 
-  Handle(Geom_Curve)   GC1, GC2;
+  Handle(Geom_Curve) GC1, GC2;
   Handle(Geom_Surface) GS1, GS2;
 
-  Standard_Boolean C1 = Standard_False;
-  Standard_Boolean C2 = Standard_False;
-  Standard_Boolean S1 = Standard_False;
-  Standard_Boolean S2 = Standard_False;
   Standard_Boolean isInfinitySolutions = Standard_False;
   Standard_Real aMinDist = RealLast();
 
@@ -364,11 +486,10 @@ static Standard_Integer extrema(Draw_Interpretor& di, Standard_Integer n, const 
     GS1 = DrawTrSurf::GetSurface(a[1]);
     if ( GS1.IsNull())
       return 1;
-    S1 = Standard_True;
+
     GS1->Bounds(U1f,U1l,V1f,V1l);
   }
   else {
-    C1 = Standard_True;
     U1f = GC1->FirstParameter();
     U1l = GC1->LastParameter();
   }
@@ -378,23 +499,29 @@ static Standard_Integer extrema(Draw_Interpretor& di, Standard_Integer n, const 
     GS2 = DrawTrSurf::GetSurface(a[2]);
     if ( GS2.IsNull())
       return 1;
-    S2 = Standard_True;
     GS2->Bounds(U2f,U2l,V2f,V2l);
   }
   else {
-    C2 = Standard_True;
     U2f = GC2->FirstParameter();
     U2l = GC2->LastParameter();
   }
 
   NCollection_Vector<gp_Pnt> aPnts1, aPnts2;
   NCollection_Vector<Standard_Real> aPrms[4];
-  if (C1 && C2)
+  if (!GC1.IsNull() && !GC2.IsNull())
   {
     GeomAPI_ExtremaCurveCurve Ex(GC1, GC2, U1f, U1l, U2f, U2l);
-
-    for (Standard_Integer aJ = 1; aJ <= Ex.NbExtrema(); ++aJ)
+    
+    // Since GeomAPI cannot provide access to flag directly.
+    isInfinitySolutions = Ex.Extrema().IsParallel();
+    if (isInfinitySolutions)
     {
+      aMinDist = Ex.LowerDistance();
+    }
+    else
+    {
+      for (Standard_Integer aJ = 1; aJ <= Ex.NbExtrema(); ++aJ)
+      {
         gp_Pnt aP1, aP2;
         Ex.Points(aJ, aP1, aP2);
         aPnts1.Append(aP1);
@@ -404,62 +531,86 @@ static Standard_Integer extrema(Draw_Interpretor& di, Standard_Integer n, const 
         Ex.Parameters(aJ, aU1, aU2);
         aPrms[0].Append(aU1);
         aPrms[2].Append(aU2);
+      }
     }
-    // Since GeomAPI cannot provide access to flag directly.
-    isInfinitySolutions = Ex.Extrema().IsParallel();
-    aMinDist = Ex.LowerDistance();
   }
-  else if (C1 && S2)
+  else if (!GC1.IsNull() && !GS2.IsNull())
   {
     GeomAPI_ExtremaCurveSurface Ex(GC1, GS2, U1f, U1l, U2f, U2l, V2f, V2l);
-    for (Standard_Integer aJ = 1; aJ <= Ex.NbExtrema(); ++aJ)
-    {
-      gp_Pnt aP1, aP2;
-      Ex.Points(aJ, aP1, aP2);
-      aPnts1.Append(aP1);
-      aPnts2.Append(aP2);
 
-      Standard_Real aU1, aU2, aV2;
-      Ex.Parameters(aJ, aU1, aU2, aV2);
-      aPrms[0].Append(aU1);
-      aPrms[2].Append(aU2);
-      aPrms[3].Append(aV2);
+    isInfinitySolutions = Ex.Extrema().IsParallel();
+    if (isInfinitySolutions)
+    {
+      aMinDist = Ex.LowerDistance();
+    }
+    else
+    {
+      for (Standard_Integer aJ = 1; aJ <= Ex.NbExtrema(); ++aJ)
+      {
+        gp_Pnt aP1, aP2;
+        Ex.Points(aJ, aP1, aP2);
+        aPnts1.Append(aP1);
+        aPnts2.Append(aP2);
+
+        Standard_Real aU1, aU2, aV2;
+        Ex.Parameters(aJ, aU1, aU2, aV2);
+        aPrms[0].Append(aU1);
+        aPrms[2].Append(aU2);
+        aPrms[3].Append(aV2);
+      }
     }
   }
-  else if (S1 && C2)
+  else if (!GS1.IsNull() && !GC2.IsNull())
   {
     GeomAPI_ExtremaCurveSurface Ex(GC2, GS1, U2f, U2l, U1f, U1l, V1f, V1l);
-    for (Standard_Integer aJ = 1; aJ <= Ex.NbExtrema(); ++aJ)
-    {
-      gp_Pnt aP2, aP1;
-      Ex.Points(aJ, aP2, aP1);
-      aPnts1.Append(aP1);
-      aPnts2.Append(aP2);
 
-      Standard_Real aU1, aV1, aU2;
-      Ex.Parameters(aJ, aU2, aU1, aV1);
-      aPrms[0].Append(aU1);
-      aPrms[1].Append(aV1);
-      aPrms[2].Append(aU2);
+    isInfinitySolutions = Ex.Extrema().IsParallel();
+    if (isInfinitySolutions)
+    {
+      aMinDist = Ex.LowerDistance();
+    }
+    else
+    {
+      for (Standard_Integer aJ = 1; aJ <= Ex.NbExtrema(); ++aJ)
+      {
+        gp_Pnt aP2, aP1;
+        Ex.Points(aJ, aP2, aP1);
+        aPnts1.Append(aP1);
+        aPnts2.Append(aP2);
+
+        Standard_Real aU1, aV1, aU2;
+        Ex.Parameters(aJ, aU2, aU1, aV1);
+        aPrms[0].Append(aU1);
+        aPrms[1].Append(aV1);
+        aPrms[2].Append(aU2);
+      }
     }
   }
-  else if (S1 && S2)
+  else if (!GS1.IsNull() && !GS2.IsNull())
   {
-    GeomAPI_ExtremaSurfaceSurface Ex(
-      GS1, GS2, U1f, U1l, V1f, V1l, U2f, U2l, V2f, V2l);
-    for (Standard_Integer aJ = 1; aJ <= Ex.NbExtrema(); ++aJ)
+    GeomAPI_ExtremaSurfaceSurface Ex(GS1, GS2, U1f, U1l, V1f, V1l, U2f, U2l, V2f, V2l);
+    // Since GeomAPI cannot provide access to flag directly.
+    isInfinitySolutions = Ex.Extrema().IsParallel();
+    if (isInfinitySolutions)
     {
-      gp_Pnt aP1, aP2;
-      Ex.Points(aJ, aP1, aP2);
-      aPnts1.Append(aP1);
-      aPnts2.Append(aP2);
+      aMinDist = Ex.LowerDistance();
+    }
+    else
+    {
+      for (Standard_Integer aJ = 1; aJ <= Ex.NbExtrema(); ++aJ)
+      {
+        gp_Pnt aP1, aP2;
+        Ex.Points(aJ, aP1, aP2);
+        aPnts1.Append(aP1);
+        aPnts2.Append(aP2);
 
-      Standard_Real aU1, aV1, aU2, aV2;
-      Ex.Parameters(aJ, aU1, aV1, aU2, aV2);
-      aPrms[0].Append(aU1);
-      aPrms[1].Append(aV1);
-      aPrms[2].Append(aU2);
-      aPrms[3].Append(aV2);
+        Standard_Real aU1, aV1, aU2, aV2;
+        Ex.Parameters(aJ, aU1, aV1, aU2, aV2);
+        aPrms[0].Append(aU1);
+        aPrms[1].Append(aV1);
+        aPrms[2].Append(aU2);
+        aPrms[3].Append(aV2);
+      }
     }
   }
 
@@ -609,6 +760,11 @@ void GeometryTest::APICommands(Draw_Interpretor& theCommands)
   theCommands.Add("surfapp","surfapp result nbupoint nbvpoint x y z ....",
 		  __FILE__,
 		  surfapp);
+
+  theCommands.Add("surfint", "surfint result surf nbupoint nbvpoint [uperiodic]",
+    __FILE__,
+    surfint);
+
   theCommands.Add("grilapp",
        "grilapp result nbupoint nbvpoint X0 dX Y0 dY z11 z12 .. z1nu ....  ",
         __FILE__,grilapp);

@@ -58,9 +58,11 @@ public:
  public:
   // ---------- PUBLIC METHODS ------------
 
+  //! Empty constructor.
+  NCollection_List() : NCollection_BaseList(Handle(NCollection_BaseAllocator)()) {}
+
   //! Constructor
-  NCollection_List(const Handle(NCollection_BaseAllocator)& theAllocator=0L) :
-    NCollection_BaseList(theAllocator) {}
+  explicit NCollection_List(const Handle(NCollection_BaseAllocator)& theAllocator) : NCollection_BaseList(theAllocator) {}
 
   //! Copy constructor
   NCollection_List (const NCollection_List& theOther) :
@@ -142,7 +144,8 @@ public:
     PAppend(pNew, theIter);
   }
 
-  //! Append another list at the end
+  //! Append another list at the end.
+  //! After this operation, theOther list will be cleared.
   void Append (NCollection_List& theOther)
   { 
     if (this == &theOther || theOther.Extent()<1)
@@ -272,8 +275,6 @@ public:
     else
     {
       // No - this list has different memory scope
-      Standard_NoSuchObject_Raise_if (!theIter.More(), "NCollection_List::InsertAfter");
-
       Iterator anIter;
       anIter.myPrevious = theIter.myCurrent;
       anIter.myCurrent = theIter.myCurrent->Next();

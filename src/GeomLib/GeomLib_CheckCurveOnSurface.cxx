@@ -100,7 +100,7 @@ class GeomLib_CheckCurveOnSurface_TargetFunc :
       
       theFVal = -1.0*aP1.SquareDistance(aP2);
     }
-    catch(Standard_Failure) {
+    catch(Standard_Failure const&) {
       return Standard_False;
     }
     //
@@ -123,7 +123,7 @@ class GeomLib_CheckCurveOnSurface_TargetFunc :
 
   //returns 1st derivative of the the one-dimension-function when
   //parameter is equal to theX
-  Standard_Boolean Derive(const Standard_Real theX, Standard_Real& theDeriv) const
+  Standard_Boolean Derive(const Standard_Real theX, Standard_Real& theDeriv1, Standard_Real* const theDeriv2 = 0) const
   {
     try
     {
@@ -134,16 +134,30 @@ class GeomLib_CheckCurveOnSurface_TargetFunc :
       }
       //
       gp_Pnt aP1, aP2;
-      gp_Vec aDC1, aDC2;
+      gp_Vec aDC1, aDC2, aDCC1, aDCC2;
       //
-      myCurve1.D1(theX, aP1, aDC1);
-      myCurve2.D1(theX, aP2, aDC2);
+      if (!theDeriv2)
+      {
+        myCurve1.D1(theX, aP1, aDC1);
+        myCurve2.D1(theX, aP2, aDC2);
+      }
+      else
+      {
+        myCurve1.D2(theX, aP1, aDC1, aDCC1);
+        myCurve2.D2(theX, aP2, aDC2, aDCC2);
+      }
 
       const gp_Vec aVec1(aP1, aP2), aVec2(aDC2-aDC1);
       //
-      theDeriv = -2.0*aVec1.Dot(aVec2);
+      theDeriv1 = -2.0*aVec1.Dot(aVec2);
+
+      if (theDeriv2)
+      {
+        const gp_Vec aVec3(aDCC2 - aDCC1);
+        *theDeriv2 = -2.0*(aVec2.SquareMagnitude() + aVec1.Dot(aVec3));
+      }
     }
-    catch(Standard_Failure)
+    catch(Standard_Failure const&)
     {
       return Standard_False;
     }
@@ -179,12 +193,10 @@ class GeomLib_CheckCurveOnSurface_TargetFunc :
       return Standard_False;
     }
     //
-    if (!Gradient(theX, theGrad))
+    if (!Derive(theX(1), theGrad(1), &theHessian(1, 1)))
     {
       return Standard_False;
     }
-    //
-    theHessian(1,1) = theGrad(1);
     //
     return Standard_True;
   }
@@ -443,7 +455,7 @@ void GeomLib_CheckCurveOnSurface::Perform(const Handle(Geom2d_Curve)& thePCurve,
 
     myMaxDistance = sqrt(Abs(myMaxDistance));
   }
-  catch (Standard_Failure) {
+  catch (Standard_Failure const&) {
     myErrorStatus = 3;
   }
 }
@@ -664,11 +676,11 @@ Standard_Integer FillSubIntervals(const Handle(Geom_Curve)& theCurve3d,
       theNbParticles = Max(theNbParticles, aBS2DCurv->Degree());
     }
   }
-  catch(Standard_Failure)
+  catch(Standard_Failure const&)
   {
 #ifdef OCCT_DEBUG
-    cout << "ERROR! BRepLib_CheckCurveOnSurface.cxx, "
-            "FillSubIntervals(): Incorrect filling!" << endl;
+    std::cout << "ERROR! BRepLib_CheckCurveOnSurface.cxx, "
+            "FillSubIntervals(): Incorrect filling!" << std::endl;
 #endif
 
     aNbSubIntervals = 0;
@@ -753,7 +765,7 @@ Standard_Boolean MinComputing (
                     theBestValue, anOutputParam))
     {
 #ifdef OCCT_DEBUG
-      cout << "BRepLib_CheckCurveOnSurface::Compute(): math_PSO is failed!" << endl;
+      std::cout << "BRepLib_CheckCurveOnSurface::Compute(): math_PSO is failed!" << std::endl;
 #endif
       return Standard_False;
     }
@@ -789,10 +801,10 @@ Standard_Boolean MinComputing (
       }
     }
   }
-  catch(Standard_Failure)
+  catch(Standard_Failure const&)
   {
 #ifdef OCCT_DEBUG
-    cout << "BRepLib_CheckCurveOnSurface.cxx: Exception in MinComputing()!" << endl;
+    std::cout << "BRepLib_CheckCurveOnSurface.cxx: Exception in MinComputing()!" << std::endl;
 #endif
     return Standard_False;
   }

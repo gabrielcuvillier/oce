@@ -189,7 +189,7 @@ Standard_Boolean STEPConstruct_Assembly::CheckSRRReversesNAUO(const Interface_Gr
 	  ( CDSR->RepresentedProductRelation()->Definition().ProductDefinitionRelationship() );
   if ( nauo.IsNull() ) {
 #ifdef OCCT_DEBUG
-    cout << "Warning: No NAUO found in CDSR !" << endl;
+    std::cout << "Warning: No NAUO found in CDSR !" << std::endl;
 #endif
     return Standard_False;
   }
@@ -197,6 +197,8 @@ Standard_Boolean STEPConstruct_Assembly::CheckSRRReversesNAUO(const Interface_Gr
   Handle(StepBasic_ProductDefinition) pd1, pd2;
   Handle(StepRepr_Representation) rep1 = CDSR->RepresentationRelation()->Rep1();
   Handle(StepRepr_Representation) rep2 = CDSR->RepresentationRelation()->Rep2();
+  if( rep1.IsNull() || rep2.IsNull())
+    return Standard_False;
   
   // find SDRs corresponding to Rep1 and Rep2 and remember their PDs
   Handle(Standard_Type) tSDR = STANDARD_TYPE(StepShape_ShapeDefinitionRepresentation);
@@ -233,15 +235,15 @@ Standard_Boolean STEPConstruct_Assembly::CheckSRRReversesNAUO(const Interface_Gr
   }
 
 #ifdef OCCT_DEBUG
-  cout << "Warning: SRR and NAUO are incompatible" << endl;
-//  cout << "NAUO = " << Model->StringLabel(nauo)->ToCString() << 
-//       ",\tCDSR = " << Model->StringLabel(CDSR)->ToCString() << endl;
-//  cout << "Rep1 = " << Model->StringLabel(rep1)->ToCString() << 
-//       ",\tRep2 = " << Model->StringLabel(rep2)->ToCString() << endl;
-//  cout << "PD1  = " << Model->StringLabel(pd1)->ToCString() << 
-//       ",\tPD2  = " << Model->StringLabel(pd2)->ToCString() << endl;
-//  cout << "Rel1 = " << Model->StringLabel(nauo->RelatingProductDefinition())->ToCString() << 
-//       ",\tRel2 = " << Model->StringLabel(nauo->RelatedProductDefinition())->ToCString() << endl;
+  std::cout << "Warning: SRR and NAUO are incompatible" << std::endl;
+//  std::cout << "NAUO = " << Model->StringLabel(nauo)->ToCString() << 
+//       ",\tCDSR = " << Model->StringLabel(CDSR)->ToCString() << std::endl;
+//  std::cout << "Rep1 = " << Model->StringLabel(rep1)->ToCString() << 
+//       ",\tRep2 = " << Model->StringLabel(rep2)->ToCString() << std::endl;
+//  std::cout << "PD1  = " << Model->StringLabel(pd1)->ToCString() << 
+//       ",\tPD2  = " << Model->StringLabel(pd2)->ToCString() << std::endl;
+//  std::cout << "Rel1 = " << Model->StringLabel(nauo->RelatingProductDefinition())->ToCString() << 
+//       ",\tRel2 = " << Model->StringLabel(nauo->RelatedProductDefinition())->ToCString() << std::endl;
 #endif
 
   if ( pd2 == nauo->RelatedProductDefinition() || //:k3 abv 25 Nov 98: rp1sd.stp - bad assemblies

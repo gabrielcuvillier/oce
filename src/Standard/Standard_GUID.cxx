@@ -75,7 +75,7 @@ Standard_PCharacter Standard_GUID_GetValue16(Standard_PCharacter tmpBuffer,
     my32b = (Standard_ExtCharacter) strtoul(strtmp, (char **)NULL, 16);
   }
   else return NULL;
-//  cout << "V16 :" << hex(my32b) << endl;
+//  std::cout << "V16 :" << hex(my32b) << std::endl;
   return &tmpBuffer[pos+1];
 }
 //=======================================================================
@@ -90,7 +90,7 @@ Standard_PCharacter Standard_GUID_GetValue8(Standard_PCharacter tmpBuffer,
   strncpy(strtmp,tmpBuffer,2);
   strtmp[2] = '\0';
   my32b = (Standard_Byte) strtoul(strtmp, (char **)NULL, 16);
-//  cout << "V8 :" << hex(my32b) << endl;
+//  std::cout << "V8 :" << hex(my32b) << std::endl;
   return &tmpBuffer[2];
 }
 //=======================================================================
@@ -271,18 +271,24 @@ Standard_GUID::Standard_GUID(const Standard_GUID& aGuid)
 	 my8b5  = aGuid.my8b5;
 	 my8b6  = aGuid.my8b6;
 }
-Standard_GUID::Standard_GUID(const Standard_UUID& aWntGuid)
+
+Standard_GUID::Standard_GUID (const Standard_UUID& theUUID)
 {
-	 my32b  = aWntGuid.Data1;
-	 my16b1 = aWntGuid.Data2;
-	 my16b2 = aWntGuid.Data3;
-	 my16b3 = (aWntGuid.Data4[0] << 8) | (aWntGuid.Data4[1]) ;
-	 my8b1  = aWntGuid.Data4[2] ;
-	 my8b2  = aWntGuid.Data4[3] ;
-	 my8b3  = aWntGuid.Data4[4] ;
-	 my8b4  = aWntGuid.Data4[5] ;
-	 my8b5  = aWntGuid.Data4[6] ;
-	 my8b6  = aWntGuid.Data4[7] ;
+  Assign (theUUID);
+}
+
+void Standard_GUID::Assign (const Standard_UUID& theUUID) 
+{
+  my32b  = theUUID.Data1;
+  my16b1 = theUUID.Data2;
+  my16b2 = theUUID.Data3;
+  my16b3 = (theUUID.Data4[0] << 8) | (theUUID.Data4[1]);
+  my8b1  = theUUID.Data4[2];
+  my8b2  = theUUID.Data4[3];
+  my8b3  = theUUID.Data4[4];
+  my8b4  = theUUID.Data4[5];
+  my8b5  = theUUID.Data4[6];
+  my8b6  = theUUID.Data4[7];
 }
 
 //=======================================================================
@@ -382,9 +388,13 @@ void Standard_GUID::ShallowDump(Standard_OStream& aStream) const
   aStream << sguid;
 }
 
-Standard_Integer Standard_GUID::HashCode(const Standard_GUID& aGuid,const Standard_Integer Upper)
+//============================================================================
+// function : HashCode
+// purpose  :
+//============================================================================
+Standard_Integer Standard_GUID::HashCode (const Standard_GUID& theGuid, const Standard_Integer theUpperBound)
 {
-  return aGuid.Hash(Upper);
+  return theGuid.Hash (theUpperBound);
 }
 
 Standard_Integer Standard_GUID::Hash(const Standard_Integer Upper) const

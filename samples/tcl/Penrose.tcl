@@ -41,11 +41,11 @@ tcopy bxx b10
 
 # make some boxes hollow
 for {set i 1} {$i <= 1} {incr i} {
-  set dim [boundingstr b$i]
-  set dx [expr [lindex $dim 3] - [lindex $dim 0]]
-  set x1 [expr [lindex $dim 0] + 0.1 * $dx]
-  set x2 [expr [lindex $dim 1] + 0.1 * $dx]
-  set x3 [expr [lindex $dim 2] + 0.1 * $dx]
+  set dim [bounding b$i -save xmin ymin zmin xmax ymax zmax]
+  set dx [dval xmax-xmin]
+  set x1 [dval xmin+0.1*$dx]
+  set x2 [dval ymin+0.1*$dx]
+  set x3 [dval zmin+0.1*$dx]
   box bc $x1 $x2 $x3 0.8*$dx 0.8*$dx $dx
   bcut bb b$i bc
   tcopy bb b$i
@@ -53,7 +53,7 @@ for {set i 1} {$i <= 1} {incr i} {
 
 # prepare a view
 vinit Penrose w=1024 h=512
-vsetcolorbg 255 255 255
+vbackground -color WHITE
 vrenderparams -rayTrace -fsaa on -reflections off -shadows off
 
 # set camera position and adjust lights

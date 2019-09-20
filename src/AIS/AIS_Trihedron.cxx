@@ -43,7 +43,6 @@
 #include <Select3D_SensitivePrimitiveArray.hxx>
 #include <Select3D_SensitiveSegment.hxx>
 #include <Select3D_SensitiveTriangle.hxx>
-#include <SelectBasics_EntityOwner.hxx>
 #include <SelectMgr_EntityOwner.hxx>
 #include <Standard_Type.hxx>
 
@@ -85,7 +84,7 @@ AIS_Trihedron::AIS_Trihedron (const Handle(Geom_Axis2Placement)& theComponent)
 void AIS_Trihedron::SetComponent (const Handle(Geom_Axis2Placement)& theComponent)
 {
   myComponent = theComponent;
-  LoadRecomputable (AIS_WireFrame);
+  SetToUpdate();
 }
 
 //=======================================================================
@@ -103,6 +102,8 @@ void AIS_Trihedron::setOwnDatumAspect()
   if (myDrawer->Link().IsNull())
     return;
 
+  myDrawer->DatumAspect()->SetDrawArrows (myDrawer->Link()->DatumAspect()->ToDrawArrows());
+  myDrawer->DatumAspect()->SetDrawLabels (myDrawer->Link()->DatumAspect()->ToDrawLabels());
   *myDrawer->DatumAspect()->TextAspect()->Aspect() =
                                      *myDrawer->Link()->DatumAspect()->TextAspect()->Aspect();
   *myDrawer->DatumAspect()->PointAspect()->Aspect() =
@@ -133,7 +134,8 @@ void AIS_Trihedron::SetSize(const Standard_Real aValue)
   setOwnDatumAspect();
   myDrawer->DatumAspect()->SetAxisLength(aValue, aValue, aValue);
 
-  Update();
+  SetToUpdate();
+  UpdatePresentations();
   UpdateSelection();
 }
 
@@ -160,7 +162,8 @@ void AIS_Trihedron::UnsetSize()
   }
   else
   {
-    Update();
+    SetToUpdate();
+    UpdatePresentations();
   }
   UpdateSelection();
 }
@@ -333,6 +336,10 @@ void AIS_Trihedron::HilightOwnerWithColor (const Handle(PrsMgr_PresentationManag
   }
   aGroup->AddPrimitiveArray (arrayOfPrimitives(aPart));
 
+  if (aPresentation->GetZLayer() != theStyle->ZLayer())
+  {
+    aPresentation->SetZLayer (theStyle->ZLayer());
+  }
   aPresentation->Highlight (theStyle);
   thePM->AddToImmediateList (aPresentation);
 }
@@ -493,14 +500,14 @@ void AIS_Trihedron::computePresentation (const Handle(PrsMgr_PresentationManager
       anAxisGroup->AddPrimitiveArray (arrayOfPrimitives (aPart));
 
       // draw arrow
-      Handle(Graphic3d_Group) anArrowGroup = Prs3d_Root::NewGroup (thePrs);
-      anArrowGroup->SetPrimitivesAspect (anAspect->ArrowAspect()->Aspect());
-
       Prs3d_DatumParts anArrowPart = anAspect->ArrowPartForAxis (aPart);
       if (!anAspect->DrawDatumPart (anArrowPart))
       {
         continue;
       }
+
+      Handle(Graphic3d_Group) anArrowGroup = Prs3d_Root::NewGroup (thePrs);
+      anArrowGroup->SetGroupPrimitivesAspect (anAspect->ArrowAspect()->Aspect());
       anArrowGroup->AddPrimitiveArray (arrayOfPrimitives (anArrowPart));
     }
   }
@@ -551,19 +558,6 @@ void AIS_Trihedron::computePresentation (const Handle(PrsMgr_PresentationManager
 
     aGroup->AddPrimitiveArray (arrayOfPrimitives (aPart));
     aGroup->SetGroupPrimitivesAspect (aLineAspect);
-  }
-}
-
-//=======================================================================
-//function : LoadRecomputable
-//purpose  :
-//=======================================================================
-void AIS_Trihedron::LoadRecomputable (const Standard_Integer theMode)
-{
-  myRecomputeEveryPrs = Standard_False;
-  if (!myToRecomputeModes.Contains (theMode))
-  {
-    myToRecomputeModes.Append (theMode);
   }
 }
 
@@ -715,17 +709,36 @@ void AIS_Trihedron::UnsetColor()
 }
 
 //=======================================================================
+//function : ToDrawArrows
+//purpose  :
+//=======================================================================
+Standard_Boolean AIS_Trihedron::ToDrawArrows() const
+{
+  return myDrawer->DatumAspect()->ToDrawArrows();
+}
+
+//=======================================================================
+//function : SetDrawArrows
+//purpose  :
+//=======================================================================
+void AIS_Trihedron::SetDrawArrows (const Standard_Boolean theToDraw)
+{
+  setOwnDatumAspect();
+  myDrawer->DatumAspect()->SetDrawArrows (theToDraw);
+}
+
+//=======================================================================
 //function : createSensitiveEntity
 //purpose  :
 //=======================================================================
-Handle(SelectBasics_SensitiveEntity) AIS_Trihedron::createSensitiveEntity (const Prs3d_DatumParts thePart,
-                                                   const Handle(SelectBasics_EntityOwner)& theOwner) const
+Handle(Select3D_SensitiveEntity) AIS_Trihedron::createSensitiveEntity (const Prs3d_DatumParts thePart,
+                                                   const Handle(SelectMgr_EntityOwner)& theOwner) const
 {
   Handle(Prs3d_DatumAspect) anAspect = myDrawer->DatumAspect();
   Handle(Graphic3d_ArrayOfPrimitives) aPrimitives = arrayOfPrimitives (thePart);
   if (aPrimitives.IsNull())
   {
-    return Handle(SelectBasics_SensitiveEntity)();
+    return Handle(Select3D_SensitiveEntity)();
   }
 
   if (thePart >= Prs3d_DP_XOYAxis
@@ -755,7 +768,7 @@ Handle(SelectBasics_SensitiveEntity) AIS_Trihedron::createSensitiveEntity (const
     const gp_Pnt anXYZ2 = aSegments->Vertice (2);
     return new Select3D_SensitiveSegment (theOwner, anXYZ1, anXYZ2);
   }
-  return Handle(SelectBasics_SensitiveEntity)();
+  return Handle(Select3D_SensitiveEntity)();
 }
 
 // =======================================================================

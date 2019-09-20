@@ -50,6 +50,7 @@ enum OpenGl_StateVariable
 
   // OpenGL clip planes state
   OpenGl_OCC_CLIP_PLANE_EQUATIONS,
+  OpenGl_OCC_CLIP_PLANE_CHAINS,
   OpenGl_OCC_CLIP_PLANE_COUNT,
 
   // OpenGL light state
@@ -63,6 +64,7 @@ enum OpenGl_StateVariable
   OpenGl_OCCT_DISTINGUISH_MODE,
   OpenGl_OCCT_FRONT_MATERIAL,
   OpenGl_OCCT_BACK_MATERIAL,
+  OpenGl_OCCT_ALPHA_CUTOFF,
   OpenGl_OCCT_COLOR,
 
   // Weighted, Blended Order-Independent Transparency rendering state
@@ -72,6 +74,19 @@ enum OpenGl_StateVariable
   // Context-dependent state
   OpenGl_OCCT_TEXTURE_TRSF2D,
   OpenGl_OCCT_POINT_SIZE,
+
+  // Wireframe state
+  OpenGl_OCCT_VIEWPORT,
+  OpenGl_OCCT_LINE_WIDTH,
+  OpenGl_OCCT_LINE_FEATHER,
+  OpenGl_OCCT_LINE_STIPPLE_PATTERN, // occStipplePattern
+  OpenGl_OCCT_LINE_STIPPLE_FACTOR,  // occStippleFactor
+  OpenGl_OCCT_WIREFRAME_COLOR,
+  OpenGl_OCCT_QUAD_MODE_STATE,
+
+  // Parameters of outline (silhouette) shader
+  OpenGl_OCCT_ORTHO_SCALE,
+  OpenGl_OCCT_SILHOUETTE_THICKNESS,
 
   // DON'T MODIFY THIS ITEM (insert new items before it)
   OpenGl_OCCT_NUMBER_OF_STATE_VARIABLES
@@ -131,6 +146,34 @@ enum OpenGl_UniformStateType
   OpenGl_UniformStateType_NB
 };
 
+//! Simple class represents GLSL program variable location.
+class OpenGl_ShaderUniformLocation
+{
+public:
+  //! Invalid location of uniform/attribute variable.
+  static const GLint INVALID_LOCATION = -1;
+public:
+
+  //! Construct an invalid location.
+  OpenGl_ShaderUniformLocation() : myLocation (INVALID_LOCATION) {}
+
+  //! Constructor with initialization.
+  explicit OpenGl_ShaderUniformLocation (GLint theLocation) : myLocation (theLocation) {}
+
+  //! Note you may safely put invalid location in functions like glUniform* - the data passed in will be silently ignored.
+  //! @return true if location is not equal to -1.
+  bool IsValid() const { return myLocation != INVALID_LOCATION; }
+
+  //! Return TRUE for non-invalid location.
+  operator bool() const { return myLocation != INVALID_LOCATION; }
+
+  //! Convert operators help silently put object to GL functions like glUniform*.
+  operator GLint() const { return myLocation; }
+
+private:
+  GLint myLocation;
+};
+
 //! Wrapper for OpenGL program object.
 class OpenGl_ShaderProgram : public OpenGl_NamedResource
 {
@@ -148,6 +191,12 @@ public:
   //! List of pre-defined OCCT state uniform variables.
   static Standard_CString PredefinedKeywords[OpenGl_OCCT_NUMBER_OF_STATE_VARIABLES];
 
+  //! Wrapper for compiling shader object with verbose printing on error.
+  Standard_EXPORT static bool compileShaderVerbose (const Handle(OpenGl_Context)& theCtx,
+                                                    const Handle(OpenGl_ShaderObject)& theShader,
+                                                    const TCollection_AsciiString& theSource,
+                                                    bool theToPrintSource = true);
+
   //! Creates uninitialized shader program.
   //!
   //! WARNING! This constructor is not intended to be called anywhere but from OpenGl_ShaderManager::Create().
@@ -159,7 +208,8 @@ public:
   //!
   //! This constructor has been made public to provide more flexibility to re-use OCCT OpenGL classes without OCCT Viewer itself.
   //! If this is not the case - create the program using shared OpenGl_ShaderManager instance instead.
-  Standard_EXPORT OpenGl_ShaderProgram (const Handle(Graphic3d_ShaderProgram)& theProxy = NULL);
+  Standard_EXPORT OpenGl_ShaderProgram (const Handle(Graphic3d_ShaderProgram)& theProxy = NULL,
+                                        const TCollection_AsciiString& theId = "");
 
 protected:
 
@@ -176,6 +226,9 @@ public:
   //! Destroys shader program.
   Standard_EXPORT virtual void Release (OpenGl_Context* theCtx) Standard_OVERRIDE;
 
+  //! Returns estimated GPU memory usage - cannot be easily estimated.
+  virtual Standard_Size EstimatedDataSize() const Standard_OVERRIDE { return 0; }
+
   //! Attaches shader object to the program object.
   Standard_EXPORT Standard_Boolean AttachShader (const Handle(OpenGl_Context)&      theCtx,
                                                  const Handle(OpenGl_ShaderObject)& theShader);
@@ -189,7 +242,10 @@ public:
                                                const Graphic3d_ShaderObjectList& theShaders);
 
   //! Links the program object.
-  Standard_EXPORT Standard_Boolean Link (const Handle(OpenGl_Context)& theCtx);
+  //! @param theCtx bound OpenGL context
+  //! @param theIsVerbose flag to print log on error
+  Standard_EXPORT Standard_Boolean Link (const Handle(OpenGl_Context)& theCtx,
+                                         bool theIsVerbose = true);
 
   //! Fetches information log of the last link operation.
   Standard_EXPORT Standard_Boolean FetchInfoLog (const Handle(OpenGl_Context)& theCtx,
@@ -209,6 +265,29 @@ public:
   {
     return myProgramID;
   }
+
+public:
+
+  //! Return TRUE if program defines tessellation stage.
+  Standard_Boolean HasTessellationStage() const { return myHasTessShader; }
+
+  //! Return the length of array of light sources (THE_MAX_LIGHTS),
+  //! to be used for initialization occLightSources (OpenGl_OCC_LIGHT_SOURCE_PARAMS).
+  Standard_Integer NbLightsMax() const { return myNbLightsMax; }
+
+  //! Return the length of array of clipping planes (THE_MAX_CLIP_PLANES),
+  //! to be used for initialization occClipPlaneEquations (OpenGl_OCC_CLIP_PLANE_EQUATIONS) and occClipPlaneChains (OpenGl_OCC_CLIP_PLANE_CHAINS).
+  Standard_Integer NbClipPlanesMax() const { return myNbClipPlanesMax; }
+
+  //! Return the length of array of Fragment Shader outputs (THE_NB_FRAG_OUTPUTS),
+  //! to be used for initialization occFragColorArray/occFragColorN.
+  Standard_Integer NbFragmentOutputs() const { return myNbFragOutputs; }
+
+  //! Return true if Fragment Shader should perform alpha test; FALSE by default.
+  Standard_Boolean HasAlphaTest() const { return myHasAlphaTest; }
+
+  //! Return true if Fragment Shader color should output the weighted OIT coverage; FALSE by default.
+  Standard_Boolean HasWeightOitOutput() const { return myHasWeightOitOutput; }
 
 private:
 
@@ -233,15 +312,15 @@ private:
 public:
 
   //! Returns location of the specific uniform variable.
-  Standard_EXPORT GLint GetUniformLocation (const Handle(OpenGl_Context)& theCtx,
-                                            const GLchar*                 theName) const;
+  Standard_EXPORT OpenGl_ShaderUniformLocation GetUniformLocation (const Handle(OpenGl_Context)& theCtx,
+                                                                   const GLchar*                 theName) const;
 
   //! Returns index of the generic vertex attribute by variable name.
   Standard_EXPORT GLint GetAttributeLocation (const Handle(OpenGl_Context)& theCtx,
                                               const GLchar*                 theName) const;
 
   //! Returns location of the OCCT state uniform variable.
-  Standard_EXPORT GLint GetStateLocation (const GLuint theVariable) const;
+  const OpenGl_ShaderUniformLocation& GetStateLocation (OpenGl_StateVariable theVariable) const { return myStateLocations[theVariable]; }
 
 public:
 
@@ -527,6 +606,21 @@ public:
                                                GLint                         theLocation,
                                                const Graphic3d_TextureUnit   theTextureUnit);
 
+public:
+
+  //! Update the shader program from external files (per shader stage) in the following way:
+  //! 1) If external file does not exist, then it will be created (current source code will be dumped, no recompilation) and FALSE will be returned.
+  //! 2) If external file exists and it has the same timestamp as   myDumpDate, nothing will be done and FALSE will be returned.
+  //! 3) If external file exists and it has    newer timestamp than myDumpDate, shader  will be recompiled and relinked and TRUE will be returned.
+  //! @param theCtx OpenGL context bound to this working thread
+  //! @param theFolder folder to store files; when unspecified, $CSF_ShadersDirectoryDump or current folder will be used instead
+  //! @param theToBeautify flag improving formatting (add extra newlines)
+  //! @param theToReset when TRUE, existing dumps will be overridden
+  Standard_EXPORT Standard_Boolean UpdateDebugDump (const Handle(OpenGl_Context)& theCtx,
+                                                    const TCollection_AsciiString& theFolder = "",
+                                                    Standard_Boolean theToBeautify = Standard_False,
+                                                    Standard_Boolean theToReset = Standard_False);
+
 protected:
 
   //! Increments counter of users.
@@ -545,19 +639,28 @@ protected:
     return --myShareCount == 0;
   }
 
+  //! Links the program object.
+  Standard_EXPORT Standard_Boolean link (const Handle(OpenGl_Context)& theCtx);
+
 protected:
 
   GLuint                          myProgramID;     //!< Handle of OpenGL shader program
   OpenGl_ShaderList               myShaderObjects; //!< List of attached shader objects
   Handle(Graphic3d_ShaderProgram) myProxy;         //!< Proxy shader program (from application layer)
   Standard_Integer                myShareCount;    //!< program users count, initialized with 1 (already shared by one user)
+  Standard_Integer                myNbLightsMax;   //!< length of array of light sources (THE_MAX_LIGHTS)
+  Standard_Integer                myNbClipPlanesMax; //!< length of array of clipping planes (THE_MAX_CLIP_PLANES)
+  Standard_Integer                myNbFragOutputs; //!< length of array of Fragment Shader outputs (THE_NB_FRAG_OUTPUTS)
+  Standard_Boolean                myHasAlphaTest;  //!< flag indicating that Fragment Shader should perform alpha-test
+  Standard_Boolean                myHasWeightOitOutput; //!< flag indicating that Fragment Shader includes weighted OIT coverage
+  Standard_Boolean                myHasTessShader; //!< flag indicating that program defines tessellation stage
 
 protected:
 
   Standard_Size myCurrentState[OpenGl_UniformStateType_NB]; //!< defines last modification for variables of each state type
 
   //! Stores locations of OCCT state uniform variables.
-  GLint myStateLocations[OpenGl_OCCT_NUMBER_OF_STATE_VARIABLES];
+  OpenGl_ShaderUniformLocation myStateLocations[OpenGl_OCCT_NUMBER_OF_STATE_VARIABLES];
 
 };
 

@@ -57,6 +57,8 @@ OSD_OpenMode.hxx
 OSD_OSDError.hxx
 OSD_Parallel.cxx
 OSD_Parallel.hxx
+OSD_Parallel_TBB.cxx
+OSD_Parallel_Threads.cxx
 OSD_Path.cxx
 OSD_Path.hxx
 OSD_PerfMeter.cxx
@@ -83,11 +85,12 @@ OSD_SingleProtection.hxx
 OSD_SysType.hxx
 OSD_Thread.cxx
 OSD_Thread.hxx
+OSD_ThreadPool.cxx
+OSD_ThreadPool.hxx
 OSD_ThreadFunction.hxx
 OSD_Timer.cxx
 OSD_Timer.hxx
 OSD_WhoAmI.hxx
 OSD_WNT.cxx
 OSD_WNT.hxx
-OSD_WNT_1.hxx
-OSD_WNT_BREAK.hxx
+OSD_SignalMode.hxx

@@ -26,12 +26,13 @@
 #include <OpenGl_ExtGS.hxx>
 #include <OpenGl_ArbSamplerObject.hxx>
 #include <OpenGl_ArbTexBindless.hxx>
-#include <OpenGl_GlCore44.hxx>
+#include <OpenGl_GlCore45.hxx>
 #include <OpenGl_FrameBuffer.hxx>
+#include <OpenGl_FrameStats.hxx>
 #include <OpenGl_Sampler.hxx>
 #include <OpenGl_ShaderManager.hxx>
 #include <OpenGl_Workspace.hxx>
-#include <OpenGl_AspectFace.hxx>
+#include <OpenGl_Aspects.hxx>
 #include <Graphic3d_TransformUtils.hxx>
 #include <Graphic3d_RenderingParams.hxx>
 
@@ -61,14 +62,6 @@ IMPLEMENT_STANDARD_RTTIEXT(OpenGl_Context,Standard_Transient)
 #else
   #include <GL/glx.h> // glXGetProcAddress()
 #endif
-
-#ifdef HAVE_GL2PS
-  #include <gl2ps.h>
-  #ifdef _MSC_VER
-    #pragma comment (lib, "gl2ps.lib")
-  #endif
-#endif
-
 
 namespace
 {
@@ -116,20 +109,26 @@ OpenGl_Context::OpenGl_Context (const Handle(OpenGl_Caps)& theCaps)
   core43back (NULL),
   core44     (NULL),
   core44back (NULL),
+  core45     (NULL),
+  core45back (NULL),
   caps   (!theCaps.IsNull() ? theCaps : new OpenGl_Caps()),
 #if defined(GL_ES_VERSION_2_0)
   hasHighp   (Standard_False),
   hasUintIndex(Standard_False),
   hasTexRGBA8(Standard_False),
+  hasFlatShading (OpenGl_FeatureNotAvailable),
 #else
   hasHighp   (Standard_True),
   hasUintIndex(Standard_True),
   hasTexRGBA8(Standard_True),
+  hasFlatShading (OpenGl_FeatureInCore),
 #endif
+  hasGlslBitwiseOps  (OpenGl_FeatureNotAvailable),
   hasDrawBuffers     (OpenGl_FeatureNotAvailable),
   hasFloatBuffer     (OpenGl_FeatureNotAvailable),
   hasHalfFloatBuffer (OpenGl_FeatureNotAvailable),
   hasSampleVariables (OpenGl_FeatureNotAvailable),
+  hasGeometryStage   (OpenGl_FeatureNotAvailable),
   arbDrawBuffers (Standard_False),
   arbNPTW  (Standard_False),
   arbTexRG (Standard_False),
@@ -152,6 +151,7 @@ OpenGl_Context::OpenGl_Context (const Handle(OpenGl_Caps)& theCaps)
   atiMem (Standard_False),
   nvxMem (Standard_False),
   oesSampleVariables (Standard_False),
+  oesStdDerivatives (Standard_False),
   mySharedResources (new OpenGl_ResourcesMap()),
   myDelayed         (new OpenGl_DelayReleaseMap()),
   myUnusedResources (new OpenGl_ResourcesStack()),
@@ -162,6 +162,9 @@ OpenGl_Context::OpenGl_Context (const Handle(OpenGl_Caps)& theCaps)
   myTexClamp   (GL_CLAMP_TO_EDGE),
   myMaxTexDim  (1024),
   myMaxTexCombined (1),
+  myMaxTexUnitsFFP (1),
+  myMaxDumpSizeX (1024),
+  myMaxDumpSizeY (1024),
   myMaxClipPlanes (6),
   myMaxMsaaSamples(0),
   myMaxDrawBuffers (1),
@@ -171,9 +174,12 @@ OpenGl_Context::OpenGl_Context (const Handle(OpenGl_Caps)& theCaps)
   myIsInitialized (Standard_False),
   myIsStereoBuffers (Standard_False),
   myIsGlNormalizeEnabled (Standard_False),
+  mySpriteTexUnit (Graphic3d_TextureUnit_0),
   myHasRayTracing (Standard_False),
   myHasRayTracingTextures (Standard_False),
   myHasRayTracingAdaptiveSampling (Standard_False),
+  myHasRayTracingAdaptiveSamplingAtomic (Standard_False),
+  myFrameStats (new OpenGl_FrameStats()),
 #if !defined(GL_ES_VERSION_2_0)
   myPointSpriteOrig (GL_UPPER_LEFT),
   myRenderMode (GL_RENDER),
@@ -185,12 +191,15 @@ OpenGl_Context::OpenGl_Context (const Handle(OpenGl_Caps)& theCaps)
 #endif
   myToCullBackFaces (false),
   myReadBuffer (0),
-  myDrawBuffers (1),
+  myDrawBuffers (0, 7),
   myDefaultVao (0),
+  myColorMask (true),
+  myAlphaToCoverage (false),
   myIsGlDebugCtx (Standard_False),
   myResolution (Graphic3d_RenderingParams::THE_DEFAULT_RESOLUTION),
   myResolutionRatio (1.0f),
   myLineWidthScale (1.0f),
+  myLineFeather (1.0f),
   myRenderScale (1.0f),
   myRenderScaleInv (1.0f)
 {
@@ -202,6 +211,10 @@ OpenGl_Context::OpenGl_Context (const Handle(OpenGl_Caps)& theCaps)
   myViewportVirt[1] = 0;
   myViewportVirt[2] = 0;
   myViewportVirt[3] = 0;
+
+  myPolygonOffset.Mode   = Aspect_POM_Off;
+  myPolygonOffset.Factor = 0.0f;
+  myPolygonOffset.Units  = 0.0f;
 
   // system-dependent fields
 #if defined(HAVE_EGL)
@@ -409,12 +422,8 @@ void OpenGl_Context::SetDrawBuffer (const Standard_Integer theDrawBuffer)
   }
   ::glDrawBuffer (aDrawBuffer);
 
-  myDrawBuffers.Clear();
-
-  if (aDrawBuffer != GL_NONE)
-  {
-    myDrawBuffers.SetValue (0, aDrawBuffer);
-  }
+  myDrawBuffers.Init (GL_NONE);
+  myDrawBuffers.SetValue (0, aDrawBuffer);
 #else
   (void )theDrawBuffer;
 #endif
@@ -428,23 +437,23 @@ void OpenGl_Context::SetDrawBuffers (const Standard_Integer theNb, const Standar
 {
   Standard_ASSERT_RETURN (hasDrawBuffers, "Multiple draw buffers feature is not supported by the context", Standard_ASSERT_DO_NOTHING());
 
-  myDrawBuffers.Clear();
+  if (myDrawBuffers.Length() < theNb)
+  {
+    // should actually never happen here
+    myDrawBuffers.Resize (0, theNb - 1, false);
+  }
+  myDrawBuffers.Init (GL_NONE);
 
   Standard_Boolean useDefaultFbo = Standard_False;
   for (Standard_Integer anI = 0; anI < theNb; ++anI)
   {
-#if !defined(GL_ES_VERSION_2_0)
-    const Standard_Integer aDrawBuffer = !myIsStereoBuffers ? stereoToMonoBuffer (theDrawBuffers[anI]) : theDrawBuffers[anI];
-#else
-    const Standard_Integer aDrawBuffer = theDrawBuffers[anI];
-#endif
-    if (aDrawBuffer < GL_COLOR_ATTACHMENT0 && aDrawBuffer != GL_NONE)
+    if (theDrawBuffers[anI] < GL_COLOR_ATTACHMENT0 && theDrawBuffers[anI] != GL_NONE)
     {
       useDefaultFbo = Standard_True;
     }
-    else if (aDrawBuffer != GL_NONE)
+    else
     {
-      myDrawBuffers.SetValue (anI, aDrawBuffer);
+      myDrawBuffers.SetValue (anI, theDrawBuffers[anI]);
     }
   }
   if (arbFBO != NULL && useDefaultFbo)
@@ -495,31 +504,24 @@ void OpenGl_Context::FetchState()
   ::glGetIntegerv (GL_READ_BUFFER, &myReadBuffer);
 
   // cache draw buffers state
-  myDrawBuffers.Clear();
+  if (myDrawBuffers.Length() < myMaxDrawBuffers)
+  {
+    myDrawBuffers.Resize (0, myMaxDrawBuffers - 1, false);
+  }
+  myDrawBuffers.Init (GL_NONE);
 
+  Standard_Integer aDrawBuffer = GL_NONE;
   if (myMaxDrawBuffers == 1)
   {
-    Standard_Integer aDrawBuffer;
-
     ::glGetIntegerv (GL_DRAW_BUFFER, &aDrawBuffer);
-
-    if (aDrawBuffer != GL_NONE)
-    {
-      myDrawBuffers.SetValue (0, aDrawBuffer);
-    }
+    myDrawBuffers.SetValue (0, aDrawBuffer);
   }
   else
   {
-    Standard_Integer aDrawBuffer;
-
     for (Standard_Integer anI = 0; anI < myMaxDrawBuffers; ++anI)
     {
       ::glGetIntegerv (GL_DRAW_BUFFER0 + anI, &aDrawBuffer);
-
-      if (aDrawBuffer != GL_NONE)
-      {
-        myDrawBuffers.SetValue (anI, aDrawBuffer);
-      }
+      myDrawBuffers.SetValue (anI, aDrawBuffer);
     }
   }
 #endif
@@ -550,7 +552,6 @@ Standard_Boolean OpenGl_Context::IsCurrent() const
 {
 #if defined(HAVE_EGL)
   if ((EGLDisplay )myDisplay  == EGL_NO_DISPLAY
-   || (EGLSurface )myWindow   == EGL_NO_SURFACE
    || (EGLContext )myGContext == EGL_NO_CONTEXT)
   {
     return Standard_False;
@@ -586,7 +587,6 @@ Standard_Boolean OpenGl_Context::MakeCurrent()
 {
 #if defined(HAVE_EGL)
   if ((EGLDisplay )myDisplay  == EGL_NO_DISPLAY
-   || (EGLSurface )myWindow   == EGL_NO_SURFACE
    || (EGLContext )myGContext == EGL_NO_CONTEXT)
   {
     Standard_ProgramError_Raise_if (myIsInitialized, "OpenGl_Context::Init() should be called before!");
@@ -749,6 +749,10 @@ Standard_Boolean OpenGl_Context::CheckExtension (const char* theExtName) const
 #ifdef OCCT_DEBUG
     std::cerr << "CheckExtension called with NULL string!\n";
 #endif
+    return Standard_False;
+  }
+  else if (caps->contextNoExtensions)
+  {
     return Standard_False;
   }
 
@@ -1166,24 +1170,42 @@ Standard_Boolean OpenGl_Context::IncludeMessage (const unsigned int theSource,
 // function : checkWrongVersion
 // purpose  :
 // ======================================================================
-void OpenGl_Context::checkWrongVersion (const Standard_Integer theGlVerMajor,
-                                        const Standard_Integer theGlVerMinor)
+void OpenGl_Context::checkWrongVersion (Standard_Integer theGlVerMajor, Standard_Integer theGlVerMinor,
+                                        const char* theLastFailedProc)
 {
   if (!IsGlGreaterEqual (theGlVerMajor, theGlVerMinor))
   {
     return;
   }
 
-  TCollection_ExtendedString aMsg = TCollection_ExtendedString()
-    + "Error! OpenGL context reports version "
-    + myGlVerMajor  + "." + myGlVerMinor
-    + " but does not export required functions for "
-    + theGlVerMajor + "." + theGlVerMinor;
-  PushMessage (GL_DEBUG_SOURCE_APPLICATION,
-               GL_DEBUG_TYPE_ERROR,
-               0,
-               GL_DEBUG_SEVERITY_HIGH,
-               aMsg);
+  PushMessage (GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, 0, GL_DEBUG_SEVERITY_HIGH,
+               TCollection_AsciiString()
+               + "Error! OpenGL context reports version "
+               + myGlVerMajor  + "." + myGlVerMinor
+               + " but does not export required functions for " + theGlVerMajor + "." + theGlVerMinor
+               + " (" + (theLastFailedProc != NULL ? theLastFailedProc : "") + ")\n"
+               + "Please report this issue to OpenGL driver vendor '" + myVendor + "'");
+
+  // lower internal version
+  if (theGlVerMinor > 0)
+  {
+    myGlVerMajor = theGlVerMajor;
+    myGlVerMinor = theGlVerMinor - 1;
+    return;
+  }
+#if defined(GL_ES_VERSION_2_0)
+  switch (theGlVerMajor)
+  {
+    case 3: myGlVerMajor = 2; myGlVerMinor = 0; return;
+  }
+#else
+  switch (theGlVerMajor)
+  {
+    case 2: myGlVerMajor = 1; myGlVerMinor = 5; return;
+    case 3: myGlVerMajor = 2; myGlVerMinor = 1; return;
+    case 4: myGlVerMajor = 3; myGlVerMinor = 3; return;
+  }
+#endif
 }
 
 // =======================================================================
@@ -1200,6 +1222,45 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   myMaxColorAttachments = 1;
   ReadGlVersion (myGlVerMajor, myGlVerMinor);
   myVendor = (const char* )::glGetString (GL_VENDOR);
+  myVendor.LowerCase();
+
+  if (caps->contextMajorVersionUpper != -1)
+  {
+    // synthetically restrict OpenGL version for testing
+    Standard_Integer aCtxVer[2] = { myGlVerMajor, myGlVerMinor };
+    bool isLowered = false;
+    if (myGlVerMajor > caps->contextMajorVersionUpper)
+    {
+      isLowered = true;
+      myGlVerMajor = caps->contextMajorVersionUpper;
+    #if defined(GL_ES_VERSION_2_0)
+      switch (myGlVerMajor)
+      {
+        case 2: myGlVerMinor = 0; break;
+      }
+    #else
+      switch (myGlVerMajor)
+      {
+        case 1: myGlVerMinor = 5; break;
+        case 2: myGlVerMinor = 1; break;
+        case 3: myGlVerMinor = 3; break;
+      }
+    #endif
+    }
+    if (caps->contextMinorVersionUpper != -1
+     && myGlVerMinor > caps->contextMinorVersionUpper)
+    {
+      isLowered = true;
+      myGlVerMinor = caps->contextMinorVersionUpper;
+    }
+    if (isLowered)
+    {
+      PushMessage (GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_PORTABILITY, 0, GL_DEBUG_SEVERITY_MEDIUM,
+                   TCollection_AsciiString ("OpenGL version ") + aCtxVer[0] + "." + aCtxVer[1]
+                   + " has been lowered to " + myGlVerMajor + "." + myGlVerMinor);
+    }
+  }
+
   if (!caps->ffpEnable
    && !IsGlGreaterEqual (2, 0))
   {
@@ -1220,7 +1281,7 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   const bool isCoreProfile = false;
 #else
 
-  if (myVendor.Search ("NVIDIA") != -1)
+  if (myVendor.Search ("nvidia") != -1)
   {
     // Buffer detailed info: Buffer object 1 (bound to GL_ARRAY_BUFFER_ARB, usage hint is GL_STATIC_DRAW)
     // will use VIDEO memory as the source for buffer object operations.
@@ -1269,6 +1330,8 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   core43back = NULL;
   core44     = NULL;
   core44back = NULL;
+  core45     = NULL;
+  core45back = NULL;
   arbTBO     = NULL;
   arbTboRGB32 = Standard_False;
   arbIns     = NULL;
@@ -1279,7 +1342,8 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   myDefaultVao = 0;
 
   //! Make record shorter to retrieve function pointer using variable with same name
-  #define FindProcShort(theFunc) FindProc(#theFunc, myFuncs->theFunc)
+  const char* aLastFailedProc = NULL;
+  #define FindProcShort(theFunc) FindProcVerbose(aLastFailedProc, #theFunc, myFuncs->theFunc)
 
 #if defined(GL_ES_VERSION_2_0)
 
@@ -1333,7 +1397,7 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   extFragDepth = !IsGlGreaterEqual(3, 0)
                && CheckExtension ("GL_EXT_frag_depth");
   if (IsGlGreaterEqual (3, 1)
-   && FindProc ("glTexStorage2DMultisample", myFuncs->glTexStorage2DMultisample))
+   && FindProcShort (glTexStorage2DMultisample))
   {
     // MSAA RenderBuffers have been defined in OpenGL ES 3.0,
     // but MSAA Textures - only in OpenGL ES 3.1+
@@ -1352,9 +1416,9 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   }
 
   arbTexFloat = IsGlGreaterEqual (3, 0)
-             && FindProc ("glTexImage3D", myFuncs->glTexImage3D);
+             && FindProcShort (glTexImage3D);
 
-  const Standard_Boolean hasTexBuffer32  = IsGlGreaterEqual (3, 2) && FindProc ("glTexBuffer", myFuncs->glTexBuffer);
+  const Standard_Boolean hasTexBuffer32  = IsGlGreaterEqual (3, 2) && FindProcShort (glTexBuffer);
   const Standard_Boolean hasExtTexBuffer = CheckExtension ("GL_EXT_texture_buffer") && FindProc ("glTexBufferEXT", myFuncs->glTexBuffer);
 
   if (hasTexBuffer32 || hasExtTexBuffer)
@@ -1395,7 +1459,7 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   extDrawBuffers = CheckExtension ("GL_EXT_draw_buffers") && FindProc ("glDrawBuffersEXT", myFuncs->glDrawBuffers);
   arbDrawBuffers = CheckExtension ("GL_ARB_draw_buffers") && FindProc ("glDrawBuffersARB", myFuncs->glDrawBuffers);
 
-  if (IsGlGreaterEqual (3, 0) && FindProc ("glDrawBuffers", myFuncs->glDrawBuffers))
+  if (IsGlGreaterEqual (3, 0) && FindProcShort (glDrawBuffers))
   {
     hasDrawBuffers = OpenGl_FeatureInCore;
   }
@@ -1412,9 +1476,31 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
                                                                          : OpenGl_FeatureNotAvailable;
 
   oesSampleVariables = CheckExtension ("GL_OES_sample_variables");
+  oesStdDerivatives  = CheckExtension ("GL_OES_standard_derivatives");
   hasSampleVariables = IsGlGreaterEqual (3, 2) ? OpenGl_FeatureInCore :
                        oesSampleVariables ? OpenGl_FeatureInExtensions
                                           : OpenGl_FeatureNotAvailable;
+  hasGlslBitwiseOps = IsGlGreaterEqual (3, 0)
+                    ? OpenGl_FeatureInCore
+                    : OpenGl_FeatureNotAvailable;
+  // without hasHighp, dFdx/dFdy precision is considered too low for flat shading (visual artifacts)
+  hasFlatShading = IsGlGreaterEqual (3, 0)
+                 ? OpenGl_FeatureInCore
+                  : (oesStdDerivatives && hasHighp
+                   ? OpenGl_FeatureInExtensions
+                   : OpenGl_FeatureNotAvailable);
+  if (!IsGlGreaterEqual (3, 1)
+    && myVendor.Search("qualcomm") != -1)
+  {
+    // dFdx/dFdy are completely broken on tested Adreno devices with versions below OpenGl ES 3.1
+    hasFlatShading = OpenGl_FeatureNotAvailable;
+  }
+
+  hasGeometryStage = IsGlGreaterEqual (3, 2)
+                   ? OpenGl_FeatureInCore
+                   : (CheckExtension ("GL_EXT_geometry_shader") && CheckExtension ("GL_EXT_shader_io_blocks")
+                     ? OpenGl_FeatureInExtensions
+                     : OpenGl_FeatureNotAvailable);
 #else
 
   myTexClamp = IsGlGreaterEqual (1, 2) ? GL_CLAMP_TO_EDGE : GL_CLAMP;
@@ -1435,9 +1521,19 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
                    arbDrawBuffers ? OpenGl_FeatureInExtensions 
                                   : OpenGl_FeatureNotAvailable;
 
+  hasGlslBitwiseOps = IsGlGreaterEqual (3, 0)
+                    ? OpenGl_FeatureInCore
+                    : CheckExtension ("GL_EXT_gpu_shader4")
+                     ? OpenGl_FeatureInExtensions
+                     : OpenGl_FeatureNotAvailable;
+
   hasFloatBuffer = hasHalfFloatBuffer =  IsGlGreaterEqual (3, 0) ? OpenGl_FeatureInCore :
                                          CheckExtension ("GL_ARB_color_buffer_float") ? OpenGl_FeatureInExtensions
                                                                                       : OpenGl_FeatureNotAvailable;
+
+  hasGeometryStage = IsGlGreaterEqual (3, 2)
+                   ? OpenGl_FeatureInCore
+                   : OpenGl_FeatureNotAvailable;
 
   hasSampleVariables = IsGlGreaterEqual (4, 0) ? OpenGl_FeatureInCore :
                         arbSampleShading ? OpenGl_FeatureInExtensions
@@ -1455,12 +1551,38 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   {
     glGetIntegerv (GL_MAX_DRAW_BUFFERS,      &myMaxDrawBuffers);
     glGetIntegerv (GL_MAX_COLOR_ATTACHMENTS, &myMaxColorAttachments);
+    if (myDrawBuffers.Length() < myMaxDrawBuffers)
+    {
+      myDrawBuffers.Resize (0, myMaxDrawBuffers - 1, false);
+    }
   }
 
   glGetIntegerv (GL_MAX_TEXTURE_SIZE, &myMaxTexDim);
-  if (IsGlGreaterEqual (1, 5))
+#if !defined(GL_ES_VERSION_2_0)
+  if (IsGlGreaterEqual (1, 3) && core11 != NULL)
+  {
+    // this is a maximum of texture units for FFP functionality,
+    // usually smaller than combined texture units available for GLSL
+    glGetIntegerv (GL_MAX_TEXTURE_UNITS, &myMaxTexUnitsFFP);
+    myMaxTexCombined = myMaxTexUnitsFFP;
+  }
+#endif
+  if (IsGlGreaterEqual (2, 0))
   {
     glGetIntegerv (GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &myMaxTexCombined);
+  }
+  mySpriteTexUnit = myMaxTexCombined >= 2
+                  ? Graphic3d_TextureUnit_1
+                  : Graphic3d_TextureUnit_0;
+
+  GLint aMaxVPortSize[2] = {0, 0};
+  glGetIntegerv (GL_MAX_VIEWPORT_DIMS, aMaxVPortSize);
+  myMaxDumpSizeX = Min (aMaxVPortSize[0], myMaxTexDim);
+  myMaxDumpSizeY = Min (aMaxVPortSize[1], myMaxTexDim);
+  if (myVendor == "intel")
+  {
+    // Intel drivers have known bug with empty dump for images with width>=5462
+    myMaxDumpSizeX = Min (myMaxDumpSizeX, 4096);
   }
 
   if (extAnis)
@@ -1468,7 +1590,7 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
     glGetIntegerv (GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &myAnisoMax);
   }
 
-  myClippingState.Init (myMaxClipPlanes);
+  myClippingState.Init();
 
 #if !defined(GL_ES_VERSION_2_0)
 
@@ -1487,6 +1609,7 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   bool has42 = false;
   bool has43 = false;
   bool has44 = false;
+  bool has45 = false;
 
   // retrieve platform-dependent extensions
 #if defined(HAVE_EGL)
@@ -1555,6 +1678,10 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
        && FindProcShort (glTexImage3D)
        && FindProcShort (glTexSubImage3D)
        && FindProcShort (glCopyTexSubImage3D);
+  if (!has12)
+  {
+    checkWrongVersion (1, 2, aLastFailedProc);
+  }
 
   // load OpenGL 1.3 new functions
   has13 = IsGlGreaterEqual (1, 3)
@@ -1609,6 +1736,10 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
        && FindProcShort (glMultTransposeMatrixf)
        && FindProcShort (glMultTransposeMatrixd);
   }
+  if (!has13)
+  {
+    checkWrongVersion (1, 3, aLastFailedProc);
+  }
 
   // load OpenGL 1.4 new functions
   has14 = IsGlGreaterEqual (1, 4)
@@ -1619,6 +1750,10 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
        && FindProcShort (glPointParameterfv)
        && FindProcShort (glPointParameteri)
        && FindProcShort (glPointParameteriv);
+  if (!has14)
+  {
+    checkWrongVersion (1, 4, aLastFailedProc);
+  }
 
   // load OpenGL 1.5 new functions
   has15 = IsGlGreaterEqual (1, 5)
@@ -1641,6 +1776,18 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
        && FindProcShort (glUnmapBuffer)
        && FindProcShort (glGetBufferParameteriv)
        && FindProcShort (glGetBufferPointerv);
+  if (has15)
+  {
+    if (!isCoreProfile)
+    {
+      core15 = (OpenGl_GlCore15* )(&(*myFuncs));
+    }
+    core15fwd = (OpenGl_GlCore15Fwd* )(&(*myFuncs));
+  }
+  else
+  {
+    checkWrongVersion (1, 5, aLastFailedProc);
+  }
 
   // load OpenGL 2.0 new functions
   has20 = IsGlGreaterEqual (2, 0)
@@ -1737,6 +1884,32 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
        && FindProcShort (glVertexAttrib4uiv)
        && FindProcShort (glVertexAttrib4usv)
        && FindProcShort (glVertexAttribPointer);
+  if (has20)
+  {
+    const char* aGlslVer = (const char* )::glGetString (GL_SHADING_LANGUAGE_VERSION);
+    if (aGlslVer == NULL
+    || *aGlslVer == '\0')
+    {
+      // broken context has been detected
+      PushMessage (GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, 0, GL_DEBUG_SEVERITY_HIGH,
+                   TCollection_AsciiString("Error! OpenGL context reports version ")
+                   + myGlVerMajor  + "." + myGlVerMinor + " but reports wrong GLSL version");
+      myGlVerMajor = 1;
+      myGlVerMinor = 5;
+    }
+    else
+    {
+      if (!isCoreProfile)
+      {
+        core20  = (OpenGl_GlCore20*    )(&(*myFuncs));
+      }
+      core20fwd = (OpenGl_GlCore20Fwd* )(&(*myFuncs));
+    }
+  }
+  else
+  {
+    checkWrongVersion (2, 0, aLastFailedProc);
+  }
 
   // load OpenGL 2.1 new functions
   has21 = IsGlGreaterEqual (2, 1)
@@ -1746,6 +1919,10 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
        && FindProcShort (glUniformMatrix4x2fv)
        && FindProcShort (glUniformMatrix3x4fv)
        && FindProcShort (glUniformMatrix4x3fv);
+  if (!has21)
+  {
+    checkWrongVersion (2, 1, aLastFailedProc);
+  }
 
   // load GL_ARB_framebuffer_object (added to OpenGL 3.0 core)
   const bool hasFBO = (IsGlGreaterEqual (3, 0) || CheckExtension ("GL_ARB_framebuffer_object"))
@@ -1845,6 +2022,10 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
        && FindProcShort (glClearBufferfv)
        && FindProcShort (glClearBufferfi)
        && FindProcShort (glGetStringi);
+  if (!has30)
+  {
+    checkWrongVersion (3, 0, aLastFailedProc);
+  }
 
   // load GL_ARB_uniform_buffer_object (added to OpenGL 3.1 core)
   const bool hasUBO = (IsGlGreaterEqual (3, 1) || CheckExtension ("GL_ARB_uniform_buffer_object"))
@@ -1876,6 +2057,32 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
        && FindProcShort (glDrawElementsInstanced)
        && FindProcShort (glTexBuffer)
        && FindProcShort (glPrimitiveRestartIndex);
+  if (has31)
+  {
+    arbTBO = (OpenGl_ArbTBO* )(&(*myFuncs));
+    arbIns = (OpenGl_ArbIns* )(&(*myFuncs));
+  }
+  else
+  {
+    checkWrongVersion (3, 1, aLastFailedProc);
+
+    // initialize TBO extension (ARB)
+    if (CheckExtension ("GL_ARB_texture_buffer_object")
+     && FindProc ("glTexBufferARB", myFuncs->glTexBuffer))
+    {
+      arbTBO = (OpenGl_ArbTBO* )(&(*myFuncs));
+    }
+
+    // initialize hardware instancing extension (ARB)
+    if (CheckExtension ("GL_ARB_draw_instanced")
+     && FindProc ("glDrawArraysInstancedARB",   myFuncs->glDrawArraysInstanced)
+     && FindProc ("glDrawElementsInstancedARB", myFuncs->glDrawElementsInstanced))
+    {
+      arbIns = (OpenGl_ArbIns* )(&(*myFuncs));
+    }
+  }
+
+  arbTboRGB32 = CheckExtension ("GL_ARB_texture_buffer_object_rgb32");
 
   // load GL_ARB_draw_elements_base_vertex (added to OpenGL 3.2 core)
   const bool hasDrawElemsBaseVert = (IsGlGreaterEqual (3, 2) || CheckExtension ("GL_ARB_draw_elements_base_vertex"))
@@ -1914,6 +2121,23 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
        && FindProcShort (glGetInteger64i_v)
        && FindProcShort (glGetBufferParameteri64v)
        && FindProcShort (glFramebufferTexture);
+  if (has32)
+  {
+    core32 = (OpenGl_GlCore32* )(&(*myFuncs));
+    if (isCoreProfile)
+    {
+      core32->glGenVertexArrays (1, &myDefaultVao);
+    }
+    else
+    {
+      core32back = (OpenGl_GlCore32Back* )(&(*myFuncs));
+    }
+    ::glGetIntegerv (GL_MAX_SAMPLES, &myMaxMsaaSamples);
+  }
+  else
+  {
+    checkWrongVersion (3, 2, aLastFailedProc);
+  }
 
   // load GL_ARB_blend_func_extended (added to OpenGL 3.3 core)
   const bool hasBlendFuncExtended = (IsGlGreaterEqual (3, 3) || CheckExtension ("GL_ARB_blend_func_extended"))
@@ -2003,6 +2227,18 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
        && hasTimerQuery
        && hasVertType21010101rev
        && FindProcShort (glVertexAttribDivisor);
+  if (has33)
+  {
+    core33 = (OpenGl_GlCore33* )(&(*myFuncs));
+    if (!isCoreProfile)
+    {
+      core33back = (OpenGl_GlCore33Back* )(&(*myFuncs));
+    }
+  }
+  else
+  {
+    checkWrongVersion (3, 3, aLastFailedProc);
+  }
 
   // load GL_ARB_draw_indirect (added to OpenGL 4.0 core)
   const bool hasDrawIndirect = (IsGlGreaterEqual (4, 0) || CheckExtension ("GL_ARB_draw_indirect"))
@@ -2076,6 +2312,14 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
       && FindProcShort (glBlendEquationSeparatei)
       && FindProcShort (glBlendFunci)
       && FindProcShort (glBlendFuncSeparatei);
+  if (has40)
+  {
+    arbTboRGB32 = Standard_True; // in core since OpenGL 4.0
+  }
+  else
+  {
+    checkWrongVersion (4, 0, aLastFailedProc);
+  }
 
   // load GL_ARB_ES2_compatibility (added to OpenGL 4.1 core)
   const bool hasES2Compatibility = (IsGlGreaterEqual (4, 1) || CheckExtension ("GL_ARB_ES2_compatibility"))
@@ -2187,6 +2431,18 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
        && hasSeparateShaderObjects
        && hasVertAttrib64bit
        && hasViewportArray;
+  if (has41)
+  {
+    core41 = (OpenGl_GlCore41* )(&(*myFuncs));
+    if (!isCoreProfile)
+    {
+      core41back = (OpenGl_GlCore41Back* )(&(*myFuncs));
+    }
+  }
+  else
+  {
+    checkWrongVersion (4, 1, aLastFailedProc);
+  }
 
   // load GL_ARB_base_instance (added to OpenGL 4.2 core)
   const bool hasBaseInstance = (IsGlGreaterEqual (4, 2) || CheckExtension ("GL_ARB_base_instance"))
@@ -2225,6 +2481,18 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
        && hasShaderAtomicCounters
        && hasShaderImgLoadStore
        && hasTextureStorage;
+  if (has42)
+  {
+    core42 = (OpenGl_GlCore42* )(&(*myFuncs));
+    if (!isCoreProfile)
+    {
+      core42back = (OpenGl_GlCore42Back* )(&(*myFuncs));
+    }
+  }
+  else
+  {
+    checkWrongVersion (4, 2, aLastFailedProc);
+  }
 
   has43 = IsGlGreaterEqual (4, 3)
        && FindProcShort (glClearBufferData)
@@ -2270,6 +2538,18 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
        && FindProcShort (glGetObjectLabel)
        && FindProcShort (glObjectPtrLabel)
        && FindProcShort (glGetObjectPtrLabel);
+  if (has43)
+  {
+    core43 = (OpenGl_GlCore43* )(&(*myFuncs));
+    if (!isCoreProfile)
+    {
+      core43back = (OpenGl_GlCore43Back* )(&(*myFuncs));
+    }
+  }
+  else
+  {
+    checkWrongVersion (4, 3, aLastFailedProc);
+  }
 
   // load GL_ARB_clear_texture (added to OpenGL 4.4 core)
   bool arbTexClear = (IsGlGreaterEqual (4, 4) || CheckExtension ("GL_ARB_clear_texture"))
@@ -2285,6 +2565,155 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
        && FindProcShort (glBindSamplers)
        && FindProcShort (glBindImageTextures)
        && FindProcShort (glBindVertexBuffers);
+  if (has44)
+  {
+    core44 = (OpenGl_GlCore44* )(&(*myFuncs));
+    if (!isCoreProfile)
+    {
+      core44back = (OpenGl_GlCore44Back* )(&(*myFuncs));
+    }
+  }
+  else
+  {
+    checkWrongVersion (4, 4, aLastFailedProc);
+  }
+
+  has45 = IsGlGreaterEqual (4, 5)
+       && FindProcShort (glBindVertexBuffers)
+       && FindProcShort (glClipControl)
+       && FindProcShort (glCreateTransformFeedbacks)
+       && FindProcShort (glTransformFeedbackBufferBase)
+       && FindProcShort (glTransformFeedbackBufferRange)
+       && FindProcShort (glGetTransformFeedbackiv)
+       && FindProcShort (glGetTransformFeedbacki_v)
+       && FindProcShort (glGetTransformFeedbacki64_v)
+       && FindProcShort (glCreateBuffers)
+       && FindProcShort (glNamedBufferStorage)
+       && FindProcShort (glNamedBufferData)
+       && FindProcShort (glNamedBufferSubData)
+       && FindProcShort (glCopyNamedBufferSubData)
+       && FindProcShort (glClearNamedBufferData)
+       && FindProcShort (glClearNamedBufferSubData)
+       && FindProcShort (glMapNamedBuffer)
+       && FindProcShort (glMapNamedBufferRange)
+       && FindProcShort (glUnmapNamedBuffer)
+       && FindProcShort (glFlushMappedNamedBufferRange)
+       && FindProcShort (glGetNamedBufferParameteriv)
+       && FindProcShort (glGetNamedBufferParameteri64v)
+       && FindProcShort (glGetNamedBufferPointerv)
+       && FindProcShort (glGetNamedBufferSubData)
+       && FindProcShort (glCreateFramebuffers)
+       && FindProcShort (glNamedFramebufferRenderbuffer)
+       && FindProcShort (glNamedFramebufferParameteri)
+       && FindProcShort (glNamedFramebufferTexture)
+       && FindProcShort (glNamedFramebufferTextureLayer)
+       && FindProcShort (glNamedFramebufferDrawBuffer)
+       && FindProcShort (glNamedFramebufferDrawBuffers)
+       && FindProcShort (glNamedFramebufferReadBuffer)
+       && FindProcShort (glInvalidateNamedFramebufferData)
+       && FindProcShort (glInvalidateNamedFramebufferSubData)
+       && FindProcShort (glClearNamedFramebufferiv)
+       && FindProcShort (glClearNamedFramebufferuiv)
+       && FindProcShort (glClearNamedFramebufferfv)
+       && FindProcShort (glClearNamedFramebufferfi)
+       && FindProcShort (glBlitNamedFramebuffer)
+       && FindProcShort (glCheckNamedFramebufferStatus)
+       && FindProcShort (glGetNamedFramebufferParameteriv)
+       && FindProcShort (glGetNamedFramebufferAttachmentParameteriv)
+       && FindProcShort (glCreateRenderbuffers)
+       && FindProcShort (glNamedRenderbufferStorage)
+       && FindProcShort (glNamedRenderbufferStorageMultisample)
+       && FindProcShort (glGetNamedRenderbufferParameteriv)
+       && FindProcShort (glCreateTextures)
+       && FindProcShort (glTextureBuffer)
+       && FindProcShort (glTextureBufferRange)
+       && FindProcShort (glTextureStorage1D)
+       && FindProcShort (glTextureStorage2D)
+       && FindProcShort (glTextureStorage3D)
+       && FindProcShort (glTextureStorage2DMultisample)
+       && FindProcShort (glTextureStorage3DMultisample)
+       && FindProcShort (glTextureSubImage1D)
+       && FindProcShort (glTextureSubImage2D)
+       && FindProcShort (glTextureSubImage3D)
+       && FindProcShort (glCompressedTextureSubImage1D)
+       && FindProcShort (glCompressedTextureSubImage2D)
+       && FindProcShort (glCompressedTextureSubImage3D)
+       && FindProcShort (glCopyTextureSubImage1D)
+       && FindProcShort (glCopyTextureSubImage2D)
+       && FindProcShort (glCopyTextureSubImage3D)
+       && FindProcShort (glTextureParameterf)
+       && FindProcShort (glTextureParameterfv)
+       && FindProcShort (glTextureParameteri)
+       && FindProcShort (glTextureParameterIiv)
+       && FindProcShort (glTextureParameterIuiv)
+       && FindProcShort (glTextureParameteriv)
+       && FindProcShort (glGenerateTextureMipmap)
+       && FindProcShort (glBindTextureUnit)
+       && FindProcShort (glGetTextureImage)
+       && FindProcShort (glGetCompressedTextureImage)
+       && FindProcShort (glGetTextureLevelParameterfv)
+       && FindProcShort (glGetTextureLevelParameteriv)
+       && FindProcShort (glGetTextureParameterfv)
+       && FindProcShort (glGetTextureParameterIiv)
+       && FindProcShort (glGetTextureParameterIuiv)
+       && FindProcShort (glGetTextureParameteriv)
+       && FindProcShort (glCreateVertexArrays)
+       && FindProcShort (glDisableVertexArrayAttrib)
+       && FindProcShort (glEnableVertexArrayAttrib)
+       && FindProcShort (glVertexArrayElementBuffer)
+       && FindProcShort (glVertexArrayVertexBuffer)
+       && FindProcShort (glVertexArrayVertexBuffers)
+       && FindProcShort (glVertexArrayAttribBinding)
+       && FindProcShort (glVertexArrayAttribFormat)
+       && FindProcShort (glVertexArrayAttribIFormat)
+       && FindProcShort (glVertexArrayAttribLFormat)
+       && FindProcShort (glVertexArrayBindingDivisor)
+       && FindProcShort (glGetVertexArrayiv)
+       && FindProcShort (glGetVertexArrayIndexediv)
+       && FindProcShort (glGetVertexArrayIndexed64iv)
+       && FindProcShort (glCreateSamplers)
+       && FindProcShort (glCreateProgramPipelines)
+       && FindProcShort (glCreateQueries)
+       && FindProcShort (glGetQueryBufferObjecti64v)
+       && FindProcShort (glGetQueryBufferObjectiv)
+       && FindProcShort (glGetQueryBufferObjectui64v)
+       && FindProcShort (glGetQueryBufferObjectuiv)
+       && FindProcShort (glMemoryBarrierByRegion)
+       && FindProcShort (glGetTextureSubImage)
+       && FindProcShort (glGetCompressedTextureSubImage)
+       && FindProcShort (glGetGraphicsResetStatus)
+       && FindProcShort (glGetnCompressedTexImage)
+       && FindProcShort (glGetnTexImage)
+       && FindProcShort (glGetnUniformdv)
+       && FindProcShort (glGetnUniformfv)
+       && FindProcShort (glGetnUniformiv)
+       && FindProcShort (glGetnUniformuiv)
+       && FindProcShort (glReadnPixels)
+       && FindProcShort (glGetnMapdv)
+       && FindProcShort (glGetnMapfv)
+       && FindProcShort (glGetnMapiv)
+       && FindProcShort (glGetnPixelMapfv)
+       && FindProcShort (glGetnPixelMapuiv)
+       && FindProcShort (glGetnPixelMapusv)
+       && FindProcShort (glGetnPolygonStipple)
+       && FindProcShort (glGetnColorTable)
+       && FindProcShort (glGetnConvolutionFilter)
+       && FindProcShort (glGetnSeparableFilter)
+       && FindProcShort (glGetnHistogram)
+       && FindProcShort (glGetnMinmax)
+       && FindProcShort (glTextureBarrier);
+  if (has45)
+  {
+    core45 = (OpenGl_GlCore45* )(&(*myFuncs));
+    if (!isCoreProfile)
+    {
+      core45back = (OpenGl_GlCore45Back* )(&(*myFuncs));
+    }
+  }
+  else
+  {
+    checkWrongVersion (4, 5, aLastFailedProc);
+  }
 
   // initialize debug context extension
   if (CheckExtension ("GL_ARB_debug_output"))
@@ -2317,24 +2746,6 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
         ::glEnable (GL_DEBUG_OUTPUT_SYNCHRONOUS);
       }
     }
-  }
-
-  // initialize TBO extension (ARB)
-  if (!has31
-   && CheckExtension ("GL_ARB_texture_buffer_object")
-   && FindProc ("glTexBufferARB", myFuncs->glTexBuffer))
-  {
-    arbTBO = (OpenGl_ArbTBO* )(&(*myFuncs));
-  }
-  arbTboRGB32 = CheckExtension ("GL_ARB_texture_buffer_object_rgb32");
-
-  // initialize hardware instancing extension (ARB)
-  if (!has31
-   && CheckExtension ("GL_ARB_draw_instanced")
-   && FindProc ("glDrawArraysInstancedARB",   myFuncs->glDrawArraysInstanced)
-   && FindProc ("glDrawElementsInstancedARB", myFuncs->glDrawElementsInstanced))
-  {
-    arbIns = (OpenGl_ArbIns* )(&(*myFuncs));
   }
 
   // initialize FBO extension (ARB)
@@ -2374,116 +2785,26 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
     arbTexBindless = (OpenGl_ArbTexBindless* )(&(*myFuncs));
   }
 
-  if (!has12)
+  if (has30)
   {
-    checkWrongVersion (1, 2);
-    myGlVerMajor = 1;
-    myGlVerMinor = 1;
-    return;
+    // MSAA RenderBuffers have been defined in OpenGL 3.0,
+    // but MSAA Textures - only in OpenGL 3.2+
+    if (!has32
+     && CheckExtension ("GL_ARB_texture_multisample")
+     && FindProcShort (glTexImage2DMultisample))
+    {
+      GLint aNbColorSamples = 0, aNbDepthSamples = 0;
+      ::glGetIntegerv (GL_MAX_COLOR_TEXTURE_SAMPLES, &aNbColorSamples);
+      ::glGetIntegerv (GL_MAX_DEPTH_TEXTURE_SAMPLES, &aNbDepthSamples);
+      myMaxMsaaSamples = Min (aNbColorSamples, aNbDepthSamples);
+    }
+    if (!has43
+     && CheckExtension ("GL_ARB_texture_storage_multisample")
+     && FindProcShort (glTexStorage2DMultisample))
+    {
+      //
+    }
   }
-  else if (!has13)
-  {
-    checkWrongVersion (1, 3);
-    myGlVerMajor = 1;
-    myGlVerMinor = 2;
-    return;
-  }
-  else if (!has14)
-  {
-    checkWrongVersion (1, 4);
-    myGlVerMajor = 1;
-    myGlVerMinor = 3;
-    return;
-  }
-  else if (!has15)
-  {
-    checkWrongVersion (1, 5);
-    myGlVerMajor = 1;
-    myGlVerMinor = 4;
-    return;
-  }
-  if (!isCoreProfile)
-  {
-    core15 = (OpenGl_GlCore15* )(&(*myFuncs));
-  }
-  core15fwd = (OpenGl_GlCore15Fwd* )(&(*myFuncs));
-
-  if (!has20)
-  {
-    checkWrongVersion (2, 0);
-    myGlVerMajor = 1;
-    myGlVerMinor = 5;
-    return;
-  }
-
-  const char* aGlslVer = (const char* )::glGetString (GL_SHADING_LANGUAGE_VERSION);
-  if (aGlslVer == NULL
-  || *aGlslVer == '\0')
-  {
-    // broken context has been detected
-    TCollection_ExtendedString aMsg = TCollection_ExtendedString()
-      + "Error! OpenGL context reports version "
-      + myGlVerMajor  + "." + myGlVerMinor
-      + " but reports wrong GLSL version";
-    PushMessage (GL_DEBUG_SOURCE_APPLICATION,
-                 GL_DEBUG_TYPE_ERROR,
-                 0,
-                 GL_DEBUG_SEVERITY_HIGH,
-                 aMsg);
-    myGlVerMajor = 1;
-    myGlVerMinor = 5;
-    return;
-  }
-
-  if (!isCoreProfile)
-  {
-    core20  = (OpenGl_GlCore20*    )(&(*myFuncs));
-  }
-  core20fwd = (OpenGl_GlCore20Fwd* )(&(*myFuncs));
-
-  if (!has21)
-  {
-    checkWrongVersion (2, 1);
-    myGlVerMajor = 2;
-    myGlVerMinor = 0;
-    return;
-  }
-
-  if (!has30)
-  {
-    checkWrongVersion (3, 0);
-    myGlVerMajor = 2;
-    myGlVerMinor = 1;
-    return;
-  }
-
-  // MSAA RenderBuffers have been defined in OpenGL 3.0,
-  // but MSAA Textures - only in OpenGL 3.2+
-  if (!has32
-   && CheckExtension ("GL_ARB_texture_multisample")
-   && FindProcShort (glTexImage2DMultisample))
-  {
-    GLint aNbColorSamples = 0, aNbDepthSamples = 0;
-    ::glGetIntegerv (GL_MAX_COLOR_TEXTURE_SAMPLES, &aNbColorSamples);
-    ::glGetIntegerv (GL_MAX_DEPTH_TEXTURE_SAMPLES, &aNbDepthSamples);
-    myMaxMsaaSamples = Min (aNbColorSamples, aNbDepthSamples);
-  }
-  if (!has43
-   && CheckExtension ("GL_ARB_texture_storage_multisample")
-   && FindProcShort (glTexStorage2DMultisample))
-  {
-    //
-  }
-
-  if (!has31)
-  {
-    checkWrongVersion (3, 1);
-    myGlVerMajor = 3;
-    myGlVerMinor = 0;
-    return;
-  }
-  arbTBO = (OpenGl_ArbTBO* )(&(*myFuncs));
-  arbIns = (OpenGl_ArbIns* )(&(*myFuncs));
 
   // check whether ray tracing mode is supported
   myHasRayTracing = has31
@@ -2496,100 +2817,9 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
 
   // check whether adaptive screen sampling in ray tracing mode is supported
   myHasRayTracingAdaptiveSampling = myHasRayTracing
-                                 && has44
-                                 && CheckExtension ("GL_NV_shader_atomic_float");
-
-  if (!has32)
-  {
-    checkWrongVersion (3, 2);
-    myGlVerMajor = 3;
-    myGlVerMinor = 1;
-    return;
-  }
-  core32 = (OpenGl_GlCore32* )(&(*myFuncs));
-  if (isCoreProfile)
-  {
-    core32->glGenVertexArrays (1, &myDefaultVao);
-  }
-  else
-  {
-    core32back = (OpenGl_GlCore32Back* )(&(*myFuncs));
-  }
-  ::glGetIntegerv (GL_MAX_SAMPLES, &myMaxMsaaSamples);
-
-  if (!has33)
-  {
-    checkWrongVersion (3, 3);
-    myGlVerMajor = 3;
-    myGlVerMinor = 2;
-    return;
-  }
-  core33 = (OpenGl_GlCore33* )(&(*myFuncs));
-  if (!isCoreProfile)
-  {
-    core33back = (OpenGl_GlCore33Back* )(&(*myFuncs));
-  }
-
-  if (!has40)
-  {
-    checkWrongVersion (4, 0);
-    myGlVerMajor = 3;
-    myGlVerMinor = 3;
-    return;
-  }
-  arbTboRGB32 = Standard_True; // in core since OpenGL 4.0
-
-  if (!has41)
-  {
-    checkWrongVersion (4, 1);
-    myGlVerMajor = 4;
-    myGlVerMinor = 0;
-    return;
-  }
-  core41 = (OpenGl_GlCore41* )(&(*myFuncs));
-  if (!isCoreProfile)
-  {
-    core41back = (OpenGl_GlCore41Back* )(&(*myFuncs));
-  }
-
-  if(!has42)
-  {
-    checkWrongVersion (4, 2);
-    myGlVerMajor = 4;
-    myGlVerMinor = 1;
-    return;
-  }
-  core42 = (OpenGl_GlCore42* )(&(*myFuncs));
-  if (!isCoreProfile)
-  {
-    core42back = (OpenGl_GlCore42Back* )(&(*myFuncs));
-  }
-
-  if (!has43)
-  {
-    checkWrongVersion (4, 3);
-    myGlVerMajor = 4;
-    myGlVerMinor = 2;
-    return;
-  }
-  core43 = (OpenGl_GlCore43* )(&(*myFuncs));
-  if (!isCoreProfile)
-  {
-    core43back = (OpenGl_GlCore43Back* )(&(*myFuncs));
-  }
-
-  if (!has44)
-  {
-    checkWrongVersion (4, 4);
-    myGlVerMajor = 4;
-    myGlVerMinor = 3;
-    return;
-  }
-  core44 = (OpenGl_GlCore44* )(&(*myFuncs));
-  if (!isCoreProfile)
-  {
-    core44back = (OpenGl_GlCore44Back* )(&(*myFuncs));
-  }
+                                 && has44;
+  myHasRayTracingAdaptiveSamplingAtomic = myHasRayTracingAdaptiveSampling
+                                       && CheckExtension ("GL_NV_shader_atomic_float");
 #endif
 }
 
@@ -2774,12 +3004,12 @@ void OpenGl_Context::DiagnosticInformation (TColStd_IndexedDataMapOfStringString
   if ((theFlags & Graphic3d_DiagnosticInfo_NativePlatform) != 0)
   {
   #if defined(HAVE_EGL)
-    addInfo (theDict, "EGLVersion",    ::eglQueryString ((Aspect_Display)myDisplay, EGL_VERSION));
-    addInfo (theDict, "EGLVendor",     ::eglQueryString ((Aspect_Display)myDisplay, EGL_VENDOR));
-    addInfo (theDict, "EGLClientAPIs", ::eglQueryString ((Aspect_Display)myDisplay, EGL_CLIENT_APIS));
+    addInfo (theDict, "EGLVersion",    ::eglQueryString ((EGLDisplay )myDisplay, EGL_VERSION));
+    addInfo (theDict, "EGLVendor",     ::eglQueryString ((EGLDisplay )myDisplay, EGL_VENDOR));
+    addInfo (theDict, "EGLClientAPIs", ::eglQueryString ((EGLDisplay )myDisplay, EGL_CLIENT_APIS));
     if ((theFlags & Graphic3d_DiagnosticInfo_Extensions) != 0)
     {
-      addInfo (theDict, "EGLExtensions", ::eglQueryString ((Aspect_Display)myDisplay, EGL_EXTENSIONS));
+      addInfo (theDict, "EGLExtensions", ::eglQueryString ((EGLDisplay )myDisplay, EGL_EXTENSIONS));
     }
   #elif defined(_WIN32)
     if ((theFlags & Graphic3d_DiagnosticInfo_Extensions) != 0
@@ -2813,10 +3043,20 @@ void OpenGl_Context::DiagnosticInformation (TColStd_IndexedDataMapOfStringString
 
   if ((theFlags & Graphic3d_DiagnosticInfo_Device) != 0)
   {
+    Standard_Integer aDriverVer[2] = {};
+    ReadGlVersion (aDriverVer[0], aDriverVer[1]);
     addInfo (theDict, "GLvendor",    (const char*)::glGetString (GL_VENDOR));
     addInfo (theDict, "GLdevice",    (const char*)::glGetString (GL_RENDERER));
     addInfo (theDict, "GLversion",   (const char*)::glGetString (GL_VERSION));
-    addInfo (theDict, "GLSLversion", (const char*)::glGetString (GL_SHADING_LANGUAGE_VERSION));
+    if (myGlVerMajor != aDriverVer[0]
+     || myGlVerMinor != aDriverVer[1])
+    {
+      addInfo (theDict, "GLversionOcct", TCollection_AsciiString (myGlVerMajor) + "." + TCollection_AsciiString (myGlVerMinor));
+    }
+    if (IsGlGreaterEqual (2, 0))
+    {
+      addInfo (theDict, "GLSLversion", (const char*)::glGetString (GL_SHADING_LANGUAGE_VERSION));
+    }
     if (myIsGlDebugCtx)
     {
       addInfo (theDict, "GLdebug", "ON");
@@ -2826,6 +3066,7 @@ void OpenGl_Context::DiagnosticInformation (TColStd_IndexedDataMapOfStringString
   if ((theFlags & Graphic3d_DiagnosticInfo_Limits) != 0)
   {
     addInfo (theDict, "Max texture size", TCollection_AsciiString(myMaxTexDim));
+    addInfo (theDict, "Max FBO dump size", TCollection_AsciiString() + myMaxDumpSizeX + "x" + myMaxDumpSizeY);
     addInfo (theDict, "Max combined texture units", TCollection_AsciiString(myMaxTexCombined));
     addInfo (theDict, "Max MSAA samples", TCollection_AsciiString(myMaxMsaaSamples));
   }
@@ -2904,7 +3145,7 @@ void OpenGl_Context::ReleaseResource (const TCollection_AsciiString& theKey,
   {
     return;
   }
-  auto& aRes = mySharedResources->Find (theKey);
+  const Handle(OpenGl_Resource)& aRes = mySharedResources->Find (theKey);
   if (aRes->GetRefCount() > 1)
   {
     return;
@@ -2952,7 +3193,7 @@ void OpenGl_Context::ReleaseDelayed()
       continue;
     }
 
-    auto& aRes = mySharedResources->ChangeFind (aKey);
+    const Handle(OpenGl_Resource)& aRes = mySharedResources->ChangeFind (aKey);
     if (aRes->GetRefCount() > 1)
     {
       // should be only 1 instance in mySharedResources
@@ -2994,13 +3235,13 @@ Handle(OpenGl_TextureSet) OpenGl_Context::BindTextures (const Handle(OpenGl_Text
       {
         if (const Handle(OpenGl_Texture)& aTextureOld = aTextureIterOld.Value())
         {
+          aTextureOld->Unbind(aThisCtx);
         #if !defined(GL_ES_VERSION_2_0)
           if (core11 != NULL)
           {
             OpenGl_Sampler::resetGlobalTextureParams (aThisCtx, *aTextureOld, aTextureOld->Sampler()->Parameters());
           }
         #endif
-          aTextureOld->Unbind (aThisCtx);
         }
       }
       break;
@@ -3021,13 +3262,13 @@ Handle(OpenGl_TextureSet) OpenGl_Context::BindTextures (const Handle(OpenGl_Text
       {
         if (!aTextureOld.IsNull())
         {
+          aTextureOld->Unbind(aThisCtx);
         #if !defined(GL_ES_VERSION_2_0)
           if (core11 != NULL)
           {
             OpenGl_Sampler::resetGlobalTextureParams (aThisCtx, *aTextureOld, aTextureOld->Sampler()->Parameters());
           }
         #endif
-          aTextureOld->Unbind (aThisCtx);
         }
 
         aTextureIterNew.Next();
@@ -3141,12 +3382,12 @@ Handle(OpenGl_FrameBuffer) OpenGl_Context::SetDefaultFrameBuffer (const Handle(O
 // function : SetShadingMaterial
 // purpose  :
 // =======================================================================
-void OpenGl_Context::SetShadingMaterial (const OpenGl_AspectFace* theAspect,
+void OpenGl_Context::SetShadingMaterial (const OpenGl_Aspects* theAspect,
                                          const Handle(Graphic3d_PresentationAttributes)& theHighlight)
 {
-  const Handle(Graphic3d_AspectFillArea3d)& anAspect = (!theHighlight.IsNull() && !theHighlight->BasicFillAreaAspect().IsNull())
-                                                      ?  theHighlight->BasicFillAreaAspect()
-                                                      :  theAspect->Aspect();
+  const Handle(Graphic3d_Aspects)& anAspect = (!theHighlight.IsNull() && !theHighlight->BasicFillAreaAspect().IsNull())
+                                            ?  (const Handle(Graphic3d_Aspects)& )theHighlight->BasicFillAreaAspect()
+                                            :  theAspect->Aspect();
 
   const bool toDistinguish = anAspect->Distinguish();
   const bool toMapTexture  = anAspect->ToMapTexture();
@@ -3186,34 +3427,50 @@ void OpenGl_Context::SetShadingMaterial (const OpenGl_AspectFace* theAspect,
 
   // do not update material properties in case of zero reflection mode,
   // because GL lighting will be disabled by OpenGl_PrimitiveArray::DrawArray() anyway.
-  if (theAspect->IsNoLighting())
+  const OpenGl_MaterialState& aMatState = myShaderManager->MaterialState();
+  float anAlphaCutoff = anAspect->AlphaMode() == Graphic3d_AlphaMode_Mask
+                      ? anAspect->AlphaCutoff()
+                      : ShortRealLast();
+  if (anAspect->ToDrawEdges())
+  {
+    if (anAspect->InteriorStyle() == Aspect_IS_EMPTY
+     || (anAspect->InteriorStyle() == Aspect_IS_SOLID
+      && anAspect->EdgeColorRGBA().Alpha() < 1.0f))
+    {
+      anAlphaCutoff = 0.285f;
+    }
+  }
+  if (theAspect->ShadingModel() == Graphic3d_TOSM_UNLIT)
+  {
+    if (anAlphaCutoff == aMatState.AlphaCutoff())
+    {
+      return;
+    }
+  }
+  else if (myMatFront    == aMatState.FrontMaterial()
+        && myMatBack     == aMatState.BackMaterial()
+        && toDistinguish == aMatState.ToDistinguish()
+        && toMapTexture  == aMatState.ToMapTexture()
+        && anAlphaCutoff == aMatState.AlphaCutoff())
   {
     return;
   }
 
-  if (myMatFront    == myShaderManager->MaterialState().FrontMaterial()
-   && myMatBack     == myShaderManager->MaterialState().BackMaterial()
-   && toDistinguish == myShaderManager->MaterialState().ToDistinguish()
-   && toMapTexture  == myShaderManager->MaterialState().ToMapTexture())
-  {
-    return;
-  }
-
-  myShaderManager->UpdateMaterialStateTo (myMatFront, myMatBack, toDistinguish, toMapTexture);
+  myShaderManager->UpdateMaterialStateTo (myMatFront, myMatBack, anAlphaCutoff, toDistinguish, toMapTexture);
 }
 
 // =======================================================================
 // function : CheckIsTransparent
 // purpose  :
 // =======================================================================
-Standard_Boolean OpenGl_Context::CheckIsTransparent (const OpenGl_AspectFace* theAspect,
+Standard_Boolean OpenGl_Context::CheckIsTransparent (const OpenGl_Aspects* theAspect,
                                                      const Handle(Graphic3d_PresentationAttributes)& theHighlight,
                                                      Standard_ShortReal& theAlphaFront,
                                                      Standard_ShortReal& theAlphaBack)
 {
-  const Handle(Graphic3d_AspectFillArea3d)& anAspect = (!theHighlight.IsNull() && !theHighlight->BasicFillAreaAspect().IsNull())
-                                                      ?  theHighlight->BasicFillAreaAspect()
-                                                      :  theAspect->Aspect();
+  const Handle(Graphic3d_Aspects)& anAspect = (!theHighlight.IsNull() && !theHighlight->BasicFillAreaAspect().IsNull())
+                                            ?  (const Handle(Graphic3d_Aspects)& )theHighlight->BasicFillAreaAspect()
+                                            :  theAspect->Aspect();
 
   const bool toDistinguish = anAspect->Distinguish();
   const Graphic3d_MaterialAspect& aMatFrontSrc = anAspect->FrontMaterial();
@@ -3234,9 +3491,12 @@ Standard_Boolean OpenGl_Context::CheckIsTransparent (const OpenGl_AspectFace* th
     theAlphaBack  = aMatBackSrc .Alpha();
   }
 
-  const bool isTransparent = theAlphaFront < 1.0f
-                          || theAlphaBack  < 1.0f;
-  return isTransparent;
+  if (anAspect->AlphaMode() == Graphic3d_AlphaMode_BlendAuto)
+  {
+    return theAlphaFront < 1.0f
+        || theAlphaBack  < 1.0f;
+  }
+  return anAspect->AlphaMode() == Graphic3d_AlphaMode_Blend;
 }
 
 // =======================================================================
@@ -3297,21 +3557,29 @@ void OpenGl_Context::SetTypeOfLine (const Aspect_TypeOfLine  theType,
 
   if (!myActiveProgram.IsNull())
   {
-    myActiveProgram->SetUniform (this, "uPattern", aPattern);
-    myActiveProgram->SetUniform (this, "uFactor",  theFactor);
+    if (const OpenGl_ShaderUniformLocation aPatternLoc = myActiveProgram->GetStateLocation (OpenGl_OCCT_LINE_STIPPLE_PATTERN))
+    {
+      if (hasGlslBitwiseOps != OpenGl_FeatureNotAvailable)
+      {
+        myActiveProgram->SetUniform (this, aPatternLoc, aPattern);
+      }
+      else
+      {
+        Standard_Integer aPatArr[16] = {};
+        for (unsigned int aBit = 0; aBit < 16; ++aBit)
+        {
+          aPatArr[aBit] = ((unsigned int)(aPattern) & (1U << aBit)) != 0 ? 1 : 0;
+        }
+        myActiveProgram->SetUniform (this, aPatternLoc, 16, aPatArr);
+      }
+      myActiveProgram->SetUniform (this, myActiveProgram->GetStateLocation (OpenGl_OCCT_LINE_STIPPLE_FACTOR), theFactor);
+    }
     return;
   }
 
 #if !defined(GL_ES_VERSION_2_0)
   if (aPattern != 0xFFFF)
   {
-  #ifdef HAVE_GL2PS
-    if (IsFeedback())
-    {
-      gl2psEnable (GL2PS_LINE_STIPPLE);
-    }
-  #endif
-
     if (core11 != NULL)
     {
       core11fwd->glEnable (GL_LINE_STIPPLE);
@@ -3326,13 +3594,6 @@ void OpenGl_Context::SetTypeOfLine (const Aspect_TypeOfLine  theType,
     {
       core11fwd->glDisable (GL_LINE_STIPPLE);
     }
-
-  #ifdef HAVE_GL2PS
-    if (IsFeedback())
-    {
-      gl2psDisable (GL2PS_LINE_STIPPLE);
-    }
-  #endif
   }
 #endif
 }
@@ -3348,12 +3609,6 @@ void OpenGl_Context::SetLineWidth (const Standard_ShortReal theWidth)
     // glLineWidth() is still defined within Core Profile, but has no effect with values != 1.0f
     core11fwd->glLineWidth (theWidth * myLineWidthScale);
   }
-#ifdef HAVE_GL2PS
-  if (IsFeedback())
-  {
-    gl2psLineWidth (theWidth);
-  }
-#endif
 }
 
 // =======================================================================
@@ -3375,12 +3630,16 @@ void OpenGl_Context::SetTextureMatrix (const Handle(Graphic3d_TextureParams)& th
     }
 
     // pack transformation parameters
-    OpenGl_Vec4 aTrsf[2];
-    aTrsf[0].x()  = -theParams->Translation().x();
-    aTrsf[0].y()  = -theParams->Translation().y();
-    aTrsf[0].zw() = theParams->Scale();
-    aTrsf[1].x()  = std::sin (-theParams->Rotation() * static_cast<float> (M_PI / 180.0));
-    aTrsf[1].y()  = std::cos (-theParams->Rotation() * static_cast<float> (M_PI / 180.0));
+    OpenGl_Vec4 aTrsf[2] =
+    {
+      OpenGl_Vec4 (-theParams->Translation().x(),
+                   -theParams->Translation().y(),
+                    theParams->Scale().x(),
+                    theParams->Scale().y()),
+      OpenGl_Vec4 (static_cast<float> (std::sin (-theParams->Rotation() * M_PI / 180.0)),
+                   static_cast<float> (std::cos (-theParams->Rotation() * M_PI / 180.0)),
+                   0.0f, 0.0f)
+    };
     myActiveProgram->SetUniform (this, aUniLoc, 2, aTrsf);
     return;
   }
@@ -3551,6 +3810,64 @@ Standard_Integer OpenGl_Context::SetPolygonHatchStyle (const Handle(Graphic3d_Ha
 }
 
 // =======================================================================
+// function : SetPolygonOffset
+// purpose  :
+// =======================================================================
+void OpenGl_Context::SetPolygonOffset (const Graphic3d_PolygonOffset& theOffset)
+{
+  const bool toFillOld = (myPolygonOffset.Mode & Aspect_POM_Fill) == Aspect_POM_Fill;
+  const bool toFillNew = (theOffset.Mode       & Aspect_POM_Fill) == Aspect_POM_Fill;
+  if (toFillNew != toFillOld)
+  {
+    if (toFillNew)
+    {
+      glEnable (GL_POLYGON_OFFSET_FILL);
+    }
+    else
+    {
+      glDisable (GL_POLYGON_OFFSET_FILL);
+    }
+  }
+
+#if !defined(GL_ES_VERSION_2_0)
+  const bool toLineOld = (myPolygonOffset.Mode & Aspect_POM_Line) == Aspect_POM_Line;
+  const bool toLineNew = (theOffset.Mode       & Aspect_POM_Line) == Aspect_POM_Line;
+  if (toLineNew != toLineOld)
+  {
+    if (toLineNew)
+    {
+      glEnable (GL_POLYGON_OFFSET_LINE);
+    }
+    else
+    {
+      glDisable (GL_POLYGON_OFFSET_LINE);
+    }
+  }
+
+  const bool toPointOld = (myPolygonOffset.Mode & Aspect_POM_Point) == Aspect_POM_Point;
+  const bool toPointNew = (theOffset.Mode       & Aspect_POM_Point) == Aspect_POM_Point;
+  if (toPointNew != toPointOld)
+  {
+    if (toPointNew)
+    {
+      glEnable (GL_POLYGON_OFFSET_POINT);
+    }
+    else
+    {
+      glDisable (GL_POLYGON_OFFSET_POINT);
+    }
+  }
+#endif
+
+  if (myPolygonOffset.Factor != theOffset.Factor
+   || myPolygonOffset.Units  != theOffset.Units)
+  {
+    glPolygonOffset (theOffset.Factor, theOffset.Units);
+  }
+  myPolygonOffset = theOffset;
+}
+
+// =======================================================================
 // function : ApplyModelWorldMatrix
 // purpose  :
 // =======================================================================
@@ -3672,4 +3989,48 @@ void OpenGl_Context::DisableFeatures() const
       glDisable(GL_TEXTURE_3D_EXT);
   }
 #endif
+}
+
+// =======================================================================
+// function : SetColorMask
+// purpose  :
+// =======================================================================
+bool OpenGl_Context::SetColorMask (bool theToWriteColor)
+{
+  const GLboolean toWrite = theToWriteColor ? GL_TRUE : GL_FALSE;
+  glColorMask (toWrite, toWrite, toWrite, toWrite);
+
+  const bool anOldValue = myColorMask;
+  myColorMask = theToWriteColor;
+  return anOldValue;
+}
+
+// =======================================================================
+// function : SetSampleAlphaToCoverage
+// purpose  :
+// =======================================================================
+bool OpenGl_Context::SetSampleAlphaToCoverage (bool theToEnable)
+{
+  bool toEnable = myAllowAlphaToCov && theToEnable;
+  if (myAlphaToCoverage == toEnable)
+  {
+    return myAlphaToCoverage;
+  }
+
+  if (core15fwd != NULL)
+  {
+    if (toEnable)
+    {
+      //core15fwd->core15fwd->glSampleCoverage (1.0f, GL_FALSE);
+      core15fwd->glEnable (GL_SAMPLE_ALPHA_TO_COVERAGE);
+    }
+    else
+    {
+      core15fwd->glDisable (GL_SAMPLE_ALPHA_TO_COVERAGE);
+    }
+  }
+
+  const bool anOldValue = myAlphaToCoverage;
+  myAlphaToCoverage = toEnable;
+  return anOldValue;
 }

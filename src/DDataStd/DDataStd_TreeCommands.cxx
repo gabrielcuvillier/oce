@@ -347,8 +347,12 @@ static Standard_Integer DDataStd_OpenNode (Draw_Interpretor& di,
 {
   if (n < 2) return 1;
   
-  Handle(DDataStd_TreeBrowser) browser =
-    Handle(DDataStd_TreeBrowser)::DownCast (Draw::Get(a[1], Standard_True));
+  Handle(DDataStd_TreeBrowser) browser = Handle(DDataStd_TreeBrowser)::DownCast (Draw::GetExisting (a[1]));
+  if (browser.IsNull())
+  {
+    std::cout << "Syntax error: browser '" << a[1] << "' not found\n";
+    return 1;
+  }
 
   TDF_Label lab;
   if (n == 3) TDF_Tool::Label(browser->Label().Data(),a[2],lab);
@@ -457,11 +461,11 @@ static Standard_Integer DDataStd_ChildNodeMore (Draw_Interpretor& di,
 						const char**            /*a*/)
 {
   if (cni.More()) {
-    //cout<<"TRUE"<<endl;
+    //std::cout<<"TRUE"<<std::endl;
     di<<"TRUE\n";
   }
   else {
-    //cout<<"FALSE"<<endl;
+    //std::cout<<"FALSE"<<std::endl;
     di<<"FALSE\n";  
   }
   return 0;
@@ -504,7 +508,7 @@ static Standard_Integer DDataStd_ChildNodeValue (Draw_Interpretor& di,
 {
   TCollection_AsciiString entry;
   TDF_Tool::Entry(cni.Value()->Label(), entry);
-  //cout<<entry<<endl;
+  //std::cout<<entry<<std::endl;
   di  <<entry<<"\n";
   return 0;
 }  

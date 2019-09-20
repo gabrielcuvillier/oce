@@ -40,7 +40,8 @@ const Standard_GUID& TDataStd_ByteArray::GetID()
 //function : TDataStd_ByteArray
 //purpose  : Empty Constructor
 //=======================================================================
-TDataStd_ByteArray::TDataStd_ByteArray() : myIsDelta(Standard_False)
+TDataStd_ByteArray::TDataStd_ByteArray() : myIsDelta(Standard_False),
+  myID(GetID())
 {}
 
 //=======================================================================
@@ -291,7 +292,7 @@ Standard_OStream& TDataStd_ByteArray::Dump (Standard_OStream& anOS) const
   anOS << "\nByteArray: ";
   Standard_Character sguid[Standard_GUID_SIZE_ALLOC];
   myID.ToCString(sguid);
-  anOS << sguid << endl;
+  anOS << sguid << std::endl;
   return anOS;
 }
 

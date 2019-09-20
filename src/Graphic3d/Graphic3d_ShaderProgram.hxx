@@ -34,6 +34,17 @@ typedef NCollection_Sequence<Handle(Graphic3d_ShaderAttribute)> Graphic3d_Shader
 //! This class is responsible for managing shader programs.
 class Graphic3d_ShaderProgram : public Standard_Transient
 {
+  DEFINE_STANDARD_RTTIEXT(Graphic3d_ShaderProgram, Standard_Transient)
+public:
+
+  //! Default value of THE_MAX_LIGHTS macros within GLSL program (see Declarations.glsl).
+  static const Standard_Integer THE_MAX_LIGHTS_DEFAULT = 8;
+
+  //! Default value of THE_MAX_CLIP_PLANES macros within GLSL program (see Declarations.glsl).
+  static const Standard_Integer THE_MAX_CLIP_PLANES_DEFAULT = 8;
+
+  //! Default value of THE_NB_FRAG_OUTPUTS macros within GLSL program (see Declarations.glsl).
+  static const Standard_Integer THE_NB_FRAG_OUTPUTS = 1;
 
 public:
 
@@ -49,6 +60,11 @@ public:
   //! Returns unique ID used to manage resource in graphic driver.
   const TCollection_AsciiString& GetId() const { return myID; }
 
+  //! Sets unique ID used to manage resource in graphic driver.
+  //! WARNING! Graphic3d_ShaderProgram constructor generates a unique id for proper resource management;
+  //! however if application overrides it, it is responsibility of application to avoid name collisions.
+  void SetId (const TCollection_AsciiString& theId) { myID = theId; }
+
   //! Returns GLSL header (version code and extensions).
   const TCollection_AsciiString& Header() const { return myHeader; }
 
@@ -60,6 +76,32 @@ public:
   //!   #extension GL_ARB_bindless_texture : require
   //! @endcode
   void SetHeader (const TCollection_AsciiString& theHeader) { myHeader = theHeader; }
+
+  //! Append line to GLSL header.
+  void AppendToHeader (const TCollection_AsciiString& theHeaderLine)
+  {
+    if (!myHeader.IsEmpty())
+    {
+      myHeader += "\n";
+    }
+    myHeader += theHeaderLine;
+  }
+
+  //! Return the length of array of light sources (THE_MAX_LIGHTS),
+  //! to be used for initialization occLightSources.
+  //! Default value is THE_MAX_LIGHTS_DEFAULT.
+  Standard_Integer NbLightsMax() const { return myNbLightsMax; }
+
+  //! Specify the length of array of light sources (THE_MAX_LIGHTS).
+  void SetNbLightsMax (Standard_Integer theNbLights) { myNbLightsMax = theNbLights; }
+
+  //! Return the length of array of clipping planes (THE_MAX_CLIP_PLANES),
+  //! to be used for initialization occClipPlaneEquations.
+  //! Default value is THE_MAX_CLIP_PLANES_DEFAULT.
+  Standard_Integer NbClipPlanesMax() const { return myNbClipPlanesMax; }
+
+  //! Specify the length of array of clipping planes (THE_MAX_CLIP_PLANES).
+  void SetNbClipPlanesMax (Standard_Integer theNbPlanes) { myNbClipPlanesMax = theNbPlanes; }
 
   //! Attaches shader object to the program object.
   Standard_EXPORT Standard_Boolean AttachShader (const Handle(Graphic3d_ShaderObject)& theShader);
@@ -80,6 +122,34 @@ public:
   //! Assign the list of custom vertex attributes.
   //! Should be done before GLSL program initialization.
   Standard_EXPORT void SetVertexAttributes (const Graphic3d_ShaderAttributeList& theAttributes);
+
+  //! Returns the number (1+) of Fragment Shader outputs to be written to
+  //! (more than 1 can be in case of multiple draw buffers); 1 by default.
+  Standard_Integer NbFragmentOutputs() const { return myNbFragOutputs; }
+
+  //! Sets the number of Fragment Shader outputs to be written to.
+  //! Should be done before GLSL program initialization.
+  void SetNbFragmentOutputs (const Standard_Integer theNbOutputs) { myNbFragOutputs = theNbOutputs; }
+
+  //! Return true if Fragment Shader should perform alpha test; FALSE by default.
+  Standard_Boolean HasAlphaTest() const { return myHasAlphaTest; }
+
+  //! Set if Fragment Shader should perform alpha test.
+  //! Note that this flag is designed for usage with - custom shader program may discard fragment regardless this flag.
+  void SetAlphaTest (Standard_Boolean theAlphaTest) { myHasAlphaTest = theAlphaTest; }
+
+  //! Return TRUE if standard program header should define default texture sampler occSampler0; TRUE by default for compatibility.
+  Standard_Boolean HasDefaultSampler() const { return myHasDefSampler; }
+
+  //! Set if standard program header should define default texture sampler occSampler0.
+  void SetDefaultSampler (Standard_Boolean theHasDefSampler) { myHasDefSampler = theHasDefSampler; }
+
+  //! Return true if Fragment Shader color should output the weighted OIT coverage; FALSE by default.
+  Standard_Boolean HasWeightOitOutput() const { return myHasWeightOitOutput; }
+
+  //! Set if Fragment Shader color should output the weighted OIT coverage.
+  //! Note that weighted OIT also requires at least 2 Fragment Outputs (color + coverage).
+  void SetWeightOitOutput (Standard_Boolean theOutput) { myHasWeightOitOutput = theOutput; }
 
   //! Pushes custom uniform variable to the program.
   //! The list of pushed variables is automatically cleared after applying to GLSL program.
@@ -121,10 +191,6 @@ public:
   //! @return the root folder with default GLSL programs.
   Standard_EXPORT static const TCollection_AsciiString& ShadersFolder();
 
-public:
-
-  DEFINE_STANDARD_RTTIEXT(Graphic3d_ShaderProgram,Standard_Transient)
-
 private:
 
   TCollection_AsciiString       myID;            //!< the unique identifier of program object
@@ -132,6 +198,12 @@ private:
   Graphic3d_ShaderVariableList  myVariables;     //!< the list of custom uniform variables
   Graphic3d_ShaderAttributeList myAttributes;    //!< the list of custom vertex attributes
   TCollection_AsciiString       myHeader;        //!< GLSL header with version code and used extensions
+  Standard_Integer              myNbLightsMax;   //!< length of array of light sources (THE_MAX_LIGHTS)
+  Standard_Integer              myNbClipPlanesMax; //!< length of array of clipping planes (THE_MAX_CLIP_PLANES)
+  Standard_Integer              myNbFragOutputs; //!< length of array of Fragment Shader outputs (THE_NB_FRAG_OUTPUTS)
+  Standard_Boolean              myHasDefSampler; //!< flag indicating that program defines default texture sampler occSampler0
+  Standard_Boolean              myHasAlphaTest;       //!< flag indicating that Fragment Shader performs alpha test
+  Standard_Boolean              myHasWeightOitOutput; //!< flag indicating that Fragment Shader includes weighted OIT coverage
 
 };
 

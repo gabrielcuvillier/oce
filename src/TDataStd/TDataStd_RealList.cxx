@@ -55,10 +55,8 @@ static Handle(TDataStd_RealList) SetAttr(const TDF_Label&       label,
 //function : TDataStd_RealList
 //purpose  : Empty Constructor
 //=======================================================================
-TDataStd_RealList::TDataStd_RealList() 
-{
-
-}
+TDataStd_RealList::TDataStd_RealList() : myID(GetID())
+{}
 
 //=======================================================================
 //function : Set
@@ -359,6 +357,6 @@ Standard_OStream& TDataStd_RealList::Dump (Standard_OStream& anOS) const
   Standard_Character sguid[Standard_GUID_SIZE_ALLOC];
   myID.ToCString(sguid);
   anOS << sguid;
-  anOS << endl;
+  anOS << std::endl;
   return anOS;
 }

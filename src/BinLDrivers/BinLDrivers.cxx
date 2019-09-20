@@ -22,7 +22,7 @@
 #include <BinMDF_ADriverTable.hxx>
 #include <BinMDocStd.hxx>
 #include <BinMFunction.hxx>
-#include <CDM_MessageDriver.hxx>
+#include <Message_Messenger.hxx>
 #include <Plugin_Macro.hxx>
 #include <Standard_Failure.hxx>
 #include <Standard_GUID.hxx>
@@ -44,7 +44,7 @@ const Handle(Standard_Transient)& BinLDrivers::Factory(const Standard_GUID& theG
   if (theGUID == BinLStorageDriver)
   {
 #ifdef OCCT_DEBUG
-    cout << "BinLDrivers : Storage Plugin" << endl;
+    std::cout << "BinLDrivers : Storage Plugin" << std::endl;
 #endif
     static Handle(Standard_Transient) model_sd =
       new BinLDrivers_DocumentStorageDriver;
@@ -54,7 +54,7 @@ const Handle(Standard_Transient)& BinLDrivers::Factory(const Standard_GUID& theG
   if (theGUID == BinLRetrievalDriver)
   {
 #ifdef OCCT_DEBUG
-    cout << "BinLDrivers : Retrieval Plugin" << endl;
+    std::cout << "BinLDrivers : Retrieval Plugin" << std::endl;
 #endif
     static Handle(Standard_Transient) model_rd =
       new BinLDrivers_DocumentRetrievalDriver;
@@ -81,7 +81,7 @@ void BinLDrivers::DefineFormat (const Handle(TDocStd_Application)& theApp)
 //=======================================================================
 
 Handle(BinMDF_ADriverTable) BinLDrivers::AttributeDrivers 
-                         (const Handle(CDM_MessageDriver)& aMsgDrv)
+                         (const Handle(Message_Messenger)& aMsgDrv)
 {
   Handle(BinMDF_ADriverTable) aTable = new BinMDF_ADriverTable;
 

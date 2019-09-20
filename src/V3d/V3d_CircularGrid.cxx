@@ -20,7 +20,6 @@
 #include <Graphic3d_AspectMarker3d.hxx>
 #include <Graphic3d_Group.hxx>
 #include <Graphic3d_Structure.hxx>
-#include <Graphic3d_Vertex.hxx>
 #include <Quantity_Color.hxx>
 #include <Standard_Type.hxx>
 #include <TColgp_SequenceOfPnt.hxx>
@@ -29,31 +28,58 @@
 
 IMPLEMENT_STANDARD_RTTIEXT(V3d_CircularGrid,Aspect_CircularGrid)
 
-/*----------------------------------------------------------------------*/
-/*
- * Constant
- */
-#define DIVISION 8
-#define MYFACTOR 50.
+namespace
+{
+  static const Standard_Real THE_DEFAULT_GRID_STEP = 10.0;
+  #define DIVISION 8
+  #define MYFACTOR 50.
+}
+
+//! Dummy implementation of Graphic3d_Structure overriding ::Compute() method for handling Device Lost.
+class V3d_CircularGrid::CircularGridStructure : public Graphic3d_Structure
+{
+public:
+  //! Main constructor.
+  CircularGridStructure (const Handle(Graphic3d_StructureManager)& theManager, V3d_CircularGrid* theGrid)
+  : Graphic3d_Structure (theManager), myGrid (theGrid) {}
+
+  //! Override method initiating recomputing in V3d_CircularGrid.
+  virtual void Compute() Standard_OVERRIDE
+  {
+    GraphicClear (Standard_False);
+    myGrid->myGroup = NewGroup();
+    myGrid->myCurAreDefined = Standard_False;
+    myGrid->UpdateDisplay();
+  }
+
+private:
+  V3d_CircularGrid* myGrid;
+};
 
 /*----------------------------------------------------------------------*/
 
 V3d_CircularGrid::V3d_CircularGrid (const V3d_ViewerPointer& aViewer, const Quantity_Color& aColor, const Quantity_Color& aTenthColor)
 : Aspect_CircularGrid (1.,8),
-  myStructure (new Graphic3d_Structure (aViewer->StructureManager())),
-  myGroup (myStructure->NewGroup()),
   myViewer (aViewer),
-  myCurAreDefined (Standard_False)
+  myCurAreDefined (Standard_False),
+  myToComputePrs (Standard_False),
+  myCurDrawMode (Aspect_GDM_Lines),
+  myCurXo (0.0),
+  myCurYo (0.0),
+  myCurAngle (0.0),
+  myCurStep (0.0),
+  myCurDivi (0),
+  myRadius (0.5 * aViewer->DefaultViewSize()),
+  myOffSet (THE_DEFAULT_GRID_STEP / MYFACTOR)
 {
   myColor = aColor;
   myTenthColor = aTenthColor;
 
+  myStructure = new CircularGridStructure (aViewer->StructureManager(), this);
+  myGroup = myStructure->NewGroup();
   myStructure->SetInfiniteState (Standard_True);
 
-  const Standard_Real step = 10.;
-  const Standard_Real size = 0.5*myViewer->DefaultViewSize();
-  SetGraphicValues (size, step/MYFACTOR);
-  SetRadiusStep (step);
+  SetRadiusStep (THE_DEFAULT_GRID_STEP);
 }
 
 V3d_CircularGrid::~V3d_CircularGrid()
@@ -79,6 +105,7 @@ void V3d_CircularGrid::Display ()
 {
   myStructure->SetDisplayPriority (1);
   myStructure->Display();
+  UpdateDisplay();
 }
 
 void V3d_CircularGrid::Erase () const
@@ -177,11 +204,18 @@ void V3d_CircularGrid::DefineLines ()
                                   || myCurDrawMode != Aspect_GDM_Lines
                                   || aDivision != myCurDivi
                                   || aStep     != myCurStep;
-  if (!toUpdate)
+  if (!toUpdate
+   && !myToComputePrs)
   {
     return;
   }
+  else if (!myStructure->IsDisplayed())
+  {
+    myToComputePrs = Standard_True;
+    return;
+  }
 
+  myToComputePrs = Standard_False;
   myGroup->Clear ();
 
   const Standard_Integer Division = (Standard_Integer )( (aDivision >= DIVISION ? aDivision : DIVISION));
@@ -238,8 +272,12 @@ void V3d_CircularGrid::DefineLines ()
     myGroup->AddPrimitiveArray(aPrims3, Standard_False);
   }
 
-  myGroup->SetMinMaxValues(-myRadius, -myRadius, 0.0, myRadius, myRadius, 0.0);
+  myGroup->SetMinMaxValues (-myRadius, -myRadius, -myOffSet, myRadius, myRadius, -myOffSet);
   myCurStep = aStep, myCurDivi = (Standard_Integer ) aDivision;
+
+  // update bounding box
+  myStructure->CalculateBoundBox();
+  myViewer->StructureManager()->Update (myStructure->GetZLayer());
 }
 
 void V3d_CircularGrid::DefinePoints ()
@@ -250,11 +288,18 @@ void V3d_CircularGrid::DefinePoints ()
                                   || myCurDrawMode != Aspect_GDM_Points
                                   || aDivision != myCurDivi
                                   || aStep     != myCurStep;
-  if (!toUpdate)
+  if (!toUpdate
+   && !myToComputePrs)
   {
     return;
   }
+  else if (!myStructure->IsDisplayed())
+  {
+    myToComputePrs = Standard_True;
+    return;
+  }
 
+  myToComputePrs = Standard_False;
   myGroup->Clear ();
 
   Handle(Graphic3d_AspectMarker3d) MarkerAttrib = new Graphic3d_AspectMarker3d ();
@@ -285,9 +330,13 @@ void V3d_CircularGrid::DefinePoints ()
     }
     myGroup->AddPrimitiveArray (Cercle, Standard_False);
   }
-  myGroup->SetMinMaxValues(-myRadius, -myRadius, 0.0, myRadius, myRadius, 0.0);
+  myGroup->SetMinMaxValues (-myRadius, -myRadius, -myOffSet, myRadius, myRadius, -myOffSet);
 
   myCurStep = aStep, myCurDivi = (Standard_Integer ) aDivision;
+
+  // update bounding box
+  myStructure->CalculateBoundBox();
+  myViewer->StructureManager()->Update (myStructure->GetZLayer());
 }
 
 void V3d_CircularGrid::GraphicValues (Standard_Real& theRadius, Standard_Real& theOffSet) const

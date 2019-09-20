@@ -51,6 +51,13 @@ extern "C"
 #endif
 };
 
+// Undefine macro that clashes with name used by field of Image_VideoParams;
+// this macro is defined in headers of older versions of libavutil
+// (see definition of macro FF_API_PIX_FMT in version.h)
+#ifdef PixelFormat
+#undef PixelFormat
+#endif
+
 #endif
 
 IMPLEMENT_STANDARD_RTTIEXT(Image_VideoRecorder, Standard_Transient)
@@ -276,7 +283,7 @@ Standard_Boolean Image_VideoRecorder::addVideoStream (const Image_VideoParams& t
   // some formats want stream headers to be separate
   if (myAVContext->oformat->flags & AVFMT_GLOBALHEADER)
   {
-    aCodecCtx->flags |= CODEC_FLAG_GLOBAL_HEADER;
+    aCodecCtx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
   }
   return Standard_True;
 #else
@@ -341,7 +348,7 @@ Standard_Boolean Image_VideoRecorder::openVideoCodec (const Image_VideoParams& t
   else if (aCodecCtx->codec == avcodec_find_encoder_by_name ("vp8")
         || aCodecCtx->codec == avcodec_find_encoder_by_name ("vp9"))
   {
-    av_dict_set (&anOptions, "crf", "20", 0); // quality 4–63, 10 is normal
+    av_dict_set (&anOptions, "crf", "20", 0); // quality 4-63, 10 is normal
   }
 
   // override defaults with specified options
@@ -449,18 +456,6 @@ Standard_Boolean Image_VideoRecorder::writeVideoFrame (const Standard_Boolean th
   AVPacket aPacket;
   memset (&aPacket, 0, sizeof(aPacket));
   av_init_packet (&aPacket);
-  if ((myAVContext->oformat->flags & AVFMT_RAWPICTURE) != 0
-   && !theToFlush)
-  {
-    // raw video case - directly store the picture in the packet
-    aPacket.flags        |= AV_PKT_FLAG_KEY;
-    aPacket.stream_index  = myVideoStream->index;
-    aPacket.data          = myFrame->data[0];
-    aPacket.size          = sizeof(AVPicture);
-
-    aResAv = av_interleaved_write_frame (myAVContext, &aPacket);
-  }
-  else
   {
     // encode the image
     myFrame->pts = myFrameCount;

@@ -19,17 +19,18 @@ set "HAVE_TBB=false"
 set "HAVE_OPENCL=false"
 set "HAVE_FREEIMAGE=false"
 set "HAVE_FFMPEG=false"
-set "HAVE_GL2PS=false"
 set "HAVE_VTK=false"
 set "HAVE_GLES2=false"
 set "HAVE_D3D=false"
 set "HAVE_ZLIB=false"
 set "HAVE_LIBLZMA=false"
+set "HAVE_RAPIDJSON=false"
 set "CSF_OPT_INC="
 set "CSF_OPT_LIB32="
 set "CSF_OPT_LIB64="
 set "CSF_OPT_BIN32="
 set "CSF_OPT_BIN64="
+set "CSF_DEFINES=%CSF_DEFINES_EXTRA%"
 
 if not ["%CASROOT%"] == [""] if exist "%SCRIPTROOT%\%CASROOT%" set "CASROOT=%SCRIPTROOT%\%CASROOT%"
 if     ["%CASROOT%"] == [""] set "CASROOT=%SCRIPTROOT%"
@@ -82,6 +83,8 @@ set "VisualStudioExpressName=VCExpress"
 
 if not "%DevEnvDir%" == "" (
   rem If DevEnvDir is already defined (e.g. in custom.bat), use that value
+) else if /I "%VCFMT%" == "vc9" (
+  set "DevEnvDir=%VS90COMNTOOLS%..\IDE"
 ) else if /I "%VCFMT%" == "vc10" (
   set "DevEnvDir=%VS100COMNTOOLS%..\IDE"
 ) else if /I "%VCFMT%" == "vc11" (
@@ -101,12 +104,22 @@ if not "%DevEnvDir%" == "" (
 ) else if /I "%VCFMT%" == "gcc" (
   rem MinGW
 ) else (
-  echo Error: wrong VS identifier
+  echo Error: first argument ^(%VCVER%^) should specify supported version of Visual C++, 
+  echo one of: 
+  echo vc9   = VS 2008 ^(SP1^)
+  echo vc10  = VS 2010 ^(SP3^)
+  echo vc11  = VS 2012 ^(SP3^)
+  echo vc12  = VS 2013 ^(SP3^)
+  echo vc14  = VS 2015
+  echo vc141 = VS 2017
   exit /B
 )
 
 rem ----- Parsing vcvarsall for qt samples and define PlatformToolset -----
-if /I "%VCFMT%" == "vc10" (
+if /I "%VCFMT%" == "vc9" (
+  set "VCVARS=%VS90COMNTOOLS%..\..\VC\vcvarsall.bat"
+  set "VCPlatformToolSet=v90"
+) else if /I "%VCFMT%" == "vc10" (
   set "VCVARS=%VS100COMNTOOLS%..\..\VC\vcvarsall.bat"
   set "VCPlatformToolSet=v100"
 ) else if /I "%VCFMT%" == "vc11" (
@@ -126,9 +139,8 @@ if /I "%VCFMT%" == "vc10" (
 ) else if /I "%VCFMT%" == "gcc" (
   rem MinGW
 ) else (
-  echo Error: first argument ^(%VCVER%^) should specify supported version of Visual C++,
-  echo one of: vc10 ^(VS 2010 SP3^), vc11 ^(VS 2012 SP3^), vc12 ^(VS 2013^) or vc14 ^(VS 2015^)
-  exit
+  echo Error: wrong VS identifier
+  exit /B
 )
 
 set "CSF_OPT_LIB32D=%CSF_OPT_LIB32%"
@@ -145,7 +157,6 @@ set "CSF_OPT_CMPL="
 set "PRODUCTS_DEFINES="
 if ["%HAVE_TBB%"]       == ["true"] set "PRODUCTS_DEFINES=%PRODUCTS_DEFINES% -DHAVE_TBB"       & set "CSF_DEFINES=HAVE_TBB;%CSF_DEFINES%"
 if ["%HAVE_OPENCL%"]    == ["true"] set "PRODUCTS_DEFINES=%PRODUCTS_DEFINES% -DHAVE_OPENCL"    & set "CSF_DEFINES=HAVE_OPENCL;%CSF_DEFINES%"
-if ["%HAVE_GL2PS%"]     == ["true"] set "PRODUCTS_DEFINES=%PRODUCTS_DEFINES% -DHAVE_GL2PS"     & set "CSF_DEFINES=HAVE_GL2PS;%CSF_DEFINES%"
 if ["%HAVE_FREEIMAGE%"] == ["true"] set "PRODUCTS_DEFINES=%PRODUCTS_DEFINES% -DHAVE_FREEIMAGE" & set "CSF_DEFINES=HAVE_FREEIMAGE;%CSF_DEFINES%"
 if ["%HAVE_FFMPEG%"]    == ["true"] set "PRODUCTS_DEFINES=%PRODUCTS_DEFINES% -DHAVE_FFMPEG"    & set "CSF_DEFINES=HAVE_FFMPEG;%CSF_DEFINES%"
 if ["%HAVE_VTK%"]       == ["true"] set "PRODUCTS_DEFINES=%PRODUCTS_DEFINES% -DHAVE_VTK"       & set "CSF_DEFINES=HAVE_VTK;%CSF_DEFINES%"
@@ -153,6 +164,7 @@ if ["%HAVE_GLES2%"]     == ["true"] set "PRODUCTS_DEFINES=%PRODUCTS_DEFINES% -DH
 if ["%HAVE_D3D%"]       == ["true"] set "PRODUCTS_DEFINES=%PRODUCTS_DEFINES% -DHAVE_D3D"       & set "CSF_DEFINES=HAVE_D3D;%CSF_DEFINES%"
 if ["%HAVE_ZLIB%"]      == ["true"] set "PRODUCTS_DEFINES=%PRODUCTS_DEFINES% -DHAVE_ZLIB"      & set "CSF_DEFINES=HAVE_ZLIB;%CSF_DEFINES%"
 if ["%HAVE_LIBLZMA%"]   == ["true"] set "PRODUCTS_DEFINES=%PRODUCTS_DEFINES% -DHAVE_LIBLZMA"   & set "CSF_DEFINES=HAVE_LIBLZMA;%CSF_DEFINES%"
+if ["%HAVE_RAPIDJSON%"] == ["true"] set "PRODUCTS_DEFINES=%PRODUCTS_DEFINES% -DHAVE_RAPIDJSON" & set "CSF_DEFINES=HAVE_RAPIDJSON;%CSF_DEFINES%"
 
 rem Eliminate VS warning
 if ["%CSF_DEFINES%"]  == [""] set "CSF_DEFINES=;"

@@ -87,10 +87,8 @@ static Handle(TDataStd_BooleanArray) SetAttr(const TDF_Label&       label,
 //function : TDataStd_BooleanArray
 //purpose  : Empty Constructor
 //=======================================================================
-TDataStd_BooleanArray::TDataStd_BooleanArray() 
-{
-
-}
+TDataStd_BooleanArray::TDataStd_BooleanArray() : myID(GetID())
+{}
 
 //=======================================================================
 //function : Init
@@ -319,6 +317,6 @@ Standard_OStream& TDataStd_BooleanArray::Dump (Standard_OStream& anOS) const
   Standard_Character sguid[Standard_GUID_SIZE_ALLOC];
   myID.ToCString(sguid);
   anOS << sguid;
-  anOS <<endl;
+  anOS <<std::endl;
   return anOS;
 }

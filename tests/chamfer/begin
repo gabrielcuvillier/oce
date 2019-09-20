@@ -37,16 +37,15 @@ proc get_element { type args } {
 	     global $element
 	     distmini dd ver $element
      	     if { [string match "*$type*" [whatis $element]] } {
-	     	set bbox [bounding $element]
+               set bbox [bounding $element -save xx1 yy1 zz1 xx2 yy2 zz2 ]
 # Get distance
-		set dv [lindex [dump dd_val] 5]
-		if {	[expr {
-			[lindex $bbox 0] - 1e-2 <= $x  && $x  <= [lindex $bbox 3] + 1e-2
-		   &&	[lindex $bbox 1] - 1e-2 <= $y  && $y  <= [lindex $bbox 4] + 1e-2
-		   &&	[lindex $bbox 2] - 1e-2 <= $z  && $z  <= [lindex $bbox 5] + 1e-2
-		   &&	[lindex $bbox 0] - 1e-2 <= $x1 && $x1 <= [lindex $bbox 3] + 1e-2
-		   &&	[lindex $bbox 1] - 1e-2 <= $y1 && $y1 <= [lindex $bbox 4] + 1e-2
-		   &&	[lindex $bbox 2] - 1e-2 <= $z1 && $z1 <= [lindex $bbox 5] + 1e-2
+               set dv [lindex [dump dd_val] 5]
+               if {[expr {[dval xx1-1e-2] <= $x  && $x  <= [dval xx2+1e-2]
+              && [dval yy1-1e-2] <= $y  && $y  <= [dval yy2+1e-2]
+              && [dval zz1-1e-2] <= $z  && $z  <= [dval zz2+1e-2]
+              && [dval xx1-1e-2] <= $x1 && $x1 <= [dval xx2+1e-2]
+              && [dval yy1-1e-2] <= $y1 && $y1 <= [dval yy2+1e-2]
+              && [dval zz1-1e-2] <= $z1 && $z1 <= [dval zz2+1e-2]
 		   	}]
 		   } {
 		   if { [llength $res] == 0 } {
@@ -92,6 +91,7 @@ proc chamf_sequence { args } {
      set shape_edges [lindex $args 1]
      set shape_faces [lindex $args 2]
 
+     global group
      global chamf_edge_face
      global chamf_type
      global chamf_parameters
@@ -135,7 +135,9 @@ proc chamf_sequence { args } {
 		       set y1 $y
 		       set z1 $z
 		    } else {
+		      if { [string compare $group "equal_dist"] != 0 } {
 	       	       lappend chamf_current "\[get_element $name $x $y $z $x1 $y1 $z1\]"
+		       }
 		    }
 	    	 }
 	 }
@@ -151,7 +153,9 @@ proc chamf_sequence { args } {
 # Compute new name of EDGE
      	     lset chamf_current 2 [expr [lindex $chamf_current 2]]
 # Compute new name of FACE
+	    if { [string compare $group "equal_dist"] != 0 } {
      	     lset chamf_current 3 [expr [lindex $chamf_current 3]]
+	     }
 
 	     set str "chamf $chamf_current"
 	     puts $str
@@ -195,6 +199,7 @@ proc chamf_sequence { args } {
 # Compute chamfer at one command or sequentially
 proc compute_chamf { args } {
      global command
+     global group
      if { [string compare $command "chamf_sequence"] == 0 } {
      	chamf_sequence $args
      } else {
@@ -218,7 +223,11 @@ proc compute_chamf { args } {
 	for {set i 0} {$i < $len} {incr i} {
 	    set ef [lindex $chamf_edge_face  $i]
 	    set p  [lindex $chamf_parameters $i]
-	    set chamf_str "${chamf_str} ${shape_edges}_[lindex $ef 0] ${shape_faces}_[lindex $ef 1] $chamf_type $p"
+	    if { [string compare $group "equal_dist"] == 0 } {
+	       set chamf_str "${chamf_str} ${shape_edges}_[lindex $ef 0] $p"
+	    } else {
+	       set chamf_str "${chamf_str} ${shape_edges}_[lindex $ef 0] ${shape_faces}_[lindex $ef 1] $chamf_type $p"
+	    }
 	}
 
 	puts $chamf_str

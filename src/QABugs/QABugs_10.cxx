@@ -150,7 +150,7 @@ static Standard_Integer OCC426 (Draw_Interpretor& di, Standard_Integer argc, con
   di << "Adding Edges ..... \n";
   for(int i = 1; i <= edgemap.Extent(); i++)
     {
-      // cout << "Adding Edge : " << i << endl;
+      // std::cout << "Adding Edge : " << i << std::endl;
       TopoDS_Edge edg = TopoDS::Edge( edgemap.FindKey(i) );
       if(!edg.IsNull()) blend.Add(1, edg);
     }
@@ -191,7 +191,7 @@ static Standard_Integer isPeriodic(Draw_Interpretor& di, Standard_Integer argc, 
       if(aRevolSurf->IsUPeriodic()) {di << "Surface is u-periodic \n";} else {di << "Surface is not u-periodic \n";}
       if(aRevolSurf->IsVPeriodic()) {di << "Surface is v-periodic \n";} else {di << "Surface is not v-periodic \n";}
     }
-  catch (Standard_Failure) {di << "isperiodic Exception \n" ;return 0;}
+  catch (Standard_Failure const&) {di << "isperiodic Exception \n" ;return 0;}
 
   return 0;
 }
@@ -261,7 +261,7 @@ static Standard_Integer OCC486(Draw_Interpretor& di, Standard_Integer argc, cons
       }
       else return 1;
     }
-  catch (Standard_Failure) {di << "OCC486 Exception \n" ;return 1;}
+  catch (Standard_Failure const&) {di << "OCC486 Exception \n" ;return 1;}
 }
 
 #include <GC_MakeArcOfCircle.hxx>
@@ -372,9 +372,9 @@ static Standard_Integer OCC712 (Draw_Interpretor& di, Standard_Integer argc, con
                 }
             }
 
-	  di << "All Faces added. Building... \n"; //cout.flush();
+	  di << "All Faces added. Building... \n"; //std::cout.flush();
 	  draftSlab.Build();
-	  di << "Build done...\n"; //cout.flush();
+	  di << "Build done...\n"; //std::cout.flush();
 	  if (!draftSlab.IsDone())  //--------------> STEP:1
             {
 	      di << " Error in Build \n";
@@ -384,7 +384,7 @@ static Standard_Integer OCC712 (Draw_Interpretor& di, Standard_Integer argc, con
 	  DBRep::Set(argv[1], slabShape);
         }
     }
-  catch ( Standard_Failure ) //--------------------> STEP:2
+  catch ( Standard_Failure const& ) //--------------------> STEP:2
     {
       di << " Error in Draft Slab \n";
       return 1;
@@ -485,7 +485,7 @@ static Standard_Integer OCC822_1 (Draw_Interpretor& di, Standard_Integer argc, c
 
     performTriangulation(theRes, di);
   }
-  catch ( Standard_Failure )
+  catch ( Standard_Failure const& )
   {
     di << "*********************************************************\n";
     di << "*****                                              ******\n";
@@ -540,7 +540,7 @@ static Standard_Integer OCC822_2 (Draw_Interpretor& di,Standard_Integer argc, co
 
     performTriangulation(fuse, di);
   }
-  catch ( Standard_Failure )
+  catch ( Standard_Failure const& )
   {
     di << "*********************************************************\n";
     di << "*****                                              ******\n";
@@ -595,7 +595,7 @@ static Standard_Integer OCC823 (Draw_Interpretor& di,Standard_Integer argc, cons
 
     performTriangulation(fuse, di);
   }
-  catch (Standard_Failure)
+  catch (Standard_Failure const&)
   {
     di << "*********************************************************\n";
     di << "*****                                              ******\n";
@@ -645,7 +645,7 @@ static Standard_Integer OCC824 (Draw_Interpretor& di,Standard_Integer argc, cons
 
     performTriangulation(fuse, di);
   }
-  catch (Standard_Failure)
+  catch (Standard_Failure const&)
   {
     di << "*********************************************************\n";
     di << "*****                                              ******\n";
@@ -732,7 +732,7 @@ static Standard_Integer OCC825 (Draw_Interpretor& di,Standard_Integer argc, cons
     di << "Trianglating Faces of CUT 2 .....\n";
     performTriangulation(cut2, di);
   }
-  catch (Standard_Failure)
+  catch (Standard_Failure const&)
   {
     di << "*********************************************************\n";
     di << "*****                                              ******\n";
@@ -803,7 +803,7 @@ static Standard_Integer OCC826 (Draw_Interpretor& di,Standard_Integer argc, cons
     di << "Fuse Created !   Triangulating !\n";
     performTriangulation(fuse, di);
   }
-  catch (Standard_Failure)
+  catch (Standard_Failure const&)
   {
     di << "*********************************************************\n";
     di << "*****                                              ******\n";
@@ -882,7 +882,7 @@ static Standard_Integer OCC827 (Draw_Interpretor& di,Standard_Integer argc, cons
 
     performTriangulation(fuse2, di);
   }
-  catch (Standard_Failure)
+  catch (Standard_Failure const&)
   {
     di << "*********************************************************\n";
     di << "*****                                              ******\n";
@@ -921,7 +921,7 @@ int performBlend (TopoDS_Shape aShape, Standard_Real rad, TopoDS_Shape& bShape, 
         status = 1;
       }
     }
-  catch ( Standard_Failure )
+  catch ( Standard_Failure const& )
     {
       status = 1;
     }
@@ -1017,16 +1017,16 @@ static Standard_Integer OCC828 (Draw_Interpretor& di,Standard_Integer argc, cons
         }
       if (index < argc) DBRep::Set(argv[index++], slab.Shape());
 
-//       cout << "Slab Successfully Created !   Now Blending ..." << endl;
+//       std::cout << "Slab Successfully Created !   Now Blending ..." << std::endl;
 //       TopoDS_Shape aShape;
 //       int ret = performBlend(slab.Shape(), radius, aShape);
 //       if (ret) return 1;
 //       if (index < argc) DBRep::Set(argv[index++], aShape);
 
-//       cout << "Blending Successfully Done !   Now Triangulating ..." << endl;
+//       std::cout << "Blending Successfully Done !   Now Triangulating ..." << std::endl;
 //       performTriangulation(aShape);
     }
-  catch ( Standard_Failure )
+  catch ( Standard_Failure const& )
     {
       di << " Error in Draft Slab \n";
       return 1;

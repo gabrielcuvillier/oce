@@ -76,7 +76,6 @@
 #include <TopExp_Explorer.hxx>
 #include <TopoDS.hxx>
 #include <TopoDS_Face.hxx>
-#include <TopoDS_Iterator.hxx>
 #include <TopoDSToStep.hxx>
 #include <TopoDSToStep_MakeStepFace.hxx>
 #include <TopoDSToStep_MakeStepWire.hxx>
@@ -152,7 +151,6 @@ void TopoDSToStep_MakeStepFace::Init(const TopoDS_Face& aFace,
     return;
   }
   
-  TopoDS_Iterator  It;
   Standard_Integer i;
   
   //BRepAdaptor_Surface SA = BRepAdaptor_Surface(ForwardFace);  
@@ -173,7 +171,7 @@ void TopoDSToStep_MakeStepFace::Init(const TopoDS_Face& aFace,
   
   if (theOuterWire.IsNull()) {
 #ifdef OCCT_DEBUG
-    cout<< "Warning : Face without wire not mapped";
+    std::cout<< "Warning : Face without wire not mapped";
 #endif
     FP->AddWarning(errShape, " Face without wire not mapped");
     myError = TopoDSToStep_InfiniteFace;
@@ -271,7 +269,7 @@ void TopoDSToStep_MakeStepFace::Init(const TopoDS_Face& aFace,
       if (MkWire.IsDone()) Loop = Handle(StepShape_Loop)::DownCast(MkWire.Value());
       else {
 #ifdef OCCT_DEBUG
-	cout << TopoDSToStep::DecodeWireError(MkWire.Error())->String() << endl;
+	std::cout << TopoDSToStep::DecodeWireError(MkWire.Error())->String() << std::endl;
 #endif
 	FP->AddWarning(errShape, " a Wire not mapped");
 	continue;

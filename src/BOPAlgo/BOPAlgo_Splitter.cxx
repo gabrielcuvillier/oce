@@ -17,27 +17,22 @@
 #include <BOPAlgo_PaveFiller.hxx>
 #include <BOPAlgo_Alerts.hxx>
 
+#include <TopoDS_Iterator.hxx>
+
 //=======================================================================
 //function : 
 //purpose  : 
 //=======================================================================
 BOPAlgo_Splitter::BOPAlgo_Splitter()
-:
-  BOPAlgo_Builder(),
-  myTools(myAllocator),
-  myMapTools(100, myAllocator)
+: BOPAlgo_ToolsProvider()
 {
 }
 //=======================================================================
 //function : 
 //purpose  : 
 //=======================================================================
-BOPAlgo_Splitter::BOPAlgo_Splitter
-  (const Handle(NCollection_BaseAllocator)& theAllocator)
-:
-  BOPAlgo_Builder(theAllocator),
-  myTools(myAllocator),
-  myMapTools(100, myAllocator)
+BOPAlgo_Splitter::BOPAlgo_Splitter(const Handle(NCollection_BaseAllocator)& theAllocator)
+: BOPAlgo_ToolsProvider(theAllocator)
 {
 }
 //=======================================================================
@@ -47,39 +42,6 @@ BOPAlgo_Splitter::BOPAlgo_Splitter
 BOPAlgo_Splitter::~BOPAlgo_Splitter()
 {
 }
-//=======================================================================
-//function : Clear
-//purpose  : 
-//=======================================================================
-void BOPAlgo_Splitter::Clear()
-{
-  BOPAlgo_Builder::Clear();
-  myTools.Clear();
-  myMapTools.Clear();
-}
-//=======================================================================
-//function : AddTool
-//purpose  : 
-//=======================================================================
-void BOPAlgo_Splitter::AddTool(const TopoDS_Shape& theShape)
-{
-  if (myMapTools.Add(theShape)) {
-    myTools.Append(theShape);
-  }
-}
-//=======================================================================
-//function : SetTools
-//purpose  : 
-//=======================================================================
-void BOPAlgo_Splitter::SetTools(const BOPCol_ListOfShape& theShapes)
-{
-  myTools.Clear();
-  BOPCol_ListIteratorOfListOfShape aIt(theShapes);
-  for (; aIt.More(); aIt.Next()) {
-    AddTool(aIt.Value());
-  }
-}
-
 //=======================================================================
 // function: CheckData
 // purpose: 
@@ -112,9 +74,9 @@ void BOPAlgo_Splitter::Perform()
   }
   //
   // prepare shapes for intersection
-  BOPCol_ListOfShape aLS;
+  TopTools_ListOfShape aLS;
   //
-  BOPCol_ListIteratorOfListOfShape aItLS(myArguments);
+  TopTools_ListIteratorOfListOfShape aItLS(myArguments);
   for (; aItLS.More(); aItLS.Next()) {
     aLS.Append(aItLS.Value());
   }
@@ -131,9 +93,38 @@ void BOPAlgo_Splitter::Perform()
   pPF->SetFuzzyValue(myFuzzyValue);
   pPF->SetNonDestructive(myNonDestructive);
   pPF->SetGlue(myGlue);
+  pPF->SetUseOBB(myUseOBB);
   //
   pPF->Perform();
   //
   myEntryPoint = 1;
   PerformInternal(*pPF);
+}
+
+//=======================================================================
+//function : BuildResult
+//purpose  : 
+//=======================================================================
+void BOPAlgo_Splitter::BuildResult(const TopAbs_ShapeEnum theType)
+{
+  BOPAlgo_Builder::BuildResult(theType);
+
+  if (theType == TopAbs_COMPOUND)
+  {
+    // The method is called for the last time for this operation.
+    // If there is only one argument shape and it has been modified into
+    // a single shape, or has not been modified at all, the result shape
+    // has to be overwritten to avoid the unnecessary enclosure into compound.
+    if (myArguments.Extent() == 1)
+    {
+      TopoDS_Iterator it(myShape);
+      if (it.More())
+      {
+        const TopoDS_Shape& aSFirst = it.Value();
+        it.Next();
+        if (!it.More())
+          myShape = aSFirst;
+      }
+    }
+  }
 }

@@ -95,28 +95,20 @@ void AIS_Triangulation::updatePresentation()
     // modify shading presentation without re-computation
     const PrsMgr_Presentations&        aPrsList  = Presentations();
     Handle(Graphic3d_AspectFillArea3d) anAreaAsp = myDrawer->ShadingAspect()->Aspect();
-    for (Standard_Integer aPrsIt = 1; aPrsIt <= aPrsList.Length(); ++aPrsIt)
+    for (PrsMgr_Presentations::Iterator aPrsIter (aPrsList); aPrsIter.More(); aPrsIter.Next())
     {
-      const PrsMgr_ModedPresentation& aPrsModed = aPrsList.Value (aPrsIt);
-      if (aPrsModed.Mode() != AIS_WireFrame)
+      if (aPrsIter.Value()->Mode() != AIS_WireFrame)
       {
         continue;
       }
 
-      const Handle(Prs3d_Presentation)& aPrs = aPrsModed.Presentation()->Presentation();
-
+      const Handle(Prs3d_Presentation)& aPrs = aPrsIter.Value();
       for (Graphic3d_SequenceOfGroup::Iterator aGroupIt (aPrs->Groups()); aGroupIt.More(); aGroupIt.Next())
       {
         const Handle(Graphic3d_Group)& aGroup = aGroupIt.Value();
-        if (aGroup->IsGroupPrimitivesAspectSet (Graphic3d_ASPECT_FILL_AREA))
-        {
-          aGroup->SetGroupPrimitivesAspect (anAreaAsp);
-        }
+        aGroup->SetGroupPrimitivesAspect (anAreaAsp);
       }
     }
-
-    myRecomputeEveryPrs = Standard_False; // no mode to recalculate - only viewer update
-    myToRecomputeModes.Clear();
   }
 }
 
@@ -145,7 +137,7 @@ void AIS_Triangulation::Compute(const Handle(PrsMgr_PresentationManager3d)& /*aP
       Standard_Integer i;
       Standard_Integer j;
 
-      Standard_Real ambient = aspect->FrontMaterial().Ambient();
+      const Standard_Real ambient = 0.2;
       if (hasVNormals)
       {
         const TShort_Array1OfShortReal& normals = myTriangulation->Normals();

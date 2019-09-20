@@ -119,9 +119,10 @@ Standard_EXPORT gp_Dir FUN_tool_ngS(const gp_Pnt2d& p2d,const Handle(Geom_Surfac
       Standard_Boolean nullx = (Abs(p2d.X()) < toluv);
       Standard_Boolean apex = nullx && (Abs(p2d.Y()) < toluv);
       if (apex) {
-	const gp_Dir& axis = GS.Cone().Axis().Direction();
-	gp_Vec ng(axis); ng.Reverse();
-	return ng;
+        gp_Dir axis = GS.Cone().Axis().Direction();
+        gp_Vec ng(axis);
+        ng.Reverse();
+        return ng;
       }
       else if (du < tol) {
 	Standard_Real vf = GS.FirstVParameter();
@@ -155,7 +156,7 @@ Standard_EXPORT gp_Dir FUN_tool_ngS(const gp_Pnt2d& p2d,const Handle(Geom_Surfac
       }
     }
 #ifdef OCCT_DEBUG
-    cout<<"FUN_tool_nggeomF NYI"<<endl;
+    std::cout<<"FUN_tool_nggeomF NYI"<<std::endl;
 #endif
     return gp_Dir(0,0,1);
   }

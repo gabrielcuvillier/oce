@@ -88,7 +88,7 @@ public:
     Standard_Boolean NotUndoMode() const;
   
   //! Dumps the Data on <aStream>.
-  Standard_EXPORT Standard_OStream& Dump (Standard_OStream& anOS) const;
+    Standard_EXPORT Standard_OStream& Dump (Standard_OStream& anOS) const;
 Standard_OStream& operator<< (Standard_OStream& anOS) const
 {
   return Dump(anOS);
@@ -147,6 +147,9 @@ protected:
 
 private:
 
+  //! Fixes order of Attributes' Deltas to perform undo/redo without exceptions:
+  //! puts OnRemoval deltas to the end of the list.
+  void FixOrder(const Handle(TDF_Delta)& theDelta);
   
   //! Increments the transaction number and returns it.
   Standard_EXPORT Standard_Integer OpenTransaction();

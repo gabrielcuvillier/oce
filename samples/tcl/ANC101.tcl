@@ -264,11 +264,11 @@ bfuse _model _model t_s
 explode _model e
 
 # Make a weld at joint edges of platform and wedge 
-blend _model _model 2 _model_26
 blend _model _model 2 _model_27
 blend _model _model 2 _model_28
 blend _model _model 2 _model_29
-blend _model _model 2 _model_31
+blend _model _model 2 _model_30
+blend _model _model 2 _model_32
 
 # Cylinder on wedge
 blend result _model 2 _model_161
@@ -276,8 +276,7 @@ blend result _model 2 _model_161
 # Show result
 pload VISUALIZATION
 vinit Driver1/Viewer1/View1
-vsetcolorbg 200 200 255
-vdisplay result
+vbackground -color 0.784314 0.784314 1
+vdisplay -dispMode 1 result
 vfit
-vsetdispmode 1
-vshowfaceboundary result 1
+vaspects result -setFaceBoundaryDraw 1 -mostContinuity c2

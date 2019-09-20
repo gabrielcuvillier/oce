@@ -17,7 +17,7 @@
 #include <BinMDataStd_BooleanArrayDriver.hxx>
 #include <BinMDataStd.hxx>
 #include <BinObjMgt_Persistent.hxx>
-#include <CDM_MessageDriver.hxx>
+#include <Message_Messenger.hxx>
 #include <Standard_Type.hxx>
 #include <TColStd_Array1OfInteger.hxx>
 #include <TColStd_HArray1OfByte.hxx>
@@ -30,7 +30,7 @@ IMPLEMENT_STANDARD_RTTIEXT(BinMDataStd_BooleanArrayDriver,BinMDF_ADriver)
 //function : BinMDataStd_BooleanArrayDriver
 //purpose  : Constructor
 //=======================================================================
-BinMDataStd_BooleanArrayDriver::BinMDataStd_BooleanArrayDriver(const Handle(CDM_MessageDriver)& theMsgDriver)
+BinMDataStd_BooleanArrayDriver::BinMDataStd_BooleanArrayDriver(const Handle(Message_Messenger)& theMsgDriver)
      : BinMDF_ADriver (theMsgDriver, STANDARD_TYPE(TDataStd_BooleanArray)->Name())
 {
 
@@ -51,7 +51,7 @@ Handle(TDF_Attribute) BinMDataStd_BooleanArrayDriver::NewEmpty() const
 //=======================================================================
 Standard_Boolean BinMDataStd_BooleanArrayDriver::Paste(const BinObjMgt_Persistent&  theSource,
                                                        const Handle(TDF_Attribute)& theTarget,
-                                                       BinObjMgt_RRelocationTable&  ) const
+                                                       BinObjMgt_RRelocationTable&  theRelocTable) const
 {
   Standard_Integer aFirstInd, aLastInd;
   if (! (theSource >> aFirstInd >> aLastInd))
@@ -71,7 +71,7 @@ Standard_Boolean BinMDataStd_BooleanArrayDriver::Paste(const BinObjMgt_Persisten
     bytes->SetValue(i, aTargetArray.Value(i));
   }
   anAtt->SetInternalArray(bytes);
-  BinMDataStd::SetAttributeID(theSource, anAtt);
+  BinMDataStd::SetAttributeID(theSource, anAtt, theRelocTable.GetHeaderData()->StorageVersion().IntegerValue());
   return Standard_True;
 }
 

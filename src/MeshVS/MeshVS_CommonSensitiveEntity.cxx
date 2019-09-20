@@ -27,13 +27,14 @@ IMPLEMENT_STANDARD_RTTIEXT (MeshVS_CommonSensitiveEntity, Select3D_SensitiveSet)
 //function : Constructor
 //purpose  :
 //=======================================================================
-MeshVS_CommonSensitiveEntity::MeshVS_CommonSensitiveEntity (const Handle(SelectBasics_EntityOwner)& theOwner,
-                                                            const Handle(MeshVS_Mesh)&              theParentMesh,
-                                                            const MeshVS_MeshSelectionMethod        theSelMethod)
+MeshVS_CommonSensitiveEntity::MeshVS_CommonSensitiveEntity (const Handle(SelectMgr_EntityOwner)& theOwner,
+                                                            const Handle(MeshVS_Mesh)& theParentMesh,
+                                                            const MeshVS_MeshSelectionMethod theSelMethod)
 : Select3D_SensitiveSet (theOwner),
   myDataSource (theParentMesh->GetDataSource()),
   mySelMethod (theSelMethod)
 {
+  myMaxFaceNodes = 0;
   theParentMesh->GetDrawer()->GetInteger (MeshVS_DA_MaxFaceNodes, myMaxFaceNodes);
   Standard_ASSERT_RAISE (myMaxFaceNodes > 0,
     "The maximal amount of nodes in a face must be greater than zero to create sensitive entity");
@@ -85,6 +86,22 @@ MeshVS_CommonSensitiveEntity::MeshVS_CommonSensitiveEntity (const Handle(SelectB
       }
     }
   }
+}
+
+//=======================================================================
+//function : Constructor
+//purpose  :
+//=======================================================================
+MeshVS_CommonSensitiveEntity::MeshVS_CommonSensitiveEntity (const MeshVS_CommonSensitiveEntity& theOther)
+: Select3D_SensitiveSet (theOther.myOwnerId),
+  myDataSource (theOther.myDataSource),
+  myItemIndexes (theOther.myItemIndexes),
+  mySelMethod (theOther.mySelMethod),
+  myMaxFaceNodes (theOther.myMaxFaceNodes),
+  myCOG (theOther.myCOG),
+  myBndBox (theOther.myBndBox)
+{
+  //
 }
 
 //=======================================================================
@@ -206,10 +223,16 @@ void MeshVS_CommonSensitiveEntity::Swap (const Standard_Integer theIdx1,
 //function : overlapsElement
 //purpose  :
 //=======================================================================
-Standard_Boolean MeshVS_CommonSensitiveEntity::overlapsElement (SelectBasics_SelectingVolumeManager& theMgr,
+Standard_Boolean MeshVS_CommonSensitiveEntity::overlapsElement (SelectBasics_PickResult& thePickResult,
+                                                                SelectBasics_SelectingVolumeManager& theMgr,
                                                                 Standard_Integer theElemIdx,
-                                                                Standard_Real& theMatchDepth)
+                                                                Standard_Boolean theIsFullInside)
 {
+  if (theIsFullInside)
+  {
+    return Standard_True;
+  }
+
   const Standard_Integer anItemIdx = myItemIndexes.Value (theElemIdx);
   if (mySelMethod == MeshVS_MSM_PRECISE)
   {
@@ -234,7 +257,7 @@ Standard_Boolean MeshVS_CommonSensitiveEntity::overlapsElement (SelectBasics_Sel
       return theMgr.Overlaps (gp_Pnt (aCoords (1), aCoords (2), aCoords (3)),
                               gp_Pnt (aCoords (4), aCoords (5), aCoords (6)),
                               gp_Pnt (aCoords (7), aCoords (8), aCoords (9)),
-                              Select3D_TOS_INTERIOR, theMatchDepth);
+                              Select3D_TOS_INTERIOR, thePickResult);
     }
 
     MeshVS_Buffer aFacePntsBuf (aNbNodes * 3 * sizeof (Standard_Real));
@@ -245,12 +268,12 @@ Standard_Boolean MeshVS_CommonSensitiveEntity::overlapsElement (SelectBasics_Sel
                                             aCoords (3 * aNodeIdx - 1),
                                             aCoords (3 * aNodeIdx)));
     }
-    return theMgr.Overlaps (aFacePnts, Select3D_TOS_INTERIOR, theMatchDepth);
+    return theMgr.Overlaps (aFacePnts, Select3D_TOS_INTERIOR, thePickResult);
   }
   else if (mySelMethod == MeshVS_MSM_NODES)
   {
     const gp_Pnt aVert = getVertexByIndex (anItemIdx);
-    return theMgr.Overlaps (aVert, theMatchDepth);
+    return theMgr.Overlaps (aVert, thePickResult);
   }
   return Standard_False;
 }
@@ -260,8 +283,14 @@ Standard_Boolean MeshVS_CommonSensitiveEntity::overlapsElement (SelectBasics_Sel
 //purpose  :
 //=======================================================================
 Standard_Boolean MeshVS_CommonSensitiveEntity::elementIsInside (SelectBasics_SelectingVolumeManager& theMgr,
-                                                                const Standard_Integer theElemIdx)
+                                                                Standard_Integer theElemIdx,
+                                                                Standard_Boolean theIsFullInside)
 {
+  if (theIsFullInside)
+  {
+    return Standard_True;
+  }
+
   const Standard_Integer anItemIdx = myItemIndexes.Value (theElemIdx);
   if (mySelMethod == MeshVS_MSM_PRECISE)
   {

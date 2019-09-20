@@ -54,7 +54,10 @@ BOPAlgo_PaveFiller::BOPAlgo_PaveFiller()
 BOPAlgo_PaveFiller::BOPAlgo_PaveFiller
   (const Handle(NCollection_BaseAllocator)& theAllocator)
 :
-  BOPAlgo_Algo(theAllocator)
+  BOPAlgo_Algo(theAllocator),
+  myFPBDone(1, theAllocator),
+  myIncreasedSS(1, theAllocator),
+  myVertsToAvoidExtension(1, theAllocator)
 {
   myDS = NULL;
   myIterator = NULL;
@@ -134,6 +137,7 @@ void BOPAlgo_PaveFiller::Clear()
     delete myDS;
     myDS=NULL;
   }
+  myIncreasedSS.Clear();
 }
 //=======================================================================
 //function : DS
@@ -169,22 +173,6 @@ void BOPAlgo_PaveFiller::SetSectionAttribute
   mySectionAttribute = theSecAttr;
 }
 //=======================================================================
-//function : SetArguments
-//purpose  : 
-//=======================================================================
-void BOPAlgo_PaveFiller::SetArguments(const BOPCol_ListOfShape& theLS)
-{
-  myArguments=theLS;
-}
-//=======================================================================
-//function : Arguments
-//purpose  : 
-//=======================================================================
-const BOPCol_ListOfShape& BOPAlgo_PaveFiller::Arguments()const
-{
-  return myArguments;
-}
-//=======================================================================
 // function: Init
 // purpose: 
 //=======================================================================
@@ -195,7 +183,7 @@ void BOPAlgo_PaveFiller::Init()
     return;
   }
   //
-  BOPCol_ListIteratorOfListOfShape aIt(myArguments);
+  TopTools_ListIteratorOfListOfShape aIt(myArguments);
   for (; aIt.More(); aIt.Next()) {
     if (aIt.Value().IsNull()) {
       AddError (new BOPAlgo_AlertNullInputShapes);
@@ -211,14 +199,14 @@ void BOPAlgo_PaveFiller::Init()
   myDS->SetArguments(myArguments);
   myDS->Init(myFuzzyValue);
   //
-  // 2.myIterator 
+  // 2 myContext
+  myContext=new IntTools_Context;
+  //
+  // 3.myIterator 
   myIterator=new BOPDS_Iterator(myAllocator);
   myIterator->SetRunParallel(myRunParallel);
   myIterator->SetDS(myDS);
-  myIterator->Prepare();
-  //
-  // 3 myContext
-  myContext=new IntTools_Context;
+  myIterator->Prepare(myContext, myUseOBB, myFuzzyValue);
   //
   // 4 NonDestructive flag
   SetNonDestructive();
@@ -235,7 +223,7 @@ void BOPAlgo_PaveFiller::Perform()
     PerformInternal();
   }
   //
-  catch (Standard_Failure) {
+  catch (Standard_Failure const&) {
     AddError (new BOPAlgo_AlertIntersectionFailed);
   } 
 }
@@ -285,6 +273,18 @@ void BOPAlgo_PaveFiller::PerformInternal()
   }
   UpdatePaveBlocksWithSDVertices();
   UpdateInterfsWithSDVertices();
+
+  // Repeat Intersection with increased vertices
+  RepeatIntersection();
+  if (HasErrors())
+    return;
+
+  // Force intersection of edges after increase
+  // of the tolerance values of their vertices
+  ForceInterfEE();
+  // Force Edge/Face intersection after increase
+  // of the tolerance values of their vertices
+  ForceInterfEF();
   //
   // 22
   PerformFF();
@@ -294,9 +294,11 @@ void BOPAlgo_PaveFiller::PerformInternal()
   //
   UpdateBlocksWithSharedVertices();
   //
+  myDS->RefineFaceInfoIn();
+  //
   MakeSplitEdges();
   if (HasErrors()) {
-    return; 
+    return;
   }
   //
   UpdatePaveBlocksWithSDVertices();
@@ -312,6 +314,8 @@ void BOPAlgo_PaveFiller::PerformInternal()
   myDS->ReleasePaveBlocks();
   myDS->RefineFaceInfoOn();
   //
+  RemoveMicroEdges();
+  //
   MakePCurves();
   if (HasErrors()) {
     return; 
@@ -321,4 +325,59 @@ void BOPAlgo_PaveFiller::PerformInternal()
   if (HasErrors()) {
     return; 
   }
+}
+
+//=======================================================================
+// function: RepeatIntersection
+// purpose: 
+//=======================================================================
+void BOPAlgo_PaveFiller::RepeatIntersection()
+{
+  // Find all vertices with increased tolerance
+  TColStd_MapOfInteger anExtraInterfMap;
+  const Standard_Integer aNbS = myDS->NbSourceShapes();
+  for (Standard_Integer i = 0; i < aNbS; ++i)
+  {
+    const BOPDS_ShapeInfo& aSI = myDS->ShapeInfo(i);
+    if (aSI.ShapeType() != TopAbs_VERTEX)
+      continue;
+    // Check if the tolerance of the original vertex has been increased
+    if (myIncreasedSS.Contains(i))
+    {
+      anExtraInterfMap.Add(i);
+      continue;
+    }
+
+    // Check if the vertex created a new vertex with greater tolerance
+    Standard_Integer nVSD;
+    if (!myDS->HasShapeSD(i, nVSD))
+      continue;
+
+    if (myIncreasedSS.Contains(nVSD))
+      anExtraInterfMap.Add(i);
+  }
+
+  if (anExtraInterfMap.IsEmpty())
+    return;
+
+  // Update iterator of pairs of shapes with interfering boxes
+  myIterator->IntersectExt(anExtraInterfMap);
+
+  // Perform intersections with vertices
+  PerformVV();
+  if (HasErrors())
+    return;
+  UpdatePaveBlocksWithSDVertices();
+
+  PerformVE();
+  if (HasErrors())
+    return;
+  UpdatePaveBlocksWithSDVertices();
+
+  PerformVF();
+  if (HasErrors())
+    return;
+
+  UpdatePaveBlocksWithSDVertices();
+  UpdateInterfsWithSDVertices();
 }

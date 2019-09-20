@@ -84,6 +84,21 @@ Standard_Boolean TDataStd_IntPackedMap::ChangeMap (const Handle(TColStd_HPackedM
   }
   return Standard_False;
 }
+
+//=======================================================================
+//function : ChangeMap
+//purpose  :
+//=======================================================================
+Standard_Boolean TDataStd_IntPackedMap::ChangeMap (const TColStd_PackedMapOfInteger& theMap)
+{
+  if (!myMap->Map().IsEqual(theMap))
+  {
+    Backup();
+    myMap->ChangeMap().Assign(theMap);
+    return Standard_True;
+  }
+  return Standard_False;
+}
 //=======================================================================
 //function : Clear
 //purpose  : 
@@ -202,7 +217,7 @@ Standard_OStream& TDataStd_IntPackedMap::Dump(Standard_OStream& theOS) const
   Standard_OStream& anOS = TDF_Attribute::Dump( theOS );
   anOS << "IntPackedMap size = " << Extent();
   anOS << " Delta is " << (myIsDelta ? "ON":"OFF");
-  anOS << endl;
+  anOS << std::endl;
   return anOS;
 }
 

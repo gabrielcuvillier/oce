@@ -3,6 +3,8 @@ BOPAlgo_Algo.hxx
 BOPAlgo_ArgumentAnalyzer.cxx
 BOPAlgo_ArgumentAnalyzer.hxx
 BOPAlgo_ArgumentAnalyzer.lxx
+BOPAlgo_ToolsProvider.cxx
+BOPAlgo_ToolsProvider.hxx
 BOPAlgo_BOP.cxx
 BOPAlgo_BOP.hxx
 BOPAlgo_Builder.cxx
@@ -15,7 +17,6 @@ BOPAlgo_BuilderArea.cxx
 BOPAlgo_BuilderArea.hxx
 BOPAlgo_BuilderFace.cxx
 BOPAlgo_BuilderFace.hxx
-BOPAlgo_BuilderShape.cxx
 BOPAlgo_BuilderShape.hxx
 BOPAlgo_BuilderSolid.cxx
 BOPAlgo_BuilderSolid.hxx
@@ -26,6 +27,10 @@ BOPAlgo_CheckResult.cxx
 BOPAlgo_CheckResult.hxx
 BOPAlgo_CheckStatus.hxx
 BOPAlgo_ListOfCheckResult.hxx
+BOPAlgo_MakeConnected.cxx
+BOPAlgo_MakeConnected.hxx
+BOPAlgo_MakePeriodic.cxx
+BOPAlgo_MakePeriodic.hxx
 BOPAlgo_MakerVolume.cxx
 BOPAlgo_MakerVolume.hxx
 BOPAlgo_MakerVolume.lxx
@@ -51,11 +56,11 @@ BOPAlgo_PBuilder.hxx
 BOPAlgo_PPaveFiller.hxx
 BOPAlgo_PSection.hxx
 BOPAlgo_PWireEdgeSet.hxx
+BOPAlgo_RemoveFeatures.cxx
+BOPAlgo_RemoveFeatures.hxx
 BOPAlgo_Section.cxx
 BOPAlgo_Section.hxx
-BOPAlgo_SectionAttribute.cxx
 BOPAlgo_SectionAttribute.hxx
-BOPAlgo_SectionAttribute.lxx
 BOPAlgo_ShellSplitter.cxx
 BOPAlgo_ShellSplitter.hxx
 BOPAlgo_Tools.cxx

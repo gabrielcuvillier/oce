@@ -37,11 +37,11 @@ void SelectMgr_TriangularFrustumSet::Build (const TColgp_Array1OfPnt2d& thePoint
   Handle(BRepMesh_DataStructureOfDelaun) aMeshStructure = new BRepMesh_DataStructureOfDelaun(anAllocator);
   Standard_Integer aPtsLower = thePoints.Lower();
   Standard_Integer aPtsUpper = thePoints.Upper();
-  BRepMesh::Array1OfInteger anIndexes (0, thePoints.Length() - 1);
+  IMeshData::VectorOfInteger anIndexes(aPtsUpper - aPtsLower, anAllocator);
   for (Standard_Integer aPtIdx = aPtsLower; aPtIdx <= aPtsUpper; ++aPtIdx)
   {
-    BRepMesh_Vertex aVertex (thePoints.Value (aPtIdx).XY(), aPtIdx, BRepMesh_Frontier);
-    anIndexes.ChangeValue (aPtIdx - aPtsLower) = aMeshStructure->AddNode (aVertex);
+    BRepMesh_Vertex aVertex(thePoints.Value(aPtIdx).XY(), aPtIdx, BRepMesh_Frontier);
+    anIndexes.Append(aMeshStructure->AddNode(aVertex));
   }
 
   Standard_Real aPtSum = 0;
@@ -64,11 +64,11 @@ void SelectMgr_TriangularFrustumSet::Build (const TColgp_Array1OfPnt2d& thePoint
   }
 
   BRepMesh_Delaun aTriangulation (aMeshStructure, anIndexes);
-  const BRepMesh::MapOfInteger& aTriangles = aMeshStructure->ElementsOfDomain();
+  const IMeshData::MapOfInteger& aTriangles = aMeshStructure->ElementsOfDomain();
   if (aTriangles.Extent() < 1)
     return;
 
-  BRepMesh::MapOfInteger::Iterator aTriangleIt (aTriangles);
+  IMeshData::IteratorOfMapOfInteger aTriangleIt (aTriangles);
   for (; aTriangleIt.More(); aTriangleIt.Next())
   {
     const Standard_Integer aTriangleId = aTriangleIt.Key();
@@ -127,11 +127,12 @@ Handle(SelectMgr_BaseFrustum) SelectMgr_TriangularFrustumSet::ScaleAndTransform 
 // =======================================================================
 Standard_Boolean SelectMgr_TriangularFrustumSet::Overlaps (const SelectMgr_Vec3& theMinPnt,
                                                            const SelectMgr_Vec3& theMaxPnt,
-                                                           Standard_Real& theDepth)
+                                                           const SelectMgr_ViewClipRange& theClipRange,
+                                                           SelectBasics_PickResult& thePickResult) const
 {
   for (SelectMgr_TriangFrustumsIter anIter (myFrustums); anIter.More(); anIter.Next())
   {
-    if (anIter.Value()->Overlaps (theMinPnt, theMaxPnt, theDepth))
+    if (anIter.Value()->Overlaps (theMinPnt, theMaxPnt, theClipRange, thePickResult))
       return Standard_True;
   }
 
@@ -144,7 +145,7 @@ Standard_Boolean SelectMgr_TriangularFrustumSet::Overlaps (const SelectMgr_Vec3&
 // =======================================================================
 Standard_Boolean SelectMgr_TriangularFrustumSet::Overlaps (const SelectMgr_Vec3& theMinPnt,
                                                            const SelectMgr_Vec3& theMaxPnt,
-                                                           Standard_Boolean* /*theInside*/)
+                                                           Standard_Boolean* /*theInside*/) const
 {
   for (SelectMgr_TriangFrustumsIter anIter (myFrustums); anIter.More(); anIter.Next())
   {
@@ -160,11 +161,12 @@ Standard_Boolean SelectMgr_TriangularFrustumSet::Overlaps (const SelectMgr_Vec3&
 // purpose  :
 // =======================================================================
 Standard_Boolean SelectMgr_TriangularFrustumSet::Overlaps (const gp_Pnt& thePnt,
-                                                           Standard_Real& theDepth)
+                                                           const SelectMgr_ViewClipRange& theClipRange,
+                                                           SelectBasics_PickResult& thePickResult) const
 {
   for (SelectMgr_TriangFrustumsIter anIter (myFrustums); anIter.More(); anIter.Next())
   {
-    if (anIter.Value()->Overlaps (thePnt, theDepth))
+    if (anIter.Value()->Overlaps (thePnt, theClipRange, thePickResult))
       return Standard_True;
   }
 
@@ -177,11 +179,12 @@ Standard_Boolean SelectMgr_TriangularFrustumSet::Overlaps (const gp_Pnt& thePnt,
 // =======================================================================
 Standard_Boolean SelectMgr_TriangularFrustumSet::Overlaps (const TColgp_Array1OfPnt& theArrayOfPts,
                                                            Select3D_TypeOfSensitivity theSensType,
-                                                           Standard_Real& theDepth)
+                                                           const SelectMgr_ViewClipRange& theClipRange,
+                                                           SelectBasics_PickResult& thePickResult) const
 {
   for (SelectMgr_TriangFrustumsIter anIter (myFrustums); anIter.More(); anIter.Next())
   {
-    if (anIter.Value()->Overlaps (theArrayOfPts, theSensType, theDepth))
+    if (anIter.Value()->Overlaps (theArrayOfPts, theSensType, theClipRange, thePickResult))
       return Standard_True;
   }
 
@@ -194,11 +197,12 @@ Standard_Boolean SelectMgr_TriangularFrustumSet::Overlaps (const TColgp_Array1Of
 // =======================================================================
 Standard_Boolean SelectMgr_TriangularFrustumSet::Overlaps (const gp_Pnt& thePnt1,
                                                            const gp_Pnt& thePnt2,
-                                                           Standard_Real& theDepth)
+                                                           const SelectMgr_ViewClipRange& theClipRange,
+                                                           SelectBasics_PickResult& thePickResult) const
 {
   for (SelectMgr_TriangFrustumsIter anIter (myFrustums); anIter.More(); anIter.Next())
   {
-    if (anIter.Value()->Overlaps (thePnt1, thePnt2, theDepth))
+    if (anIter.Value()->Overlaps (thePnt1, thePnt2, theClipRange, thePickResult))
       return Standard_True;
   }
 
@@ -213,11 +217,12 @@ Standard_Boolean SelectMgr_TriangularFrustumSet::Overlaps (const gp_Pnt& thePnt1
                                                            const gp_Pnt& thePnt2,
                                                            const gp_Pnt& thePnt3,
                                                            Select3D_TypeOfSensitivity theSensType,
-                                                           Standard_Real& theDepth)
+                                                           const SelectMgr_ViewClipRange& theClipRange,
+                                                           SelectBasics_PickResult& thePickResult) const
 {
   for (SelectMgr_TriangFrustumsIter anIter (myFrustums); anIter.More(); anIter.Next())
   {
-    if (anIter.Value()->Overlaps (thePnt1, thePnt2, thePnt3, theSensType, theDepth))
+    if (anIter.Value()->Overlaps (thePnt1, thePnt2, thePnt3, theSensType, theClipRange, thePickResult))
       return Standard_True;
   }
 

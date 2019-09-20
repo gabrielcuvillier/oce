@@ -26,7 +26,7 @@ IMPLEMENT_STANDARD_RTTIEXT(Select3D_SensitiveSegment,Select3D_SensitiveEntity)
 // Function : Create
 // Purpose  : Constructor
 //=====================================================
-Select3D_SensitiveSegment::Select3D_SensitiveSegment (const Handle(SelectBasics_EntityOwner)& theOwnerId,
+Select3D_SensitiveSegment::Select3D_SensitiveSegment (const Handle(SelectMgr_EntityOwner)& theOwnerId,
                                                       const gp_Pnt& theFirstPnt,
                                                       const gp_Pnt& theLastPnt)
 : Select3D_SensitiveEntity (theOwnerId)
@@ -42,22 +42,17 @@ Select3D_SensitiveSegment::Select3D_SensitiveSegment (const Handle(SelectBasics_
 Standard_Boolean Select3D_SensitiveSegment::Matches (SelectBasics_SelectingVolumeManager& theMgr,
                                                      SelectBasics_PickResult& thePickResult)
 {
-  thePickResult = SelectBasics_PickResult (RealLast(), RealLast());
-
-  Standard_Real aDepth;
   if (!theMgr.IsOverlapAllowed()) // check for inclusion
   {
-    return theMgr.Overlaps (myStart, aDepth) && theMgr.Overlaps (myEnd, aDepth);
+    return theMgr.Overlaps (myStart, thePickResult) && theMgr.Overlaps (myEnd, thePickResult);
   }
 
-  if (!theMgr.Overlaps (myStart, myEnd, aDepth)) // check for overlap
+  if (!theMgr.Overlaps (myStart, myEnd, thePickResult)) // check for overlap
   {
     return Standard_False;
   }
 
-  thePickResult = SelectBasics_PickResult (aDepth,
-    theMgr.DistToGeometryCenter (CenterOfGeometry()));
-
+  thePickResult.SetDistToGeomCenter (theMgr.DistToGeometryCenter(CenterOfGeometry()));
   return Standard_True;
 }
 

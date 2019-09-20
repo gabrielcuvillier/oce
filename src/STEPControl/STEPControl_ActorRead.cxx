@@ -176,15 +176,15 @@ static void DumpWhatIs(const TopoDS_Shape& S) {
     }
   }
 
-  cout << "//What is?// NB COMPOUNDS: " << nbCompounds << endl;
-  cout << "//What is?// NB SOLIDS: " << nbSolids << endl;
-  cout << "//What is?// NB SHELLS: " << nbShells << endl;
-  cout << "//What is?//    OPEN SHELLS: " << nbOpenShells << endl;
-  cout << "//What is?//    CLOSED SHELLS: " << nbShells - nbOpenShells << endl;
-  cout << "//What is?// NB FACES: " << nbFaces << endl;
-  cout << "//What is?// NB WIRES: " << nbWires << endl;
-  cout << "//What is?// NB EDGES: " << nbEdges << endl;
-  cout << "//What is?// NB VERTEXES: " << nbVertexes << endl;
+  std::cout << "//What is?// NB COMPOUNDS: " << nbCompounds << std::endl;
+  std::cout << "//What is?// NB SOLIDS: " << nbSolids << std::endl;
+  std::cout << "//What is?// NB SHELLS: " << nbShells << std::endl;
+  std::cout << "//What is?//    OPEN SHELLS: " << nbOpenShells << std::endl;
+  std::cout << "//What is?//    CLOSED SHELLS: " << nbShells - nbOpenShells << std::endl;
+  std::cout << "//What is?// NB FACES: " << nbFaces << std::endl;
+  std::cout << "//What is?// NB WIRES: " << nbWires << std::endl;
+  std::cout << "//What is?// NB EDGES: " << nbEdges << std::endl;
+  std::cout << "//What is?// NB VERTEXES: " << nbVertexes << std::endl;
 }
 #endif
 
@@ -284,12 +284,12 @@ Handle(Transfer_Binder)  STEPControl_ActorRead::Transfer
       if(aPPVersion.IsNull())
         continue;
       #ifdef OCCT_DEBUG
-      cout << "Preprocessor version detected: " << aPPVersion->ToCString() << endl;
+      std::cout << "Preprocessor version detected: " << aPPVersion->ToCString() << std::endl;
       #endif
       Standard_Integer anIDeasResult = aPPVersion->Search("I-DEAS");
       if (anIDeasResult != -1) {
         #ifdef OCCT_DEBUG
-        cout << "Recognized as I-DEAS STP" << endl;
+        std::cout << "Recognized as I-DEAS STP" << std::endl;
         #endif
         myNMTool.SetIDEASCase(Standard_True);
       }
@@ -542,7 +542,7 @@ static void getSDR(const Handle(StepRepr_ProductDefinitionShape)& PDS,
       
 #ifdef TRANSLOG
     if (TP->TraceLevel() > 1) 
-      sout<<" -- Actor : Ent.n0 "<<TP->Model()->Number(PD)<<" -> Shared Ent.no"<<TP->Model()->Number(NAUO)<<endl;
+      sout<<" -- Actor : Ent.n0 "<<TP->Model()->Number(PD)<<" -> Shared Ent.no"<<TP->Model()->Number(NAUO)<<Message_EndLine;
 #endif
     Handle(Transfer_Binder) binder;
     if (!TP->IsBound(NAUO)) binder = TransferEntity(NAUO,TP);
@@ -658,7 +658,7 @@ static void getSDR(const Handle(StepRepr_ProductDefinitionShape)& PDS,
 Handle(TransferBRep_ShapeBinder) STEPControl_ActorRead::TransferEntity(const Handle(StepRepr_NextAssemblyUsageOccurrence)& NAUO ,
                                                                        const Handle(Transfer_TransientProcess)& TP)
 {
- Handle(TransferBRep_ShapeBinder) shbinder;
+  Handle(TransferBRep_ShapeBinder) shbinder;
   Handle(StepBasic_ProductDefinition) PD;
   const Interface_Graph& graph = TP->Graph();
   gp_Trsf Trsf;
@@ -679,25 +679,30 @@ Handle(TransferBRep_ShapeBinder) STEPControl_ActorRead::TransferEntity(const Han
       if (RR.IsNull()) continue;
       SRRReversed = STEPConstruct_Assembly::CheckSRRReversesNAUO ( graph, CDSR );
       Handle(StepRepr_Representation) rep = ( SRRReversed ? RR->Rep2() : RR->Rep1() );
+      if(rep.IsNull())
+        continue;
       iatrsf = ComputeSRRWT ( RR, TP, Trsf );
       // find real ProductDefinition used rep
       Interface_EntityIterator subs3 = TP->Graph().Sharings(rep);
       for (subs3.Start(); subs3.More(); subs3.Next()) {
-        if ( subs3.Value()->IsKind(STANDARD_TYPE(StepShape_ShapeDefinitionRepresentation))) {
-          DeclareAndCast(StepShape_ShapeDefinitionRepresentation,SDR,subs3.Value());
+        const Handle(Standard_Transient)& aSubs3Val = subs3.Value();
+        if (Handle(StepShape_ShapeDefinitionRepresentation) SDR = 
+            Handle(StepShape_ShapeDefinitionRepresentation)::DownCast (aSubs3Val))
+        {
           Handle(StepRepr_ProductDefinitionShape) PDS1 = 
             Handle(StepRepr_ProductDefinitionShape)::DownCast(SDR->Definition().PropertyDefinition());
           if(PDS1.IsNull()) continue;
           Interface_EntityIterator subs4 = graph.Shareds(PDS1);
-          for (subs4.Start(); subs4.More(); subs4.Next()) {
-            Handle(StepBasic_ProductDefinition) PD1 = 
-              Handle(StepBasic_ProductDefinition)::DownCast(subs4.Value());
-            if(PD1.IsNull()) continue;
-            PD=PD1;
+          for (subs4.Start(); PD.IsNull() && subs4.More(); subs4.Next())
+          {
+            PD = Handle(StepBasic_ProductDefinition)::DownCast(subs4.Value());
           }
         }
-        else if(subs3.Value()->IsKind(STANDARD_TYPE(StepRepr_ShapeRepresentationRelationship))) {
-          SRR = Handle(StepRepr_ShapeRepresentationRelationship)::DownCast(subs3.Value());
+        else if (aSubs3Val->IsKind (STANDARD_TYPE(StepRepr_ShapeRepresentationRelationship)))
+        {
+          // NB: C cast is used instead of DownCast() to improve performance on some cases.
+          // This saves ~10% of elapsed time on "testgrid perf de bug29* -parallel 0".
+          SRR = (StepRepr_ShapeRepresentationRelationship*)(aSubs3Val.get());
         }
       }
     }
@@ -757,7 +762,7 @@ Handle(TransferBRep_ShapeBinder) STEPControl_ActorRead::TransferEntity(const Han
   Handle(Message_Messenger) sout = TP->Messenger();
   #ifdef TRANSLOG
   if (TP->TraceLevel() > 2) 
-    sout<<" -- Actor : case  ShapeRepr. NbItems="<<nb<<endl;
+    sout<<" -- Actor : case  ShapeRepr. NbItems="<<nb<<Message_EndLine;
   #endif
   
     // Compute unit convertion factors and geometric Accuracy
@@ -779,7 +784,7 @@ Handle(TransferBRep_ShapeBinder) STEPControl_ActorRead::TransferEntity(const Han
     NM_DETECTED = Standard_True;
     #ifdef OCCT_DEBUG
     Standard_Integer NMSSRItemsLen = sr->Items()->Length();
-    cout << "NMSSR with " << NMSSRItemsLen << " items detected" << endl;
+    std::cout << "NMSSR with " << NMSSRItemsLen << " items detected" << std::endl;
     #endif
   } 
   // Special processing for I-DEAS STP case (ssv; 15.11.2010)
@@ -789,12 +794,12 @@ Handle(TransferBRep_ShapeBinder) STEPControl_ActorRead::TransferEntity(const Han
       isManifold = Standard_False;
       NM_DETECTED = Standard_True;
       #ifdef OCCT_DEBUG
-      cout << "I-DEAS post processing for non-manifold topology ENABLED" << endl;
+      std::cout << "I-DEAS post processing for non-manifold topology ENABLED" << std::endl;
       #endif
     }
     #ifdef OCCT_DEBUG
     else if ( myNMTool.IsIDEASCase() )
-      cout << "I-DEAS post processing for non-manifold topology DISABLED" << endl;
+      std::cout << "I-DEAS post processing for non-manifold topology DISABLED" << std::endl;
     #endif
   }
   myNMTool.CleanUp();
@@ -806,7 +811,7 @@ Handle(TransferBRep_ShapeBinder) STEPControl_ActorRead::TransferEntity(const Han
   //for (i = 1; i <= nb ; i ++) {
     #ifdef TRANSLOG
     if (TP->TraceLevel() > 2) 
-      sout<<" -- Actor, shape_representation.item n0. "<<i<<endl;
+      sout<<" -- Actor, shape_representation.item n0. "<<i<<Message_EndLine;
     #endif
     Handle(StepRepr_RepresentationItem) anitem = sr->ItemsValue(i);
     Handle(Transfer_Binder) binder;
@@ -1094,7 +1099,7 @@ Handle(TransferBRep_ShapeBinder) STEPControl_ActorRead::OldWay(const Handle(Stan
     
 #ifdef TRANSLOG
   if (TP->TraceLevel() > 2) 
-    sout<<" -- Actor : case  shape_definition_representation."<<endl;
+    sout<<" -- Actor : case  shape_definition_representation."<<Message_EndLine;
 #endif
   Handle(Transfer_Binder) binder = TP->Find(rep);
   if (binder.IsNull()) binder = TP->Transferring(rep);
@@ -1135,7 +1140,7 @@ Handle(TransferBRep_ShapeBinder) STEPControl_ActorRead::OldWay(const Handle(Stan
 //      if (anitem.IsNull()) continue;
 #ifdef TRANSLOG
     if (TP->TraceLevel() > 1) 
-      sout<<" -- Actor : Ent.n0 "<<TP->Model()->Number(start)<<" -> Shared Ent.no"<<TP->Model()->Number(anitem)<<endl;
+      sout<<" -- Actor : Ent.n0 "<<TP->Model()->Number(start)<<" -> Shared Ent.no"<<TP->Model()->Number(anitem)<<Message_EndLine;
 #endif
 
     if (!TP->IsBound(anitem)) binder = TP->Transferring(anitem);
@@ -1174,7 +1179,7 @@ Handle(TransferBRep_ShapeBinder) STEPControl_ActorRead::TransferEntity(const Han
   OSD_Timer chrono;
   if (TP->TraceLevel() > 2) 
     sout << "Begin transfer STEP -> CASCADE, Type "
-         << start->DynamicType()->Name() << endl;
+         << start->DynamicType()->Name() << Message_EndLine;
   chrono.Start();
 #endif
   
@@ -1229,7 +1234,7 @@ Handle(TransferBRep_ShapeBinder) STEPControl_ActorRead::TransferEntity(const Han
     found = Standard_True;
   }
 }
-  catch(Standard_Failure) {
+  catch(Standard_Failure const&) {
     TP->AddFail(start,"Exeption is raised. Entity was not translated.");
     TP->Bind(start, shbinder);
     return shbinder;
@@ -1255,7 +1260,7 @@ Handle(TransferBRep_ShapeBinder) STEPControl_ActorRead::TransferEntity(const Han
 #ifdef TRANSLOG
   chrono.Stop();
   if (TP->TraceLevel() > 2) 
-    sout<<"End transfer STEP -> CASCADE :" << (found ? "OK" : " : no result")<<endl;
+    sout<<"End transfer STEP -> CASCADE :" << (found ? "OK" : " : no result")<<Message_EndLine;
   if (TP->TraceLevel() > 2) 
     chrono.Show();
 #endif
@@ -1390,7 +1395,7 @@ Handle(TransferBRep_ShapeBinder) STEPControl_ActorRead::TransferEntity(const Han
     TP->Bind(fs, sb);
     return sb; // TP->Find (start);
   }
-  catch(Standard_Failure)
+  catch(Standard_Failure const&)
   {
     TP->AddFail(fs,"Exeption is raised. Entity was not translated.");
     sb.Nullify();
@@ -1414,7 +1419,7 @@ Handle(Transfer_Binder) STEPControl_ActorRead::TransferShape(const Handle(Standa
 #ifdef TRANSLOG
 //  POUR MISE AU POINT, a supprimer ensuite
   if (TP->TraceLevel() > 1) 
-    sout<<" -- Actor : Transfer Ent.n0 "<<TP->Model()->Number(start)<<"  Type "<<start->DynamicType()->Name()<<endl;
+    sout<<" -- Actor : Transfer Ent.n0 "<<TP->Model()->Number(start)<<"  Type "<<start->DynamicType()->Name()<<Message_EndLine;
 #endif
   
   Handle(TransferBRep_ShapeBinder) shbinder;
@@ -1571,7 +1576,7 @@ void STEPControl_ActorRead::PrepareUnits(const Handle(StepRepr_Representation)& 
   // Assign uncertainty
 #ifdef TRANSLOG
   if (TP->TraceLevel() > 1) 
-    TP->Messenger() <<"  Cc1ToTopoDS : Length Unit = "<<myUnit.LengthFactor()<<"  Tolerance CASCADE = "<<myPrecision<<endl;
+    TP->Messenger() <<"  Cc1ToTopoDS : Length Unit = "<<myUnit.LengthFactor()<<"  Tolerance CASCADE = "<<myPrecision<<Message_EndLine;
 #endif
 }
 
@@ -1607,22 +1612,32 @@ Standard_Boolean STEPControl_ActorRead::ComputeTransformation (const Handle(Step
   // corresponding reps and fix case of inversion error
   Handle(StepGeom_Axis2Placement3d) org = Origin;
   Handle(StepGeom_Axis2Placement3d) trg = Target;
-  Standard_Integer code1=0, code2=0, i;
-  for ( i=1; code1 != 1 && i <= OrigContext->NbItems(); i++ ) {
-    if ( OrigContext->ItemsValue(i) == org ) code1 = 1;
-    else if ( OrigContext->ItemsValue(i) == trg ) code1 = -1;
+  Standard_Boolean isOKOrigin = Standard_False, isSwapOrigin = Standard_False;
+  Standard_Boolean isOKTarget = Standard_False, isSwapTarget = Standard_False;
+  for (Standard_Integer i=1; i <= OrigContext->NbItems(); i++)
+  {
+    if (OrigContext->ItemsValue(i) == org) 
+      isOKOrigin = Standard_True;
+    else if (OrigContext->ItemsValue(i) == trg) 
+      isSwapTarget = Standard_True;
   }
-  for ( i=1; code2 != 1 && i <= TargContext->NbItems(); i++ ) {
-    if ( TargContext->ItemsValue(i) == org ) code2 = -1;
-    else if ( TargContext->ItemsValue(i) == trg ) code2 = 1;
+  for (Standard_Integer i=1; i <= TargContext->NbItems(); i++)
+  {
+    if (TargContext->ItemsValue(i) == trg)
+      isOKTarget = Standard_True;
+    else if (TargContext->ItemsValue(i) == org)
+      isSwapOrigin = Standard_True;
   }
-  if ( code1 != 1 && code2 != 1 ) {
-    if ( code1 == -1 && code2 == -1 ) {
-      Handle(StepGeom_Axis2Placement3d) swp = org; org = trg; trg = swp;
+  if (! isOKOrigin || ! isOKTarget)
+  {
+    if (isSwapOrigin && isSwapTarget)
+    {
+      std::swap (org, trg);
       TP->AddWarning ( org, "Axis placements are swapped in SRRWT; corrected" );
     }
-    else {
-      TP->AddWarning ( ( code1 == 1 ? trg : org ), 
+    else
+    {
+      TP->AddWarning ( (isOKOrigin ? trg : org),
                        "Axis placement used by SRRWT does not belong to corresponding representation" );
     }
   }
@@ -1742,7 +1757,7 @@ TopoDS_Shell STEPControl_ActorRead::closeIDEASShell(const TopoDS_Shell& shell,
       brepBuilder.Add(result, currentFace);
     else {
       #ifdef OCCT_DEBUG
-      cout << "Redundant closing face detected: REMOVED from shell";
+      std::cout << "Redundant closing face detected: REMOVED from shell";
       #endif
     }
   }

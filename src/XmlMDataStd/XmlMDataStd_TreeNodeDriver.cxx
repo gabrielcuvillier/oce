@@ -14,7 +14,7 @@
 // commercial license or contractual agreement.
 
 
-#include <CDM_MessageDriver.hxx>
+#include <Message_Messenger.hxx>
 #include <NCollection_LocalArray.hxx>
 #include <Standard_Type.hxx>
 #include <TDataStd_TreeNode.hxx>
@@ -34,7 +34,7 @@ IMPLEMENT_DOMSTRING (ChildrenString, "children")
 //=======================================================================
 
 XmlMDataStd_TreeNodeDriver::XmlMDataStd_TreeNodeDriver
-                        (const Handle(CDM_MessageDriver)& theMsgDriver)
+                        (const Handle(Message_Messenger)& theMsgDriver)
       : XmlMDF_ADriver (theMsgDriver, NULL)
 {}
 
@@ -118,7 +118,7 @@ void XmlMDataStd_TreeNodeDriver::Paste
   // tree id
   // A not default ID is skipped for storage version 8 and newer.
   if (aS->ID() != TDataStd_TreeNode::GetDefaultTreeID() ||
-      XmlLDrivers::StorageVersion() < 8)
+      theRelocTable.GetHeaderData()->StorageVersion().IntegerValue() < 8)
   {
     Standard_Character aGuidStr [40];
     Standard_PCharacter pGuidStr=aGuidStr;

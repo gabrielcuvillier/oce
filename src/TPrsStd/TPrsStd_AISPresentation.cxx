@@ -134,7 +134,7 @@ void TPrsStd_AISPresentation::Display(const Standard_Boolean theIsUpdate)
 //=======================================================================
 void TPrsStd_AISPresentation::Erase(const Standard_Boolean theIsRemove)
 {
-  if ( IsDisplayed() )
+  if ( IsDisplayed() || theIsRemove)
   {
     AISErase(theIsRemove);
   }
@@ -570,12 +570,22 @@ void TPrsStd_AISPresentation::UnsetMode()
 }
 
 //=======================================================================
+//function : GetNbSelectionModes
+//purpose  : Returns selection mode(s) of the attribute.
+//         : It starts with 1 .. GetNbSelectionModes().
+//=======================================================================
+Standard_Integer TPrsStd_AISPresentation::GetNbSelectionModes() const
+{
+  return getData()->GetNbSelectionModes();
+}
+
+//=======================================================================
 //function : SelectionMode
 //purpose  : 
 //=======================================================================
-Standard_Integer TPrsStd_AISPresentation::SelectionMode() const
+Standard_Integer TPrsStd_AISPresentation::SelectionMode(const Standard_Integer index) const
 {
-  return getData()->SelectionMode();
+  return getData()->SelectionMode(index);
 }
 
 //=======================================================================
@@ -591,11 +601,32 @@ Standard_Boolean TPrsStd_AISPresentation::HasOwnSelectionMode() const
 //function : SetSelectionMode
 //purpose  : 
 //=======================================================================
-void TPrsStd_AISPresentation::SetSelectionMode(const Standard_Integer theSelectionMode)
+void TPrsStd_AISPresentation::SetSelectionMode(const Standard_Integer theSelectionMode, const Standard_Boolean theTransaction)
 {
-  Backup();
-  getData()->SetSelectionMode (theSelectionMode);
-  AISUpdate();
+  if (theTransaction)
+    Backup();
+  getData()->SetSelectionMode (theSelectionMode, theTransaction);
+  
+  if ( myAIS.IsNull() )
+    AISUpdate();
+  else
+    ActivateSelectionMode();
+}
+
+//=======================================================================
+//function : AddSelectionMode
+//purpose  : 
+//=======================================================================
+void TPrsStd_AISPresentation::AddSelectionMode(const Standard_Integer theSelectionMode, const Standard_Boolean theTransaction)
+{
+  if (theTransaction)
+    Backup();
+  getData()->AddSelectionMode (theSelectionMode, theTransaction);
+
+  if (myAIS.IsNull())
+    AISUpdate();
+  else
+    ActivateSelectionMode();
 }
 
 //=======================================================================
@@ -604,7 +635,7 @@ void TPrsStd_AISPresentation::SetSelectionMode(const Standard_Integer theSelecti
 //=======================================================================
 void TPrsStd_AISPresentation::UnsetSelectionMode()
 {
-  getData()->UnsetSelectionMode ();
+  getData()->UnsetSelectionMode();
   AISUpdate();
 }
 
@@ -708,9 +739,11 @@ void TPrsStd_AISPresentation::BeforeForget()
 //=======================================================================
 void TPrsStd_AISPresentation::AfterResume()
 {
-  AISUpdate();
   if ( IsDisplayed() )
+  {
+  	AISUpdate();
     AISDisplay();
+  }
   else
     AISErase();
 }
@@ -800,7 +833,7 @@ void TPrsStd_AISPresentation::AISUpdate()
           if ( !(anObj ==  myAIS) )
           {
             if ( !aContext.IsNull() )
-              aContext->Remove (myAIS, Standard_True);
+              aContext->Remove (myAIS, Standard_False);
 
             // Driver has built new AIS.
             myAIS = anObj;
@@ -871,36 +904,7 @@ void TPrsStd_AISPresentation::AISUpdate()
         myAIS->SetDisplayMode(aMode);
     }
 
-    if ( !aContext.IsNull() && IsDisplayed() )
-      aContext->Redisplay(myAIS, Standard_False);
-
-    if (HasOwnSelectionMode()) {
-      if (!aContext.IsNull())
-      {
-        TColStd_ListOfInteger anActivatedModes;
-        aContext->ActivatedModes (myAIS, anActivatedModes);
-        Standard_Boolean isActivated = Standard_False;
-        Standard_Integer aSelectionMode = SelectionMode();
-        if (aSelectionMode == -1)
-        {
-          aContext->Deactivate(myAIS);
-        }
-        else
-        {
-          for (TColStd_ListIteratorOfListOfInteger aModeIter (anActivatedModes); aModeIter.More(); aModeIter.Next())
-          {
-            if (aModeIter.Value() == aSelectionMode)
-            {
-              isActivated = Standard_True;
-              break;
-            }
-          }
-          if (!isActivated)
-            aContext->Activate (myAIS, aSelectionMode, Standard_False);
-        }
-      } 
-    }
-
+    ActivateSelectionMode();
   }
   
   if (IsDisplayed() && !aContext.IsNull())
@@ -965,7 +969,7 @@ void TPrsStd_AISPresentation::AISErase(const Standard_Boolean theIsRemove)
         if ( !anOwnContext.IsNull() && anOwnContext != aContext )
           anOwnContext->Remove(myAIS, Standard_False);
 
-        myAIS->SetToUpdate();
+        myAIS.Nullify();
       }
       else
       {
@@ -982,7 +986,7 @@ void TPrsStd_AISPresentation::AISErase(const Standard_Boolean theIsRemove)
         if ( !anOwnContext.IsNull() )
         {
           anOwnContext->Remove(myAIS, Standard_False);
-          myAIS->SetToUpdate();
+          myAIS.Nullify();
         }
       }
       else
@@ -1012,4 +1016,54 @@ Handle(AIS_InteractiveContext) TPrsStd_AISPresentation::getAISContext() const
     return aViewer->GetInteractiveContext();
 
   return Handle_AIS_InteractiveContext();
+}
+
+//=======================================================================
+//function : ActivateSelectionMode
+//purpose  : Activates selection mode of the interactive object.
+//           It is called internally on change of selection mode and AISUpdate().
+//=======================================================================
+void TPrsStd_AISPresentation::ActivateSelectionMode()
+{
+  if (!myAIS.IsNull() && HasOwnSelectionMode())
+  {
+    Handle(AIS_InteractiveContext) aContext = getAISContext();
+    if (!aContext.IsNull())
+    {
+      TColStd_ListOfInteger anActivatedModes;
+      aContext->ActivatedModes (myAIS, anActivatedModes);
+      Standard_Integer nbSelModes = GetNbSelectionModes();
+      if (nbSelModes == 1)
+      {
+        Standard_Boolean isActivated = Standard_False;
+        Standard_Integer aSelectionMode = SelectionMode();
+        if (aSelectionMode == -1)
+        {
+          aContext->Deactivate(myAIS);
+        }
+        else
+        {
+          for (TColStd_ListIteratorOfListOfInteger aModeIter(anActivatedModes); aModeIter.More(); aModeIter.Next())
+          {
+            if (aModeIter.Value() == aSelectionMode)
+            {
+              isActivated = Standard_True;
+              break;
+            }
+          }
+          if (!isActivated)
+            aContext->Activate(myAIS, aSelectionMode, Standard_False);
+        }
+      }
+      else
+      {
+        for (Standard_Integer iSelMode = 1; iSelMode <= nbSelModes; iSelMode++)
+        {
+          const Standard_Integer aSelectionMode = SelectionMode (iSelMode);
+          aContext->SetSelectionModeActive (myAIS, aSelectionMode, Standard_True/*activate*/,
+                                            iSelMode == 1 ? AIS_SelectionModesConcurrency_Single : AIS_SelectionModesConcurrency_GlobalOrLocal);
+        }
+      }
+    } 
+  }
 }

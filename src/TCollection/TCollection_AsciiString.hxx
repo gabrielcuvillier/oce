@@ -80,6 +80,17 @@ public:
   
   //! Initializes a AsciiString with another AsciiString.
   Standard_EXPORT TCollection_AsciiString(const TCollection_AsciiString& astring);
+
+#ifndef OCCT_NO_RVALUE_REFERENCE
+  //! Move constructor
+  TCollection_AsciiString (TCollection_AsciiString&& theOther)
+  : mystring (theOther.mystring),
+    mylength (theOther.mylength)
+  {
+    theOther.mystring = NULL;
+    theOther.mylength = 0;
+  }
+#endif
   
   //! Initializes a AsciiString with copy of another AsciiString
   //! concatenated with the message character.
@@ -270,7 +281,15 @@ void operator = (const TCollection_AsciiString& fromwhere)
 {
   Copy(fromwhere);
 }
-  
+
+  //! Exchange the data of two strings (without reallocating memory).
+  Standard_EXPORT void Swap (TCollection_AsciiString& theOther);
+
+#ifndef OCCT_NO_RVALUE_REFERENCE
+  //! Move assignment operator
+  TCollection_AsciiString& operator= (TCollection_AsciiString&& theOther) { Swap (theOther); return *this; }
+#endif
+
   //! Frees memory allocated by AsciiString.
   Standard_EXPORT ~TCollection_AsciiString();
   
@@ -660,10 +679,13 @@ friend Standard_EXPORT Standard_IStream& operator >> (Standard_IStream& astream,
   //! aString.Value(2) returns 'e'
   Standard_EXPORT Standard_Character Value (const Standard_Integer where) const;
   
-  //! Hash function for AsciiString
-  //! (returns the same Integer value that the hash function for ExtendedString)
-    static Standard_Integer HashCode (const TCollection_AsciiString& astring, const Standard_Integer Upper);
-  
+  //! Computes a hash code for the given ASCII string, in the range [1, theUpperBound].
+  //! Returns the same integer value as the hash function for TCollection_ExtendedString
+  //! @param theAsciiString the ASCII string which hash code is to be computed
+  //! @param theUpperBound the upper bound of the range a computing hash code must be within
+  //! @return a computed hash code, in the range [1, theUpperBound]
+  static Standard_Integer HashCode (const TCollection_AsciiString& theAsciiString, Standard_Integer theUpperBound);
+
   //! Returns True  when the two  strings are the same.
   //! (Just for HashCode for AsciiString)
     static Standard_Boolean IsEqual (const TCollection_AsciiString& string1, const TCollection_AsciiString& string2);

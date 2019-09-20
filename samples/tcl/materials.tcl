@@ -51,7 +51,7 @@ proc drawObjects {theRow theColor} {
     uplevel #0 box     $aBox $aCtr $aCtr $aCtr $aSize $aSize $aSize
     uplevel #0 ttranslate   $aSph $x $y 0
     uplevel #0 ttranslate   $aBox [expr $x + 10] $y 0
-    uplevel #0 vdisplay     -noredraw $aSph $aBox
+    uplevel #0 vdisplay     -noredraw -dispMode 1 $aSph $aBox
     uplevel #0 vsetmaterial -noredraw $aSph $aBox $aMatIter
     if {$theColor != ""} {
       uplevel #0 vsetcolor  -noredraw $aSph $aBox $theColor
@@ -64,20 +64,19 @@ proc drawObjects {theRow theColor} {
 # setup 3D viewer content
 pload MODELING VISUALIZATION
 
-catch { vclose View1 }
-vinit View1 w=768 h=768
 vclear
+vclose ALL
+vinit View1 w=768 h=768
 vtop
 vglinfo
-vsetgradientbg 180 200 255 180 180 180 2
-vlight change 0 pos -1 1 1
-vsetdispmode 1
+vbackground -gradient 0.705882 0.784314 1  0.705882 0.705882 0.705882 -gradientMode VERTICAL
+
+vlight -change 0 -dir 0.577 -0.577 -0.577
 vrenderparams -msaa 8
 
 # adjust scene bounding box
 box bnd 0 0 0 180 210 1
-vdisplay -noredraw bnd
-vsetdispmode       bnd 0
+vdisplay -noredraw -dispMode 0 bnd
 vfit
 vremove -noredraw  bnd
 
@@ -87,5 +86,3 @@ drawObjects 0 ""
 drawObjects 1 red
 drawObjects 2 green
 drawObjects 3 blue1
-#vfit
-vzfit

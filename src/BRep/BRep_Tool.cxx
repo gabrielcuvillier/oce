@@ -270,19 +270,16 @@ const Handle(Poly_Polygon3D)& BRep_Tool::Polygon3D(const TopoDS_Edge& E,
 Handle(Geom2d_Curve) BRep_Tool::CurveOnSurface(const TopoDS_Edge& E, 
                                                const TopoDS_Face& F,
                                                Standard_Real& First,
-                                               Standard_Real& Last)
+                                               Standard_Real& Last,
+                                               Standard_Boolean* theIsStored)
 {
   TopLoc_Location l;
   const Handle(Geom_Surface)& S = BRep_Tool::Surface(F,l);
   TopoDS_Edge aLocalEdge = E;
   if (F.Orientation() == TopAbs_REVERSED) {
     aLocalEdge.Reverse();
-//    return CurveOnSurface(E,S,l,First,Last);
   }
-//    return CurveOnSurface(TopoDS::Edge(E.Reversed()),S,l,First,Last);
-//  else
-//    return CurveOnSurface(E,S,l,First,Last);
-  return CurveOnSurface(aLocalEdge,S,l,First,Last);
+  return CurveOnSurface(aLocalEdge, S, l, First, Last, theIsStored);
 }
 
 //=======================================================================
@@ -299,10 +296,13 @@ Handle(Geom2d_Curve) BRep_Tool::CurveOnSurface(const TopoDS_Edge& E,
                                                const Handle(Geom_Surface)& S,
                                                const TopLoc_Location& L,
                                                Standard_Real& First,
-                                               Standard_Real& Last)
+                                               Standard_Real& Last,
+                                               Standard_Boolean* theIsStored)
 {
   TopLoc_Location loc = L.Predivided(E.Location());
   Standard_Boolean Eisreversed = (E.Orientation() == TopAbs_REVERSED);
+  if (theIsStored)
+    *theIsStored = Standard_True;
 
   // find the representation
   const BRep_TEdge* TE = static_cast<const BRep_TEdge*>(E.TShape().get());
@@ -322,6 +322,8 @@ Handle(Geom2d_Curve) BRep_Tool::CurveOnSurface(const TopoDS_Edge& E,
   }
 
   // Curve is not found. Try projection on plane
+  if (theIsStored)
+    *theIsStored = Standard_False;
   return CurveOnPlane(E, S, L, First, Last);
 }
 
@@ -1178,6 +1180,29 @@ Standard_Boolean BRep_Tool::HasContinuity(const TopoDS_Edge& E)
       return Standard_True;
   }
   return Standard_False;
+}
+
+//=======================================================================
+//function : MaxContinuity
+//purpose  :
+//=======================================================================
+GeomAbs_Shape BRep_Tool::MaxContinuity (const TopoDS_Edge& theEdge)
+{
+  GeomAbs_Shape aMaxCont = GeomAbs_C0;
+  for (BRep_ListIteratorOfListOfCurveRepresentation aReprIter ((*((Handle(BRep_TEdge)*)&theEdge.TShape()))->ChangeCurves());
+       aReprIter.More(); aReprIter.Next())
+  {
+    const Handle(BRep_CurveRepresentation)& aRepr = aReprIter.Value();
+    if (aRepr->IsRegularity())
+    {
+      const GeomAbs_Shape aCont = aRepr->Continuity();
+      if ((Standard_Integer )aCont > (Standard_Integer )aMaxCont)
+      {
+        aMaxCont = aCont;
+      }
+    }
+  }
+  return aMaxCont;
 }
 
 //=======================================================================

@@ -16,7 +16,7 @@
 
 #include <BinMDataStd_IntegerDriver.hxx>
 #include <BinObjMgt_Persistent.hxx>
-#include <CDM_MessageDriver.hxx>
+#include <Message_Messenger.hxx>
 #include <Standard_Type.hxx>
 #include <TDataStd_Integer.hxx>
 #include <TDF_Attribute.hxx>
@@ -29,7 +29,7 @@ IMPLEMENT_STANDARD_RTTIEXT(BinMDataStd_IntegerDriver,BinMDF_ADriver)
 //purpose  : Constructor
 //=======================================================================
 BinMDataStd_IntegerDriver::BinMDataStd_IntegerDriver
-                        (const Handle(CDM_MessageDriver)& theMsgDriver)
+                        (const Handle(Message_Messenger)& theMsgDriver)
      : BinMDF_ADriver (theMsgDriver, STANDARD_TYPE(TDataStd_Integer)->Name())
 {
 }
@@ -52,14 +52,14 @@ Handle(TDF_Attribute) BinMDataStd_IntegerDriver::NewEmpty() const
 Standard_Boolean BinMDataStd_IntegerDriver::Paste
                                 (const BinObjMgt_Persistent&  theSource,
                                  const Handle(TDF_Attribute)& theTarget,
-                                 BinObjMgt_RRelocationTable&  ) const
+                                 BinObjMgt_RRelocationTable&  theRT) const
 {
   Handle(TDataStd_Integer) anAtt = Handle(TDataStd_Integer)::DownCast(theTarget);
   Standard_Integer aValue;
   Standard_Boolean ok = theSource >> aValue;
   if (ok)
     anAtt->Set(aValue);
-  if(BinMDataStd::DocumentVersion() > 8) { // process user defined guid
+  if(theRT.GetHeaderData()->StorageVersion().IntegerValue() > 8) { // process user defined guid
 	const Standard_Integer& aPos = theSource.Position();
 	Standard_GUID aGuid;
 	ok = theSource >> aGuid;	

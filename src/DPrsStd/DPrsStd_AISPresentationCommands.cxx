@@ -167,7 +167,7 @@ static Standard_Integer DPrsStd_AISSet (Draw_Interpretor& di,
     Standard_GUID guid;
     TCollection_ExtendedString str = arg[3];
 #ifdef OCCT_DEBUG
-    cout << "Inputed parameter > " << str   << endl;
+    std::cout << "Inputed parameter > " << str   << std::endl;
 #endif
     if ( str == "A" )  //axis
       guid = TDataXtd_Axis::GetID();     //"2a96b601-ec8b-11d0-bee7-080009dc3333" 
@@ -188,9 +188,9 @@ static Standard_Integer DPrsStd_AISSet (Draw_Interpretor& di,
 
     Handle(TPrsStd_AISPresentation) prs= TPrsStd_AISPresentation::Set(L, guid);
 #ifdef OCCT_DEBUG
-    cout << "Driver GUID = ";
-    prs->GetDriverGUID().ShallowDump(cout);
-    cout << "\n";
+    std::cout << "Driver GUID = ";
+    prs->GetDriverGUID().ShallowDump(std::cout);
+    std::cout << "\n";
 #endif
     Standard_Character resS[37];
     Standard_PCharacter presS;
@@ -233,7 +233,7 @@ static Standard_Integer DPrsStd_AISDriver (Draw_Interpretor& di,
       else {
 	TCollection_ExtendedString str = arg[3];
 #ifdef OCCT_DEBUG
-	cout << "Inputed parameter > " << str   << endl;
+	std::cout << "Inputed parameter > " << str   << std::endl;
 #endif
 	if ( str == "A" )  //axis
 	  guid = TDataXtd_Axis::GetID();     //"2a96b601-ec8b-11d0-bee7-080009dc3333" 
@@ -636,7 +636,7 @@ static Standard_Integer DPrsStd_AISMode(Draw_Interpretor& di,
 
 //=======================================================================
 //function : DPrsStd_AISSelMode
-//purpose  : AISSelMode (DOC,entry,[SelMode])
+//purpose  : AISSelMode (DOC,entry,[SelMode1 SelMode2 ...])
 //=======================================================================
 static Standard_Integer DPrsStd_AISSelMode(Draw_Interpretor& di,
                                            Standard_Integer nb,
@@ -645,7 +645,7 @@ static Standard_Integer DPrsStd_AISSelMode(Draw_Interpretor& di,
   TDF_Label L;
   Handle(TDocStd_Document) D;
   Handle(TPrsStd_AISPresentation) prs;
-  if (nb >= 3 && nb <= 4)
+  if (nb >= 3)
   {
     if (!DDocStd::GetDocument(arg[1],D)) 
       return 1;
@@ -653,18 +653,38 @@ static Standard_Integer DPrsStd_AISSelMode(Draw_Interpretor& di,
       return 1;
     if (!L.FindAttribute(TPrsStd_AISPresentation::GetID(), prs))
       return 1;
-    if (nb == 4)
+    if (nb >= 4)
     {
       // Set selection mode.
       Standard_Integer selMode = Draw::Atoi(arg[3]);
       prs->SetSelectionMode(selMode);
+      // Add other selection modes.
+      for (Standard_Integer i = 4; i < nb; i++)
+      {
+        selMode = Draw::Atoi(arg[i]);
+        prs->AddSelectionMode(selMode);
+      }
       TPrsStd_AISViewer::Update(L);
     }
     else if (nb == 3)
     {
       // Print selection mode.
-      Standard_Integer selMode = prs->SelectionMode();
-      di<<selMode;
+      Standard_Integer nbSelModes = prs->GetNbSelectionModes();
+      if (nbSelModes == 1)
+      {
+        Standard_Integer selMode = prs->SelectionMode();
+        di << selMode;
+      }
+      else
+      {
+        for (Standard_Integer i = 1; i <= nbSelModes; i++)
+        {
+          Standard_Integer selMode = prs->SelectionMode(i);
+          di << selMode;
+          if (i < nbSelModes)
+            di << " ";
+        }
+      }
     }
     return 0; 
   }
@@ -756,6 +776,6 @@ void DPrsStd::AISPresentationCommands (Draw_Interpretor& theCommands)
 		   __FILE__, DPrsStd_AISMode, g);
 
   theCommands.Add ("AISSelMode", 
-                   "AISSelMode (DOC, entry, [SelMode])",
+                   "AISSelMode (DOC, entry, [SelMode1 SelMode2 ...])",
 		   __FILE__, DPrsStd_AISSelMode, g);
 }

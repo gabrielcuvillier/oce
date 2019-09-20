@@ -200,15 +200,15 @@ Standard_Integer Extrema_FuncExtCS::GetStateNumber()
   math_Vector Sol(1, 3), UVSol(1, 3);
   UVSol(1) = myt; UVSol(2) = myU; UVSol(3) = myV;
   Value(UVSol, Sol);
-  cout <<"F(1)= "<<Sol(1)<<" F(2)= "<<Sol(2)<<" F(3)= "<<Sol(3)<<endl;
+  std::cout <<"F(1)= "<<Sol(1)<<" F(2)= "<<Sol(2)<<" F(3)= "<<Sol(3)<<std::endl;
 #endif
   //comparison of solution with previous solutions
   Standard_Real tol2d = Precision::PConfusion() * Precision::PConfusion();
   Standard_Integer i = 1, nbSol = mySqDist.Length();
   for( ; i <=  nbSol; i++)
   {
-    Standard_Real aU = myPoint1(i).Parameter();
-    if( (myU - aU) * (myU - aU) <= tol2d )
+    Standard_Real aT = myPoint1(i).Parameter();
+    if( (myt - aT) * (myt - aT) <= tol2d )
       break;
   }
   if (i <= nbSol)

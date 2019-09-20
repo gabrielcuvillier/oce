@@ -15,6 +15,7 @@
 
 #include <OpenGl_CappingAlgo.hxx>
 
+#include <OpenGl_ClippingIterator.hxx>
 #include <OpenGl_Workspace.hxx>
 #include <OpenGl_Context.hxx>
 #include <OpenGl_PrimitiveArray.hxx>
@@ -23,22 +24,48 @@
 #include <OpenGl_Structure.hxx>
 #include <OpenGl_ShaderManager.hxx>
 
-IMPLEMENT_STANDARD_RTTIEXT(OpenGl_CappingAlgoFilter,OpenGl_RenderFilter)
-
 namespace
 {
+  //! Auxiliary sentry object managing stencil test.
+  struct StencilTestSentry
+  {
+    StencilTestSentry() : myDepthFuncPrev (0) {}
+
+    //! Restore previous application state.
+    ~StencilTestSentry()
+    {
+      if (myDepthFuncPrev != 0)
+      {
+        glClear (GL_STENCIL_BUFFER_BIT);
+        glDepthFunc (myDepthFuncPrev);
+        glStencilFunc (GL_ALWAYS, 0, 0xFF);
+        glDisable (GL_STENCIL_TEST);
+      }
+    }
+
+    //! Prepare for rendering the clip planes.
+    void Init()
+    {
+      if (myDepthFuncPrev == 0)
+      {
+        glEnable (GL_STENCIL_TEST);
+        glGetIntegerv (GL_DEPTH_FUNC, &myDepthFuncPrev);
+        glDepthFunc (GL_LESS);
+      }
+    }
+
+  private:
+    GLint myDepthFuncPrev;
+  };
+
   //! Render infinite capping plane.
   //! @param theWorkspace [in] the GL workspace, context state.
   //! @param thePlane [in] the graphical plane, for which the capping surface is rendered.
   static void renderPlane (const Handle(OpenGl_Workspace)& theWorkspace,
-                           const Handle(OpenGl_CappingPlaneResource)& thePlane,
-                           const OpenGl_AspectFace* theAspectFace)
+                           const Handle(OpenGl_CappingPlaneResource)& thePlane)
   {
     const Handle(OpenGl_Context)& aContext = theWorkspace->GetGlContext();
-    thePlane->Update (aContext, theAspectFace != NULL ? theAspectFace->Aspect() : Handle(Graphic3d_AspectFillArea3d)());
-
-    const OpenGl_AspectFace* aFaceAspect = theWorkspace->AspectFace();
-    theWorkspace->SetAspectFace (thePlane->AspectFace());
+    const bool wasCullAllowed = theWorkspace->SetAllowFaceCulling (true);
 
     // set identity model matrix
     aContext->ModelWorldState.Push();
@@ -50,15 +77,20 @@ namespace
     aContext->ModelWorldState.Pop();
     aContext->ApplyModelViewMatrix();
 
-    theWorkspace->SetAspectFace (aFaceAspect);
+    theWorkspace->SetAllowFaceCulling (wasCullAllowed);
   }
 
   //! Render capping for specific structure.
-  static void renderCappingForStructure (const Handle(OpenGl_Workspace)& theWorkspace,
+  static void renderCappingForStructure (StencilTestSentry& theStencilSentry,
+                                         const Handle(OpenGl_Workspace)& theWorkspace,
                                          const OpenGl_Structure&         theStructure,
-                                         const OpenGl_ClippingIterator&  thePlaneIter,
+                                         const Handle(Graphic3d_ClipPlane)& theClipChain,
+                                         const Standard_Integer          theSubPlaneIndex,
                                          const Handle(OpenGl_CappingPlaneResource)& thePlane)
   {
+    const Standard_Integer aPrevFilter = theWorkspace->RenderFilter();
+    const Standard_Integer anAnyFilter = aPrevFilter & ~(Standard_Integer )(OpenGl_RenderFilter_OpaqueOnly | OpenGl_RenderFilter_TransparentOnly);
+
     const Handle(OpenGl_Context)&      aContext     = theWorkspace->GetGlContext();
     const Handle(Graphic3d_ClipPlane)& aRenderPlane = thePlane->Plane();
     for (OpenGl_Structure::GroupIterator aGroupIter (theStructure.Groups()); aGroupIter.More(); aGroupIter.Next())
@@ -68,16 +100,32 @@ namespace
         continue;
       }
 
+      // clear stencil only if something has been actually drawn
+      theStencilSentry.Init();
+
+      // check if capping plane should be rendered within current pass (only opaque / only transparent)
+      const OpenGl_Aspects* anObjAspectFace = aRenderPlane->ToUseObjectProperties() ? aGroupIter.Value()->GlAspects() : NULL;
+      thePlane->Update (aContext, anObjAspectFace != NULL ? anObjAspectFace->Aspect() : Handle(Graphic3d_Aspects)());
+      theWorkspace->SetAspects (thePlane->AspectFace());
+      theWorkspace->SetRenderFilter (aPrevFilter);
+      if (!theWorkspace->ShouldRender (&thePlane->Primitives()))
+      {
+        continue;
+      }
+
+      // suppress only opaque/transparent filter since for filling stencil the whole geometry should be drawn
+      theWorkspace->SetRenderFilter (anAnyFilter);
+
       // enable only the rendering plane to generate stencil mask
-      aContext->ChangeClipping().DisableAllExcept (aContext, thePlaneIter);
+      aContext->ChangeClipping().DisableAllExcept (theClipChain, theSubPlaneIndex);
       aContext->ShaderManager()->UpdateClippingState();
 
       glClear (GL_STENCIL_BUFFER_BIT);
-      glColorMask (GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+      const bool aColorMaskBack = aContext->SetColorMask (false);
 
       // override aspects, disable culling
-      theWorkspace->SetAspectFace (&theWorkspace->NoneCulling());
-      theWorkspace->ApplyAspectFace();
+      theWorkspace->SetAspects (&theWorkspace->NoneCulling());
+      theWorkspace->ApplyAspects();
 
       // evaluate number of pair faces
       if (theWorkspace->UseZBuffer())
@@ -108,15 +156,15 @@ namespace
       }
 
       // override material, cull back faces
-      theWorkspace->SetAspectFace (&theWorkspace->FrontCulling());
-      theWorkspace->ApplyAspectFace();
+      theWorkspace->SetAspects (&theWorkspace->FrontCulling());
+      theWorkspace->ApplyAspects();
 
       // enable all clip plane except the rendered one
-      aContext->ChangeClipping().EnableAllExcept (aContext, thePlaneIter);
+      aContext->ChangeClipping().EnableAllExcept (theClipChain, theSubPlaneIndex);
       aContext->ShaderManager()->UpdateClippingState();
 
       // render capping plane using the generated stencil mask
-      glColorMask (GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+      aContext->SetColorMask (aColorMaskBack);
       if (theWorkspace->UseDepthWrite())
       {
         glDepthMask (GL_TRUE);
@@ -128,19 +176,18 @@ namespace
         glEnable (GL_DEPTH_TEST);
       }
 
-      renderPlane (theWorkspace, thePlane, aRenderPlane->ToUseObjectProperties()
-                                         ? aGroupIter.Value()->AspectFace()
-                                         : NULL);
+      theWorkspace->SetAspects (thePlane->AspectFace());
+      renderPlane (theWorkspace, thePlane);
 
       // turn on the current plane to restore initial state
-      aContext->ChangeClipping().SetEnabled (aContext, thePlaneIter, Standard_True);
+      aContext->ChangeClipping().ResetCappingFilter();
       aContext->ShaderManager()->RevertClippingState();
       aContext->ShaderManager()->RevertClippingState();
     }
 
     if (theStructure.InstancedStructure() != NULL)
     {
-      renderCappingForStructure (theWorkspace, *theStructure.InstancedStructure(), thePlaneIter, thePlane);
+      renderCappingForStructure (theStencilSentry, theWorkspace, *theStructure.InstancedStructure(), theClipChain, theSubPlaneIndex, thePlane);
     }
   }
 }
@@ -160,76 +207,46 @@ void OpenGl_CappingAlgo::RenderCapping (const Handle(OpenGl_Workspace)& theWorks
   }
 
   // remember current aspect face defined in workspace
-  const OpenGl_AspectFace* aFaceAsp = theWorkspace->AspectFace();
+  const OpenGl_Aspects* aFaceAsp = theWorkspace->Aspects();
 
-  // replace primitive groups rendering filter
-  Handle(OpenGl_RenderFilter) aRenderFilter = theWorkspace->GetRenderFilter();
-  Handle(OpenGl_CappingAlgoFilter) aCappingFilter = theWorkspace->DefaultCappingAlgoFilter();
-  aCappingFilter->SetPreviousFilter (aRenderFilter);
-  theWorkspace->SetRenderFilter (aCappingFilter);
-
-  // prepare for rendering the clip planes
-  glEnable (GL_STENCIL_TEST);
-
-  // remember current state of depth
-  // function and change its value
-  GLint aDepthFuncPrev;
-  glGetIntegerv (GL_DEPTH_FUNC, &aDepthFuncPrev);
-  glDepthFunc (GL_LESS);
+  // only filled primitives should be rendered
+  const Standard_Integer aPrevFilter = theWorkspace->RenderFilter();
+  theWorkspace->SetRenderFilter (aPrevFilter | OpenGl_RenderFilter_FillModeOnly);
+  StencilTestSentry aStencilSentry;
 
   // generate capping for every clip plane
   for (OpenGl_ClippingIterator aCappingIt (aContext->Clipping()); aCappingIt.More(); aCappingIt.Next())
   {
     // get plane being rendered
-    const Handle(Graphic3d_ClipPlane)& aRenderPlane = aCappingIt.Value();
-    if (!aRenderPlane->IsCapping()
+    const Handle(Graphic3d_ClipPlane)& aClipChain = aCappingIt.Value();
+    if (!aClipChain->IsCapping()
       || aCappingIt.IsDisabled())
     {
       continue;
     }
 
-    // get resource for the plane
-    const TCollection_AsciiString& aResId = aRenderPlane->GetId();
-    Handle(OpenGl_CappingPlaneResource) aPlaneRes;
-    if (!aContext->GetResource (aResId, aPlaneRes))
+    Standard_Integer aSubPlaneIndex = 1;
+    for (const Graphic3d_ClipPlane* aSubPlaneIter = aClipChain.get(); aSubPlaneIter != NULL; aSubPlaneIter = aSubPlaneIter->ChainNextPlane().get(), ++aSubPlaneIndex)
     {
-      // share and register for release once the resource is no longer used
-      aPlaneRes = new OpenGl_CappingPlaneResource (aRenderPlane);
-      aContext->ShareResource (aResId, aPlaneRes);
+      // get resource for the plane
+      const TCollection_AsciiString& aResId = aSubPlaneIter->GetId();
+      Handle(OpenGl_CappingPlaneResource) aPlaneRes;
+      if (!aContext->GetResource (aResId, aPlaneRes))
+      {
+        // share and register for release once the resource is no longer used
+        aPlaneRes = new OpenGl_CappingPlaneResource (aSubPlaneIter);
+        aContext->ShareResource (aResId, aPlaneRes);
+      }
+
+      renderCappingForStructure (aStencilSentry, theWorkspace, theStructure, aClipChain, aSubPlaneIndex, aPlaneRes);
+
+      // set delayed resource release
+      aPlaneRes.Nullify();
+      aContext->ReleaseResource (aResId, Standard_True);
     }
-
-    renderCappingForStructure (theWorkspace, theStructure, aCappingIt, aPlaneRes);
-
-    // set delayed resource release
-    aPlaneRes.Nullify();
-    aContext->ReleaseResource (aResId, Standard_True);
   }
-
-  // restore previous application state
-  glClear (GL_STENCIL_BUFFER_BIT);
-  glDepthFunc (aDepthFuncPrev);
-  glStencilFunc (GL_ALWAYS, 0, 0xFF);
-  glDisable (GL_STENCIL_TEST);
 
   // restore rendering aspects
-  theWorkspace->SetAspectFace (aFaceAsp);
-  theWorkspace->SetRenderFilter (aRenderFilter);
-}
-
-// =======================================================================
-// function : CanRender
-// purpose  :
-// =======================================================================
-Standard_Boolean OpenGl_CappingAlgoFilter::ShouldRender (const Handle(OpenGl_Workspace)& theWorkspace,
-                                                         const OpenGl_Element* theGlElement)
-{
-  if (!myFilter.IsNull() && !myFilter->ShouldRender (theWorkspace, theGlElement))
-  {
-    return Standard_False;
-  }
-
-  const OpenGl_PrimitiveArray* aPArray = dynamic_cast<const OpenGl_PrimitiveArray*> (theGlElement);
-  return aPArray != NULL
-      && aPArray->DrawMode() >= OpenGl_PrimitiveArray::THE_FILLPRIM_FROM
-      && aPArray->DrawMode() <= OpenGl_PrimitiveArray::THE_FILLPRIM_TO;
+  theWorkspace->SetAspects (aFaceAsp);
+  theWorkspace->SetRenderFilter (aPrevFilter);
 }

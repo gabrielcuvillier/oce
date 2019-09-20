@@ -98,15 +98,14 @@ static Standard_Integer DDataStd_GetName (Draw_Interpretor& di,
 	}
 	Handle(TDataStd_Name) N;	  
 	if( !L.FindAttribute(aGuid, N) ) {
-      cout << "Name attribute is not found or not set"  << endl;
+      std::cout << "Name attribute is not found or not set"  << std::endl;
 	  return 1;
 	}
 #ifdef DEB_DDataStd
 	if(!N.IsNull()) 
-      cout << "String = " << TCollection_AsciiString(N->Get(), '?').ToCString()  << endl;
+      std::cout << "String = " << TCollection_AsciiString(N->Get(), '?').ToCString()  << std::endl;
 #endif
-    TCollection_AsciiString s(N->Get(),'?');
-    di << s.ToCString();
+    di << N->Get();
     return 0;
   }
   di << "DDataStd_SetName : Error\n";

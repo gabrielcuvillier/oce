@@ -69,7 +69,7 @@ static Handle(TDataStd_IntegerArray) SetAttr(const TDF_Label&       label,
 //=======================================================================
 
 TDataStd_IntegerArray::TDataStd_IntegerArray()
-  :myIsDelta(Standard_False)
+  :myIsDelta(Standard_False), myID(GetID())
 {}
 
 //=======================================================================
@@ -316,7 +316,7 @@ Standard_OStream& TDataStd_IntegerArray::Dump (Standard_OStream& anOS) const
   Standard_Character sguid[Standard_GUID_SIZE_ALLOC];
   myID.ToCString(sguid);
   anOS << sguid;
-  anOS << endl;
+  anOS << std::endl;
 
   // anOS <<"\nAttribute fields: ";
   //  anOS << TDF_Attribute::Dump(anOS);

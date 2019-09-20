@@ -17,7 +17,7 @@
 #include <BinMDataStd.hxx>
 #include <BinMDataStd_IntegerArrayDriver.hxx>
 #include <BinObjMgt_Persistent.hxx>
-#include <CDM_MessageDriver.hxx>
+#include <Message_Messenger.hxx>
 #include <Standard_Type.hxx>
 #include <TColStd_HArray1OfInteger.hxx>
 #include <TDataStd_IntegerArray.hxx>
@@ -30,7 +30,7 @@ IMPLEMENT_STANDARD_RTTIEXT(BinMDataStd_IntegerArrayDriver,BinMDF_ADriver)
 //purpose  : Constructor
 //=======================================================================
 BinMDataStd_IntegerArrayDriver::BinMDataStd_IntegerArrayDriver
-                        (const Handle(CDM_MessageDriver)& theMsgDriver)
+                        (const Handle(Message_Messenger)& theMsgDriver)
      : BinMDF_ADriver (theMsgDriver, STANDARD_TYPE(TDataStd_IntegerArray)->Name())
 {
 }
@@ -53,7 +53,7 @@ Handle(TDF_Attribute) BinMDataStd_IntegerArrayDriver::NewEmpty() const
 Standard_Boolean BinMDataStd_IntegerArrayDriver::Paste
                                 (const BinObjMgt_Persistent&  theSource,
                                  const Handle(TDF_Attribute)& theTarget,
-                                 BinObjMgt_RRelocationTable&  ) const
+                                 BinObjMgt_RRelocationTable&  theRelocTable) const
 {
   Standard_Integer aFirstInd, aLastInd;
   if (! (theSource >> aFirstInd >> aLastInd))
@@ -69,7 +69,7 @@ Standard_Boolean BinMDataStd_IntegerArrayDriver::Paste
   if(!theSource.GetIntArray (&aTargetArray(aFirstInd), aLength))
     return Standard_False;
   Standard_Boolean aDelta(Standard_False);
-  if(BinMDataStd::DocumentVersion() > 2) {
+  if(theRelocTable.GetHeaderData()->StorageVersion().IntegerValue() > 2) {
     Standard_Byte aDeltaValue;
     if (! (theSource >> aDeltaValue))
       return Standard_False;
@@ -77,12 +77,11 @@ Standard_Boolean BinMDataStd_IntegerArrayDriver::Paste
       aDelta = (aDeltaValue != 0);
   }
 #ifdef OCCT_DEBUG
-  else if(BinMDataStd::DocumentVersion() == -1)
-    cout << "Current DocVersion field is not initialized. "  <<endl;
+    //std::cout << "Current Document Format Version = " << theRelocTable.GetHeaderData()->StorageVersion().IntegerValue() <<std::endl;
 #endif
   anAtt->SetDelta(aDelta);
 
-  BinMDataStd::SetAttributeID(theSource, anAtt);
+  BinMDataStd::SetAttributeID(theSource, anAtt, theRelocTable.GetHeaderData()->StorageVersion().IntegerValue());
   return Standard_True; 
 }
 

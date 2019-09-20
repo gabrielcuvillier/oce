@@ -40,7 +40,7 @@
 #include <IntTools_Context.hxx>
 #include <IntTools_Tools.hxx>
 
-#include <BOPTools_AlgoTools2D.hxx>
+#include <BOPTools_AlgoTools.hxx>
 
 
 
@@ -50,10 +50,6 @@ static
                                       const TopoDS_Face& , 
                                       const Handle(IntTools_Context)& );
 static
-  Standard_Boolean IsToReverse(const TopoDS_Edge& ,
-                               const TopoDS_Edge& ,
-                               const Handle(IntTools_Context)& );
-static
   Standard_Boolean IsClosed(const TopoDS_Edge& ,
                             const TopoDS_Face& );
 
@@ -62,9 +58,9 @@ static
 //purpose  : 
 //=======================================================================
 Standard_Integer BOPTools_AlgoTools2D::AttachExistingPCurve
-  (const TopoDS_Edge& aE2, // old
-   const TopoDS_Edge& aE1, // new
-   const TopoDS_Face& aF, 
+  (const TopoDS_Edge& theE2, // old
+   const TopoDS_Edge& theE1, // new
+   const TopoDS_Face& theF, 
    const Handle(IntTools_Context)& aCtx)
 {
   Standard_Boolean bIsToReverse, bIsClosed, bComp;
@@ -77,6 +73,13 @@ Standard_Integer BOPTools_AlgoTools2D::AttachExistingPCurve
   //
   iRet=0;
   //
+  TopoDS_Face aF = theF;
+  aF.Orientation (TopAbs_FORWARD);
+  TopoDS_Edge aE1 = theE1;
+  aE1.Orientation (TopAbs_FORWARD);
+  TopoDS_Edge aE2 = theE2;
+  aE2.Orientation (TopAbs_FORWARD);
+  //
   aC2Dold=BRep_Tool::CurveOnSurface(aE2, aF, aT21, aT22);
   if (aC2Dold.IsNull()){
     iRet=1;
@@ -85,7 +88,7 @@ Standard_Integer BOPTools_AlgoTools2D::AttachExistingPCurve
   //
   aC2DoldC=Handle(Geom2d_Curve)::DownCast(aC2Dold->Copy());
   //
-  bIsToReverse=IsToReverse(aE2, aE1, aCtx);
+  bIsToReverse = BOPTools_AlgoTools::IsSplitToReverse(aE1, aE2, aCtx);
   if (bIsToReverse) {
     Standard_Real aT21r, aT22r;
     //
@@ -140,7 +143,7 @@ Standard_Integer BOPTools_AlgoTools2D::AttachExistingPCurve
     BRepLib::SameParameter(aE1T);
     BRepLib::SameRange(aE1T);
   }
-  catch (Standard_Failure)
+  catch (Standard_Failure const&)
   {
     iRet = 6;
     return iRet;
@@ -279,49 +282,6 @@ Standard_Integer UpdateClosedPCurve(const TopoDS_Edge& aEold,
     aBB.UpdateEdge(aEnew, aC2DTnew, aC2D , aF, aTol);
   }
   return iRet;
-}
-//=======================================================================
-//function : IsToReverse
-//purpose  : 
-//=======================================================================
-Standard_Boolean IsToReverse(const TopoDS_Edge& aEold,
-                             const TopoDS_Edge& aEnew,
-                             const Handle(IntTools_Context)& aCtx)
-{
-  Standard_Boolean bRet, bIsDegenerated;
-  Standard_Real aTnew, aTold, aScPr, aTa, aTb, aT1, aT2;
-  gp_Vec aVold, aVnew, aVE, aVS;
-  gp_Pnt aP;
-  Handle(Geom_Curve) aCold, aCnew;
-  //
-  bRet=Standard_False;
-  //
-  bIsDegenerated=(BRep_Tool::Degenerated(aEold) ||
-                  BRep_Tool::Degenerated(aEnew));
-  if (bIsDegenerated) {
-    return bRet;
-  }
-  //
-  aCold=BRep_Tool::Curve(aEold, aT1, aT2);
-  aCnew=BRep_Tool::Curve(aEnew, aTa, aTb);
-  //
-  if (aCold==aCnew) {
-    return bRet;
-  }
-  //
-  aTnew=BOPTools_AlgoTools2D::IntermediatePoint(aTa, aTb);
-  aCnew->D1(aTnew, aP, aVnew);
-  aVnew.Normalize(); 
-  //
-  if (!aCtx->ProjectPointOnEdge(aP, aEold, aTold))
-    return Standard_False;
-  aCold->D1(aTold, aP, aVold);
-  aVold.Normalize(); 
-  //
-  aScPr=aVnew*aVold;
-  bRet=(aScPr<0.);
-  //
-  return bRet;
 }
 //=======================================================================
 //function : IsClosed

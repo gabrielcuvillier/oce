@@ -35,7 +35,7 @@
 class SelectMgr_SelectionManager;
 class SelectMgr_SensitiveEntitySet;
 class SelectMgr_EntityOwner;
-class SelectBasics_SensitiveEntity;
+class Select3D_SensitiveEntity;
 
 // resolve name collisions with X11 headers
 #ifdef Status
@@ -112,6 +112,9 @@ public:
   //! Returns the number of detected owners.
   Standard_Integer NbPicked() const { return mystored.Extent(); }
 
+  //! Clears picking results.
+  Standard_EXPORT void ClearPicked();
+
   //! Returns the entity Owner for the object picked at specified position.
   //! @param theRank rank of detected object within range 1...NbPicked()
   Standard_EXPORT Handle(SelectMgr_EntityOwner) Picked (const Standard_Integer theRank) const;
@@ -122,7 +125,7 @@ public:
 
   //! Returns the Entity for the object picked at specified position.
   //! @param theRank rank of detected object within range 1...NbPicked()
-  const Handle(SelectBasics_SensitiveEntity)& PickedEntity (const Standard_Integer theRank) const { return PickedData (theRank).Entity; }
+  const Handle(Select3D_SensitiveEntity)& PickedEntity (const Standard_Integer theRank) const { return PickedData (theRank).Entity; }
 
   //! Returns the 3D point (intersection of picking axis with the object nearest to eye)
   //! for the object picked at specified position.
@@ -165,7 +168,7 @@ public:
   Standard_EXPORT TCollection_AsciiString Status (const Handle(SelectMgr_SelectableObject)& theSelectableObject) const;
 
   //! Returns the list of active entity owners
-  Standard_EXPORT void ActiveOwners (NCollection_List<Handle(SelectBasics_EntityOwner)>& theOwners) const;
+  Standard_EXPORT void ActiveOwners (NCollection_List<Handle(SelectMgr_EntityOwner)>& theOwners) const;
 
   //! Adds new object to the map of selectable objects
   Standard_EXPORT void AddSelectableObject (const Handle(SelectMgr_SelectableObject)& theObject);
@@ -215,7 +218,7 @@ public:
   //! Continues the interation scanning for the owners detected at a position in the view,
   //! or continues the iteration scanning for the owner closest to the position in the view.
   Standard_DEPRECATED("Deprecated method More()")
-  Standard_EXPORT Standard_Boolean More() { return morePicked(); }
+  Standard_Boolean More() { return morePicked(); }
 
   //! Returns the next owner found in the iteration. This is
   //! a scan for the owners detected at a position in the view.
@@ -240,7 +243,7 @@ public:
 
   //! Returns sensitive entity that was detected during the previous run of selection algorithm
   Standard_DEPRECATED("Deprecated method DetectedEntity() should be replaced by DetectedEntity(int)")
-  Standard_EXPORT const Handle(SelectBasics_SensitiveEntity)& DetectedEntity() const;
+  Standard_EXPORT const Handle(Select3D_SensitiveEntity)& DetectedEntity() const;
 
 protected:
 
@@ -249,14 +252,6 @@ protected:
   //! Traverses BVH containing all added selectable objects and
   //! finds candidates for further search of overlap
   Standard_EXPORT void TraverseSensitives();
-
-  //! Returns True if the owner provides clipping by depth
-  //! for its sensitives. Override this method to tell the selector
-  //! to use the DepthClipping method for the owner.
-  //! Default implementation returns False for every owner.
-  //! @param theOwner [in] the onwer to check.
-  //! @return True if owner provides depth limits for sensitive clipping.
-  Standard_EXPORT virtual Standard_Boolean HasDepthClipping (const Handle(SelectMgr_EntityOwner)& theOwner) const;
 
   //! Internal function that checks if there is possible overlap between some entity of selectable object theObject and
   //! current selecting volume.
@@ -275,18 +270,18 @@ protected:
 
   //! Internal function that checks if a particular sensitive
   //! entity theEntity overlaps current selecting volume precisely
-  Standard_EXPORT void checkOverlap (const Handle(SelectBasics_SensitiveEntity)& theEntity,
+  Standard_EXPORT void checkOverlap (const Handle(Select3D_SensitiveEntity)& theEntity,
                                      const gp_GTrsf& theInversedTrsf,
                                      SelectMgr_SelectingVolumeManager& theMgr);
 
 private:
 
   //! Checks if the entity given requires to scale current selecting frustum
-  Standard_Boolean isToScaleFrustum (const Handle(SelectBasics_SensitiveEntity)& theEntity);
+  Standard_Boolean isToScaleFrustum (const Handle(Select3D_SensitiveEntity)& theEntity);
 
   //! In case if custom tolerance is set, this method will return sum of entity sensitivity and
   //! custom tolerance. Otherwise, pure entity sensitivity factor will be returned.
-  Standard_Integer sensitivity (const Handle(SelectBasics_SensitiveEntity)& theEntity) const;
+  Standard_Integer sensitivity (const Handle(Select3D_SensitiveEntity)& theEntity) const;
 
   void Activate (const Handle(SelectMgr_Selection)& theSelection);
 
@@ -295,14 +290,13 @@ private:
   //! removes a Selection from the Selector
   void Remove (const Handle(SelectMgr_Selection)& aSelection);
 
-  //! Internal function that checks if a current selecting frustum
-  //! needs to be scaled and transformed for the entity and performs
-  //! necessary calculations
-  void computeFrustum (const Handle(SelectBasics_SensitiveEntity)& theEnt,
-                       const SelectMgr_SelectingVolumeManager&     theMgr,
-                       const gp_GTrsf&                             theInvTrsf,
-                       SelectMgr_FrustumCache&                     theCachedMgrs,
-                       SelectMgr_SelectingVolumeManager&           theResMgr);
+  //! Internal function that checks if a current selecting frustum needs to be scaled and transformed for the entity and performs necessary calculations.
+  void computeFrustum (const Handle(Select3D_SensitiveEntity)& theEnt,
+                       const SelectMgr_SelectingVolumeManager& theMgrGlobal,
+                       const SelectMgr_SelectingVolumeManager& theMgrObject,
+                       const gp_GTrsf& theInvTrsf,
+                       SelectMgr_FrustumCache& theCachedMgrs,
+                       SelectMgr_SelectingVolumeManager& theResMgr);
 
 
 private: // implementation of deprecated methods
@@ -321,6 +315,13 @@ private: // implementation of deprecated methods
     return myCurRank <= myIndexes->Length();
   }
 
+  //! Compute 3d position for detected entity.
+  void updatePoint3d (SelectMgr_SortCriterion& theCriterion,
+                      const SelectBasics_PickResult& thePickResult,
+                      const Handle(Select3D_SensitiveEntity)& theEntity,
+                      const gp_GTrsf& theInversedTrsf,
+                      const SelectMgr_SelectingVolumeManager& theMgr) const;
+
 protected:
 
   Standard_Boolean                              preferclosest;
@@ -331,6 +332,9 @@ protected:
   SelectMgr_ToleranceMap                        myTolerances;
   NCollection_DataMap<Graphic3d_ZLayerId, Standard_Integer> myZLayerOrderMap;
   Handle(Select3D_BVHBuilder3d)                 myEntitySetBuilder;
+  gp_Pnt                                        myCameraEye;
+  gp_Dir                                        myCameraDir;
+  Standard_Real                                 myCameraScale;
 
 private:
 

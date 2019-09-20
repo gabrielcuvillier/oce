@@ -83,7 +83,7 @@ Standard_Integer DNaming_FilletDriver::Execute(Handle(TFunction_Logbook)& theLog
   aLab.FindAttribute(TNaming_NamedShape::GetID(), aContextNS);
   if (aContextNS.IsNull() || aContextNS->IsEmpty()) {
 #ifdef OCCT_DEBUG
-    cout<<"FilletDriver:: Context is empty"<<endl;
+    std::cout<<"FilletDriver:: Context is empty"<<std::endl;
 #endif
     aFunction->SetFailure(WRONG_ARGUMENT);
     return -1;
@@ -96,7 +96,7 @@ Standard_Integer DNaming_FilletDriver::Execute(Handle(TFunction_Logbook)& theLog
   if(aRadius < Precision::Confusion()) {
     aFunction->SetFailure(WRONG_ARGUMENT);
 #ifdef OCCT_DEBUG
-    cout << "FilletDriver:: Radius < Precision::Confusion" << endl;
+    std::cout << "FilletDriver:: Radius < Precision::Confusion" << std::endl;
 #endif
     return -1;
   }
@@ -106,7 +106,7 @@ Standard_Integer DNaming_FilletDriver::Execute(Handle(TFunction_Logbook)& theLog
   Handle(TNaming_NamedShape) aPathNS = DNaming::GetObjectValue(aPathObj);
   if (aPathNS.IsNull() || aPathNS->IsEmpty()) {
 #ifdef OCCT_DEBUG
-    cout<<"FilletDriver:: Path is empty"<<endl;
+    std::cout<<"FilletDriver:: Path is empty"<<std::endl;
 #endif
     aFunction->SetFailure(WRONG_ARGUMENT);
     return -1;
@@ -116,7 +116,7 @@ Standard_Integer DNaming_FilletDriver::Execute(Handle(TFunction_Logbook)& theLog
   TopoDS_Shape aCONTEXT = aContextNS->Get();
   if (aPATH.IsNull() || aCONTEXT.IsNull()) {
 #ifdef OCCT_DEBUG
-    cout<<"FilletDriver:: Path or Context is null"<<endl;
+    std::cout<<"FilletDriver:: Path or Context is null"<<std::endl;
 #endif
     aFunction->SetFailure(WRONG_ARGUMENT);
     return -1;
@@ -179,11 +179,8 @@ void DNaming_FilletDriver::LoadNamingDS (const TDF_Label& theResultLabel,
   TopoDS_Shape aResult = theMkFillet.Shape();
 
   if (aResult.ShapeType() == TopAbs_COMPOUND) {
-    Standard_Integer nbSubResults = 0;
-    TopoDS_Iterator itr(aResult);
-    for (; itr.More(); itr.Next()) nbSubResults++;
-    if (nbSubResults == 1) {
-      itr.Initialize(aResult);
+    if (aResult.NbChildren() == 1) {
+      TopoDS_Iterator itr (aResult);
       if (itr.More()) aResult = itr.Value();
     }
   }

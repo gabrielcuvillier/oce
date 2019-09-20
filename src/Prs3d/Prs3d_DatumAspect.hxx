@@ -43,14 +43,23 @@ public:
   //! Returns the right-handed coordinate system set in SetComponent.
   Standard_EXPORT Handle(Prs3d_ShadingAspect) ShadingAspect (Prs3d_DatumParts thePart) const;
 
-  //! Returns the right-handed coordinate system set in SetComponent.
+  //! Returns the text attributes for rendering labels.
   const Handle(Prs3d_TextAspect)& TextAspect() const { return myTextAspect; }
+
+  //! Sets text attributes for rendering labels.
+  void SetTextAspect (const Handle(Prs3d_TextAspect)& theTextAspect) { myTextAspect = theTextAspect; }
 
   //! Returns the point aspect of origin wireframe presentation
   const Handle(Prs3d_PointAspect)& PointAspect() const { return myPointAspect; }
 
+  //! Returns the point aspect of origin wireframe presentation
+  void SetPointAspect (const Handle(Prs3d_PointAspect)& theAspect) { myPointAspect = theAspect; }
+
   //! Returns the arrow aspect of presentation
   const Handle(Prs3d_ArrowAspect)& ArrowAspect() const { return myArrowAspect; }
+
+  //! Sets the arrow aspect of presentation
+  void SetArrowAspect (const Handle(Prs3d_ArrowAspect)& theAspect) { myArrowAspect = theAspect; }
 
   //! Returns the attributes for display of the first axis.
   Standard_DEPRECATED("This method is deprecated - LineAspect() should be called instead")
@@ -128,11 +137,18 @@ public:
   Standard_DEPRECATED("This method is deprecated - AxisLength() should be called instead")
   Standard_Real ThirdAxisLength() const { return myAttributes.Find (Prs3d_DA_ZAxisLength); }
 
+  //! @return true if axes labels are drawn; TRUE by default.
+  Standard_Boolean ToDrawLabels() const { return myToDrawLabels; }
+
   //! Sets option to draw or not to draw text labels for axes
+  void SetDrawLabels (Standard_Boolean theToDraw) { myToDrawLabels = theToDraw; }
   void SetToDrawLabels (Standard_Boolean theToDraw) { myToDrawLabels = theToDraw; }
 
-  //! @return true if axes labels are drawn
-  Standard_Boolean ToDrawLabels() const { return myToDrawLabels; }
+  //! @return true if axes arrows are drawn; TRUE by default.
+  Standard_Boolean ToDrawArrows() const { return myToDrawArrows; }
+
+  //! Sets option to draw or not arrows for axes
+  void SetDrawArrows (Standard_Boolean theToDraw) { myToDrawArrows = theToDraw; }
 
   //! Returns type of arrow for a type of axis
   Standard_EXPORT Prs3d_DatumParts ArrowPartForAxis (Prs3d_DatumParts thePart) const;
@@ -140,6 +156,7 @@ public:
 private:
   Prs3d_DatumAxes myAxes;
   Standard_Boolean myToDrawLabels;
+  Standard_Boolean myToDrawArrows;
   NCollection_DataMap<Prs3d_DatumAttribute, Standard_Real> myAttributes;
 
   NCollection_DataMap<Prs3d_DatumParts, Handle(Prs3d_ShadingAspect)> myShadedAspects;

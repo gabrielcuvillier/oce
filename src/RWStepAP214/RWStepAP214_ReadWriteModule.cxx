@@ -3278,7 +3278,7 @@ Standard_Integer RWStepAP214_ReadWriteModule::CaseStep
   Standard_Integer NbComp = theTypes.Length();
   if (NbComp < 2) {
 #ifdef OCCT_DEBUG
-    cout << "Not a Plex" << endl;
+    std::cout << "Not a Plex" << std::endl;
 #endif
   }
   else {
@@ -3398,6 +3398,15 @@ Standard_Integer RWStepAP214_ReadWriteModule::CaseStep
                (types(4).IsEqual(StepType(144))) &&
                (types(5).IsEqual(StepType(240))) &&
                (types(6).IsEqual(StepType(247))) &&
+               (types(7).IsEqual(StepType(271)))) {
+        return 323;
+      }
+      else if ((types(1).IsEqual(StepType(40))) &&
+               (types(2).IsEqual(StepType(41))) &&
+               (types(3).IsEqual(StepType(240))) &&
+               (types(4).IsEqual(StepType(49))) &&
+               (types(5).IsEqual(StepType(247))) &&
+               (types(6).IsEqual(StepType(144))) &&
                (types(7).IsEqual(StepType(271)))) {
         return 323;
       }
@@ -3629,6 +3638,11 @@ Standard_Integer RWStepAP214_ReadWriteModule::CaseStep
                (types(2).IsEqual(StepType(264))) &&
                (types(3).IsEqual(StepType(336)))) {
         return 335;
+      }
+      else if ((types(1).IsEqual(StepType(169))) &&
+               (types(2).IsEqual(StepType(336))) &&
+               (types(3).IsEqual(StepType(264)))) {
+	    return 335;
       }
       else if ((types(1).IsEqual(StepType(143))) &&
                (types(2).IsEqual(StepType(188))) &&
@@ -4883,7 +4897,7 @@ void RWStepAP214_ReadWriteModule::ReadStep(const Standard_Integer CN,
 {
   if (CN == 0) {
 #ifdef OCCT_DEBUG
-    cout << "CN = 0 for num = " << num << endl;
+    std::cout << "CN = 0 for num = " << num << std::endl;
 #endif
     return;
   }

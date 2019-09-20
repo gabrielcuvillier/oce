@@ -12,7 +12,9 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
-#include <windows.h>
+#if defined(_WIN32)
+  #include <windows.h>
+#endif
 
 #include <WNT_WClass.hxx>
 
@@ -48,8 +50,8 @@ WNT_WClass::WNT_WClass (const TCollection_AsciiString& theClassName,
   aWinClass.cbClsExtra    = theClassExtra;
   aWinClass.cbWndExtra    = theWindowExtra;
   aWinClass.hInstance     = (HINSTANCE )myAppInstance;
-  aWinClass.hIcon         = theIcon   != NULL ? (HICON   )theIcon   : LoadIconW   (NULL, IDI_APPLICATION);
-  aWinClass.hCursor       = theCursor != NULL ? (HCURSOR )theCursor : LoadCursorW (NULL, IDC_NO);
+  aWinClass.hIcon         = theIcon   != NULL ? (HICON   )theIcon   : LoadIcon   (NULL, IDI_APPLICATION);
+  aWinClass.hCursor       = theCursor != NULL ? (HCURSOR )theCursor : LoadCursor (NULL, IDC_NO);
   aWinClass.hbrBackground = 0;
   aWinClass.lpszMenuName  = !aMenuNameW.IsEmpty() ? aMenuNameW.ToWideString() : NULL;
   aWinClass.lpszClassName = aClassNameW.ToWideString();

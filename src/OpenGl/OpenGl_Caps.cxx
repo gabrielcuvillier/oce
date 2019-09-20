@@ -28,11 +28,11 @@ OpenGl_Caps::OpenGl_Caps()
 : vboDisable        (Standard_False),
   pntSpritesDisable (Standard_False),
   keepArrayData     (Standard_False),
-#if !defined(GL_ES_VERSION_2_0)
   ffpEnable         (Standard_False),
+  usePolygonMode    (Standard_False),
+#if !defined(GL_ES_VERSION_2_0)
   useSystemBuffer   (Standard_False),
 #else
-  ffpEnable         (Standard_False),
   useSystemBuffer   (Standard_True),
 #endif
   swapInterval      (1),
@@ -51,8 +51,12 @@ OpenGl_Caps::OpenGl_Caps()
 #else
   contextCompatible (Standard_False),
 #endif
+  contextNoExtensions (Standard_False),
+  contextMajorVersionUpper (-1),
+  contextMinorVersionUpper (-1),
   glslWarnings      (Standard_False),
-  suppressExtraMsg  (Standard_True)
+  suppressExtraMsg  (Standard_True),
+  glslDumpLevel     (OpenGl_ShaderProgramDumpLevel_Off)
 {
   //
 }
@@ -75,8 +79,12 @@ OpenGl_Caps& OpenGl_Caps::operator= (const OpenGl_Caps& theCopy)
   contextSyncDebug  = theCopy.contextSyncDebug;
   contextNoAccel    = theCopy.contextNoAccel;
   contextCompatible = theCopy.contextCompatible;
+  contextNoExtensions = theCopy.contextNoExtensions;
+  contextMajorVersionUpper = theCopy.contextMajorVersionUpper;
+  contextMinorVersionUpper = theCopy.contextMinorVersionUpper;
   glslWarnings      = theCopy.glslWarnings;
   suppressExtraMsg  = theCopy.suppressExtraMsg;
+  glslDumpLevel     = theCopy.glslDumpLevel;
   return *this;
 }
 

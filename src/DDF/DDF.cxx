@@ -61,7 +61,7 @@ Standard_Boolean DDF::FindLabel (const Handle(TDF_Data)& DF,
 {
   Label.Nullify();
   TDF_Tool::Label(DF,Entry,Label,Standard_False);
-  if (Label.IsNull() && Complain) cout << "No label for entry " << Entry <<endl;
+  if (Label.IsNull() && Complain) std::cout << "No label for entry " << Entry <<std::endl;
   return !Label.IsNull();
 }
 
@@ -75,14 +75,14 @@ Standard_Boolean DDF::GetDF (Standard_CString&       Name,
 			     Handle(TDF_Data)&       DF,
                              const Standard_Boolean  Complain)
 { 
-  Handle(Standard_Transient) t = Draw::Get(Name, Complain);
+  Handle(Standard_Transient) t = Draw::Get (Name);
   Handle(DDF_Data) DDF = Handle(DDF_Data)::DownCast (t);
   //Handle(DDF_Data) DDF = Handle(DDF_Data)::DownCast (Draw::Get(Name, Complain)); 
   if (!DDF.IsNull()) {
     DF = DDF->DataFramework(); 
     return Standard_True;
   } 
-  if (Complain) cout <<"framework "<<Name<<" not found "<< endl; 
+  if (Complain) std::cout <<"framework "<<Name<<" not found "<< std::endl; 
   return Standard_False;
 }
 
@@ -101,7 +101,7 @@ Standard_Boolean DDF::Find (const Handle(TDF_Data)& DF,
   TDF_Label L;
   if (FindLabel(DF,Entry,L,Complain)) {
     if (L.FindAttribute(ID,A)) return Standard_True;
-    if (Complain) cout <<"attribute not found for entry : "<< Entry <<endl; 
+    if (Complain) std::cout <<"attribute not found for entry : "<< Entry <<std::endl; 
   }
   return Standard_False;   
 }

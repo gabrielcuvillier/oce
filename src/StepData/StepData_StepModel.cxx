@@ -119,9 +119,9 @@ void StepData_StepModel::DumpHeader
     S << "  "  << iter.Value()->DynamicType()->Name() << "\n";
   }
   if (!iapro || nb == 0) return;
-  S << " --  --        STEP MODEL    HEADER  CONTENT      --  --" << endl;
+  S << " --  --        STEP MODEL    HEADER  CONTENT      --  --" << Message_EndLine;
   S << " --   Dumped with Protocol : " << stepro->DynamicType()->Name()
-    << "   --"<<endl;
+    << "   --"<<Message_EndLine;
 
   Standard_SStream aSStream;
   Handle(StepData_StepModel) me (this);
@@ -141,10 +141,21 @@ void  StepData_StepModel::SetIdentLabel
   Standard_Integer num = Number(ent);
   if (!num) 
     return;
+  Standard_Integer nbEnt = NbEntities();
   if(theidnums.IsNull())
   {
-    theidnums = new TColStd_HArray1OfInteger(1, NbEntities());
+    theidnums = new TColStd_HArray1OfInteger(1,nbEnt);
     theidnums->Init(0);
+  }
+  else if(nbEnt > theidnums->Length())
+  {
+    Standard_Integer prevLength = theidnums->Length();
+    Handle(TColStd_HArray1OfInteger) idnums1 = new TColStd_HArray1OfInteger(1,nbEnt);
+    idnums1->Init(0);
+    Standard_Integer k =1;
+    for( ; k <= prevLength; k++)
+      idnums1->SetValue(k , theidnums->Value(k));
+    theidnums = idnums1;
   }
   theidnums->SetValue(num,ident);
 

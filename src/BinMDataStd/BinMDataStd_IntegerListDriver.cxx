@@ -17,7 +17,7 @@
 #include <BinMDataStd_IntegerListDriver.hxx>
 #include <BinMDataStd.hxx>
 #include <BinObjMgt_Persistent.hxx>
-#include <CDM_MessageDriver.hxx>
+#include <Message_Messenger.hxx>
 #include <Standard_Type.hxx>
 #include <TColStd_Array1OfInteger.hxx>
 #include <TColStd_ListIteratorOfListOfInteger.hxx>
@@ -30,7 +30,7 @@ IMPLEMENT_STANDARD_RTTIEXT(BinMDataStd_IntegerListDriver,BinMDF_ADriver)
 //function : BinMDataStd_IntegerListDriver
 //purpose  : Constructor
 //=======================================================================
-BinMDataStd_IntegerListDriver::BinMDataStd_IntegerListDriver(const Handle(CDM_MessageDriver)& theMsgDriver)
+BinMDataStd_IntegerListDriver::BinMDataStd_IntegerListDriver(const Handle(Message_Messenger)& theMsgDriver)
      : BinMDF_ADriver (theMsgDriver, STANDARD_TYPE(TDataStd_IntegerList)->Name())
 {
 
@@ -51,7 +51,7 @@ Handle(TDF_Attribute) BinMDataStd_IntegerListDriver::NewEmpty() const
 //=======================================================================
 Standard_Boolean BinMDataStd_IntegerListDriver::Paste(const BinObjMgt_Persistent&  theSource,
                                                       const Handle(TDF_Attribute)& theTarget,
-                                                      BinObjMgt_RRelocationTable&  ) const
+                                                      BinObjMgt_RRelocationTable&  theRelocTable) const
 {
   Standard_Integer aIndex, aFirstInd, aLastInd;
   if (! (theSource >> aFirstInd >> aLastInd))
@@ -67,7 +67,7 @@ Standard_Boolean BinMDataStd_IntegerListDriver::Paste(const BinObjMgt_Persistent
     }
   }
 
-  BinMDataStd::SetAttributeID(theSource, anAtt);
+  BinMDataStd::SetAttributeID(theSource, anAtt, theRelocTable.GetHeaderData()->StorageVersion().IntegerValue());
   return Standard_True;
 }
 

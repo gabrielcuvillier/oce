@@ -15,7 +15,6 @@
 #define _Interface_ValueInterpret_HeaderFile
 
 #include <TCollection_HAsciiString.hxx>
-#include <Interface_TypedValue.hxx>
 
 typedef Handle(TCollection_HAsciiString)  (*Interface_ValueInterpret) (const Handle(Interface_TypedValue)& typval, const Handle(TCollection_HAsciiString)& val, const Standard_Boolean native);
 

@@ -66,8 +66,8 @@ static Standard_Integer DDocStd_ListDocuments (Draw_Interpretor& di,
       if (D->IsSaved()) {
 	TCollection_AsciiString GetNameAsciiString(D->GetName().ToExtString(),'?');
 	TCollection_AsciiString GetPathAsciiString(D->GetPath().ToExtString(),'?');
-	//cout << " name : " << D->GetName();
-	//cout << " path : " << D->GetPath();
+	//std::cout << " name : " << D->GetName();
+	//std::cout << " path : " << D->GetPath();
 	di << " name : " << GetNameAsciiString.ToCString();
 	di << " path : " << GetPathAsciiString.ToCString();
       }
@@ -348,8 +348,10 @@ static Standard_Integer DDocStd_Close (Draw_Interpretor& /*theDI*/,
 
   aDocApp->Close (aDoc);
 
-  Handle(Draw_Drawable3D) aDrawable = Draw::Get (aDocName, Standard_False);
-  dout.RemoveDrawable (aDrawable);
+  if (Handle(Draw_Drawable3D) aDrawable = Draw::GetExisting (aDocName))
+  {
+    dout.RemoveDrawable (aDrawable);
+  }
   Draw::Set (theArgVec[1], Handle(Draw_Drawable3D)());
   return 0;
 }
@@ -409,10 +411,10 @@ static Standard_Integer DDocStd_Path (Draw_Interpretor& di,
 {   
   if (nb == 2) { 
     TDocStd_PathParser path (a[1]);
-    //cout << "Trek      : " << path.Trek() << endl;  
-    //cout << "Name      : " << path.Name() << endl; 
-    //cout << "Extension : " << path.Extension() << endl;
-    //cout << "Path      : " << path.Path() << endl;
+    //std::cout << "Trek      : " << path.Trek() << std::endl;  
+    //std::cout << "Name      : " << path.Name() << std::endl; 
+    //std::cout << "Extension : " << path.Extension() << std::endl;
+    //std::cout << "Path      : " << path.Path() << std::endl;
     TCollection_AsciiString TrekAsciiString(path.Trek().ToExtString(),'?');
     TCollection_AsciiString NameAsciiString(path.Name().ToExtString(),'?');
     TCollection_AsciiString ExtensionAsciiString(path.Extension().ToExtString(),'?');
@@ -465,7 +467,7 @@ static Standard_Integer DDocStd_PrintComments (Draw_Interpretor& di,
 
     for (int i = 1; i <= comments.Length(); i++)
     {
-      //cout << comments(i) << endl;
+      //std::cout << comments(i) << std::endl;
       TCollection_AsciiString commentAsciiString(comments(i).ToExtString(),'?');
       di << commentAsciiString.ToCString() << "\n";
     }
@@ -484,10 +486,12 @@ static Standard_Integer DDocStd_SetStorageVersion (Draw_Interpretor& ,
                                                    Standard_Integer nb,
                                                    const char** a)
 {  
-  if (nb == 2)
+  if (nb == 3)
   {
-    const int version = atoi(a[1]);
-    XmlLDrivers::SetStorageVersion(version);
+    Handle(TDocStd_Document) D;
+    if (!DDocStd::GetDocument(a[1], D)) return 1;
+    const int version = atoi(a[2]);
+    D->ChangeStorageFormatVersion(version);
     return 0;
   }
   return 1;
@@ -498,11 +502,16 @@ static Standard_Integer DDocStd_SetStorageVersion (Draw_Interpretor& ,
 //purpose  : 
 //=======================================================================
 static Standard_Integer DDocStd_GetStorageVersion (Draw_Interpretor& di,
-                                                   Standard_Integer ,
-                                                   const char** )
-{  
-  di << XmlLDrivers::StorageVersion() << "\n" ;
-  return 0;
+                                                   Standard_Integer nb,
+                                                   const char** a)
+{ 
+  if (nb == 2) {
+    Handle(TDocStd_Document) D;
+    if (!DDocStd::GetDocument(a[1], D)) return 1;
+    di << D->StorageFormatVersion() << "\n";
+    return 0;
+  }
+  return 1;
 }
 
 //=======================================================================
@@ -565,9 +574,9 @@ void DDocStd::ApplicationCommands(Draw_Interpretor& theCommands)
 		  __FILE__, DDocStd_PrintComments, g);
 
   theCommands.Add("GetStorageVersion",
-		  "GetStorageVersion",
+		  "GetStorageVersion Doc",
 		  __FILE__, DDocStd_GetStorageVersion, g);
   theCommands.Add("SetStorageVersion",
-		  "SetStorageVersion Version",
+		  "SetStorageVersion Doc Version",
 		  __FILE__, DDocStd_SetStorageVersion, g);
 }

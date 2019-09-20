@@ -16,8 +16,6 @@
 #ifndef _Standard_CLocaleSentry_H__
 #define _Standard_CLocaleSentry_H__
 
-#include <oce-config.h>
-
 #include <Standard_Macro.hxx>
 
 #include <locale.h>

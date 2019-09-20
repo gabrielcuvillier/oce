@@ -146,8 +146,7 @@ void StdPrs_WFDeflectionRestrictedFace::Add
   
   for (ToolRst.Init(); ToolRst.More(); ToolRst.Next()) {
     TopAbs_Orientation Orient = ToolRst.Orientation();
-    if ( Orient == TopAbs_FORWARD || Orient == TopAbs_REVERSED ) {
-      Adaptor2d_Curve2dPtr TheRCurve = ToolRst.Value();
+      const Adaptor2d_Curve2d* TheRCurve = &ToolRst.Value();
       if (TheRCurve->GetType() != GeomAbs_Line) {
         GCPnts_QuasiUniformDeflection UDP(*TheRCurve, ddefle);
 	if (UDP.IsDone()) {
@@ -180,11 +179,10 @@ void StdPrs_WFDeflectionRestrictedFace::Add
 		tabP.Append(P1);
 	      }
 	    }
-	  }
 	}
 #ifdef OCCT_DEBUG
 	else {
-	  cout << "Cannot evaluate curve on surface"<<endl;
+	  std::cout << "Cannot evaluate curve on surface"<<std::endl;
 	}
 #endif
       }
@@ -385,7 +383,7 @@ Standard_Boolean StdPrs_WFDeflectionRestrictedFace::Match
   UMax = VMax = RealFirst();
   
   for (ToolRst.Init(); ToolRst.More(); ToolRst.Next()) {
-    Adaptor2d_Curve2dPtr TheRCurve = ToolRst.Value();
+    const Adaptor2d_Curve2d* TheRCurve = &ToolRst.Value();
     u = TheRCurve->FirstParameter();
     v = TheRCurve->LastParameter();
     step = ( v - u) / nbPoints;
@@ -438,8 +436,7 @@ Standard_Boolean StdPrs_WFDeflectionRestrictedFace::Match
   gp_Pnt dummypnt;
   for (ToolRst.Init(); ToolRst.More(); ToolRst.Next()) {
     TopAbs_Orientation Orient = ToolRst.Orientation();
-    if ( Orient == TopAbs_FORWARD || Orient == TopAbs_REVERSED ) {
-      Adaptor2d_Curve2dPtr TheRCurve = ToolRst.Value();
+      const Adaptor2d_Curve2d* TheRCurve = &ToolRst.Value();
       GCPnts_QuasiUniformDeflection UDP(*TheRCurve, Deflection);
       if (UDP.IsDone()) {
 	Standard_Integer NumberOfPoints = UDP.NbPoints();
@@ -459,10 +456,9 @@ Standard_Boolean StdPrs_WFDeflectionRestrictedFace::Match
       }
 #ifdef OCCT_DEBUG
       else {
-	cout << "Cannot evaluate curve on surface"<<endl;
+	std::cout << "Cannot evaluate curve on surface"<<std::endl;
       }
 #endif
-    }
   }
   
   // draw the isos

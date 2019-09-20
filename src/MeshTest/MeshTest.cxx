@@ -14,74 +14,32 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
+#include <MeshTest.hxx>
 
-#include <AppCont_ContMatrices.hxx>
+#include <stdio.h>
+
 #include <Bnd_Box.hxx>
 #include <BRep_Builder.hxx>
-#include <BRep_Tool.hxx>
 #include <BRepAdaptor_Surface.hxx>
 #include <BRepBndLib.hxx>
 #include <BRepBuilderAPI_MakeFace.hxx>
 #include <BRepBuilderAPI_MakePolygon.hxx>
 #include <BRepBuilderAPI_MakeVertex.hxx>
 #include <BRepLib.hxx>
-#include <BRepMesh_DataStructureOfDelaun.hxx>
-#include <BRepMesh_Delaun.hxx>
-#include <BRepMesh_Edge.hxx>
-#include <BRepMesh_FastDiscret.hxx>
 #include <BRepMesh_IncrementalMesh.hxx>
-#include <BRepMesh_Triangle.hxx>
-#include <BRepMesh_Vertex.hxx>
 #include <BRepTest.hxx>
 #include <BRepTools.hxx>
 #include <CSLib.hxx>
-#include <CSLib_DerivativeStatus.hxx>
 #include <DBRep.hxx>
-#include <Draw.hxx>
 #include <Draw_Appli.hxx>
-#include <Draw_Interpretor.hxx>
-#include <Draw_Marker3D.hxx>
-#include <Draw_MarkerShape.hxx>
 #include <Draw_Segment2D.hxx>
 #include <DrawTrSurf.hxx>
-#include <Extrema_LocateExtPC.hxx>
-#include <GCPnts_UniformAbscissa.hxx>
-#include <Geom_Curve.hxx>
-#include <Geom_Plane.hxx>
-#include <Geom_Surface.hxx>
-#include <GeomAdaptor_Curve.hxx>
 #include <GeometryTest.hxx>
-#include <gp_Pln.hxx>
-#include <gp_Trsf.hxx>
-#include <math.hxx>
-#include <math_Matrix.hxx>
-#include <math_Vector.hxx>
-#include <MeshTest.hxx>
-#include <MeshTest_DrawableMesh.hxx>
-#include <PLib.hxx>
+#include <IMeshData_Status.hxx>
 #include <Poly_Connect.hxx>
-#include <Poly_PolygonOnTriangulation.hxx>
-#include <Poly_Triangulation.hxx>
-#include <Precision.hxx>
-#include <Standard_Stream.hxx>
-#include <TColgp_Array1OfPnt2d.hxx>
-#include <TCollection_AsciiString.hxx>
-#include <TColStd_HArray1OfInteger.hxx>
-#include <TColStd_ListIteratorOfListOfInteger.hxx>
-#include <TColStd_MapIteratorOfMapOfInteger.hxx>
-#include <TopAbs_ShapeEnum.hxx>
 #include <TopExp_Explorer.hxx>
-#include <TopLoc_Location.hxx>
-#include <TopoDS.hxx>
-#include <TopoDS_Compound.hxx>
-#include <TopoDS_Edge.hxx>
-#include <TopoDS_Face.hxx>
-#include <TopoDS_Shape.hxx>
-#include <TopoDS_Wire.hxx>
-#include <TopTools_ListIteratorOfListOfShape.hxx>
 #include <TopTools_MapIteratorOfMapOfShape.hxx>
 
-#include <stdio.h>
 //epa Memory leaks test
 //OAN: for triepoints
 #ifdef _WIN32
@@ -90,8 +48,6 @@ Standard_IMPORT Draw_Viewer dout;
 
 #define MAX2(X, Y)	(  Abs(X) > Abs(Y)? Abs(X) : Abs(Y) )
 #define MAX3(X, Y, Z)	( MAX2 ( MAX2(X,Y) , Z) )
-
-
 
 #define ONETHIRD 0.333333333333333333333333333333333333333333333333333333333333
 #define TWOTHIRD 0.666666666666666666666666666666666666666666666666666666666666
@@ -117,8 +73,11 @@ static Standard_Integer incrementalmesh(Draw_Interpretor& di, Standard_Integer n
 Builds triangular mesh for the shape\n\
 usage: incmesh Shape LinearDeflection [options]\n\
 options:\n\
-        -a val          angular deflection in deg\n\
+        -a val          angular deflection for edges in deg\n\
                         (default ~28.64 deg = 0.5 rad)\n\n\
+        -ai val         angular deflection inside of faces in deg\n\
+                        (default ~57.29 deg = 1 rad)\n\n\
+        -di val         Linear deflection used to tessellate the face interior.\n\
         -min            minimum size parameter limiting size of triangle's\n\
                         edges to prevent sinking into amplification in case\n\
                         of distorted curves and surfaces\n\n\
@@ -129,7 +88,7 @@ options:\n\
         -surf_def_off   disables control of deflection of mesh from real\n\
                         surface (enabled by default)\n\
         -parallel       enables parallel execution (switched off by default)\n\
-        -adaptive       enables adaptive computation of minimal value in parametric space\n";
+        -adjust_min     enables local adjustment of min size depending on edge size (switched off by default)\n";
     return 0;
   }
 
@@ -140,14 +99,9 @@ options:\n\
     return 0;
   }
 
-  Standard_Real aLinDeflection     = Max(Draw::Atof(argv[2]), Precision::Confusion());
-  Standard_Real aAngDeflection     = 0.5;
-  Standard_Real aMinSize           = Precision::Confusion();
-  Standard_Boolean isRelative      = Standard_False;
-  Standard_Boolean isInParallel    = Standard_False;
-  Standard_Boolean isIntVertices   = Standard_True;
-  Standard_Boolean isControlSurDef = Standard_True;
-  Standard_Boolean isAdaptiveMin   = Standard_False;
+  IMeshTools_Parameters aMeshParams;
+  aMeshParams.Deflection = aMeshParams.DeflectionInterior = 
+    Max(Draw::Atof(argv[2]), Precision::Confusion());
 
   if (nbarg > 3)
   {
@@ -160,22 +114,32 @@ options:\n\
       if (aOpt == "")
         continue;
       else if (aOpt == "-relative")
-        isRelative = Standard_True;
+        aMeshParams.Relative = Standard_True;
       else if (aOpt == "-parallel")
-        isInParallel = Standard_True;
+        aMeshParams.InParallel = Standard_True;
       else if (aOpt == "-int_vert_off")
-        isIntVertices = Standard_False;
+        aMeshParams.InternalVerticesMode = Standard_False;
       else if (aOpt == "-surf_def_off")
-        isControlSurDef = Standard_False;
-      else if (aOpt == "-adaptive")
-        isAdaptiveMin   = Standard_True;
+        aMeshParams.ControlSurfaceDeflection = Standard_False;
+      else if (aOpt == "-adjust_min")
+        aMeshParams.AdjustMinSize = Standard_True;
       else if (i < nbarg)
       {
         Standard_Real aVal = Draw::Atof(argv[i++]);
         if (aOpt == "-a")
-          aAngDeflection = aVal * M_PI / 180.;
+        {
+          aMeshParams.Angle = aVal * M_PI / 180.;
+        }
+        else if (aOpt == "-ai")
+        {
+          aMeshParams.AngleInterior = aVal * M_PI / 180.;
+        }
         else if (aOpt == "-min")
-          aMinSize = aVal;
+          aMeshParams.MinSize = aVal;
+        else if (aOpt == "-di")
+        {
+          aMeshParams.DeflectionInterior = aVal;
+        }
         else
           --i;
       }
@@ -183,47 +147,53 @@ options:\n\
   }
 
   di << "Incremental Mesh, multi-threading "
-     << (isInParallel ? "ON" : "OFF") << "\n";
+     << (aMeshParams.InParallel ? "ON" : "OFF") << "\n";
 
-  BRepMesh_FastDiscret::Parameters aMeshParams;
-  aMeshParams.Deflection = aLinDeflection;
-  aMeshParams.Angle = aAngDeflection;
-  aMeshParams.Relative =  isRelative;
-  aMeshParams.InParallel = isInParallel;
-  aMeshParams.MinSize = aMinSize;
-  aMeshParams.InternalVerticesMode = isIntVertices;
-  aMeshParams.ControlSurfaceDeflection = isControlSurDef;
-  aMeshParams.AdaptiveMin = isAdaptiveMin;
-  
   BRepMesh_IncrementalMesh aMesher (aShape, aMeshParams);
 
   di << "Meshing statuses: ";
-  Standard_Integer statusFlags = aMesher.GetStatusFlags();
-  if( !statusFlags )
+  const Standard_Integer aStatus = aMesher.GetStatusFlags();
+  if (!aStatus)
   {
     di << "NoError";
   }
   else
   {
     Standard_Integer i;
-    for( i = 0; i < 4; i++ )
+    for (i = 0; i < 8; i++)
     {
-      if( (statusFlags >> i) & (Standard_Integer)1 )
+      Standard_Integer aFlag = aStatus & (1 << i);
+      if (aFlag)
       {
-        switch(i+1)
+        switch ((IMeshData_Status) aFlag)
         {
-          case 1:
-            di << "OpenWire ";
-            break;
-          case 2:
-            di << "SelfIntersectingWire ";
-            break;
-          case 3:
-            di << "Failure ";
-            break;
-          case 4:
-            di << "ReMesh ";
-            break;
+        case IMeshData_OpenWire:
+          di << "OpenWire ";
+          break;
+        case IMeshData_SelfIntersectingWire:
+          di << "SelfIntersectingWire ";
+          break;
+        case IMeshData_Failure:
+          di << "Failure ";
+          break;
+        case IMeshData_ReMesh:
+          di << "ReMesh ";
+          break;
+        case IMeshData_UnorientedWire:
+          di << "UnorientedWire ";
+          break;
+        case IMeshData_TooFewPoints:
+          di << "TooFewPoints ";
+          break;
+        case IMeshData_Outdated:
+          di << "Outdated ";
+          break;
+        case IMeshData_Reused:
+          di << "Reused ";
+          break;
+        case IMeshData_NoError:
+        default:
+          break;
         }
       }
     }
@@ -385,7 +355,6 @@ static Standard_Integer tessellate (Draw_Interpretor& /*di*/, Standard_Integer n
 //function : MemLeakTest
 //purpose  : 
 //=======================================================================
-
 static Standard_Integer MemLeakTest(Draw_Interpretor&, Standard_Integer /*nbarg*/, const char** /*argv*/)
 {
   for(int i=0;i<10000;i++)
@@ -400,662 +369,6 @@ static Standard_Integer MemLeakTest(Draw_Interpretor&, Standard_Integer /*nbarg*
   }
   return 0;
 }
-
-//=======================================================================
-//function : fastdiscret
-//purpose  : 
-//=======================================================================
-
-static Standard_Integer fastdiscret(Draw_Interpretor& di, Standard_Integer nbarg, const char** argv)
-{
-  if (nbarg < 3) return 1;
-
-  TopoDS_Shape S = DBRep::Get(argv[1]);
-  if (S.IsNull()) return 1;
-
-  const Standard_Real d = Draw::Atof(argv[2]);
-
-  Bnd_Box B;
-  BRepBndLib::Add(S,B);
-  BRepMesh_FastDiscret::Parameters aParams;
-  aParams.Deflection = d;
-  aParams.Angle = 0.5;
-  BRepMesh_FastDiscret MESH(B,aParams);
-
-  //Standard_Integer NbIterations = MESH.NbIterations();
-  //if (nbarg > 4) NbIterations = Draw::Atoi(argv[4]);
-  //MESH.NbIterations() = NbIterations;
-
-  di<<"Starting FastDiscret with :\n";
-  di<<"  Deflection="<<d<<"\n";
-  di<<"  Angle="<<0.5<<"\n";
-
-  Handle(Poly_Triangulation) T;
-  BRep_Builder aBuilder;
-  TopExp_Explorer ex;
-
-  // Clear existing triangulations
-  for (ex.Init(S, TopAbs_FACE); ex.More(); ex.Next())
-    aBuilder.UpdateFace(TopoDS::Face(ex.Current()),T);
-
-  MESH.Perform(S);
-
-  TopoDS_Compound aCompGood, aCompFailed, aCompViolating;
-
-  TopLoc_Location L;
-  Standard_Integer nbtriangles = 0, nbnodes = 0, nbfailed = 0, nbviolating = 0;
-  Standard_Real maxdef = 0.0;
-  for (ex.Init(S, TopAbs_FACE); ex.More(); ex.Next())
-  {
-    T = BRep_Tool::Triangulation(TopoDS::Face(ex.Current()),L);
-    if (T.IsNull())
-    {
-      nbfailed++;
-      if (aCompFailed.IsNull())
-        aBuilder.MakeCompound(aCompFailed);
-      aBuilder.Add(aCompFailed,ex.Current());
-    }
-    else
-    {
-      nbtriangles += T->NbTriangles();
-      nbnodes += T->NbNodes();
-      if (T->Deflection() > maxdef) maxdef = T->Deflection();
-      if (T->Deflection() > d)
-      {
-        nbviolating++;
-        if (aCompViolating.IsNull())
-          aBuilder.MakeCompound(aCompViolating);
-        aBuilder.Add(aCompViolating,ex.Current());
-      }
-      else
-      {
-        if (aCompGood.IsNull())
-          aBuilder.MakeCompound(aCompGood);
-        aBuilder.Add(aCompGood,ex.Current());
-      }
-    }
-  }
-
-  if (!aCompGood.IsNull())
-  {
-    char name[256];
-    strcpy(name,argv[1]);
-    strcat(name,"_good");
-    DBRep::Set(name,aCompGood);
-  }
-  if (!aCompFailed.IsNull())
-  {
-    char name[256];
-    strcpy(name,argv[1]);
-    strcat(name,"_failed");
-    DBRep::Set(name,aCompFailed);
-  }
-  if (!aCompViolating.IsNull())
-  {
-    char name[256];
-    strcpy(name,argv[1]);
-    strcat(name,"_violating");
-    DBRep::Set(name,aCompViolating);
-  }
-
-  di<<"FastDiscret completed with :\n";
-  di<<"  MaxDeflection="<<maxdef<<"\n";
-  di<<"  NbNodes="<<nbnodes<<"\n";
-  di<<"  NbTriangles="<<nbtriangles<<"\n";
-  di<<"  NbFailed="<<nbfailed<<"\n";
-  di<<"  NbViolating="<<nbviolating<<"\n";
-
-  return 0;
-}
-
-
-//=======================================================================
-//function : triangule
-//purpose  : 
-//=======================================================================
-
-
-class BRepMesh_Couple
-{
-public:
-  BRepMesh_Couple() { myI1 = myI2 = 0; }
-  BRepMesh_Couple(const Standard_Integer I1,
-    const Standard_Integer I2)
-  { myI1 = I1; myI2 = I2; }
-
-  Standard_Integer myI1;
-  Standard_Integer myI2;
-};
-
-inline Standard_Boolean IsEqual(const BRepMesh_Couple& one,
-                                const BRepMesh_Couple& other)
-{
-  if (one.myI1 == other.myI1 &&
-    one.myI2 == other.myI2) return Standard_True;
-  else return Standard_False;
-}
-
-inline Standard_Integer HashCode(const BRepMesh_Couple& one,
-                                 const Standard_Integer Upper)
-{
-  return ::HashCode((one.myI1+one.myI2), Upper);
-}
-
-typedef NCollection_Map<BRepMesh_Couple> BRepMesh_MapOfCouple;
-
-
-static void AddLink(BRepMesh_MapOfCouple& aMap, 
-                    Standard_Integer v1,
-                    Standard_Integer v2)
-{
-  Standard_Integer i1 = v1;
-  Standard_Integer i2 = v2;
-  if(i1 > i2) {
-    i1 = v2;
-    i2 = v1;
-  }
-  aMap.Add(BRepMesh_Couple(i1,i2));
-}
-
-static void MeshStats(const TopoDS_Shape& theSape,
-                      Standard_Integer& theNbTri,
-                      Standard_Integer& theNbEdges,
-                      Standard_Integer& theNbNodes)
-{
-  theNbTri = 0;
-  theNbEdges = 0;
-  theNbNodes = 0;
-
-  Handle(Poly_Triangulation) T;
-  TopLoc_Location L;
-
-  for ( TopExp_Explorer ex(theSape, TopAbs_FACE); ex.More(); ex.Next()) {
-    TopoDS_Face F = TopoDS::Face(ex.Current());
-    T = BRep_Tool::Triangulation(F, L);
-    if (!T.IsNull()) {
-      theNbTri += T->NbTriangles();
-      theNbNodes += T->NbNodes();
-
-      BRepMesh_MapOfCouple aMap;
-      //count number of links
-      Poly_Array1OfTriangle& Trian = T->ChangeTriangles();
-      for(Standard_Integer i = 1; i<=Trian.Length();i++) {
-        Standard_Integer v1, v2, v3;
-        Trian(i).Get(v1,v2,v3);
-
-        AddLink(aMap, v1, v2);
-        AddLink(aMap, v2, v3);
-        AddLink(aMap, v3, v1);
-      }
-
-      theNbEdges+=aMap.Extent();
-    }
-  }
-}
-
-static Standard_Integer triangule(Draw_Interpretor& di, Standard_Integer nbarg, const char** argv)
-{
-  if (nbarg < 4)
-    return 1;
-
-  const char *id1 = argv[2];
-  TopoDS_Shape aShape = DBRep::Get(id1);
-  if (aShape.IsNull())
-    return 1;
-
-  di << argv[1] << " ";
-
-  Standard_Real aDeflection = Draw::Atof(argv[3]);
-  if (aDeflection <= 0.)
-  {
-    di << " Incorrect value of deflection!\n";
-    return 1;
-  }
-
-  Handle(MeshTest_DrawableMesh) aDMesh = 
-    new MeshTest_DrawableMesh(aShape, aDeflection);
-
-  Draw::Set(argv[1], aDMesh);
-
-  Standard_Integer nbn, nbl, nbe;
-  MeshStats(aShape, nbe, nbl, nbn);
-
-  di<<"(Resultat ("<<nbe<<" mailles) ("<<nbl<<" aretes) ("<<nbn<<" sommets))\n";
-
-  // passe de verification du maillage.
-  /*Standard_Integer nbc;
-  for (Standard_Integer iLi=1; iLi<= DM->Mesh()->NbEdges(); iLi++) {
-  const BRepMesh_Edge& ed=DM->Mesh()->Edge(iLi);
-  if (ed.Movability()!=BRepMesh_Deleted) {
-  nbc=struc->ElemConnectedTo(iLi).Extent();
-  if (nbc != 1 && nbc != 2) di <<"ERROR MAILLAGE Edge no "<< iLi<<"\n";
-  }
-  }*/
-
-
-  Bnd_Box aBox;
-
-  TopExp_Explorer aFaceIt(aShape, TopAbs_FACE);
-  for (; aFaceIt.More(); aFaceIt.Next())
-  {
-    const TopoDS_Face& aFace = TopoDS::Face(aFaceIt.Current());
-
-    TopLoc_Location aLoc = aFace.Location();
-    Handle(Poly_Triangulation) aTriangulation =
-      BRep_Tool::Triangulation(aFace, aLoc);
-
-    if (!aTriangulation.IsNull())
-    {
-      const Standard_Integer    aLength = aTriangulation->NbNodes();
-      const TColgp_Array1OfPnt& aNodes  = aTriangulation->Nodes();
-      for (Standard_Integer i = 1; i <= aLength; ++i)
-        aBox.Add(aNodes(i));
-    }
-  }
-
-  Standard_Real aDelta = 0.;
-  if (!aBox.IsVoid())
-  {
-    Standard_Real x, y, z, X, Y, Z;
-    aBox.Get(x, y, z, X, Y, Z);
-
-    aDelta = Max(X - x, Max(Y - y, Z - z));
-    if (aDelta > 0.0)
-      aDelta = aDeflection / aDelta;
-  }
-
-  di << " Ratio between deflection and total shape size is " << aDelta << "\n";
-
-  return 0;
-}
-
-//=======================================================================
-//function : addshape
-//purpose  : 
-//=======================================================================
-
-Standard_Integer addshape(Draw_Interpretor&, Standard_Integer n, const char** a)
-{
-  if (n < 3) return 1;
-  Handle(MeshTest_DrawableMesh) D =
-    Handle(MeshTest_DrawableMesh)::DownCast(Draw::Get(a[1]));
-  if (D.IsNull()) return 1;
-  TopoDS_Shape S = DBRep::Get(a[2]);
-  if (S.IsNull()) return 1;
-
-  D->Add(S);
-  Draw::Repaint();
-
-  return 0;
-}
-
-
-//=======================================================================
-//function : smooth
-//purpose  : 
-//=======================================================================
-
-/*Standard_Integer smooth(Draw_Interpretor&, Standard_Integer n, const char** a)
-{
-if (n < 2) return 1;
-Handle(MeshTest_DrawableMesh) D =
-Handle(MeshTest_DrawableMesh)::DownCast(Draw::Get(a[1]));
-if (D.IsNull()) return 1;
-Handle(BRepMesh_DataStructureOfDelaun) struc=
-D->Mesh()->Result();
-BRepMesh_Array1OfVertexOfDelaun toto(1,1);
-BRepMesh_Delaun trial(struc, 
-toto,
-Standard_True);
-trial.SmoothMesh(0.1);
-Draw::Repaint();
-return 0;
-}
-*/
-
-//=======================================================================
-//function : edges
-//purpose  : 
-//=======================================================================
-
-/*static Standard_Integer edges (Draw_Interpretor&, Standard_Integer n, const char** a)
-{
-if (n < 3) return 1;
-
-Handle(MeshTest_DrawableMesh) D =
-Handle(MeshTest_DrawableMesh)::DownCast(Draw::Get(a[1]));
-if (D.IsNull()) return 1;
-TopoDS_Shape S = DBRep::Get(a[2]);
-if (S.IsNull()) return 1;
-
-TopExp_Explorer ex;
-TColStd_SequenceOfInteger& eseq = D->Edges();
-Handle(BRepMesh_FastDiscret) M = D->Mesh();
-Handle(BRepMesh_DataStructureOfDelaun) DS = M->Result();
-Standard_Integer e1, e2, e3, iTri;
-Standard_Boolean o1, o2, o3;
-
-// the faces
-for (ex.Init(S,TopAbs_FACE);ex.More();ex.Next()) {
-const BRepMesh_MapOfInteger& elems = DS->ElemOfDomain();
-BRepMesh_MapOfInteger::Iterator it;
-for (it.Initialize(elems); it.More(); it.Next()) {
-iTri = it.Key();
-const BRepMesh_Triangle& triang = M->Triangle(iTri);
-if (triang.Movability()!=BRepMesh_Deleted) {
-triang.Edges(e1, e2, e3, o1, o2, o3);
-eseq.Append(e1);
-eseq.Append(e2);
-eseq.Append(e3);
-}
-}
-}
-
-// the edges
-//for (ex.Init(S,TopAbs_EDGE,TopAbs_FACE);ex.More();ex.Next()) {
-//}
-
-Draw::Repaint();
-return 0;
-}
-*/
-
-//=======================================================================
-//function : vertices
-//purpose  : 
-//=======================================================================
-static Standard_Integer vertices(
-  Draw_Interpretor& /*di*/, 
-  Standard_Integer  /*argc*/, 
-  const char**      /*argv*/)
-{
-  return 0;
-
-  // TODO: OAN re-implement this command according changes in BRepMesh
-  //if (argc < 3)
-  //  return 1;
-
-  //Handle(MeshTest_DrawableMesh) aDrawableMesh =
-  //  Handle(MeshTest_DrawableMesh)::DownCast(Draw::Get(argv[1]));
-  //if (aDrawableMesh.IsNull())
-  //  return 1;
-
-  //TopoDS_Shape aShape = DBRep::Get(argv[2]);
-  //if (aShape.IsNull())
-  //  return 1;
-
-  //TColStd_SequenceOfInteger&   aVertexSeq = aDrawableMesh->Vertices();
-  //Handle(BRepMesh_FastDiscret) aMesh      = aDrawableMesh->Mesh();
-
-  //TopExp_Explorer aFaceIt(aShape, TopAbs_FACE);
-  //for (; aFaceIt.More(); aFaceIt.Next())
-  //{
-  //  const TopoDS_Face& aFace = TopoDS::Face(aFaceIt.Current());
-
-  //  Handle(BRepMesh_FaceAttribute) aAttribute;
-  //  if (aMesh->GetFaceAttribute(aFace, aAttribute))
-  //  {
-  //    Handle(BRepMesh_DataStructureOfDelaun) aStructure = aAttribute->EditStructure();
-
-  //    // Recuperate from the map of edges.
-  //    const BRepMeshCol::MapOfInteger& aEdgeMap = aStructure->LinksOfDomain();
-
-  //    // Iterator on edges.
-  //    BRepMeshCol::MapOfInteger aVertices;
-  //    BRepMeshCol::MapOfInteger::Iterator aEdgeIt(aEdgeMap);
-  //    for (; aEdgeIt.More(); aEdgeIt.Next())
-  //    {
-  //      const BRepMesh_Edge& aEdge = aStructure->GetLink(aEdgeIt.Key());
-  //      aVertices.Add(aEdge.FirstNode());
-  //      aVertices.Add(aEdge.LastNode());
-  //    }
-
-  //    BRepMeshCol::MapOfInteger::Iterator anIt(vtx);
-  //    for ( ; anIt.More(); anIt.Next() )
-  //      aVertexSeq.Append(anIt.Key());
-  //  }
-  //}
-
-  //Draw::Repaint();
-  //return 0;
-}
-
-//=======================================================================
-//function : medge
-//purpose  : 
-//=======================================================================
-
-static Standard_Integer medge (Draw_Interpretor&, Standard_Integer n, const char** a)
-{
-  if (n < 3) return 1;
-
-  Handle(MeshTest_DrawableMesh) D =
-    Handle(MeshTest_DrawableMesh)::DownCast(Draw::Get(a[1]));
-  if (D.IsNull()) return 1;
-
-  Standard_Integer i,j,e;
-  TColStd_SequenceOfInteger& eseq = D->Edges();
-  for (i = 2; i < n; i++) {
-    e = Draw::Atoi(a[i]);
-    if (e > 0)
-      eseq.Append(e);
-    else if (e < 0) {
-      e = -e;
-      j = 1; 
-      while (j <= eseq.Length()) {
-        if (eseq(j) == e) 
-          eseq.Remove(j);
-        else
-          j++;
-      }
-    }
-    else
-      eseq.Clear();
-  }
-
-  Draw::Repaint();
-  return 0;
-}
-
-
-//=======================================================================
-//function : mvertex
-//purpose  : 
-//=======================================================================
-
-static Standard_Integer mvertex (Draw_Interpretor&, Standard_Integer n, const char** a)
-{
-  if (n < 3) return 1;
-
-  Handle(MeshTest_DrawableMesh) D =
-    Handle(MeshTest_DrawableMesh)::DownCast(Draw::Get(a[1]));
-  if (D.IsNull()) return 1;
-
-  Standard_Integer i,j,v;
-  TColStd_SequenceOfInteger& vseq = D->Vertices();
-  for (i = 2; i < n; i++) {
-    v = Draw::Atoi(a[i]);
-    if (v > 0)
-      vseq.Append(v);
-    else if (v < 0) {
-      v = -v;
-      j = 1;
-      while (j <= vseq.Length()) {
-        if (vseq(j) == v)
-          vseq.Remove(v);
-        else
-          j++;
-      }
-    }
-    else
-      vseq.Clear();
-  }
-  Draw::Repaint();
-  return 0;
-}
-
-
-//=======================================================================
-//function : triangle
-//purpose  : 
-//=======================================================================
-
-static Standard_Integer triangle (Draw_Interpretor&, Standard_Integer n, const char** a)
-{
-  if (n < 3) return 1;
-
-  Handle(MeshTest_DrawableMesh) D =
-    Handle(MeshTest_DrawableMesh)::DownCast(Draw::Get(a[1]));
-  if (D.IsNull()) return 1;
-
-  Standard_Integer i,j,v;
-  TColStd_SequenceOfInteger& tseq = D->Triangles();
-  for (i = 2; i < n; i++) {
-    v = Draw::Atoi(a[i]);
-    if (v > 0)
-      tseq.Append(v);
-    else if (v < 0) {
-      v = -v;
-      j = 1;
-      while (j <= tseq.Length()) {
-        if (tseq(j) == v)
-          tseq.Remove(v);
-        else
-          j++;
-      }
-    }
-    else
-      tseq.Clear();
-  }
-  Draw::Repaint();
-  return 0;
-}
-
-//=======================================================================
-//function : dumpvertex
-//purpose  : 
-//=======================================================================
-
-/*
-Standard_Integer dumpvertex(Draw_Interpretor& di, Standard_Integer argc, const char** argv)
-{
-if (argc < 2) return 1;
-
-Handle(MeshTest_DrawableMesh) D =
-Handle(MeshTest_DrawableMesh)::DownCast(Draw::Get(argv[1]));
-if (D.IsNull()) return 1;
-
-Handle(BRepMesh_DataStructureOfDelaun) struc = D->Mesh()->Result();
-
-Standard_Integer in=1;
-if (argc>=3) {
-in=Draw::Atoi(argv[2]);
-in=Max(1,in);
-}
-Standard_Integer nbn=in;
-if (argc>=4) {
-nbn=Draw::Atoi(argv[3]);
-nbn=Min(nbn,struc->NbNodes());
-}
-
-for (; in<=nbn; in++) {
-BRepMesh_Vertex nod=struc->GetNode(in);
-di<<"(node "<<in<<" (uv "<<nod.Coord().X()
-<<" "<<nod.Coord().Y()<<") (3d "
-<<nod.Location3d()<<") ";
-printdegree(nod.Movability(), di);
-di<<" (edgeconex";
-BRepMesh_ListOfInteger::Iterator tati(struc->LinkNeighboursOf(in));
-for (; tati.More(); tati.Next()) di<<" "<<tati.Value();
-di << "))\n";
-}
-di <<"\n";
-return 0;
-}
-
-//=======================================================================
-//function : dumpedge
-//purpose  : 
-//=======================================================================
-
-Standard_Integer dumpedge(Draw_Interpretor& di, Standard_Integer argc, const char** argv)
-{
-if (argc < 2) return 1;
-
-Handle(MeshTest_DrawableMesh) D =
-Handle(MeshTest_DrawableMesh)::DownCast(Draw::Get(argv[1]));
-if (D.IsNull()) return 1;
-
-Handle(BRepMesh_DataStructureOfDelaun) struc=D->Mesh()->Result();
-Standard_Integer il=1;
-if (argc>=3) {
-il=Draw::Atoi(argv[2]);
-il=Max(1, il);
-}
-Standard_Integer nbl=il;
-if (argc>=4) {
-nbl=Draw::Atoi(argv[3]);
-nbl=Min(nbl, struc->NbLinks());
-}
-
-for (; il<=nbl; il++) {
-BRepMesh_Edge edg=struc->GetLink(il);
-di << "(edge "<<il<<" ("<<edg.FirstNode()<<" "<<edg.LastNode()
-<<" ";
-printdegree(edg.Movability(), di);
-di<<") (triconex";
-const BRepMesh_PairOfIndex& pair = struc->ElemConnectedTo(il);
-for (Standard_Integer j = 1, jn = pair.Extent(); j <= jn; j++)
-di<<" "<<pair.Index(j);
-di << "))\n";
-}
-di <<"\n";
-return 0;
-}
-
-//=======================================================================
-//function : dumptriangle
-//purpose  : 
-//=======================================================================
-
-Standard_Integer dumptriangle(Draw_Interpretor& di, Standard_Integer argc, const char** argv)
-{
-if (argc < 2) return 1;
-
-Handle(MeshTest_DrawableMesh) D =
-Handle(MeshTest_DrawableMesh)::DownCast(Draw::Get(argv[1]));
-if (D.IsNull()) return 1;
-
-Handle(BRepMesh_DataStructureOfDelaun) struc=D->Mesh()->Result();
-Standard_Integer ie=1;
-if (argc>=3) {
-ie=Draw::Atoi(argv[2]);
-ie=Max(1, ie);
-}
-Standard_Integer nbe=ie;
-if (argc>=4) {
-nbe=Draw::Atoi(argv[3]);
-nbe=Min(nbe, struc->NbElements());
-}
-
-Standard_Integer e1, e2, e3;
-Standard_Boolean o1, o2, o3;
-
-for (; ie<=nbe; ie++) {
-BRepMesh_Triangle tri=struc->GetElement(ie);
-tri.Edges(e1, e2, e3, o1, o2, o3); 
-if (o1) e1=-e1;
-if (o2) e2=-e2;
-if (o3) e3=-e3;
-di<<" (maille "<<ie<<" (links "<<e1<<" "
-<<e2<<" "<<e3<<")";
-printdegree(tri.Movability(), di);
-di<<")\n";
-}
-di << "\n";
-return 0;
-}
-*/
 
 //=======================================================================
 //function : trianglesinfo
@@ -1154,7 +467,6 @@ static Standard_Integer trianglesinfo(Draw_Interpretor& di, Standard_Integer n, 
 //function : veriftriangles
 //purpose  : 
 //=======================================================================
-
 static Standard_Integer veriftriangles(Draw_Interpretor& di, Standard_Integer n, const char** a)
 {
   if (n < 2) return 1;
@@ -1291,15 +603,11 @@ static Standard_Integer veriftriangles(Draw_Interpretor& di, Standard_Integer n,
   return 0;
 }
 
-
-
-
 //=======================================================================
 //function : tri2d
 //purpose  : 
 //=======================================================================
-
-Standard_Integer tri2d(Draw_Interpretor&, Standard_Integer n, const char** a)
+static Standard_Integer tri2d(Draw_Interpretor&, Standard_Integer n, const char** a)
 {
 
   if (n != 2) return 1;
@@ -1385,14 +693,10 @@ Standard_Integer tri2d(Draw_Interpretor&, Standard_Integer n, const char** a)
   return 0;
 }
 
-
-
-
 //=======================================================================
 //function : wavefront
 //purpose  : 
 //=======================================================================
-
 static Standard_Integer wavefront(Draw_Interpretor&, Standard_Integer nbarg, const char** argv)
 {
   if (nbarg < 2) return 1;
@@ -1517,153 +821,11 @@ static Standard_Integer wavefront(Draw_Interpretor&, Standard_Integer nbarg, con
   return 0;
 }
 
-
-//=======================================================================
-//function : onetriangulation
-//purpose  : 
-//=======================================================================
-
-Standard_Integer onetriangulation(Draw_Interpretor&, Standard_Integer /*nbarg*/, const char** /*argv*/)
-{
-
-  /*
-
-  if (nbarg < 2) return 1;
-
-  TopoDS_Shape S = DBRep::Get(argv[1]);
-  if (S.IsNull()) return 1;
-
-  Handle(Poly_Triangulation) TFinale;
-  char name[100];
-  Standard_Integer nbshell = 0;
-
-  TopExp_Explorer ex, exs, ex2;
-
-  for (ex.Init(S, TopAbs_SHELL); ex.More(); ex.Next()) {
-  nbshell++;
-  TopoDS_Shell Sh = TopoDS::Shell(ex.Current());
-
-  for (exs.Init(Sh, TopAbs_Face); exs.More(); exs.Next()) {
-  TopoDS_Face F = TopoDS::Face(exs.Current());
-  Handle(Poly_Triangulation) T = BRep_Tool::Triangulation(F, L);
-
-  for (ex2.Init(F, TopAbs_EDGE); ex2.More(); ex2.Next()) {
-  TopoDS_Edge edge = TopoDS::Edge(ex2.Current());
-  const TColgp_Array1OfPnt& Nodes = T->Nodes();
-  const Poly_Array1OfTriangle& triangles = T->Triangles();
-
-  if (mapedges.IsBound(edge)) {
-  const TColStd_ListOfTransient& L = edges.Find(edge);
-  const Handle(Poly_PolygonOnTriangulation)& P = 
-  *(Handle(Poly_PolygonOnTriangulation)*)&(L.First());
-  const TColStd_Array1OfInteger& NOD = P->Nodes();
-
-  }
-  }
-  }
-
-  Sprintf(name, "%s_%i", "tr", nbshell);
-  DrawTrSurf::Set(name, TFinale);
-
-  }
-
-  */
-  return 0;
-}
-
-
-#if 0
-
-//=======================================================================
-//function : vb
-//purpose  : 
-//=======================================================================
-
-Standard_Integer vb(Draw_Interpretor& di, Standard_Integer nbarg, const char** argv)
-{
-  Standard_Integer NbPoints = 1, Deg = 1;
-
-  for (Deg = 1; Deg <= 25; Deg++) {
-    for (NbPoints = 1; NbPoints <= 24; NbPoints++) {
-
-      math_Vector GaussP(1, NbPoints), GaussW(1, NbPoints);
-      math_Vector TheWeights(1, NbPoints), VBParam(1, NbPoints);
-      math_Matrix VB(1, Deg+1, 1, NbPoints);
-
-      math::GaussPoints(NbPoints, GaussP);
-
-      Standard_Integer i, j, classe = Deg+1, cl1 = Deg;
-
-      // calcul et mise en ordre des parametres et des poids:
-      for (i = 1; i <= NbPoints; i++) {
-        if (i <=  (NbPoints+1)/2) {
-          VBParam(NbPoints-i+1)  = 0.5*(1 + GaussP(i));
-        }
-        else {
-          VBParam(i-(NbPoints+1)/2)  = 0.5*(1 + GaussP(i));
-        }
-      }
-
-
-      // Calcul du VB (Valeur des fonctions de Bernstein):
-      for (i = 1; i <= classe; i++) {
-        for (j = 1; j <= NbPoints; j++) {
-          VB(i,j)=PLib::Binomial(cl1,i-1)*Pow((1-VBParam(j)),classe-i)*Pow(VBParam(j),i-1);
-        }
-      }
-
-
-      for (i = 1; i <= classe; i++) {
-        for (j = 1; j <= NbPoints; j++) {
-          di<< VB(i, j) << ", ";
-        }
-      }
-      di << "\n\n";
-    }
-  }
-  return 0;
-}  
-//=======================================================================
-//function : extrema
-//purpose  : 
-//=======================================================================
-
-Standard_Integer extrema(Draw_Interpretor& di, Standard_Integer nbarg, const char** argv)
-{
-
-
-  Handle(Geom_Curve) C = DrawTrSurf::GetCurve(argv[1]);
-
-  Standard_Real X, Y, Z, U0;
-  X = Draw::Atof(argv[2]);
-  Y = Draw::Atof(argv[3]);
-  Z = Draw::Atof(argv[4]);
-  U0 = Draw::Atof(argv[5]);
-
-  gp_Pnt P(X, Y, Z);
-  GeomAdaptor_Curve GC(C);
-  Standard_Real tol = 1.e-09;
-  Extrema_LocateExtPC ext(P, GC, U0, tol);
-
-  if (ext.IsDone()) {
-    gp_Pnt P1 = ext.Point().Value();
-    di <<"distance =  "<<ext.Value() << "\n";
-    di <<"point =     "<<P1.X()<<" "<<P1.Y()<<" "<< P1.Z()<< "\n";
-    di <<"parametre = "<<ext.Point().Parameter()<<"\n";
-  }
-
-  return 0;
-}
-
-#endif
-
-
 //=======================================================================
 //function : triedgepoints
 //purpose  : 
 //=======================================================================
-
-Standard_Integer triedgepoints(Draw_Interpretor& di, Standard_Integer nbarg, const char** argv)
+static Standard_Integer triedgepoints(Draw_Interpretor& di, Standard_Integer nbarg, const char** argv)
 {
   if( nbarg < 2 )
     return 1;
@@ -1735,9 +897,9 @@ Standard_Integer triedgepoints(Draw_Interpretor& di, Standard_Integer nbarg, con
 //function : correctnormals
 //purpose  : Corrects normals in shape triangulation nodes (...)
 //=======================================================================
-Standard_Integer correctnormals (Draw_Interpretor& theDI, 
-                            Standard_Integer /*theNArg*/, 
-                            const char** theArgVal)
+static Standard_Integer correctnormals(Draw_Interpretor& theDI,
+                                       Standard_Integer /*theNArg*/,
+                                       const char** theArgVal)
 {
   TopoDS_Shape S = DBRep::Get(theArgVal[1]);
 
@@ -1771,30 +933,12 @@ void  MeshTest::Commands(Draw_Interpretor& theCommands)
   theCommands.Add("incmesh","Builds triangular mesh for the shape, run w/o args for help",__FILE__, incrementalmesh, g);
   theCommands.Add("tessellate","Builds triangular mesh for the surface, run w/o args for help",__FILE__, tessellate, g);
   theCommands.Add("MemLeakTest","MemLeakTest",__FILE__, MemLeakTest, g);
-  theCommands.Add("fastdiscret","fastdiscret shape deflection",__FILE__, fastdiscret, g);
-  theCommands.Add("mesh","mesh result Shape deflection",__FILE__, triangule, g);
-  theCommands.Add("addshape","addshape meshname Shape [deflection]",__FILE__, addshape, g);
-  //theCommands.Add("smooth","smooth meshname",__FILE__, smooth, g);
-  //theCommands.Add("edges","edges mesh shape, highlight the edges",__FILE__,edges, g);
-  theCommands.Add("vertices","vertices mesh shape, highlight the vertices",__FILE__,vertices, g);
-  theCommands.Add("medge","medge mesh [-]index (0 to clear all)",__FILE__,medge, g);
-  theCommands.Add("mvertex","mvertex mesh [-]index (0 to clear all)",__FILE__,mvertex, g);
-  theCommands.Add("triangle","triangle mesh [-]index (0 to clear all)",__FILE__,triangle, g);
-  //theCommands.Add("dumpvertex","dumpvertex mesh [index]",__FILE__,dumpvertex, g);
-  //theCommands.Add("dumpedge","dumpedge mesh [index]",__FILE__,dumpedge, g);
-  //theCommands.Add("dumptriangle","dumptriangle mesh [index]",__FILE__,dumptriangle, g);
 
   theCommands.Add("tri2d", "tri2d facename",__FILE__, tri2d, g);
   theCommands.Add("trinfo","trinfo name, print triangles information on objects",__FILE__,trianglesinfo,g);
   theCommands.Add("veriftriangles","veriftriangles name, verif triangles",__FILE__,veriftriangles,g);
   theCommands.Add("wavefront","wavefront name",__FILE__, wavefront, g);
-  theCommands.Add("onetriangulation","onetriangulation name",__FILE__, onetriangulation, g);
   theCommands.Add("triepoints", "triepoints shape1 [shape2 ...]",__FILE__, triedgepoints, g);
 
   theCommands.Add("correctnormals", "correctnormals shape",__FILE__, correctnormals, g);
-
-#if 0
-  theCommands.Add("extrema","extrema ",__FILE__, extrema, g);
-  theCommands.Add("vb","vb ",__FILE__, vb, g);
-#endif
 }

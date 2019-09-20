@@ -50,14 +50,14 @@ static Standard_Integer DFBrowse (Draw_Interpretor& di,
 {
   if (n<2)
   {
-    cout << "Use: " << a[0] << " document [brower_name]" << endl;
+    std::cout << "Use: " << a[0] << " document [brower_name]" << std::endl;
     return 1;
   }
   
   Handle(TDF_Data) DF;
   if (!DDF::GetDF (a[1], DF)) 
   {
-    cout << "Error: document " << a[1] << " is not found" << endl;
+    std::cout << "Error: document " << a[1] << " is not found" << std::endl;
     return 1;
   }
 
@@ -72,14 +72,14 @@ static Standard_Integer DFBrowse (Draw_Interpretor& di,
   OSD_File aTclScriptFile (aTclScript);
   if (aTclScriptFile.Exists()) {
 #ifdef OCCT_DEBUG
-    cout << "Load " << aTclScript << endl;
+    std::cout << "Load " << aTclScript << std::endl;
 #endif
     di.EvalFile( aTclScript.ToCString() );
   }
   else
   {
-    cout << "Error: Could not load script " << aTclScript << endl;
-    cout << "Check environment variable CSF_DrawPluginDefaults" << endl;
+    std::cout << "Error: Could not load script " << aTclScript << std::endl;
+    std::cout << "Check environment variable CSF_DrawPluginDefaults" << std::endl;
   }
 
   // Call command dftree defined in dftree.tcl
@@ -103,8 +103,12 @@ static Standard_Integer DFOpenLabel (Draw_Interpretor& di,
 {
   if (n < 2) return 1;
   
-  Handle(DDF_Browser) browser =
-    Handle(DDF_Browser)::DownCast (Draw::Get(a[1], Standard_True)); 
+  Handle(DDF_Browser) browser = Handle(DDF_Browser)::DownCast (Draw::GetExisting (a[1]));
+  if (browser.IsNull())
+  {
+    std::cout << "Syntax error: browser '" << a[1] << "' not found\n";
+    return 1;
+  }
 
   TDF_Label lab;
   if (n == 3) TDF_Tool::Label(browser->Data(),a[2],lab);
@@ -128,8 +132,12 @@ static Standard_Integer DFOpenAttributeList(Draw_Interpretor& di,
 {
   if (n < 3) return 1;
   
-  Handle(DDF_Browser) browser =
-    Handle(DDF_Browser)::DownCast (Draw::Get(a[1], Standard_True)); 
+  Handle(DDF_Browser) browser = Handle(DDF_Browser)::DownCast (Draw::GetExisting (a[1]));
+  if (browser.IsNull())
+  {
+    std::cout << "Syntax error: browser '" << a[1] << "' not found\n";
+    return 1;
+  }
 
   TDF_Label lab;
   TDF_Tool::Label(browser->Data(),a[2],lab);
@@ -157,8 +165,12 @@ static Standard_Integer DFOpenAttribute (Draw_Interpretor& di,
 {
   if (n < 3) return 1;
   
-  Handle(DDF_Browser) browser =
-    Handle(DDF_Browser)::DownCast (Draw::Get(a[1], Standard_True)); 
+  Handle(DDF_Browser) browser = Handle(DDF_Browser)::DownCast (Draw::GetExisting (a[1]));
+  if (browser.IsNull())
+  {
+    std::cout << "Syntax error: browser '" << a[1] << "' not found\n";
+    return 1;
+  }
 
   const Standard_Integer index = Draw::Atoi(a[2]);
   TCollection_AsciiString list = browser->OpenAttribute(index);

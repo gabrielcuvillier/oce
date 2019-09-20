@@ -188,7 +188,9 @@ namespace
 
       // Extracts vertices & normals from nodes
       const TColgp_Array1OfPnt&   aNodes   = aT->Nodes();
-      const TColgp_Array1OfPnt2d& aUVNodes = aT->UVNodes();
+      const TColgp_Array1OfPnt2d* aUVNodes = theHasTexels && aT->HasUVNodes() && aT->UVNodes().Upper() == aNodes.Upper()
+                                           ? &aT->UVNodes()
+                                           : NULL;
       StdPrs_ToolTriangulatedShape::ComputeNormals (aFace, aT);
       const TShort_Array1OfShortReal& aNormals = aT->Normals();
       const Standard_ShortReal*       aNormArr = &aNormals.First();
@@ -206,7 +208,7 @@ namespace
         aPoint = aNodes (aNodeIter);
         const Standard_Integer anId = 3 * (aNodeIter - aNodes.Lower());
         gp_Dir aNorm (aNormArr[anId + 0], aNormArr[anId + 1], aNormArr[anId + 2]);
-        if (aFace.Orientation() == TopAbs_REVERSED)
+        if ((aFace.Orientation() == TopAbs_REVERSED) ^ isMirrored)
         {
           aNorm.Reverse();
         }
@@ -216,10 +218,12 @@ namespace
           aNorm.Transform (aTrsf);
         }
 
-        if (theHasTexels && aUVNodes.Upper() == aNodes.Upper())
+        if (aUVNodes != NULL)
         {
-          const gp_Pnt2d aTexel = gp_Pnt2d ((-theUVOrigin.X() + (theUVRepeat.X() * (aUVNodes (aNodeIter).X() - aUmin)) / dUmax) / theUVScale.X(),
-                                            (-theUVOrigin.Y() + (theUVRepeat.Y() * (aUVNodes (aNodeIter).Y() - aVmin)) / dVmax) / theUVScale.Y());
+          const gp_Pnt2d aTexel = (dUmax == 0.0 || dVmax == 0.0)
+                                ? aUVNodes->Value (aNodeIter)
+                                : gp_Pnt2d ((-theUVOrigin.X() + (theUVRepeat.X() * (aUVNodes->Value (aNodeIter).X() - aUmin)) / dUmax) / theUVScale.X(),
+                                            (-theUVOrigin.Y() + (theUVRepeat.Y() * (aUVNodes->Value (aNodeIter).Y() - aVmin)) / dVmax) / theUVScale.Y());
           anArray->AddVertex (aPoint, aNorm, aTexel);
         }
         else
@@ -233,7 +237,7 @@ namespace
       Standard_Integer anIndex[3];
       for (Standard_Integer aTriIter = 1; aTriIter <= aT->NbTriangles(); ++aTriIter)
       {
-        if ((aFace.Orientation() == TopAbs_REVERSED) ^ isMirrored)
+        if ((aFace.Orientation() == TopAbs_REVERSED))
         {
           aTriangles (aTriIter).Get (anIndex[0], anIndex[2], anIndex[1]);
         }
@@ -266,9 +270,9 @@ namespace
         aV1.Cross (aV2);
         if (aV1.SquareMagnitude() > aPreci)
         {
-          anArray->AddEdge (anIndex[0] + aDecal);
-          anArray->AddEdge (anIndex[1] + aDecal);
-          anArray->AddEdge (anIndex[2] + aDecal);
+          anArray->AddEdges (anIndex[0] + aDecal,
+                             anIndex[1] + aDecal,
+                             anIndex[2] + aDecal);
         }
       }
     }
@@ -299,7 +303,8 @@ namespace
   }
 
   //! Compute boundary presentation for faces of the shape.
-  static Handle(Graphic3d_ArrayOfSegments) fillFaceBoundaries (const TopoDS_Shape& theShape)
+  static Handle(Graphic3d_ArrayOfSegments) fillFaceBoundaries (const TopoDS_Shape& theShape,
+                                                               GeomAbs_Shape theUpperContinuity)
   {
     // collection of all triangulation nodes on edges
     // for computing boundaries presentation
@@ -311,8 +316,7 @@ namespace
     for (TopExp_Explorer aFaceIter (theShape, TopAbs_FACE); aFaceIter.More(); aFaceIter.Next())
     {
       const TopoDS_Face& aFace = TopoDS::Face (aFaceIter.Current());
-      TopoDS_Iterator aSubShapeIter (aFace);
-      if (!aSubShapeIter.More())
+      if (aFace.NbChildren() == 0)
       {
         // handle specifically faces without boundary definition (triangulation-only)
         StdPrs_WFShape::AddEdgesOnTriangulation (aSeqPntsExtra, aFace, Standard_False);
@@ -339,6 +343,13 @@ namespace
       }
 
       const TopoDS_Edge& anEdge = TopoDS::Edge (anEdgeIter.Key());
+      if (theUpperContinuity < GeomAbs_CN
+       && anEdgeIter.Value().Extent() >= 2
+       && BRep_Tool::MaxContinuity (anEdge) > theUpperContinuity)
+      {
+        continue;
+      }
+
       Handle(Poly_PolygonOnTriangulation) anEdgePoly = BRep_Tool::PolygonOnTriangulation (anEdge, aTriangulation, aTrsf);
       if (!anEdgePoly.IsNull()
         && anEdgePoly->Nodes().Length() >= 2)
@@ -382,6 +393,13 @@ namespace
       }
 
       const TopoDS_Edge& anEdge = TopoDS::Edge (anEdgeIter.Key());
+      if (theUpperContinuity < GeomAbs_CN
+       && anEdgeIter.Value().Extent() >= 2
+       && BRep_Tool::MaxContinuity (anEdge) > theUpperContinuity)
+      {
+        continue;
+      }
+
       Handle(Poly_PolygonOnTriangulation) anEdgePoly = BRep_Tool::PolygonOnTriangulation (anEdge, aTriangulation, aTrsf);
       if (anEdgePoly.IsNull()
        || anEdgePoly->Nodes().Length () < 2)
@@ -552,15 +570,13 @@ void StdPrs_ShadedShape::Add (const Handle (Prs3d_Presentation)& thePrs,
     aBuilder.MakeCompound (anOpened);
     ExploreSolids (theShape, aBuilder, aClosed, anOpened, Standard_True);
 
-    TopoDS_Iterator aShapeIter (aClosed);
-    if (aShapeIter.More())
+    if (aClosed.NbChildren() > 0)
     {
       shadeFromShape (aClosed, thePrs, theDrawer,
                       theHasTexels, theUVOrigin, theUVRepeat, theUVScale, true);
     }
 
-    aShapeIter.Initialize (anOpened);
-    if (aShapeIter.More())
+    if (anOpened.NbChildren() > 0)
     {
       shadeFromShape (anOpened, thePrs, theDrawer,
                       theHasTexels, theUVOrigin, theUVRepeat, theUVScale, false);
@@ -576,12 +592,10 @@ void StdPrs_ShadedShape::Add (const Handle (Prs3d_Presentation)& thePrs,
 
   if (theDrawer->FaceBoundaryDraw())
   {
-    Handle(Graphic3d_ArrayOfSegments) aBndSegments = fillFaceBoundaries (theShape);
-    if (!aBndSegments.IsNull())
+    if (Handle(Graphic3d_ArrayOfSegments) aBndSegments = fillFaceBoundaries (theShape, theDrawer->FaceBoundaryUpperContinuity()))
     {
-      Handle(Graphic3d_AspectLine3d) aBoundaryAspect = theDrawer->FaceBoundaryAspect()->Aspect();
-      Handle(Graphic3d_Group) aPrsGrp = Prs3d_Root::CurrentGroup (thePrs);
-      aPrsGrp->SetGroupPrimitivesAspect (aBoundaryAspect);
+      Handle(Graphic3d_Group) aPrsGrp = thePrs->NewGroup();
+      aPrsGrp->SetGroupPrimitivesAspect (theDrawer->FaceBoundaryAspect()->Aspect());
       aPrsGrp->AddPrimitiveArray (aBndSegments);
     }
   }
@@ -604,9 +618,10 @@ Handle(Graphic3d_ArrayOfTriangles) StdPrs_ShadedShape::FillTriangles (const Topo
 // function : FillFaceBoundaries
 // purpose  :
 // =======================================================================
-Handle(Graphic3d_ArrayOfSegments) StdPrs_ShadedShape::FillFaceBoundaries (const TopoDS_Shape& theShape)
+Handle(Graphic3d_ArrayOfSegments) StdPrs_ShadedShape::FillFaceBoundaries (const TopoDS_Shape& theShape,
+                                                                          GeomAbs_Shape theUpperContinuity)
 {
-  return fillFaceBoundaries (theShape);
+  return fillFaceBoundaries (theShape, theUpperContinuity);
 }
 
 // =======================================================================

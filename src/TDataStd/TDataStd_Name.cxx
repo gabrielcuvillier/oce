@@ -85,7 +85,7 @@ Handle(TDataStd_Name) TDataStd_Name::Set (const TDF_Label&    label,
 //purpose  : Empty Constructor
 //=======================================================================
 
-TDataStd_Name::TDataStd_Name ()
+TDataStd_Name::TDataStd_Name () : myID(GetID())
 {}
 
 //=======================================================================
@@ -189,6 +189,6 @@ Standard_OStream& TDataStd_Name::Dump (Standard_OStream& anOS) const
   anOS << " Name=|"<<myString<<"|";
   Standard_Character sguid[Standard_GUID_SIZE_ALLOC];
   myID.ToCString(sguid);
-  anOS << sguid << endl;
+  anOS << sguid << std::endl;
   return anOS;
 }

@@ -14,6 +14,7 @@ Quantity_CoefficientOfExpansion.hxx
 Quantity_Color.cxx
 Quantity_Color.hxx
 Quantity_ColorHasher.hxx
+Quantity_ColorRGBA.cxx
 Quantity_ColorRGBA.hxx
 Quantity_ColorRGBAHasher.hxx
 Quantity_ColorDefinitionError.hxx
@@ -22,8 +23,6 @@ Quantity_Conductivity.hxx
 Quantity_Constant.hxx
 Quantity_Consumption.hxx
 Quantity_Content.hxx
-Quantity_Convert.cxx
-Quantity_Convert.hxx
 Quantity_Date.cxx
 Quantity_Date.hxx
 Quantity_DateDefinitionError.hxx

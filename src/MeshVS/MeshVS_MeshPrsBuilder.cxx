@@ -195,7 +195,7 @@ void MeshVS_MeshPrsBuilder::BuildElements( const Handle(Prs3d_Presentation)& Prs
   aDispMode &= MeshVS_DMF_OCCMask;
   //--------------------------------------------------------
 
-  Standard_Real aShrinkCoef;
+  Standard_Real aShrinkCoef = 0.0;
   aDrawer->GetDouble ( MeshVS_DA_ShrinkCoeff, aShrinkCoef );
 
   Standard_Boolean IsWireFrame    = ( aDispMode==MeshVS_DMF_WireFrame ),
@@ -203,11 +203,12 @@ void MeshVS_MeshPrsBuilder::BuildElements( const Handle(Prs3d_Presentation)& Prs
                    IsShrink       = ( aDispMode==MeshVS_DMF_Shrink ),
                    HasHilightFlag = ( ( DisplayMode & MeshVS_DMF_HilightPrs )   != 0 ),
                    HasSelectFlag  = ( ( DisplayMode & MeshVS_DMF_SelectionPrs ) != 0 ),
-                   IsMeshReflect, IsMeshAllowOverlap, IsReflect, IsMeshSmoothShading = Standard_False;
+                   IsMeshReflect = Standard_False, IsMeshAllowOverlap = Standard_False,
+                   IsMeshSmoothShading = Standard_False;
 
   aDrawer->GetBoolean  ( MeshVS_DA_Reflection, IsMeshReflect );
   aDrawer->GetBoolean  ( MeshVS_DA_IsAllowOverlapped, IsMeshAllowOverlap );
-  IsReflect      = ( IsMeshReflect && !HasHilightFlag );
+  const Standard_Boolean IsReflect = ( IsMeshReflect && !HasHilightFlag );
   aDrawer->GetBoolean  ( MeshVS_DA_SmoothShading, IsMeshSmoothShading );
 
   // display mode for highlighted prs of groups
@@ -219,10 +220,10 @@ void MeshVS_MeshPrsBuilder::BuildElements( const Handle(Prs3d_Presentation)& Prs
   aDrawer->GetMaterial ( MeshVS_DA_FrontMaterial, AMat );
   if ( !IsReflect )
   {
-    AMat.SetReflectionModeOff(Graphic3d_TOR_AMBIENT);
-    AMat.SetReflectionModeOff(Graphic3d_TOR_DIFFUSE);
-    AMat.SetReflectionModeOff(Graphic3d_TOR_SPECULAR);
-    AMat.SetReflectionModeOff(Graphic3d_TOR_EMISSION);
+    AMat.SetAmbientColor (Quantity_NOC_BLACK);
+    AMat.SetDiffuseColor (Quantity_NOC_BLACK);
+    AMat.SetSpecularColor(Quantity_NOC_BLACK);
+    AMat.SetEmissiveColor(Quantity_NOC_BLACK);
   }
   Handle( Graphic3d_AspectFillArea3d ) aFill = MeshVS_Tool::CreateAspectFillArea3d( GetDrawer(), AMat );
   Handle( Graphic3d_AspectLine3d ) aBeam = MeshVS_Tool::CreateAspectLine3d ( GetDrawer() );
@@ -533,10 +534,10 @@ void MeshVS_MeshPrsBuilder::BuildHilightPrs ( const Handle(Prs3d_Presentation)& 
 
   Graphic3d_MaterialAspect AMat;
   aDrawer->GetMaterial ( MeshVS_DA_FrontMaterial, AMat );
-  AMat.SetReflectionModeOff(Graphic3d_TOR_AMBIENT);
-  AMat.SetReflectionModeOff(Graphic3d_TOR_DIFFUSE);
-  AMat.SetReflectionModeOff(Graphic3d_TOR_SPECULAR);
-  AMat.SetReflectionModeOff(Graphic3d_TOR_EMISSION);
+  AMat.SetAmbientColor (Quantity_NOC_BLACK);
+  AMat.SetDiffuseColor (Quantity_NOC_BLACK);
+  AMat.SetSpecularColor(Quantity_NOC_BLACK);
+  AMat.SetEmissiveColor(Quantity_NOC_BLACK);
 
   Handle( Graphic3d_AspectFillArea3d ) aFill     = MeshVS_Tool::CreateAspectFillArea3d( GetDrawer(), AMat );
   Handle( Graphic3d_AspectLine3d )     aBeam     = MeshVS_Tool::CreateAspectLine3d( GetDrawer() );

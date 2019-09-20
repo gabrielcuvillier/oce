@@ -25,6 +25,8 @@
 #include <gp_Pnt2d.hxx>
 #include <OSD.hxx>
 #include <OSD_Environment.hxx>
+#include <OSD_File.hxx>
+#include <OSD_Process.hxx>
 #include <OSD_SharedLibrary.hxx>
 #include <OSD_Timer.hxx>
 #include <Plugin_MapOfFunctions.hxx>
@@ -62,11 +64,9 @@ static const char* ColorNames[MAXCOLOR] = {
   "Maroon","Orange","Pink","Salmon","Violet","Yellow","Khaki","Coral"
   };
 
-filebuf Draw_Spyfile;
+std::filebuf Draw_Spyfile;
 
-static ostream spystream(&Draw_Spyfile);
-
-static   Standard_Boolean XLoop;
+static std::ostream spystream(&Draw_Spyfile);
 
 static Handle(Draw_ProgressIndicator) PInd = NULL;
 
@@ -76,23 +76,21 @@ Standard_EXPORT Standard_Boolean Draw_Interprete(const char* command);
 // *******************************************************************
 // read an init file
 // *******************************************************************
-#ifdef _WIN32
-extern console_semaphore_value volatile console_semaphore;
-extern wchar_t console_command[1000];
-#endif
 
-static void ReadInitFile (const TCollection_AsciiString& theFileName)
+static void interpreteTclCommand (const TCollection_AsciiString& theCmd)
 {
-  TCollection_AsciiString aPath = theFileName;
 #ifdef _WIN32
   if (!Draw_Batch)
   {
     try
     {
-      aPath.ChangeAll ('\\', '/');
+      while (console_semaphore == HAS_CONSOLE_COMMAND)
       {
-        const TCollection_ExtendedString aCmdWide = TCollection_ExtendedString ("source -encoding utf-8 \"") + TCollection_ExtendedString (aPath) + "\"";
-        memcpy (console_command, aCmdWide.ToWideString(), Min (aCmdWide.Length() + 1, 980) * sizeof(wchar_t));
+        Sleep(10);
+      }
+      {
+        TCollection_ExtendedString aCmdWide (theCmd);
+        wcscpy_s (console_command, aCmdWide.ToWideString());
       }
       console_semaphore = HAS_CONSOLE_COMMAND;
       while (console_semaphore == HAS_CONSOLE_COMMAND)
@@ -100,19 +98,127 @@ static void ReadInitFile (const TCollection_AsciiString& theFileName)
         Sleep(10);
       }
     }
-    catch(...) {
-      cout << "Error while reading a script file." << endl;
+    catch (...)
+    {
+      std::cout << "Error while reading a script file.\n";
       ExitProcess(0);
     }
-  } else {
-#endif
-    char* com = new char [aPath.Length() + strlen ("source -encoding utf-8 ") + 2];
-    Sprintf (com, "source -encoding utf-8 %s", aPath.ToCString());
-    Draw_Interprete (com);
-    delete [] com;
-#ifdef _WIN32
   }
+  else
 #endif
+  {
+    Draw_Interprete (theCmd.ToCString());
+  }
+}
+
+static void ReadInitFile (const TCollection_AsciiString& theFileName)
+{
+  TCollection_AsciiString aCmd = theFileName;
+#ifdef _WIN32
+  aCmd.ChangeAll ('\\', '/');
+#endif
+  aCmd = TCollection_AsciiString ("source -encoding utf-8 \"") + aCmd + "\"";
+  interpreteTclCommand (aCmd);
+}
+
+//! Define environment variable available from Tcl and OCCT.
+static void setOcctTclEnv (const TCollection_AsciiString& theName,
+                           TCollection_AsciiString& thePath)
+{
+  if (thePath.IsEmpty())
+  {
+    return;
+  }
+
+  thePath.ChangeAll ('\\', '/');
+  OSD_Environment aRedPathEnv (theName);
+  aRedPathEnv.SetValue (thePath);
+  aRedPathEnv.Build();
+
+  const TCollection_AsciiString aPutEnv = theName + "=" + thePath;
+  Tcl_PutEnv (aPutEnv.ToCString());
+}
+
+//! Look for resource within standard installation layouts relative to executable location.
+//!
+//! Bin (INSTALL_DIR_BIN):
+//!  - Windows: <prefix>/win64/vc10/bin(d)
+//!  - Unix:    <prefix>/bin
+//! Resources (INSTALL_DIR_RESOURCE):
+//!  - Windows: <prefix>/src
+//!  - Unix:    <prefix>/share/opencascade-7.0.0/resources
+//! Samples (INSTALL_DIR_SAMPLES):
+//!  - Windows: <prefix>/samples
+//!  - Unix:    <prefix>/share/opencascade-7.0.0/samples
+//! Tests (INSTALL_DIR_TESTS):
+//!  - Windows: <prefix>/tests
+//!  - Unix:    <prefix>/share/opencascade-7.0.0/tests
+//!
+//! @param theCasRoot  [out] found CASROOT location (e.g. installation folder)
+//! @param theResRoot  [out] found resources root location
+//! @param theResName   [in] resource to find ("resources", "samples", etc.)
+//! @param theProbeFile [in] file to probe within resources location (e.g. "DrawResources/DrawDefault" within "resources")
+static bool searchResources (TCollection_AsciiString& theCasRoot,
+                             TCollection_AsciiString& theResRoot,
+                             const TCollection_AsciiString& theResName,
+                             const TCollection_AsciiString& theProbeFile)
+{
+  const TCollection_AsciiString aResLayouts[] =
+  {
+    TCollection_AsciiString("/share/opencascade-" OCC_VERSION_STRING_EXT "/") + theResName,
+    TCollection_AsciiString("/share/opencascade-" OCC_VERSION_COMPLETE "/") + theResName,
+    TCollection_AsciiString("/share/opencascade-" OCC_VERSION_STRING "/") + theResName,
+    TCollection_AsciiString("/share/opencascade/") + theResName,
+    TCollection_AsciiString("/share/occt-" OCC_VERSION_STRING_EXT "/") + theResName,
+    TCollection_AsciiString("/share/occt-" OCC_VERSION_COMPLETE "/") + theResName,
+    TCollection_AsciiString("/share/occt-" OCC_VERSION_STRING "/") + theResName,
+    TCollection_AsciiString("/share/occt/") + theResName,
+    TCollection_AsciiString("/") + theResName,
+    TCollection_AsciiString("/share/opencascade"),
+    TCollection_AsciiString("/share/occt"),
+    TCollection_AsciiString("/share"),
+    TCollection_AsciiString("/src"),
+    TCollection_AsciiString("")
+  };
+
+  const TCollection_AsciiString anExeDir (OSD_Process::ExecutableFolder());
+  for (Standard_Integer aLayIter = 0;; ++aLayIter)
+  {
+    const TCollection_AsciiString& aResLayout = aResLayouts[aLayIter];
+    const TCollection_AsciiString  aProbeFile = aResLayout + "/" + theProbeFile;
+    if (OSD_File (anExeDir + aProbeFile).Exists())
+    {
+      theCasRoot = anExeDir;
+      theResRoot = theCasRoot + aResLayout;
+      return true;
+    }
+    // <prefix>/bin(d)
+    else if (OSD_File (anExeDir + "../" + aProbeFile).Exists())
+    {
+      theCasRoot = anExeDir + "..";
+      theResRoot = theCasRoot + aResLayout;
+      return true;
+    }
+    // <prefix>/gcc/bin(d)
+    else if (OSD_File (anExeDir + "../../" + aProbeFile).Exists())
+    {
+      theCasRoot = anExeDir + "../..";
+      theResRoot = theCasRoot + aResLayout;
+      return true;
+    }
+    // <prefix>/win64/vc10/bin(d)
+    else if (OSD_File (anExeDir + "../../../" + aProbeFile).Exists())
+    {
+      theCasRoot = anExeDir + "../../..";
+      theResRoot = theCasRoot + aResLayout;
+      return true;
+    }
+
+    if (aResLayout.IsEmpty())
+    {
+      return false;
+    }
+  }
 }
 
 //=======================================================================
@@ -286,10 +392,13 @@ void Draw_Appli(int argc, char** argv, const FDraw_InitAppli Draw_InitAppli)
     Draw_Batch=!Init_Appli();
 #endif
   else
-    cout << "DRAW is running in batch mode" << endl;
+  {
+    std::cout << "DRAW is running in batch mode" << std::endl;
+    theCommands.Init();
+    Tcl_Init(theCommands.Interp());
+  }
 
-  XLoop = !Draw_Batch;
-  if (XLoop)
+  if (! Draw_Batch)
   {
     // Default colors
     for (int i = 0; i < MAXCOLOR; ++i)
@@ -304,7 +413,7 @@ void Draw_Appli(int argc, char** argv, const FDraw_InitAppli Draw_InitAppli)
   // *****************************************************************
   // set maximum precision for cout
   // *****************************************************************
-  cout.precision(15);
+  std::cout.precision(15);
 
   // *****************************************************************
   // standard commands
@@ -327,28 +436,60 @@ void Draw_Appli(int argc, char** argv, const FDraw_InitAppli Draw_InitAppli)
   // read init files
   // *****************************************************************
   // default
-
-  if (getenv ("DRAWDEFAULT") == NULL)
+  const TCollection_AsciiString aDrawDef (OSD_Environment ("DRAWDEFAULT").Value());
+  if (!aDrawDef.IsEmpty())
   {
-    if (getenv ("CASROOT") == NULL)
+    ReadInitFile (aDrawDef);
+  }
+  else
+  {
+    TCollection_AsciiString aDrawHome;
+    TCollection_AsciiString aCasRoot (OSD_Environment ("CASROOT").Value());
+    if (!aCasRoot.IsEmpty())
+    {
+      aDrawHome = aCasRoot + "/src/DrawResources";
+    }
+    else
+    {
+      // search for relative locations within standard development environment
+      TCollection_AsciiString aResPath;
+      if (searchResources (aCasRoot, aResPath, "resources", "DrawResources/DrawDefault"))
+      {
+        aDrawHome = aResPath + "/DrawResources";
+        setOcctTclEnv ("CASROOT",  aCasRoot);
+        setOcctTclEnv ("DRAWHOME", aDrawHome);
+        setOcctTclEnv ("CSF_OCCTResourcePath", aResPath);
+      }
+
+      TCollection_AsciiString aSamplesPath;
+      if (OSD_Environment ("CSF_OCCTSamplesPath").Value().IsEmpty()
+       && searchResources (aCasRoot, aSamplesPath, "samples", "tcl/Readme.txt"))
+      {
+        setOcctTclEnv ("CSF_OCCTSamplesPath", aSamplesPath);
+      }
+
+      TCollection_AsciiString aTestsPath;
+      if (OSD_Environment ("CSF_TestScriptsPath").Value().IsEmpty()
+       && searchResources (aCasRoot, aTestsPath, "tests", "parse.rules"))
+      {
+        setOcctTclEnv ("CSF_TestScriptsPath", aTestsPath);
+      }
+    }
+
+    if (!aDrawHome.IsEmpty())
+    {
+      const TCollection_AsciiString aDefStr = aDrawHome + "/DrawDefault";
+      ReadInitFile (aDefStr);
+    }
+    else
     {
 #ifdef _WIN32
       ReadInitFile ("ddefault");
 #else
-      cout << " the CASROOT variable is mandatory to Run OpenCascade "<< endl;
-      cout << "No default file" << endl;
+      std::cout << " the CASROOT variable is mandatory to Run OpenCascade "<< std::endl;
+      std::cout << "No default file" << std::endl;
 #endif
     }
-    else
-    {
-      TCollection_AsciiString aDefStr (getenv ("CASROOT"));
-      aDefStr += "/src/DrawResources/DrawDefault";
-      ReadInitFile (aDefStr);
-    }
-  }
-  else
-  {
-    ReadInitFile (getenv ("DRAWDEFAULT"));
   }
 
   // read commands from file
@@ -364,8 +505,21 @@ void Draw_Appli(int argc, char** argv, const FDraw_InitAppli Draw_InitAppli)
   }
 
   // execute command from command line
-  if (!aCommand.IsEmpty()) {
-    Draw_Interprete (aCommand.ToCString());
+  if (!aCommand.IsEmpty())
+  {
+#ifdef _WIN32
+    if (!Draw_Batch)
+    {
+      // on Windows except batch mode, commands are executed in separate thread
+      while (console_semaphore == HAS_CONSOLE_COMMAND) Sleep(10);
+      TCollection_ExtendedString aCmdWide(aCommand);
+      wcscpy_s(console_command, aCmdWide.ToWideString());
+      console_semaphore = HAS_CONSOLE_COMMAND;
+      while (console_semaphore == HAS_CONSOLE_COMMAND) Sleep(10);
+    }
+    else
+#endif
+    Draw_Interprete (aCommand.ToCString()); // Linux and Windows batch mode
     // provide a clean exit, this is useful for some analysis tools
     if ( ! isInteractiveForced )
 #ifndef _WIN32
@@ -378,7 +532,7 @@ void Draw_Appli(int argc, char** argv, const FDraw_InitAppli Draw_InitAppli)
   // *****************************************************************
   // X loop
   // *****************************************************************
-  if (XLoop) {
+  if (! Draw_Batch) {
 #ifdef _WIN32
     Run_Appli(hWnd);
 #else
@@ -387,15 +541,15 @@ void Draw_Appli(int argc, char** argv, const FDraw_InitAppli Draw_InitAppli)
   }
   else
   {
-    char cmd[255];
-    for (;;)
+    const int MAXCMD = 2048;
+    char cmd[MAXCMD];
+    for (int ncmd = 1;; ++ncmd)
     {
-      cout << "Viewer>";
-      int i = -1;
-      do {
-        cin.get(cmd[++i]);
-      } while ((cmd[i] != '\n') && (!cin.fail()));
-      cmd[i] = '\0';
+      std::cout << "Draw[" << ncmd << "]> ";
+      if (std::cin.getline (cmd, MAXCMD).fail())
+      {
+        break;
+      }
       Draw_Interprete(cmd);
     }
   }
@@ -500,7 +654,7 @@ Standard_Integer Tcl_AppInit (Tcl_Interp *)
 Standard_Integer  Draw_Call (char *c)
 {
    Standard_Integer r = theCommands.Eval(c);
-   cout << theCommands.Result() << endl;
+   std::cout << theCommands.Result() << std::endl;
    return r;
 }
 
@@ -522,8 +676,8 @@ void Draw::Load(Draw_Interpretor& theDI, const TCollection_AsciiString& theKey,
 
     if(!aPluginResource->Find(theKey.ToCString())) {
       Standard_SStream aMsg; aMsg << "Could not find the resource:";
-      aMsg << theKey.ToCString()<< endl;
-      cout << "could not find the resource:"<<theKey.ToCString()<< endl;
+      aMsg << theKey.ToCString()<< std::endl;
+      std::cout << "could not find the resource:"<<theKey.ToCString()<< std::endl;
       throw Draw_Failure(aMsg.str().c_str());
     }
 
@@ -549,7 +703,7 @@ void Draw::Load(Draw_Interpretor& theDI, const TCollection_AsciiString& theKey,
       aMsg << "; reason: ";
       aMsg << error.ToCString();
 #ifdef OCCT_DEBUG
-      cout << "could not open: "  << aPluginResource->Value(theKey.ToCString())<< " ; reason: "<< error.ToCString() << endl;
+      std::cout << "could not open: "  << aPluginResource->Value(theKey.ToCString())<< " ; reason: "<< error.ToCString() << std::endl;
 #endif
       throw Draw_Failure(aMsg.str().c_str());
     }

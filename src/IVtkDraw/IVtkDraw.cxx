@@ -85,6 +85,11 @@
 #include <IVtkDraw_HighlightAndSelectionPipeline.hxx>
 #include <IVtkDraw_Interactor.hxx>
 
+// prevent disabling some MSVC warning messages by VTK headers 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4244)
+#endif
 #include <vtkAlgorithmOutput.h>
 #include <vtkAppendPolyData.h>
 #include <vtkBMPWriter.h>
@@ -107,7 +112,6 @@
 #include <vtkSmartPointer.h>
 #include <vtkTIFFWriter.h>
 #include <vtkWindowToImageFilter.h>
-
 #ifndef _WIN32
 #include <X11/X.h>
 #include <X11/Shell.h>
@@ -118,6 +122,9 @@
 #include <vtkXOpenGLRenderWindow.h>
 #include <X11/Xutil.h>
 #include <tk.h>
+#endif
+#ifdef _MSC_VER
+#pragma warning(pop)
 #endif
 
 // workaround name conflicts with OCCT methods (in class TopoDS_Shape for example)
@@ -892,6 +899,10 @@ static Standard_Integer VtkMoveTo(Draw_Interpretor& theDI,
 
   Standard_Integer anY = GetInteractor()->GetRenderWindow()->GetSize()[1] - atoi (theArgs[2]) - 1;
   GetInteractor()->MoveTo (atoi (theArgs[1]), anY);
+
+  gp_XYZ aPickPnt;
+  GetInteractor()->Selector()->GetPickPosition (aPickPnt.ChangeData());
+  theDI << aPickPnt.X() << " " << aPickPnt.Y() << " " << aPickPnt.Z();
   return 0;
 }
 

@@ -20,7 +20,6 @@
 #include <MeshVS_Tool.hxx>
 #include <NCollection_Vec4.hxx>
 #include <Select3D_SensitiveEntity.hxx>
-#include <SelectBasics_EntityOwner.hxx>
 #include <TColgp_Array1OfPnt.hxx>
 #include <TColgp_HArray1OfPnt.hxx>
 #include <TColgp_Array1OfPnt2d.hxx>
@@ -33,7 +32,7 @@ IMPLEMENT_STANDARD_RTTIEXT(MeshVS_SensitivePolyhedron,Select3D_SensitiveEntity)
 // Function : Constructor MeshVS_SensitivePolyhedron
 // Purpose  :
 //================================================================
-MeshVS_SensitivePolyhedron::MeshVS_SensitivePolyhedron (const Handle(SelectBasics_EntityOwner)& theOwner,
+MeshVS_SensitivePolyhedron::MeshVS_SensitivePolyhedron (const Handle(SelectMgr_EntityOwner)& theOwner,
                                                         const TColgp_Array1OfPnt& theNodes,
                                                         const Handle(MeshVS_HArray1OfSequenceOfInteger)& theTopo)
 : Select3D_SensitiveEntity (theOwner),
@@ -84,22 +83,21 @@ Handle(Select3D_SensitiveEntity) MeshVS_SensitivePolyhedron::GetConnected()
 Standard_Boolean MeshVS_SensitivePolyhedron::Matches (SelectBasics_SelectingVolumeManager& theMgr,
                                                       SelectBasics_PickResult& thePickResult)
 {
-  Standard_Real aDepthMin = RealLast();
-  Standard_Real aDistToCOG = RealLast();
-
+  SelectBasics_PickResult aPickResult;
   for (MeshVS_PolyhedronVertsIter aIter (myTopology); aIter.More(); aIter.Next())
   {
-    Standard_Real aDepth = RealLast();
-    if (theMgr.Overlaps (aIter.Value(), Select3D_TOS_INTERIOR, aDepth))
+    if (theMgr.Overlaps (aIter.Value(), Select3D_TOS_INTERIOR, aPickResult))
     {
-      aDepthMin = Min (aDepth, aDepthMin);
+      thePickResult = SelectBasics_PickResult::Min (thePickResult, aPickResult);
     }
   }
+  if (!thePickResult.IsValid())
+  {
+    return Standard_False;
+  }
 
-  aDistToCOG = aDepthMin == RealLast() ? RealLast() : theMgr.DistToGeometryCenter (myCenter);
-  thePickResult = SelectBasics_PickResult (aDepthMin, aDistToCOG);
-
-  return aDepthMin != RealLast();
+  thePickResult.SetDistToGeomCenter (theMgr.DistToGeometryCenter (CenterOfGeometry()));
+  return Standard_True;
 }
 
 //=======================================================================

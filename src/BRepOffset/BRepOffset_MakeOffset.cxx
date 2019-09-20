@@ -112,10 +112,10 @@
 #include <BRepBuilderAPI_Sewing.hxx>
 #include <Geom_Line.hxx>
 #include <NCollection_Vector.hxx>
+#include <NCollection_IncAllocator.hxx>
 //
 #include <BOPAlgo_MakerVolume.hxx>
 #include <BOPTools_AlgoTools.hxx>
-#include <BOPCol_ListOfShape.hxx>
 
 #include <stdio.h>
 // POP for NT
@@ -159,7 +159,7 @@ static void DEBVerticesControl (const TopTools_IndexedMapOfShape& NewEdges,
       for (it1LE.Initialize(AsDes->Descendant(NE)); it1LE.More(); it1LE.Next()) {
         if (AsDes->Ascendant(it1LE.Value()).Extent() < 3) {
           LVP.Append(it1LE.Value());
-          cout <<"Vertex on at least 3 edges."<<endl;
+          std::cout <<"Vertex on at least 3 edges."<<std::endl;
 #ifdef DRAW
           if (AffichInt2d) {
             sprintf (name,"VP_%d",NVP++);
@@ -168,7 +168,7 @@ static void DEBVerticesControl (const TopTools_IndexedMapOfShape& NewEdges,
 #endif
         }
         else if (AsDes->Ascendant(it1LE.Value()).Extent() > 3) {
-          cout <<"Vertex on more than 3 edges."<<endl;
+          std::cout <<"Vertex on more than 3 edges."<<std::endl;
 #ifdef DRAW
           if (AffichInt2d) {
             sprintf (name,"VM_%d",NVM++);
@@ -235,7 +235,7 @@ static void DEBVerticesControl (const TopTools_IndexedMapOfShape& NewEdges,
       j++;
     }
     i++;
-    cout <<" distmin between VP : "<<distmin<<endl;
+    std::cout <<" distmin between VP : "<<distmin<<std::endl;
   }
 }  
 #endif
@@ -253,8 +253,7 @@ static
                         TopTools_ListOfShape& theLSF);
 
 static
-  Standard_Boolean BuildShellsCompleteInter(const BOPCol_ListOfShape& theLF,
-                                            const BOPCol_IndexedDataMapOfShapeListOfShape& theOrigins,
+  Standard_Boolean BuildShellsCompleteInter(const TopTools_ListOfShape& theLF,
                                             BRepAlgo_Image& theImage,
                                             TopoDS_Shape& theShells);
 
@@ -321,6 +320,26 @@ static Standard_Real ComputeMaxDist(const gp_Pln& thePlane,
 
 static void CorrectSolid(TopoDS_Solid& theSol, TopTools_ListOfShape& theSolList);
 //---------------------------------------------------------------------
+
+static TopAbs_Orientation OrientationOfEdgeInFace(const TopoDS_Edge& theEdge,
+                                                  const TopoDS_Face& theFace)
+{
+  TopAbs_Orientation anOr = TopAbs_EXTERNAL;
+  
+  TopExp_Explorer Explo(theFace, TopAbs_EDGE);
+  for (; Explo.More(); Explo.Next())
+  {
+    const TopoDS_Shape& anEdge = Explo.Current();
+    if (anEdge.IsSame(theEdge))
+    {
+      anOr = anEdge.Orientation();
+      break;
+    }
+  }
+
+  return anOr;
+}
+
 //
 static Standard_Boolean FindParameter(const TopoDS_Vertex& V, 
                                       const TopoDS_Edge& E,
@@ -481,7 +500,7 @@ static void GetEdgePoints(const TopoDS_Edge& anEdge,
 //=======================================================================
 static void FillContours(const TopoDS_Shape& aShape,
                          const BRepOffset_Analyse& Analyser,
-                         TopTools_DataMapOfShapeListOfShape& Contours,
+                         TopTools_IndexedDataMapOfShapeListOfShape& Contours,
                          TopTools_DataMapOfShapeShape& MapEF)
 {
   TopTools_ListOfShape Edges;
@@ -534,7 +553,7 @@ static void FillContours(const TopoDS_Shape& aShape,
                 break;
               }
           }
-      Contours.Bind(StartVertex, aContour);
+      Contours.Add(StartVertex, aContour);
     }
 }
 
@@ -934,14 +953,14 @@ void BRepOffset_MakeOffset::MakeThickSolid()
 #ifdef OCCT_DEBUG
       if(YaResult == 0)
         {
-        cout << "OffsetShape does not contain a FACES." << endl;
+        std::cout << "OffsetShape does not contain a FACES." << std::endl;
         }
 #endif
       }
 #ifdef OCCT_DEBUG
     else
       {
-      cout << "OffsetShape is null!" << endl;
+      std::cout << "OffsetShape is null!" << std::endl;
       }
 #endif
 
@@ -1070,7 +1089,7 @@ void BRepOffset_MakeOffset::BuildOffsetByInter()
 {
 #ifdef OCCT_DEBUG
   if ( ChronBuild) {
-    cout << " CONSTRUCTION OF OFFSETS :" << endl;
+    std::cout << " CONSTRUCTION OF OFFSETS :" << std::endl;
     Clock.Reset();
     Clock.Start();
   }
@@ -1426,7 +1445,7 @@ void BRepOffset_MakeOffset::BuildOffsetByArc()
 {
 #ifdef OCCT_DEBUG
   if ( ChronBuild) {
-    cout << " CONSTRUCTION OF OFFSETS :" << endl;
+    std::cout << " CONSTRUCTION OF OFFSETS :" << std::endl;
     Clock.Reset();
     Clock.Start();
   }
@@ -1635,7 +1654,7 @@ void BRepOffset_MakeOffset::SelfInter(TopTools_MapOfShape& /*Modif*/)
 {
 #ifdef OCCT_DEBUG
   if ( ChronBuild) {
-    cout << " AUTODEBOUCLAGE:" << endl;
+    std::cout << " AUTODEBOUCLAGE:" << std::endl;
     Clock.Reset();
     Clock.Start();
   }    
@@ -2210,36 +2229,30 @@ void BRepOffset_MakeOffset::CorrectConicalFaces()
         }
       }
     }
-    TopoDS_Iterator anIt(Sol);
-    Standard_Boolean SolIsNull = !anIt.More();
+    Standard_Integer nbs = Sol.NbChildren();
+    Standard_Boolean SolIsNull = (nbs == 0);
     //Checking solid
-    if(!SolIsNull)
+    if (nbs > 1)
     {
-      Standard_Integer nbs = 0;
-      while(anIt.More()) {anIt.Next(); ++nbs;}
-      if(nbs > 1)
+      BRepCheck_Analyzer aCheck (Sol, Standard_False);
+      if (!aCheck.IsValid ())
       {
-        BRepCheck_Analyzer aCheck(Sol, Standard_False);
-        if(!aCheck.IsValid())
+        TopTools_ListOfShape aSolList;
+        CorrectSolid (Sol, aSolList);
+        if (!aSolList.IsEmpty ())
         {
-          TopTools_ListOfShape aSolList;
-          CorrectSolid(Sol, aSolList);
-          if(!aSolList.IsEmpty())
+          BB.Add (NC, Sol);
+          TopTools_ListIteratorOfListOfShape aSLIt (aSolList);
+          for (; aSLIt.More (); aSLIt.Next ())
           {
-            BB.Add(NC, Sol);
-            TopTools_ListIteratorOfListOfShape aSLIt(aSolList);
-            for(; aSLIt.More(); aSLIt.Next())
-            {
-              BB.Add(NC, aSLIt.Value());
-            }
-            SolIsNull = Standard_True;
+            BB.Add (NC, aSLIt.Value ());
           }
+          SolIsNull = Standard_True;
         }
       }
     }
     //
-    anIt.Initialize(NC);
-    Standard_Boolean NCIsNull = !anIt.More();
+    Standard_Boolean NCIsNull = (NC.NbChildren() == 0);
     if((!SolIsNull) && (!NCIsNull))
     {
       BB.Add(NC, Sol);
@@ -2277,11 +2290,24 @@ void BRepOffset_MakeOffset::Intersection3D(BRepOffset_Inter3d& Inter)
 {
 #ifdef OCCT_DEBUG
   if (ChronBuild) {
-    cout << " INTERSECTION 3D:" << endl;
+    std::cout << " INTERSECTION 3D:" << std::endl;
     Clock.Reset();
     Clock.Start();  
   }
 #endif
+
+  // In the Complete Intersection mode, implemented currently for planar
+  // solids only, there is no need to intersect the faces here.
+  // This intersection will be performed in the method BuildShellsCompleteInter
+  // where the special treatment is applied to produced faces.
+  //
+  // Make sure to match the parameters in which the method
+  // BuildShellsCompleteInter is called.
+  if (myInter && (myJoin == GeomAbs_Intersection) && myIsPlanar &&
+      !myThickening && myFaces.IsEmpty() && IsSolid(myShape))
+    return;
+
+
   TopTools_ListOfShape OffsetFaces;  // list of faces // created.
   MakeList (OffsetFaces,myInitOffsetFace,myFaces);
 
@@ -2324,7 +2350,7 @@ void BRepOffset_MakeOffset::Intersection2D(const TopTools_IndexedMapOfShape& Mod
 {
 #ifdef OCCT_DEBUG
   if (ChronBuild) {
-    cout << " INTERSECTION 2D:" << endl;
+    std::cout << " INTERSECTION 2D:" << std::endl;
     Clock.Reset();
     Clock.Start();  
   }
@@ -2364,7 +2390,7 @@ void BRepOffset_MakeOffset::MakeLoops(TopTools_IndexedMapOfShape& Modif)
 {
 #ifdef OCCT_DEBUG
   if (ChronBuild) {
-     cout << " DEBOUCLAGE 2D:" << endl;
+     std::cout << " DEBOUCLAGE 2D:" << std::endl;
      Clock.Reset();
      Clock.Start(); 
   }
@@ -2412,7 +2438,7 @@ void BRepOffset_MakeOffset::MakeFaces(TopTools_IndexedMapOfShape& /*Modif*/)
 {
 #ifdef OCCT_DEBUG
   if (ChronBuild) {  
-    cout << " RECONSTRUCTION OF FACES:" << endl;
+    std::cout << " RECONSTRUCTION OF FACES:" << std::endl;
     Clock.Reset();
     Clock.Start();
   }
@@ -2485,18 +2511,17 @@ static void UpdateInitOffset (BRepAlgo_Image&         myInitOffset,
 //=======================================================================
 void BRepOffset_MakeOffset::MakeMissingWalls ()
 {
-  TopTools_DataMapOfShapeListOfShape Contours; //Start vertex + list of connected edges (free boundary)
+  TopTools_IndexedDataMapOfShapeListOfShape Contours; //Start vertex + list of connected edges (free boundary)
   TopTools_DataMapOfShapeShape MapEF; //Edges of contours: edge + face
   Standard_Real OffsetVal = Abs(myOffset);
 
   FillContours(myShape, myAnalyse, Contours, MapEF);
 
-  TopTools_DataMapIteratorOfDataMapOfShapeListOfShape iter(Contours);
-  for (; iter.More(); iter.Next())
+  for (Standard_Integer ic = 1; ic <= Contours.Extent(); ic++)
   {
-    TopoDS_Vertex StartVertex = TopoDS::Vertex(iter.Key());
+    TopoDS_Vertex StartVertex = TopoDS::Vertex(Contours.FindKey(ic));
     TopoDS_Edge StartEdge;
-    const TopTools_ListOfShape& aContour = iter.Value();
+    const TopTools_ListOfShape& aContour = Contours(ic);
     TopTools_ListIteratorOfListOfShape itl(aContour);
     Standard_Boolean FirstStep = Standard_True;
     TopoDS_Edge PrevEdge;
@@ -2505,6 +2530,7 @@ void BRepOffset_MakeOffset::MakeMissingWalls ()
     for (; itl.More(); itl.Next())
     {
       TopoDS_Edge anEdge = TopoDS::Edge(itl.Value());
+      TopoDS_Face aFaceOfEdge = TopoDS::Face(MapEF(anEdge));
 
       // Check for offset existence.
       if (!myInitOffsetEdge.HasImage(anEdge))
@@ -2844,6 +2870,12 @@ void BRepOffset_MakeOffset::MakeMissingWalls ()
       }
       BRepLib::SameParameter(NewFace);
       BRepTools::Update(NewFace);
+      //Check orientation
+      TopAbs_Orientation anOr = OrientationOfEdgeInFace(anEdge, aFaceOfEdge);
+      TopAbs_Orientation OrInNewFace = OrientationOfEdgeInFace(anEdge, NewFace);
+      if (OrInNewFace != TopAbs::Reverse(anOr))
+        NewFace.Reverse();
+      ///////////////////
       myWalls.Append(NewFace);
       if (ArcOnV2)
       {
@@ -2914,20 +2946,21 @@ void BRepOffset_MakeOffset::MakeShells ()
 {
 #ifdef OCCT_DEBUG
   if (ChronBuild) {  
-    cout << " RECONSTRUCTION OF SHELLS:" << endl;
+    std::cout << " RECONSTRUCTION OF SHELLS:" << std::endl;
     Clock.Reset();
     Clock.Start();
   }
 #endif
   //
-  TopTools_IndexedDataMapOfShapeListOfShape anOrigins;
-  //
-  BOPCol_ListOfShape aLSF;
+  // Prepare list of splits of the offset faces to make the shells
+  TopTools_ListOfShape aLSF;
   const TopTools_ListOfShape& R = myImageOffset.Roots();
   TopTools_ListIteratorOfListOfShape it(R);
   //
   for (; it.More(); it.Next()) {
-    const TopoDS_Shape& aF = it.Value();
+    TopoDS_Shape aF = it.Value();
+    if (myThickening) //offsetted faces must change their orientations
+      aF.Reverse();
     //
     TopTools_ListOfShape Image;
     myImageOffset.LastImage(aF,Image);
@@ -2935,12 +2968,6 @@ void BRepOffset_MakeOffset::MakeShells ()
     for (; it2.More(); it2.Next()) {
       const TopoDS_Shape& aFIm = it2.Value();
       aLSF.Append(aFIm);
-      //
-      TopTools_ListOfShape *pLOr = anOrigins.ChangeSeek(aFIm);
-      if (!pLOr) {
-        pLOr = &anOrigins(anOrigins.Add(aFIm, TopTools_ListOfShape()));
-      }
-      pLOr->Append(aF);
     }
   }
   //
@@ -2968,7 +2995,7 @@ void BRepOffset_MakeOffset::MakeShells ()
       IsSolid(myShape) && myIsPlanar) {
     //
     TopoDS_Shape aShells;
-    bDone = BuildShellsCompleteInter(aLSF, anOrigins, myImageOffset, aShells);
+    bDone = BuildShellsCompleteInter(aLSF, myImageOffset, aShells);
     if (bDone) {
       myOffsetShape = aShells;
     }
@@ -2976,7 +3003,7 @@ void BRepOffset_MakeOffset::MakeShells ()
   //
   if (!bDone) {
     BRepTools_Quilt Glue;
-    BOPCol_ListIteratorOfListOfShape aItLS(aLSF);
+    TopTools_ListIteratorOfListOfShape aItLS(aLSF);
     for (; aItLS.More(); aItLS.Next()) {
       Glue.Add(aItLS.Value());
     }
@@ -3039,35 +3066,29 @@ void BRepOffset_MakeOffset::MakeSolid ()
       }
     }
   }
-  TopoDS_Iterator anIt(Sol);
-  Standard_Boolean SolIsNull = !anIt.More();
+  Standard_Integer nbs = Sol.NbChildren();
+  Standard_Boolean SolIsNull = (nbs == 0);
   //Checking solid
-  if(!SolIsNull)
+  if (nbs > 1)
   {
-    Standard_Integer nbs = 0;
-    while(anIt.More()) {anIt.Next(); ++nbs;}
-    if(nbs > 1)
+    BRepCheck_Analyzer aCheck (Sol, Standard_False);
+    if (!aCheck.IsValid ())
     {
-      BRepCheck_Analyzer aCheck(Sol, Standard_False);
-      if(!aCheck.IsValid())
+      TopTools_ListOfShape aSolList;
+      CorrectSolid (Sol, aSolList);
+      if (!aSolList.IsEmpty ())
       {
-        TopTools_ListOfShape aSolList;
-        CorrectSolid(Sol, aSolList);
-        if(!aSolList.IsEmpty())
+        B.Add (NC, Sol);
+        TopTools_ListIteratorOfListOfShape aSLIt (aSolList);
+        for (; aSLIt.More (); aSLIt.Next ())
         {
-          B.Add(NC, Sol);
-          TopTools_ListIteratorOfListOfShape aSLIt(aSolList);
-          for(; aSLIt.More(); aSLIt.Next())
-          {
-            B.Add(NC, aSLIt.Value());
-          }
-          SolIsNull = Standard_True;
+          B.Add (NC, aSLIt.Value ());
         }
+        SolIsNull = Standard_True;
       }
     }
   }
-  anIt.Initialize(NC);
-  Standard_Boolean NCIsNull = !anIt.More();
+  Standard_Boolean NCIsNull = (NC.NbChildren() == 0);
   if((!SolIsNull) && (!NCIsNull))
   {
     B.Add(NC, Sol);
@@ -3179,7 +3200,7 @@ void BRepOffset_MakeOffset::EncodeRegularity ()
 {
 #ifdef OCCT_DEBUG
   if (ChronBuild) {  
-    cout << " CODING OF REGULARITIES:" << endl;
+    std::cout << " CODING OF REGULARITIES:" << std::endl;
     Clock.Reset();
     Clock.Start();
   }
@@ -3206,7 +3227,7 @@ void BRepOffset_MakeOffset::EncodeRegularity ()
     
     if (LofOF.Extent() != 2) {
 #ifdef OCCT_DEBUG_VERB
-    cout << " Edge shared by " << LofOF.Extent() << " Faces" << endl;
+    std::cout << " Edge shared by " << LofOF.Extent() << " Faces" << std::endl;
 #endif
       continue;
     }
@@ -4074,8 +4095,7 @@ void GetEnlargedFaces(const TopoDS_Shape& theShape,
 //           In case there will be more than just one solid, it will be
 //           rebuilt using only outer faces.
 //=======================================================================
-Standard_Boolean BuildShellsCompleteInter(const BOPCol_ListOfShape& theLF,
-                                          const BOPCol_IndexedDataMapOfShapeListOfShape& theOrigins,
+Standard_Boolean BuildShellsCompleteInter(const TopTools_ListOfShape& theLF,
                                           BRepAlgo_Image& theImage,
                                           TopoDS_Shape& theShells)
 {
@@ -4099,11 +4119,47 @@ Standard_Boolean BuildShellsCompleteInter(const BOPCol_ListOfShape& theLF,
     // result is the alone solid, nothing to do
     return GetSubShapes(aResult1, TopAbs_SHELL, theShells);
   }
-  //
-  // it is necessary to rebuild the solids, avoiding internal faces
-  //
-  // map faces to solids
-  TopTools_IndexedDataMapOfShapeListOfShape aDMFS;
+
+  // Allocators for effective memory allocations
+  // Global allocator for the long-living containers
+  Handle(NCollection_IncAllocator) anAllocGlob = new NCollection_IncAllocator;
+  // Local allocator for the local containers
+  Handle(NCollection_IncAllocator) anAllocLoc = new NCollection_IncAllocator;
+
+  // Since the <theImage> object does not support multiple ancestors,
+  // prepare local copy of the origins, which will be used to resolve
+  // non-manifold solids produced by Maker Volume algorithm by comparison
+  // of the normal directions of the split faces with their origins.
+  TopTools_DataMapOfShapeListOfShape anOrigins(1, anAllocGlob);
+  TopTools_ListIteratorOfListOfShape aItLR(theImage.Roots());
+  for (; aItLR.More(); aItLR.Next())
+  {
+    const TopoDS_Shape& aFR = aItLR.Value();
+
+    // Reset the local allocator
+    anAllocLoc->Reset();
+    // Find the last splits of the root face, including the ones
+    // created during MakeVolume operation
+    TopTools_ListOfShape aLFIm(anAllocLoc);
+    theImage.LastImage(aFR, aLFIm);
+
+    TopTools_ListIteratorOfListOfShape aItLFIm(aLFIm);
+    for (; aItLFIm.More(); aItLFIm.Next())
+    {
+      const TopoDS_Shape& aFIm = aItLFIm.Value();
+      TopTools_ListOfShape *pLFOr = anOrigins.ChangeSeek(aFIm);
+      if (!pLFOr) {
+        pLFOr = anOrigins.Bound(aFIm, TopTools_ListOfShape(anAllocGlob));
+      }
+      pLFOr->Append(aFR);
+    }
+  }
+
+  // Reset the local allocator
+  anAllocLoc->Reset();
+  // It is necessary to rebuild the solids, avoiding internal faces
+  // Map faces to solids
+  TopTools_IndexedDataMapOfShapeListOfShape aDMFS(1, anAllocLoc);
   TopExp::MapShapesAndAncestors(aResult1, TopAbs_FACE, TopAbs_SOLID, aDMFS);
   //
   Standard_Integer i, aNb = aDMFS.Extent();
@@ -4114,18 +4170,18 @@ Standard_Boolean BuildShellsCompleteInter(const BOPCol_ListOfShape& theLF,
   }
   //
   // get faces attached to only one solid
-  BOPCol_ListOfShape aLF2;
+  TopTools_ListOfShape aLF(anAllocLoc);
   for (i = 1; i <= aNb; ++i) {
     const TopTools_ListOfShape& aLS = aDMFS(i);
     if (aLS.Extent() == 1) {
       const TopoDS_Shape& aF = aDMFS.FindKey(i);
-      aLF2.Append(aF);
+      aLF.Append(aF);
     }
   }
   //
   // make solids from the new list
   BOPAlgo_MakerVolume aMV2;
-  aMV2.SetArguments(aLF2);
+  aMV2.SetArguments(aLF);
   // no need to intersect this time
   aMV2.SetIntersect(Standard_False);
   aMV2.SetAvoidInternalShapes(Standard_True);
@@ -4146,24 +4202,30 @@ Standard_Boolean BuildShellsCompleteInter(const BOPCol_ListOfShape& theLF,
     return bDone;
   }
   //
-  // the result is non-manifold - resolve it comparing normals
+  aLF.Clear();
+  aDMFS.Clear();
+  anAllocLoc->Reset();
+
+  // the result is non-manifold - resolve it comparing normal
   // directions of the offset faces and original faces
-  BOPCol_ListOfShape aLF3;
-  for (; aExp.More(); aExp.Next()) {
+  for (; aExp.More(); aExp.Next())
+  {
     const TopoDS_Face& aF = TopoDS::Face(aExp.Current());
-    //
-    // check orientation
-    if (!theOrigins.Contains(aF)) {
-      aLF3.Append(aF);
+    const TopTools_ListOfShape* pLFOr = anOrigins.Seek(aF);
+    if (!pLFOr)
+    {
+      Standard_ASSERT_INVOKE("BRepOffset_MakeOffset::BuildShellsCompleteInterSplit(): "
+                             "Origins map does not contain the split face");
       continue;
     }
-    //
-    const TopTools_ListOfShape& aLFOr = theOrigins.FindFromKey(aF);
-    TopTools_ListIteratorOfListOfShape aItLF(aLFOr);
-    for (; aItLF.More(); aItLF.Next()) {
-      const TopoDS_Face& aFOr = TopoDS::Face(aItLF.Value());
-      if (BRepOffset_Tool::CheckPlanesNormals(aF, aFOr)) {
-        aLF3.Append(aF);
+    // Check orientation
+    TopTools_ListIteratorOfListOfShape aItLOr(*pLFOr);
+    for (; aItLOr.More(); aItLOr.Next())
+    {
+      const TopoDS_Face& aFOr = TopoDS::Face(aItLOr.Value());
+      if (BRepOffset_Tool::CheckPlanesNormals(aF, aFOr))
+      {
+        aLF.Append(aF);
         break;
       }
     }
@@ -4171,7 +4233,7 @@ Standard_Boolean BuildShellsCompleteInter(const BOPCol_ListOfShape& theLF,
   //
   // make solid from most outer faces with correct normal direction
   BOPAlgo_MakerVolume aMV3;
-  aMV3.SetArguments(aLF3);
+  aMV3.SetArguments(aLF);
   aMV3.SetIntersect(Standard_False);
   aMV3.SetAvoidInternalShapes(Standard_True);
   aMV3.Perform();

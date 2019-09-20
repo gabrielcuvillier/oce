@@ -14,6 +14,8 @@ OCCT_DEFINES = $$(CSF_DEFINES)
 
 DEFINES = $$split(OCCT_DEFINES, ;)
 
+RESOURCES += ./src/FuncDemo.qrc
+
 unix {
     UNAME = $$system(uname -s)
     LIBLIST = $$(LD_LIBRARY_PATH)
@@ -42,13 +44,13 @@ unix {
 win32 {
     CONFIG(debug, debug|release) {
         DEFINES += _DEBUG
-        DESTDIR = ./win$(ARCH)/$(VCVER)/bind
-        OBJECTS_DIR = ./win$(ARCH)/$(VCVER)/objd
+        DESTDIR = ./win$$(ARCH)/$$(VCVER)/bind
+        OBJECTS_DIR = ./win$$(ARCH)/$$(VCVER)/objd
         MOC_DIR = ./src
     } else {
         DEFINES += NDEBUG
-        DESTDIR = ./win$(ARCH)/$(VCVER)/bin
-        OBJECTS_DIR = ./win$(ARCH)/$(VCVER)/obj
+        DESTDIR = ./win$$(ARCH)/$$(VCVER)/bin
+        OBJECTS_DIR = ./win$$(ARCH)/$$(VCVER)/obj
         MOC_DIR = ./src
     }
     LIBS = -L$$(QTDIR)/lib;$$(CSF_OCCTLibPath)

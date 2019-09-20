@@ -30,13 +30,15 @@ struct OpenGl_UnpackAlignmentSentry
 {
 
   //! Reset unpack alignment settings to safe values
-  void Reset()
+  static void Reset()
   {
     glPixelStorei (GL_UNPACK_ALIGNMENT,  1);
   #if !defined(GL_ES_VERSION_2_0)
     glPixelStorei (GL_UNPACK_ROW_LENGTH, 0);
   #endif
   }
+
+  OpenGl_UnpackAlignmentSentry() {}
 
   ~OpenGl_UnpackAlignmentSentry()
   {
@@ -60,6 +62,8 @@ OpenGl_Texture::OpenGl_Texture (const TCollection_AsciiString& theResourceId,
   mySizeY (0),
   mySizeZ (0),
   myTextFormat (GL_RGBA),
+  mySizedFormat(GL_RGBA8),
+  myNbSamples  (1),
   myHasMipmaps (Standard_False),
   myIsAlpha    (false)
 {
@@ -178,7 +182,7 @@ bool OpenGl_Texture::InitSamplerObject (const Handle(OpenGl_Context)& theCtx)
 //purpose  :
 //=======================================================================
 bool OpenGl_Texture::GetDataFormat (const Handle(OpenGl_Context)& theCtx,
-                                    const Image_PixMap&           theData,
+                                    const Image_Format            theFormat,
                                     GLint&                        theTextFormat,
                                     GLenum&                       thePixelFormat,
                                     GLenum&                       theDataType)
@@ -186,7 +190,7 @@ bool OpenGl_Texture::GetDataFormat (const Handle(OpenGl_Context)& theCtx,
   theTextFormat  = GL_RGBA8;
   thePixelFormat = 0;
   theDataType    = 0;
-  switch (theData.Format())
+  switch (theFormat)
   {
     case Image_Format_GrayF:
     {
@@ -401,6 +405,15 @@ bool OpenGl_Texture::Init (const Handle(OpenGl_Context)& theCtx,
                            const Graphic3d_TypeOfTexture theType,
                            const Image_PixMap*           theImage)
 {
+  if (theSizeX < 1
+   || theSizeY < 1)
+  {
+    theCtx->PushMessage (GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, 0, GL_DEBUG_SEVERITY_HIGH,
+                         "Error: texture of 0 size cannot be created.");
+    Release (theCtx.operator->());
+    return false;
+  }
+
 #if !defined(GL_ES_VERSION_2_0)
   const GLenum aTarget = theType == Graphic3d_TOT_1D
                        ? GL_TEXTURE_1D
@@ -433,6 +446,8 @@ bool OpenGl_Texture::Init (const Handle(OpenGl_Context)& theCtx,
 
   myHasMipmaps             = toCreateMipMaps;
   myTextFormat             = thePixelFormat;
+  mySizedFormat            = theTextFormat;
+  myNbSamples              = 1;
 #if !defined(GL_ES_VERSION_2_0)
   const GLint anIntFormat  = theTextFormat;
 #else
@@ -546,6 +561,7 @@ bool OpenGl_Texture::Init (const Handle(OpenGl_Context)& theCtx,
                     theSizeX, 0,
                     thePixelFormat, theDataType, NULL);
       glGetTexLevelParameteriv (GL_PROXY_TEXTURE_1D, 0, GL_TEXTURE_WIDTH, &aTestWidth);
+      glGetTexLevelParameteriv (GL_PROXY_TEXTURE_1D, 0, GL_TEXTURE_INTERNAL_FORMAT, &mySizedFormat);
       if (aTestWidth == 0)
       {
         // no memory or broken input parameters
@@ -597,6 +613,7 @@ bool OpenGl_Texture::Init (const Handle(OpenGl_Context)& theCtx,
                     thePixelFormat, theDataType, NULL);
       glGetTexLevelParameteriv (GL_PROXY_TEXTURE_2D, 0, GL_TEXTURE_WIDTH,  &aTestWidth);
       glGetTexLevelParameteriv (GL_PROXY_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &aTestHeight);
+      glGetTexLevelParameteriv (GL_PROXY_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &mySizedFormat);
       if (aTestWidth == 0 || aTestHeight == 0)
       {
         // no memory or broken input parameters
@@ -660,6 +677,7 @@ bool OpenGl_Texture::Init (const Handle(OpenGl_Context)& theCtx,
                     thePixelFormat, theDataType, NULL);
       glGetTexLevelParameteriv (GL_PROXY_TEXTURE_2D, 0, GL_TEXTURE_WIDTH,  &aTestWidth);
       glGetTexLevelParameteriv (GL_PROXY_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &aTestHeight);
+      glGetTexLevelParameteriv (GL_PROXY_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &mySizedFormat);
       if (aTestWidth == 0 || aTestHeight == 0)
       {
         // no memory or broken input parameters
@@ -715,6 +733,12 @@ bool OpenGl_Texture::Init (const Handle(OpenGl_Context)& theCtx,
       Unbind (theCtx);
       return true;
     }
+    case Graphic3d_TOT_CUBEMAP:
+    {
+      Unbind (theCtx);
+      Release (theCtx.get());
+      return false;
+    }
   }
 
   Release (theCtx.operator->());
@@ -752,6 +776,36 @@ bool OpenGl_Texture::Init (const Handle(OpenGl_Context)& theCtx,
 }
 
 // =======================================================================
+// function : Init
+// purpose  :
+// =======================================================================
+bool OpenGl_Texture::Init (const Handle(OpenGl_Context)&       theCtx,
+                           const Handle(Graphic3d_TextureMap)& theTextureMap)
+{
+  if (theTextureMap.IsNull())
+  {
+    return false;
+  }
+
+  switch (theTextureMap->Type())
+  {
+    case Graphic3d_TOT_CUBEMAP:
+    {
+      return InitCubeMap (theCtx, Handle(Graphic3d_CubeMap)::DownCast(theTextureMap));
+    }
+    default:
+    {
+      Handle(Image_PixMap) anImage = theTextureMap->GetImage();
+      if (anImage.IsNull())
+      {
+        return false;
+      }
+      return Init (theCtx, *anImage, theTextureMap->Type());
+    }
+  }
+}
+
+// =======================================================================
 // function : Init2DMultisample
 // purpose  :
 // =======================================================================
@@ -768,8 +822,9 @@ bool OpenGl_Texture::Init2DMultisample (const Handle(OpenGl_Context)& theCtx,
     return false;
   }
 
-  const GLsizei aNbSamples = OpenGl_Context::GetPowerOfTwo (theNbSamples, theCtx->MaxMsaaSamples());
+  myNbSamples = OpenGl_Context::GetPowerOfTwo (theNbSamples, theCtx->MaxMsaaSamples());
   myTarget = GL_TEXTURE_2D_MULTISAMPLE;
+  myHasMipmaps = false;
   if(theSizeX > theCtx->MaxTextureSize()
   || theSizeY > theCtx->MaxTextureSize())
   {
@@ -778,17 +833,18 @@ bool OpenGl_Texture::Init2DMultisample (const Handle(OpenGl_Context)& theCtx,
 
   Bind (theCtx);
   //myTextFormat = theTextFormat;
+  mySizedFormat = theTextFormat;
 #if !defined(GL_ES_VERSION_2_0)
   if (theCtx->Functions()->glTexStorage2DMultisample != NULL)
   {
-    theCtx->Functions()->glTexStorage2DMultisample (myTarget, aNbSamples, theTextFormat, theSizeX, theSizeY, GL_FALSE);
+    theCtx->Functions()->glTexStorage2DMultisample (myTarget, myNbSamples, theTextFormat, theSizeX, theSizeY, GL_FALSE);
   }
   else
   {
-    theCtx->Functions()->glTexImage2DMultisample   (myTarget, aNbSamples, theTextFormat, theSizeX, theSizeY, GL_FALSE);
+    theCtx->Functions()->glTexImage2DMultisample   (myTarget, myNbSamples, theTextFormat, theSizeX, theSizeY, GL_FALSE);
   }
 #else
-  theCtx->Functions()  ->glTexStorage2DMultisample (myTarget, aNbSamples, theTextFormat, theSizeX, theSizeY, GL_FALSE);
+  theCtx->Functions()  ->glTexStorage2DMultisample (myTarget, myNbSamples, theTextFormat, theSizeX, theSizeY, GL_FALSE);
 #endif
   if (theCtx->core11fwd->glGetError() != GL_NO_ERROR)
   {
@@ -819,6 +875,8 @@ bool OpenGl_Texture::InitRectangle (const Handle(OpenGl_Context)& theCtx,
 
 #if !defined(GL_ES_VERSION_2_0)
   myTarget = GL_TEXTURE_RECTANGLE;
+  myNbSamples = 1;
+  myHasMipmaps = false;
 
   const GLsizei aSizeX    = Min (theCtx->MaxTextureSize(), theSizeX);
   const GLsizei aSizeY    = Min (theCtx->MaxTextureSize(), theSizeY);
@@ -826,26 +884,22 @@ bool OpenGl_Texture::InitRectangle (const Handle(OpenGl_Context)& theCtx,
   Bind (theCtx);
   applyDefaultSamplerParams (theCtx);
 
-  const GLint anIntFormat = theFormat.Internal();
-  myTextFormat = theFormat.Format();
+  myTextFormat  = theFormat.Format();
+  mySizedFormat = theFormat.Internal();
 
-  glTexImage2D (GL_PROXY_TEXTURE_RECTANGLE,
-                0,
-                anIntFormat,
-                aSizeX,
-                aSizeY,
-                0,
-                theFormat.Format(),
-                GL_FLOAT,
-                NULL);
+  // setup the alignment
+  OpenGl_UnpackAlignmentSentry::Reset();
+
+  glTexImage2D (GL_PROXY_TEXTURE_RECTANGLE, 0, mySizedFormat,
+                aSizeX, aSizeY, 0,
+                myTextFormat, GL_FLOAT, NULL);
 
   GLint aTestSizeX = 0;
   GLint aTestSizeY = 0;
 
-  glGetTexLevelParameteriv (
-    GL_PROXY_TEXTURE_RECTANGLE, 0, GL_TEXTURE_WIDTH,  &aTestSizeX);
-  glGetTexLevelParameteriv (
-    GL_PROXY_TEXTURE_RECTANGLE, 0, GL_TEXTURE_HEIGHT, &aTestSizeY);
+  glGetTexLevelParameteriv (GL_PROXY_TEXTURE_RECTANGLE, 0, GL_TEXTURE_WIDTH,  &aTestSizeX);
+  glGetTexLevelParameteriv (GL_PROXY_TEXTURE_RECTANGLE, 0, GL_TEXTURE_HEIGHT, &aTestSizeY);
+  glGetTexLevelParameteriv (GL_PROXY_TEXTURE_RECTANGLE, 0, GL_TEXTURE_INTERNAL_FORMAT, &mySizedFormat);
 
   if (aTestSizeX == 0 || aTestSizeY == 0)
   {
@@ -853,15 +907,9 @@ bool OpenGl_Texture::InitRectangle (const Handle(OpenGl_Context)& theCtx,
     return false;
   }
 
-  glTexImage2D (myTarget,
-                0,
-                anIntFormat,
-                aSizeX,
-                aSizeY,
-                0,
-                theFormat.Format(),
-                GL_FLOAT,
-                NULL);
+  glTexImage2D (myTarget, 0, mySizedFormat,
+                aSizeX, aSizeY, 0,
+                myTextFormat, GL_FLOAT, NULL);
 
   if (glGetError() != GL_NO_ERROR)
   {
@@ -914,6 +962,8 @@ bool OpenGl_Texture::Init3D (const Handle(OpenGl_Context)& theCtx,
   }
 
   myTarget = GL_TEXTURE_3D;
+  myNbSamples = 1;
+  myHasMipmaps = false;
 
   const GLsizei aSizeX = Min (theCtx->MaxTextureSize(), theSizeX);
   const GLsizei aSizeY = Min (theCtx->MaxTextureSize(), theSizeY);
@@ -936,19 +986,15 @@ bool OpenGl_Texture::Init3D (const Handle(OpenGl_Context)& theCtx,
     return false;
   }
 
-  const GLint anIntFormat = theTextFormat;
+  mySizedFormat = theTextFormat;
+
+  // setup the alignment
+  OpenGl_UnpackAlignmentSentry::Reset();
 
 #if !defined (GL_ES_VERSION_2_0)
-  theCtx->core15fwd->glTexImage3D (GL_PROXY_TEXTURE_3D,
-                                   0,
-                                   anIntFormat,
-                                   aSizeX,
-                                   aSizeY,
-                                   aSizeZ,
-                                   0,
-                                   thePixelFormat,
-                                   theDataType,
-                                   NULL);
+  theCtx->core15fwd->glTexImage3D (GL_PROXY_TEXTURE_3D, 0, mySizedFormat,
+                                   aSizeX, aSizeY, aSizeZ, 0,
+                                   thePixelFormat, theDataType, NULL);
 
   GLint aTestSizeX = 0;
   GLint aTestSizeY = 0;
@@ -957,6 +1003,7 @@ bool OpenGl_Texture::Init3D (const Handle(OpenGl_Context)& theCtx,
   glGetTexLevelParameteriv (GL_PROXY_TEXTURE_3D, 0, GL_TEXTURE_WIDTH, &aTestSizeX);
   glGetTexLevelParameteriv (GL_PROXY_TEXTURE_3D, 0, GL_TEXTURE_HEIGHT, &aTestSizeY);
   glGetTexLevelParameteriv (GL_PROXY_TEXTURE_3D, 0, GL_TEXTURE_DEPTH, &aTestSizeZ);
+  glGetTexLevelParameteriv (GL_PROXY_TEXTURE_3D, 0, GL_TEXTURE_INTERNAL_FORMAT, &mySizedFormat);
 
   if (aTestSizeX == 0 || aTestSizeY == 0 || aTestSizeZ == 0)
   {
@@ -967,16 +1014,9 @@ bool OpenGl_Texture::Init3D (const Handle(OpenGl_Context)& theCtx,
 #endif
 
   applyDefaultSamplerParams (theCtx);
-  theCtx->Functions()->glTexImage3D (myTarget,
-                                     0,
-                                     anIntFormat,
-                                     aSizeX,
-                                     aSizeY,
-                                     aSizeZ,
-                                     0,
-                                     thePixelFormat,
-                                     theDataType,
-                                     thePixels);
+  theCtx->Functions()->glTexImage3D (myTarget, 0, mySizedFormat,
+                                     aSizeX, aSizeY, aSizeZ, 0,
+                                     thePixelFormat, theDataType, thePixels);
 
   if (glGetError() != GL_NO_ERROR)
   {
@@ -991,4 +1031,212 @@ bool OpenGl_Texture::Init3D (const Handle(OpenGl_Context)& theCtx,
 
   Unbind (theCtx);
   return true;
+}
+
+// =======================================================================
+// function : InitCubeMap
+// purpose  :
+// =======================================================================
+bool OpenGl_Texture::InitCubeMap (const Handle(OpenGl_Context)&    theCtx,
+                                  const Handle(Graphic3d_CubeMap)& theCubeMap,
+                                  Standard_Size                    theSize,
+                                  Image_Format                     theFormat,
+                                  Standard_Boolean                 theToGenMipmap)
+{
+  if (!Create (theCtx))
+  {
+    Release (theCtx.get());
+    return false;
+  }
+
+  if (!theCubeMap.IsNull())
+  {
+    Handle(Image_PixMap) anImage = theCubeMap->Reset().Value();
+    if (!anImage.IsNull())
+    {
+      theSize   = anImage->SizeX();
+      theFormat = anImage->Format();
+    }
+    else
+    {
+      theCtx->PushMessage (GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, 0, GL_DEBUG_SEVERITY_HIGH,
+        "Unable to get the first side of cubemap");
+      Release(theCtx.get());
+      return false;
+    }
+  }
+
+  GLenum aPixelFormat = GL_RGB;
+  GLenum aDataType = 0;
+  GLint aTextFormat = 0;
+
+  if (!GetDataFormat (theCtx, theFormat, aTextFormat, aPixelFormat, aDataType))
+  {
+    Unbind(theCtx);
+    Release(theCtx.get());
+    return false;
+  }
+
+  myTarget = GL_TEXTURE_CUBE_MAP;
+  myHasMipmaps = theToGenMipmap;
+  myNbSamples = 1;
+  Bind (theCtx);
+  applyDefaultSamplerParams (theCtx);
+
+  for (Standard_Integer i = 0; i < 6; ++i)
+  {
+    const void* aData = NULL;
+    Handle(Image_PixMap) anImage;
+
+    if (!theCubeMap.IsNull())
+    {
+      anImage = theCubeMap->Value();
+      if (!anImage.IsNull())
+      {
+#if !defined(GL_ES_VERSION_2_0)
+        const GLint anAligment = Min ((GLint)anImage->MaxRowAligmentBytes(), 8); // OpenGL supports alignment upto 8 bytes
+        glPixelStorei (GL_UNPACK_ALIGNMENT, anAligment);
+
+        // notice that GL_UNPACK_ROW_LENGTH is not available on OpenGL ES 2.0 without GL_EXT_unpack_subimage extension
+        const GLint anExtraBytes = GLint(anImage->RowExtraBytes());
+        const GLint aPixelsWidth = GLint(anImage->SizeRowBytes() / anImage->SizePixelBytes());
+        const GLint aRowLength = (anExtraBytes >= anAligment) ? aPixelsWidth : 0;
+        glPixelStorei (GL_UNPACK_ROW_LENGTH, aRowLength);
+#else
+        Handle(Image_PixMap) aCopyImage = new Image_PixMap();
+        aCopyImage->InitTrash (theFormat, theSize, theSize);
+        for (unsigned int y = 0; y < theSize; ++y)
+        {
+          for (unsigned int x = 0; x < theSize; ++x)
+          {
+            for (unsigned int aByte = 0; aByte < anImage->SizePixelBytes(); ++aByte)
+            {
+              aCopyImage->ChangeRawValue (y, x)[aByte] = anImage->RawValue (y, x)[aByte];
+            }
+          }
+        }
+        anImage = aCopyImage;
+        const GLint anAligment = Min((GLint)anImage->MaxRowAligmentBytes(), 8); // OpenGL supports alignment upto 8 bytes
+        glPixelStorei (GL_UNPACK_ALIGNMENT, anAligment);
+#endif
+        aData = anImage->Data();
+      }
+      else
+      {
+        theCtx->PushMessage (GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, 0, GL_DEBUG_SEVERITY_HIGH, TCollection_AsciiString() +
+          "Unable to get [" + i + "] side of cubemap");
+        Unbind (theCtx);
+        Release (theCtx.get());
+        return false;
+      }
+      theCubeMap->Next();
+    }
+
+    glTexImage2D (GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0,
+                  aTextFormat,
+                  GLsizei(theSize), GLsizei(theSize),
+                  0, aPixelFormat, aDataType,
+                  aData);
+
+    OpenGl_UnpackAlignmentSentry::Reset();
+
+    if (glGetError() != GL_NO_ERROR)
+    {
+      theCtx->PushMessage (GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, 0, GL_DEBUG_SEVERITY_HIGH,
+        "Unable to initialize side of cubemap");
+      Unbind (theCtx);
+      Release (theCtx.get());
+      return false;
+    }
+  }
+
+  if (theToGenMipmap && theCtx->arbFBO != NULL)
+  {
+      theCtx->arbFBO->glGenerateMipmap (myTarget);
+
+      if (glGetError() != GL_NO_ERROR)
+      {
+        theCtx->PushMessage (GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, 0, GL_DEBUG_SEVERITY_HIGH,
+          "Unable to generate mipmap of cubemap");
+        Unbind(theCtx);
+        Release(theCtx.get());
+        return false;
+      }
+  }
+
+  Unbind (theCtx.get());
+  return true;
+}
+
+// =======================================================================
+// function : PixelSizeOfPixelFormat
+// purpose  :
+// =======================================================================
+Standard_Size OpenGl_Texture::PixelSizeOfPixelFormat (Standard_Integer theInternalFormat)
+{
+  switch(theInternalFormat)
+  {
+    // RED variations (GL_RED, OpenGL 3.0+)
+    case GL_RED:
+    case GL_R8:       return 1;
+    case GL_R16:      return 2;
+    case GL_R16F:     return 2;
+    case GL_R32F:     return 4;
+    // RGB variations
+    case GL_RGB:      return 3;
+    case GL_RGB8:     return 3;
+    case GL_RGB16:    return 6;
+    case GL_RGB16F:   return 6;
+    case GL_RGB32F:   return 12;
+    // RGBA variations
+    case GL_RGBA:     return 4;
+    case GL_RGBA8:    return 4;
+    case GL_RGB10_A2: return 4;
+    case GL_RGBA12:   return 6;
+    case GL_RGBA16:   return 8;
+    case GL_RGBA16F:  return 8;
+    case GL_RGBA32F:  return 16;
+    //
+    case GL_BGRA_EXT:  return 4;
+    // ALPHA variations (deprecated)
+    case GL_ALPHA:
+    case GL_ALPHA8:    return 1;
+    case GL_ALPHA16:   return 2;
+    case GL_LUMINANCE: return 1;
+    case GL_LUMINANCE_ALPHA: return 2;
+    // depth-stencil
+    case GL_DEPTH24_STENCIL8:   return 4;
+    case GL_DEPTH32F_STENCIL8:  return 8;
+    case GL_DEPTH_COMPONENT16:  return 2;
+    case GL_DEPTH_COMPONENT24:  return 3;
+    case GL_DEPTH_COMPONENT32F: return 4;
+  }
+  return 0;
+}
+
+// =======================================================================
+// function : EstimatedDataSize
+// purpose  :
+// =======================================================================
+Standard_Size OpenGl_Texture::EstimatedDataSize() const
+{
+  if (!IsValid())
+  {
+    return 0;
+  }
+
+  Standard_Size aSize = PixelSizeOfPixelFormat (mySizedFormat) * mySizeX * myNbSamples;
+  if (mySizeY != 0)
+  {
+    aSize *= Standard_Size(mySizeY);
+  }
+  if (mySizeZ != 0)
+  {
+    aSize *= Standard_Size(mySizeZ);
+  }
+  if (myHasMipmaps)
+  {
+    aSize = aSize + aSize / 3;
+  }
+  return aSize;
 }

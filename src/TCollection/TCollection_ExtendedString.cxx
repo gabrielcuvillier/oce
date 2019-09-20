@@ -23,6 +23,7 @@
 #include <Standard_OutOfRange.hxx>
 #include <TCollection_AsciiString.hxx>
 
+#include <algorithm>
 #include <cctype>
 #include <cstdio>
 
@@ -374,6 +375,15 @@ void TCollection_ExtendedString::Copy (const TCollection_ExtendedString& fromwhe
 }
 
 // ----------------------------------------------------------------------------
+// Swap
+// ----------------------------------------------------------------------------
+void TCollection_ExtendedString::Swap (TCollection_ExtendedString& theOther)
+{
+  std::swap (mystring, theOther.mystring);
+  std::swap (mylength, theOther.mylength);
+}
+
+// ----------------------------------------------------------------------------
 // Destroy
 // ----------------------------------------------------------------------------
 TCollection_ExtendedString::~TCollection_ExtendedString()
@@ -529,7 +539,7 @@ Standard_Boolean TCollection_ExtendedString::StartsWith (const TCollection_Exten
   }
 
   return mylength >= theStartString.mylength
-      && memcmp (theStartString.mystring, mystring, theStartString.mylength) == 0;
+      && memcmp (theStartString.mystring, mystring, theStartString.mylength * sizeof(Standard_ExtCharacter)) == 0;
 }
 
 // ----------------------------------------------------------------------------
@@ -543,7 +553,7 @@ Standard_Boolean TCollection_ExtendedString::EndsWith (const TCollection_Extende
   }
 
   return mylength >= theEndString.mylength
-      && memcmp (theEndString.mystring, mystring + mylength - theEndString.mylength, theEndString.mylength) == 0;
+      && memcmp (theEndString.mystring, mystring + mylength - theEndString.mylength, theEndString.mylength * sizeof(Standard_ExtCharacter)) == 0;
 }
 
 // ----------------------------------------------------------------------------

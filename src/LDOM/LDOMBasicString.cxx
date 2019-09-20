@@ -92,6 +92,7 @@ LDOMBasicString::LDOMBasicString (const LDOMBasicString& anOther)
       memcpy (myVal.ptr, anOther.myVal.ptr, aLen);
       break;
     }
+    Standard_FALLTHROUGH
   case LDOM_AsciiDoc:
   case LDOM_AsciiDocClear:
   case LDOM_AsciiHashed:
@@ -148,6 +149,7 @@ LDOMBasicString& LDOMBasicString::operator = (const LDOMBasicString& anOther)
       memcpy (myVal.ptr, anOther.myVal.ptr, aLen);
       break;
     }
+    Standard_FALLTHROUGH
   case LDOM_AsciiDoc:
   case LDOM_AsciiDocClear:
   case LDOM_AsciiHashed:
@@ -354,7 +356,7 @@ char * db_pretty_print (const LDOMBasicString * aString, int fl, char *)
     out << str;
   out << '\"';
  finis:
-  out << ends;
+  out << std::ends;
   return (char *)out.str();
 }
 #endif

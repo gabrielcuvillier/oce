@@ -46,6 +46,7 @@
 #include <TDataStd_TreeNode.hxx>
 #include <TDataStd_UAttribute.hxx>
 #include <TDF_AttributeIterator.hxx>
+#include <TDF_ChildIterator.hxx>
 #include <TDF_Data.hxx>
 #include <TDF_LabelSequence.hxx>
 #include <TDF_Reference.hxx>
@@ -62,6 +63,7 @@
 #include <V3d_View.hxx>
 #include <V3d_Viewer.hxx>
 #include <ViewerTest.hxx>
+#include <ViewerTest_AutoUpdater.hxx>
 #include <XCAFDoc.hxx>
 #include <XCAFDoc_Area.hxx>
 #include <XCAFDoc_Centroid.hxx>
@@ -78,6 +80,7 @@
 #include <XCAFDoc_ShapeTool.hxx>
 #include <XCAFDoc_Volume.hxx>
 #include <XCAFPrs.hxx>
+#include <XCAFPrs_AISObject.hxx>
 #include <XCAFPrs_Driver.hxx>
 #include <XDEDRAW.hxx>
 #include <XDEDRAW_Colors.hxx>
@@ -304,21 +307,49 @@ static void StatAssembly(const TDF_Label L,
     NbAreaProp++;
   }
   Handle(XCAFDoc_ColorTool) CTool = XCAFDoc_DocumentTool::ColorTool(aDoc->Main());
+  Handle(XCAFDoc_LayerTool) LTool = XCAFDoc_DocumentTool::LayerTool(aDoc->Main());
   Quantity_ColorRGBA col;
   Standard_Boolean IsColor = Standard_False;
+  Standard_Boolean IsByLayer = Standard_False;
   if(CTool->GetColor(L,XCAFDoc_ColorGen,col))
     IsColor = Standard_True;
   else if(CTool->GetColor(L,XCAFDoc_ColorSurf,col))
     IsColor = Standard_True;
   else if(CTool->GetColor(L,XCAFDoc_ColorCurv,col))
     IsColor = Standard_True;
-  if(IsColor) {
-    TCollection_AsciiString Entry1;
-    Entry1 = col.GetRGB().StringName(col.GetRGB().Name());
-    if(PrintStructMode) di<<"Color("<<Entry1.ToCString()<<" "<<col.Alpha()<<") ";
-    NbShapesWithColor++;
+  else if(CTool->IsColorByLayer(L))
+    IsByLayer = Standard_True;
+  if(IsColor || IsByLayer) {
+    if(IsByLayer)
+    {
+      Handle(TColStd_HSequenceOfExtendedString) aLayerS;
+      LTool->GetLayers(L, aLayerS);
+      // Currently for DXF pnly, thus
+      // only 1 Layer should be.
+      if(aLayerS->Length() == 1)
+      {
+        TDF_Label aLayer = LTool->FindLayer (aLayerS->First());
+        Quantity_ColorRGBA aColor;
+        if (CTool->GetColor (aLayer, XCAFDoc_ColorGen, aColor))
+        {
+          TCollection_AsciiString aColorName = aColor.GetRGB().StringName(aColor.GetRGB().Name());
+          di<<"Color(" << aColorName.ToCString() << ") ";
+        }
+        else
+        {
+          di<<"Color(ByLayer) ";
+        }
+      }
+      NbShapesWithColor++;
+    }
+    else
+    {
+      TCollection_AsciiString Entry1;
+      Entry1 = col.GetRGB().StringName(col.GetRGB().Name());
+      if(PrintStructMode) di<<"Color("<<Entry1.ToCString()<<" "<<col.Alpha()<<") ";
+      NbShapesWithColor++;
+    }
   }
-  Handle(XCAFDoc_LayerTool) LTool = XCAFDoc_DocumentTool::LayerTool(aDoc->Main());
   Handle(TColStd_HSequenceOfExtendedString) aLayerS;
   LTool->GetLayers(L, aLayerS);
   if(!aLayerS.IsNull() && aLayerS->Length()>0) {
@@ -550,6 +581,288 @@ static Standard_Integer show (Draw_Interpretor& di, Standard_Integer argc, const
   return 0;
 }
 
+//! XDisplay command implementation.
+class XDEDRAW_XDisplayTool
+{
+public:
+  //! XDisplay command interface.
+  static Standard_Integer XDisplay (Draw_Interpretor& theDI,
+                                    Standard_Integer theNbArgs,
+                                    const char** theArgVec)
+  {
+    XDEDRAW_XDisplayTool aTool;
+    return aTool.xdisplay (theDI, theNbArgs, theArgVec);
+  }
+
+private:
+  //! Constructor.
+  XDEDRAW_XDisplayTool()
+  : myDispMode(-2),
+    myHiMode  (-2),
+    myToPrefixDocName (Standard_True),
+    myToGetNames (Standard_True),
+    myToExplore  (Standard_False) {}
+
+  //! Display single label.
+  Standard_Integer displayLabel (Draw_Interpretor& theDI,
+                                 const TDF_Label& theLabel,
+                                 const TCollection_AsciiString& theNamePrefix,
+                                 const TopLoc_Location& theLoc)
+  {
+    TCollection_AsciiString aName;
+    if (myToGetNames)
+    {
+      Handle(TDataStd_Name) aNodeName;
+      if (theLabel.FindAttribute (TDataStd_Name::GetID(), aNodeName))
+      {
+        aName = aNodeName->Get();
+      }
+      if (aName.IsEmpty())
+      {
+        TDF_Label aRefLabel;
+        if (XCAFDoc_ShapeTool::GetReferredShape (theLabel, aRefLabel)
+         && aRefLabel.FindAttribute (TDataStd_Name::GetID(), aNodeName))
+        {
+          aName = aNodeName->Get();
+        }
+      }
+
+      if (aName.IsEmpty())
+      {
+        TDF_Tool::Entry (theLabel, aName);
+      }
+      for (Standard_Integer aNameIndex = 1;; ++aNameIndex)
+      {
+        if (myNameMap.Add (aName))
+        {
+          break;
+        }
+        aName = aNodeName->Get() + "_" + aNameIndex;
+      }
+    }
+    else
+    {
+      TDF_Tool::Entry (theLabel, aName);
+    }
+    aName = theNamePrefix + aName;
+
+    if (myToExplore)
+    {
+      TDF_Label aRefLabel = theLabel;
+      XCAFDoc_ShapeTool::GetReferredShape (theLabel, aRefLabel);
+      if (XCAFDoc_ShapeTool::IsAssembly (aRefLabel))
+      {
+        aName += "/";
+        const TopLoc_Location aLoc = theLoc * XCAFDoc_ShapeTool::GetLocation (theLabel);
+        for (TDF_ChildIterator aChildIter (aRefLabel); aChildIter.More(); aChildIter.Next())
+        {
+          if (displayLabel (theDI, aChildIter.Value(), aName, aLoc) == 1)
+          {
+            return 1;
+          }
+        }
+        return 0;
+      }
+    }
+
+    Handle(XCAFPrs_AISObject) aPrs = new XCAFPrs_AISObject (theLabel);
+    if (!theLoc.IsIdentity())
+    {
+      aPrs->SetLocalTransformation (theLoc);
+    }
+    if (myDispMode != -2)
+    {
+      if (myDispMode == -1)
+      {
+        aPrs->UnsetDisplayMode();
+      }
+      if (!aPrs->AcceptDisplayMode (myDispMode))
+      {
+        std::cout << "Syntax error: " << aPrs->DynamicType()->Name() << " rejects " << myDispMode << " display mode\n";
+        return 1;
+      }
+      else
+      {
+        aPrs->SetDisplayMode (myDispMode);
+      }
+    }
+    if (myHiMode != -2)
+    {
+      if (myHiMode != -1
+      && !aPrs->AcceptDisplayMode (myHiMode))
+      {
+        std::cout << "Syntax error: " << aPrs->DynamicType()->Name() << " rejects " << myHiMode << " display mode\n";
+        return 1;
+      }
+      aPrs->SetHilightMode (myHiMode);
+    }
+
+    ViewerTest::Display (aName, aPrs, false);
+    theDI << aName << " ";
+    return 0;
+  }
+
+  //! XDisplay command implementation.
+  Standard_Integer xdisplay (Draw_Interpretor& theDI,
+                             Standard_Integer theNbArgs,
+                             const char** theArgVec)
+  {
+    Handle(AIS_InteractiveContext) aContext = ViewerTest::GetAISContext();
+    if (aContext.IsNull())
+    {
+      std::cout << "Error: no active view!\n";
+      return 1;
+    }
+
+    ViewerTest_AutoUpdater anAutoUpdater (aContext, ViewerTest::CurrentView());
+    for (Standard_Integer anArgIter = 1; anArgIter < theNbArgs; ++anArgIter)
+    {
+      TCollection_AsciiString anArgCase (theArgVec[anArgIter]);
+      anArgCase.LowerCase();
+      if (anAutoUpdater.parseRedrawMode (anArgCase))
+      {
+        continue;
+      }
+      else if (anArgIter + 1 < theNbArgs
+            && myDispMode == -2
+            && (anArgCase == "-dispmode"
+             || anArgCase == "-displaymode")
+            && TCollection_AsciiString (theArgVec[anArgIter + 1]).IsIntegerValue())
+      {
+        myDispMode = TCollection_AsciiString (theArgVec[++anArgIter]).IntegerValue();
+      }
+      else if (anArgIter + 1 < theNbArgs
+            && myHiMode == -2
+            && (anArgCase == "-himode"
+             || anArgCase == "-highmode"
+             || anArgCase == "-highlightmode")
+            && TCollection_AsciiString (theArgVec[anArgIter + 1]).IsIntegerValue())
+      {
+        myHiMode = TCollection_AsciiString (theArgVec[++anArgIter]).IntegerValue();
+      }
+      else if (anArgCase == "-docprefix"
+            || anArgCase == "-nodocprefix")
+      {
+        myToPrefixDocName = Standard_True;
+        if (anArgIter + 1 < theNbArgs
+         && ViewerTest::ParseOnOff (theArgVec[anArgIter + 1], myToPrefixDocName))
+        {
+          ++anArgIter;
+        }
+        if (anArgCase.StartsWith ("-no"))
+        {
+          myToPrefixDocName = !myToPrefixDocName;
+        }
+      }
+      else if (anArgCase == "-names"
+            || anArgCase == "-nonames")
+      {
+        myToGetNames = Standard_True;
+        if (anArgIter + 1 < theNbArgs
+         && ViewerTest::ParseOnOff (theArgVec[anArgIter + 1], myToGetNames))
+        {
+          ++anArgIter;
+        }
+        if (anArgCase.StartsWith ("-no"))
+        {
+          myToGetNames = !myToGetNames;
+        }
+      }
+      else if (anArgCase == "-explore"
+            || anArgCase == "-noexplore")
+      {
+        myToExplore = Standard_True;
+        if (anArgIter + 1 < theNbArgs
+         && ViewerTest::ParseOnOff (theArgVec[anArgIter + 1], myToExplore))
+        {
+          ++anArgIter;
+        }
+        if (anArgCase.StartsWith ("-no"))
+        {
+          myToExplore = !myToExplore;
+        }
+      }
+      else
+      {
+        if (myDoc.IsNull()
+         && DDocStd::GetDocument (theArgVec[anArgIter], myDoc, Standard_False))
+        {
+          myDocName = theArgVec[anArgIter];
+          continue;
+        }
+
+        TCollection_AsciiString aValue (theArgVec[anArgIter]);
+        const Standard_Integer aFirstSplit = aValue.Search (":");
+        if (!IsDigit (aValue.Value (1))
+          && aFirstSplit >= 2
+          && aFirstSplit < aValue.Length())
+        {
+          TCollection_AsciiString aDocName = aValue.SubString (1, aFirstSplit - 1);
+          Standard_CString aDocNameStr = aDocName.ToCString();
+          Handle(TDocStd_Document) aDoc;
+          if (DDocStd::GetDocument (aDocNameStr, aDoc, Standard_False))
+          {
+            aValue = aValue.SubString (aFirstSplit + 1, aValue.Length());
+            if (!myDoc.IsNull()
+              && myDoc != aDoc)
+            {
+              std::cout << "Syntax error at '" << theArgVec[anArgIter] << "'\n";
+              return 1;
+            }
+            myDoc = aDoc;
+            myDocName = aDocName;
+          }
+        }
+        if (myDoc.IsNull())
+        {
+          std::cout << "Syntax error at '" << theArgVec[anArgIter] << "'\n";
+          return 1;
+        }
+
+        TDF_Label aLabel;
+        TDF_Tool::Label (myDoc->GetData(), aValue.ToCString(), aLabel);
+        if (aLabel.IsNull()
+        || !XCAFDoc_ShapeTool::IsShape (aLabel))
+        {
+          std::cout << "Syntax error: " << aValue << " is not a valid shape label\n";
+          return 1;
+        }
+        myLabels.Append (aLabel);
+      }
+    }
+    if (myDoc.IsNull())
+    {
+      std::cout << "Syntax error: not enough arguments\n";
+      return 1;
+    }
+    if (myLabels.IsEmpty())
+    {
+      XCAFDoc_DocumentTool::ShapeTool (myDoc->Main())->GetFreeShapes (myLabels);
+    }
+
+    for (TDF_LabelSequence::Iterator aLabIter (myLabels); aLabIter.More(); aLabIter.Next())
+    {
+      const TDF_Label& aLabel = aLabIter.Value();
+      if (displayLabel (theDI, aLabel, myToPrefixDocName ? myDocName + ":" : "", TopLoc_Location()) == 1)
+      {
+        return 1;
+      }
+    }
+    return 0;
+  }
+
+private:
+  NCollection_Map<TCollection_AsciiString, TCollection_AsciiString>
+                           myNameMap;         //!< names map to handle collisions
+  Handle(TDocStd_Document) myDoc;             //!< document
+  TCollection_AsciiString  myDocName;         //!< document name
+  TDF_LabelSequence        myLabels;          //!< labels to display
+  Standard_Integer         myDispMode;        //!< shape display mode
+  Standard_Integer         myHiMode;          //!< shape highlight mode
+  Standard_Boolean         myToPrefixDocName; //!< flag to prefix objects with document name
+  Standard_Boolean         myToGetNames;      //!< flag to use label names or tags
+  Standard_Boolean         myToExplore;       //!< flag to explore assembles
+};
 
 //=======================================================================
 //function : xwd
@@ -593,20 +906,19 @@ static Standard_Integer xwd (Draw_Interpretor& di, Standard_Integer argc, const 
 //=======================================================================
 static Standard_Integer XAttributeValue (Draw_Interpretor& di, Standard_Integer argc, const char** argv)
 {
-  if ( argc <4 ) { di << "ERROR: Too few args\n"; return 0; }
-  Handle(DDF_Browser) browser =
-    Handle(DDF_Browser)::DownCast (Draw::Get(argv[1], Standard_True));
-  if ( browser.IsNull() ) { di << "ERROR: Not a browser: " << argv[1] << "\n"; return 0; }
+  if ( argc < 4 ) { std::cout << "Syntax error: Too few args\n"; return 1; }
+  Handle(DDF_Browser) browser = Handle(DDF_Browser)::DownCast (Draw::GetExisting (argv[1]));
+  if ( browser.IsNull() ) { std::cout << "Syntax error: Not a browser: " << argv[1] << "\n"; return 1; }
 
   TDF_Label lab;
   TDF_Tool::Label(browser->Data(),argv[2],lab);
-  if ( lab.IsNull() ) { di << "ERROR: label is Null: " << argv[2] << "\n"; return 0; }
+  if ( lab.IsNull() ) { std::cout << "Syntax error: label is Null: " << argv[2] << "\n"; return 1; }
 
   Standard_Integer num = Draw::Atoi ( argv[3] );
   TDF_AttributeIterator itr(lab,Standard_False);
   for (Standard_Integer i=1; itr.More() && i < num; i++) itr.Next();
 
-  if ( ! itr.More() ) { di << "ERROR: Attribute #" << num << " not found\n"; return 0; }
+  if ( ! itr.More() ) { std::cout << "Syntax error: Attribute #" << num << " not found\n"; return 1; }
 
   const Handle(TDF_Attribute)& att = itr.Value();
   if ( att->IsKind(STANDARD_TYPE(TDataStd_TreeNode)) ) {
@@ -1048,7 +1360,7 @@ static Standard_Integer testDoc (Draw_Interpretor&,
 {
   if( argc < 2 )
   {
-    cout<<"Invalid numbers of arguments should be: XTestDoc shape"<<endl;
+    std::cout<<"Invalid numbers of arguments should be: XTestDoc shape"<<std::endl;
     return 1;
   }
   TopoDS_Shape shape = DBRep::Get(argv[1]);
@@ -1143,6 +1455,17 @@ void XDEDRAW::Init(Draw_Interpretor& di)
 
   di.Add ("XShow","Doc [label1 lavbel2 ...] \t: Display document (or some labels) in a graphical window",
 		   __FILE__, show, g);
+
+  di.Add ("XDisplay",
+          "XDisplay Doc [label1 [label2 [...]]] [-explore {on|off}] [-docPrefix {on|off}] [-names {on|off}]"
+          "\n\t\t:      [-noupdate] [-dispMode Mode] [-highMode Mode]"
+          "\n\t\t: Displays document (parts) in 3D Viewer."
+          "\n\t\t:  -dispMode    Presentation display mode."
+          "\n\t\t:  -highMode    Presentation highlight mode."
+          "\n\t\t:  -docPrefix   Prepend document name to object names; TRUE by default."
+          "\n\t\t:  -names       Use object names instead of label tag; TRUE by default."
+          "\n\t\t:  -explore     Explode labels to leaves; FALSE by default.",
+          __FILE__, XDEDRAW_XDisplayTool::XDisplay, g);
 
   di.Add ("XWdump","Doc filename.{gif|xwd|bmp} \t: Dump contents of viewer window to XWD, GIF or BMP file",
 		   __FILE__, xwd, g);

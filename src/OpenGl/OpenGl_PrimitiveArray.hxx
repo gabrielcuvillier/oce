@@ -32,21 +32,12 @@ class OpenGl_GraphicDriver;
 class OpenGl_PrimitiveArray : public OpenGl_Element
 {
 public:
-  // OpenGL does not provide a constant for "none" draw mode.
-  // So we define our own one that does not conflict with GL constants
-  // and utilizes common GL invalid value
+  //! OpenGL does not provide a constant for "none" draw mode.
+  //! So we define our own one that does not conflict with GL constants and utilizes common GL invalid value.
   enum
   {
     DRAW_MODE_NONE = -1
   };
-
-#if !defined(GL_ES_VERSION_2_0)
-  static const GLint THE_FILLPRIM_FROM = GL_TRIANGLES;
-  static const GLint THE_FILLPRIM_TO   = GL_POLYGON;
-#else
-  static const GLint THE_FILLPRIM_FROM = GL_TRIANGLES;
-  static const GLint THE_FILLPRIM_TO   = GL_TRIANGLE_FAN;
-#endif
 
   //! Empty constructor
   Standard_EXPORT OpenGl_PrimitiveArray (const OpenGl_GraphicDriver* theDriver);
@@ -62,10 +53,10 @@ public:
   Standard_EXPORT virtual ~OpenGl_PrimitiveArray();
 
   //! Render primitives to the window
-  Standard_EXPORT virtual void Render  (const Handle(OpenGl_Workspace)& theWorkspace) const;
+  Standard_EXPORT virtual void Render  (const Handle(OpenGl_Workspace)& theWorkspace) const Standard_OVERRIDE;
 
   //! Release OpenGL resources (VBOs)
-  Standard_EXPORT virtual void Release (OpenGl_Context* theContext);
+  Standard_EXPORT virtual void Release (OpenGl_Context* theContext) Standard_OVERRIDE;
 
   //! Return true if VBOs initialization has been performed.
   //! VBO initialization is performed during first Render() call.
@@ -77,6 +68,9 @@ public:
 
   //! @return primitive type (GL_LINES, GL_TRIANGLES and others)
   GLint DrawMode() const { return myDrawMode; }
+
+  //! Return TRUE if primitive type generates shaded triangulation.
+  virtual Standard_Boolean IsFillDrawMode() const Standard_OVERRIDE { return myIsFillType; }
 
   //! @return indices array
   const Handle(Graphic3d_IndexBuffer)& Indices() const { return myIndices; }
@@ -97,6 +91,14 @@ public:
                                     const Handle(Graphic3d_Buffer)&      theAttribs,
                                     const Handle(Graphic3d_BoundBuffer)& theBounds);
 
+public:
+
+  //! Returns index VBO.
+  const Handle(OpenGl_VertexBuffer)& IndexVbo() const { return  myVboIndices; }
+
+  //! Returns attributes VBO.
+  const Handle(OpenGl_VertexBuffer)& AttributesVbo() const { return myVboAttribs; }
+
 protected:
 
   //! VBO initialization procedures
@@ -105,6 +107,10 @@ protected:
   Standard_EXPORT Standard_Boolean buildVBO (const Handle(OpenGl_Context)& theCtx,
                                              const Standard_Boolean        theToKeepData) const;
 
+  //! Patch VBO sub-date within invalidated range.
+  Standard_EXPORT void updateVBO (const Handle(OpenGl_Context)& theCtx) const;
+
+  //! Release GL memory.
   Standard_EXPORT void clearMemoryGL (const Handle(OpenGl_Context)& theGlCtx) const;
 
 private:
@@ -118,8 +124,7 @@ private:
                   const Standard_Boolean          theHasVertColor) const;
 
   //! Auxiliary procedures
-  void drawEdges (const OpenGl_Vec4&              theEdgeColour,
-                  const Handle(OpenGl_Workspace)& theWorkspace) const;
+  void drawEdges (const Handle(OpenGl_Workspace)& theWorkspace) const;
 
   void drawMarkers (const Handle(OpenGl_Workspace)& theWorkspace) const;
 
@@ -139,7 +144,8 @@ protected:
   mutable Handle(Graphic3d_IndexBuffer) myIndices;
   mutable Handle(Graphic3d_Buffer)      myAttribs;
   mutable Handle(Graphic3d_BoundBuffer) myBounds;
-  GLint                                 myDrawMode;
+  GLshort                               myDrawMode;
+  mutable Standard_Boolean              myIsFillType;
   mutable Standard_Boolean              myIsVboInit;
 
   Standard_Size                         myUID; //!< Unique ID of primitive array. 

@@ -222,38 +222,43 @@ Standard_Boolean  StepToTopoDS_GeometricTool::IsLikeSeam
 //           This situation occurs when an edge crosses the parametric origin.
 // ----------------------------------------------------------------------------
 
-Standard_Boolean  StepToTopoDS_GeometricTool::UpdateParam3d
-(const Handle(Geom_Curve)& theCurve, Standard_Real& w1, Standard_Real& w2,
- const Standard_Real preci)
+Standard_Boolean  StepToTopoDS_GeometricTool::UpdateParam3d(
+  const Handle(Geom_Curve)& theCurve,
+  Standard_Real& w1,
+  Standard_Real& w2,
+  const Standard_Real preci)
 {
   // w1 et/ou w2 peuvent etre en dehors des bornes naturelles de la courbe.
   // On donnera alors la valeur en bout a w1 et/ou w2
-  
+
   Standard_Real cf = theCurve->FirstParameter();
   Standard_Real cl = theCurve->LastParameter();
 
-  if (theCurve->IsKind(STANDARD_TYPE(Geom_BoundedCurve)) && !theCurve->IsClosed()) {
-    if (w1 < cf) {
+  if (theCurve->IsKind(STANDARD_TYPE(Geom_BoundedCurve)) && !theCurve->IsClosed())
+  {
+    if (w1 < cf)
+    {
 #ifdef OCCT_DEBUG
-      cout << "Update Edge First Parameter to Curve First Parameter" << endl;
+      std::cout << "Update Edge First Parameter to Curve First Parameter" << std::endl;
 #endif
       w1 = cf;
     }
-    else if (w1 > cl) {
+    else if (w1 > cl)
+    {
 #ifdef OCCT_DEBUG
-      cout << "Update Edge First Parameter to Curve Last Parameter" << endl;
+      std::cout << "Update Edge First Parameter to Curve Last Parameter" << std::endl;
 #endif
       w1 = cl;
     }
     if (w2 < cf) {
 #ifdef OCCT_DEBUG
-      cout << "Update Edge Last Parameter to Curve First Parameter" << endl;
+      std::cout << "Update Edge Last Parameter to Curve First Parameter" << std::endl;
 #endif
       w2 = cf;
     }
     else if (w2 > cl) {
 #ifdef OCCT_DEBUG
-      cout << "Update Edge Last Parameter to Curve Last Parameter" << endl;
+      std::cout << "Update Edge Last Parameter to Curve Last Parameter" << std::endl;
 #endif
       w2 = cl;
     }
@@ -261,28 +266,49 @@ Standard_Boolean  StepToTopoDS_GeometricTool::UpdateParam3d
 
   if (w1 < w2) return Standard_True;
 
-  if (theCurve->IsPeriodic()) 
-    ElCLib::AdjustPeriodic(cf,cl,Precision::PConfusion(),w1,w2); //:a7 abv 11 Feb 98: preci -> PConfusion()
-  else if (theCurve->IsClosed()) {
+  if (theCurve->IsPeriodic())
+  {
+    ElCLib::AdjustPeriodic(cf, cl, Precision::PConfusion(), w1, w2); //:a7 abv 11 Feb 98: preci -> PConfusion()
+  }
+  else if (theCurve->IsClosed())
+  {
     // l'un des points projecte se trouve sur l'origine du parametrage
     // de la courbe 3D. L algo a donne cl +- preci au lieu de cf ou vice-versa
     // DANGER precision 3d applique a une espace 1d
 
     // w2 = cf au lieu de w2 = cl
-    if (Abs(w2 - cf) < Precision::PConfusion() /*preci*/)  w2 = cl;
+    if (Abs(w2 - cf) < Precision::PConfusion() /*preci*/)
+    {
+      w2 = cl;
+    }
     // w1 = cl au lieu de w1 = cf
-    else if (Abs(w1 - cl) < Precision::PConfusion() /*preci*/)  w1 = cf;
-
+    else if (Abs(w1 - cl) < Precision::PConfusion() /*preci*/)
+    {
+      w1 = cf;
+    }
     // on se trouve dans un cas ou l origine est traversee
     // illegal sur une courbe fermee non periodique
     // on inverse quand meme les parametres !!!!!!
-    else {
+    else
+    {
       //:S4136 abv 20 Apr 99: r0701_ug.stp #6230: add check in 3d
-      if (theCurve->Value(w1).Distance(theCurve->Value(cf)) < preci) w1 = cf;
-      if (theCurve->Value(w2).Distance(theCurve->Value(cl)) < preci) w2 = cl;
-      if (w1 > w2) {
+      if (theCurve->Value(w1).Distance(theCurve->Value(cf)) < preci)
+      {
+        w1 = cf;
+      }
+      if (theCurve->Value(w2).Distance(theCurve->Value(cl)) < preci)
+      {
+        w2 = cl;
+      }
+      if (fabs(w2 - w1) < Precision::PConfusion())
+      {
+        w1 = cf;
+        w2 = cl;
+      }
+      else if (w1 > w2)
+      {
 #ifdef OCCT_DEBUG
-        cout << "Warning : parameter range of edge crossing non periodic curve origin" << endl;
+        std::cout << "Warning : parameter range of edge crossing non periodic curve origin" << std::endl;
 #endif
         Standard_Real tmp = w1;
         w1 = w2;
@@ -291,65 +317,79 @@ Standard_Boolean  StepToTopoDS_GeometricTool::UpdateParam3d
     }
   }
   // The curve is closed within the 3D tolerance
-  else if (theCurve->IsKind(STANDARD_TYPE(Geom_BSplineCurve))) {
-    Handle(Geom_BSplineCurve) aBSpline = 
+  else if (theCurve->IsKind(STANDARD_TYPE(Geom_BSplineCurve)))
+  {
+    Handle(Geom_BSplineCurve) aBSpline =
       Handle(Geom_BSplineCurve)::DownCast(theCurve);
-    if (aBSpline->StartPoint().Distance(aBSpline->EndPoint()) <= preci ) {
-//:S4136	<= BRepAPI::Precision()) {
-      // l'un des points projecte se trouve sur l'origine du parametrage
-      // de la courbe 3D. L algo a donne cl +- preci au lieu de cf ou vice-versa
-      // DANGER precision 3d applique a une espace 1d
-      
-      // w2 = cf au lieu de w2 = cl
-      if      (Abs(w2 - cf) < Precision::PConfusion()) w2 = cl ;
-      // w1 = cl au lieu de w1 = cf
-      else if (Abs(w1 - cl) < Precision::PConfusion()) w1 =  cf;
+    if (aBSpline->StartPoint().Distance(aBSpline->EndPoint()) <= preci)
+    {
+      //:S4136	<= BRepAPI::Precision()) {
+            // l'un des points projecte se trouve sur l'origine du parametrage
+            // de la courbe 3D. L algo a donne cl +- preci au lieu de cf ou vice-versa
+            // DANGER precision 3d applique a une espace 1d
 
+            // w2 = cf au lieu de w2 = cl
+      if (Abs(w2 - cf) < Precision::PConfusion())
+      {
+        w2 = cl;
+      }
+      // w1 = cl au lieu de w1 = cf
+      else if (Abs(w1 - cl) < Precision::PConfusion())
+      {
+        w1 = cf;
+      }
       // on se trouve dans un cas ou l origine est traversee
       // illegal sur une courbe fermee non periodique
       // on inverse quand meme les parametres !!!!!!
-      else {
+      else
+      {
 #ifdef OCCT_DEBUG
-	cout << "Warning : parameter range of edge crossing non periodic curve origin" << endl;
+        std::cout << "Warning : parameter range of edge crossing non periodic curve origin" << std::endl;
 #endif
-	Standard_Real tmp = w1;
-	w1 = w2;
-	w2 = tmp;
+        Standard_Real tmp = w1;
+        w1 = w2;
+        w2 = tmp;
       }
     }
     //abv 15.03.00 #72 bm1_pe_t4 protection of exceptions in draw
-    else if ( w1 > w2 ) {
+    else if (w1 > w2)
+    {
 #ifdef OCCT_DEBUG
-      cout << "Warning: parameter range is bad; curve reversed" << endl;
+      std::cout << "Warning: parameter range is bad; curve reversed" << std::endl;
 #endif
-      w1 = theCurve->ReversedParameter ( w1 );
-      w2 = theCurve->ReversedParameter ( w2 );
+      w1 = theCurve->ReversedParameter(w1);
+      w2 = theCurve->ReversedParameter(w2);
       theCurve->Reverse();
     }
-//:j9 abv 11 Dec 98: PRO7747 #4875, after :j8:    else 
-    if (w1 == w2) {  //gka 10.07.1998 file PRO7656 entity 33334
-      w1 = cf; w2 = cl;
+    //:j9 abv 11 Dec 98: PRO7747 #4875, after :j8:    else 
+    if (w1 == w2)
+    {  //gka 10.07.1998 file PRO7656 entity 33334
+      w1 = cf;
+      w2 = cl;
       return Standard_False;
     }
   }
-  else {
+  else
+  {
 #ifdef OCCT_DEBUG
-    cout << "UpdateParam3d Failed" << endl;
-    cout << "  - Curve Type : " << theCurve->DynamicType() << endl;
-    cout << "  - Param 1    : " << w1 << endl;
-    cout << "  - Param 2    : " << w2 << endl;
+    std::cout << "UpdateParam3d Failed" << std::endl;
+    std::cout << "  - Curve Type : " << theCurve->DynamicType() << std::endl;
+    std::cout << "  - Param 1    : " << w1 << std::endl;
+    std::cout << "  - Param 2    : " << w2 << std::endl;
 #endif
     //abv 15.03.00 #72 bm1_pe_t4 protection of exceptions in draw
-    if ( w1 > w2 ) {
+    if (w1 > w2)
+    {
 #ifdef OCCT_DEBUG
-      cout << "Warning: parameter range is bad; curve reversed" << endl;
+      std::cout << "Warning: parameter range is bad; curve reversed" << std::endl;
 #endif
-      w1 = theCurve->ReversedParameter ( w1 );
-      w2 = theCurve->ReversedParameter ( w2 );
+      w1 = theCurve->ReversedParameter(w1);
+      w2 = theCurve->ReversedParameter(w2);
       theCurve->Reverse();
     }
     //pdn 11.01.99 #144 bm1_pe_t4 protection of exceptions in draw
-    if (w1 == w2) {
+    if (w1 == w2)
+    {
       w1 -= Precision::PConfusion();
       w2 += Precision::PConfusion();
     }

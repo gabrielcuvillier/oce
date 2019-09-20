@@ -43,7 +43,6 @@
 #include <Prs3d_ShadingAspect.hxx>
 #include <Quantity_Color.hxx>
 #include <Select3D_SensitiveTriangulation.hxx>
-#include <SelectBasics_EntityOwner.hxx>
 #include <SelectMgr_EntityOwner.hxx>
 #include <Standard_Type.hxx>
 #include <StdPrs_Plane.hxx>
@@ -387,7 +386,8 @@ void AIS_Plane::SetSize(const Standard_Real aXLength,
   
   
   myHasOwnSize = Standard_True;
-  Update();
+  SetToUpdate();
+  UpdatePresentations();
   UpdateSelection();
 }
 
@@ -418,7 +418,8 @@ void AIS_Plane::UnsetSize()
   }
   
   myHasOwnSize = Standard_False;
-  Update();
+  SetToUpdate();
+  UpdatePresentations();
   UpdateSelection();
 
 }

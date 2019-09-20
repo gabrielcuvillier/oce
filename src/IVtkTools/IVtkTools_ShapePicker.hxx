@@ -19,8 +19,16 @@
 #include <IVtkTools.hxx>
 #include <IVtk_Types.hxx>
 #include <IVtkOCC_ShapePickerAlgo.hxx>
+
+// prevent disabling some MSVC warning messages by VTK headers 
+#ifdef _MSC_VER
+#pragma warning(push)
+#endif
 #include <vtkAbstractPropPicker.h>
 #include <vtkSmartPointer.h>
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 class vtkRenderer;
 class vtkActorCollection;
@@ -32,7 +40,7 @@ class vtkActorCollection;
 
 //! @class IVtkTools_ShapePicker
 //! @brief VTK picker for OCC shapes with OCC selection algorithm.
-class IVtkTools_EXPORT IVtkTools_ShapePicker :  public vtkAbstractPropPicker
+class Standard_EXPORT IVtkTools_ShapePicker :  public vtkAbstractPropPicker
 {
 public:
   vtkTypeMacro(IVtkTools_ShapePicker, vtkAbstractPropPicker)

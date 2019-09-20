@@ -16,10 +16,18 @@
 #include <IVtkTools_ShapePicker.hxx>
 #include <IVtkTools_ShapeObject.hxx>
 #include <IVtkVTK_View.hxx>
+
+// prevent disabling some MSVC warning messages by VTK headers 
+#ifdef _MSC_VER
+#pragma warning(push)
+#endif
 #include <vtkCommand.h>
 #include <vtkObjectFactory.h>
 #include <vtkRenderer.h>
 #include <vtkActorCollection.h>
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 //! @class IVtkTools_ShapePicker
 //! VTK picker implementation for OCCT shapes.
@@ -185,6 +193,10 @@ void IVtkTools_ShapePicker::doPickImpl (double* thePos,
   {
     myOccPickerAlgo->Pick (thePos[0], thePos[1]);
   }
+
+  PickPosition[0] = myOccPickerAlgo->TopPickedPoint().X();
+  PickPosition[1] = myOccPickerAlgo->TopPickedPoint().Y();
+  PickPosition[2] = myOccPickerAlgo->TopPickedPoint().Z();
 }
 
 //============================================================================

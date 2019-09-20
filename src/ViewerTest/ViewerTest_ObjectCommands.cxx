@@ -68,6 +68,7 @@
 #include <Draw_Window.hxx>
 #include <AIS_ListIteratorOfListOfInteractive.hxx>
 #include <AIS_ListOfInteractive.hxx>
+#include <AIS_ColoredShape.hxx>
 #include <AIS_DisplayMode.hxx>
 #include <AIS_Shape.hxx>
 
@@ -88,8 +89,10 @@
 #include <TopLoc_Location.hxx>
 
 #include <HLRAlgo_Projector.hxx>
+#include <HLRBRep_Algo.hxx>
 #include <HLRBRep_PolyAlgo.hxx>
 #include <HLRBRep_PolyHLRToShape.hxx>
+#include <HLRBRep_HLRToShape.hxx>
 #include <Aspect_Window.hxx>
 
 #include <Graphic3d_ArrayOfPoints.hxx>
@@ -101,6 +104,7 @@
 #include <Graphic3d_ArrayOfQuadrangles.hxx>
 #include <Graphic3d_ArrayOfQuadrangleStrips.hxx>
 #include <Graphic3d_ArrayOfPolygons.hxx>
+#include <Graphic3d_AttribBuffer.hxx>
 #include <Graphic3d_AspectMarker3d.hxx>
 #include <Graphic3d_Group.hxx>
 #include <Standard_Real.hxx>
@@ -125,6 +129,8 @@
 #include <TColStd_ListOfInteger.hxx>
 #include <TColStd_ListIteratorOfListOfInteger.hxx>
 
+#include <Select3D_SensitiveSegment.hxx>
+#include <Select3D_SensitivePrimitiveArray.hxx>
 #include <Select3D_SensitiveTriangle.hxx>
 #include <Select3D_SensitiveCurve.hxx>
 #include <Select3D_SensitivePoint.hxx>
@@ -153,7 +159,6 @@ extern ViewerTest_DoubleMapOfInteractiveAndName& GetMapOfAIS();
 extern Standard_Boolean VDisplayAISObject (const TCollection_AsciiString& theName,
                                            const Handle(AIS_InteractiveObject)& theAISObj,
                                            Standard_Boolean theReplaceIfExists = Standard_True);
-extern int ViewerMainLoop(Standard_Integer argc, const char** argv);
 extern Handle(AIS_InteractiveContext)& TheAISContext();
 
 namespace
@@ -333,8 +338,7 @@ namespace
         return Standard_False;
       }
 
-      aComponent->SetXDirection(aXDir);
-      aComponent->SetDirection (aZDir);
+      aComponent->SetAx2 (gp_Ax2 (aComponent->Location(), aZDir, aXDir));
     }
 
     if (aMapOfArgs.Find ("dispmode", aValues))
@@ -349,17 +353,42 @@ namespace
 
     if (aMapOfArgs.Find ("hidelabels", aValues))
     {
-      if (aValues->Size() == 0)
+      Standard_Boolean toHideLabels = Standard_True;
+      if (aValues->Size() == 1)
+      {
+        ViewerTest::ParseOnOff (aValues->First().ToCString(), toHideLabels);
+      }
+      else if (aValues->Size() != 0)
       {
         std::cout << "Syntax error: -hidelabels expects parameter 'on' or 'off' after.\n";
         return Standard_False;
       }
 
-      Standard_Boolean toHideLabels = Standard_True;
-      ViewerTest::ParseOnOff (aValues->Value (1).ToCString(), toHideLabels);
       if (!theTrihedron->Attributes()->HasOwnDatumAspect())
-        theTrihedron->Attributes()->SetDatumAspect(new Prs3d_DatumAspect());
-      theTrihedron->Attributes()->DatumAspect()->SetToDrawLabels (!toHideLabels);
+      {
+        theTrihedron->Attributes()->SetDatumAspect (new Prs3d_DatumAspect());
+      }
+      theTrihedron->Attributes()->DatumAspect()->SetDrawLabels (!toHideLabels);
+    }
+
+    if (aMapOfArgs.Find ("hidearrows", aValues))
+    {
+      Standard_Boolean toHideArrows = Standard_True;
+      if (aValues->Size() == 1)
+      {
+        ViewerTest::ParseOnOff (aValues->First().ToCString(), toHideArrows);
+      }
+      else if (aValues->Size() != 0)
+      {
+        std::cout << "Syntax error: -hidearrows expects parameter 'on' or 'off' after.\n";
+        return Standard_False;
+      }
+
+      if (!theTrihedron->Attributes()->HasOwnDatumAspect())
+      {
+        theTrihedron->Attributes()->SetDatumAspect (new Prs3d_DatumAspect());
+      }
+      theTrihedron->Attributes()->DatumAspect()->SetDrawArrows (!toHideArrows);
     }
 
     if (aMapOfArgs.Find ("color", aValues))
@@ -446,10 +475,11 @@ namespace
       theTrihedron->SetSelectionPriority (aDatumPart, aValues->Value (2).IntegerValue());
     }
 
-    if (aMapOfArgs.Find ("labels", aValues))
+    if (aMapOfArgs.Find ("labels", aValues)
+     || aMapOfArgs.Find ("label", aValues))
     {
       Prs3d_DatumParts aDatumPart = Prs3d_DP_None;
-      if (aValues->Size() > 2
+      if (aValues->Size() >= 2
        && convertToDatumPart(aValues->Value(1), aDatumPart)
        && aDatumPart >= Prs3d_DP_XAxis
        && aDatumPart <= Prs3d_DP_ZAxis) // labels are set to axes only
@@ -477,6 +507,68 @@ namespace
       theTrihedron->Attributes()->DatumAspect()->SetDrawDatumAxes (aDatumAxes);
     }
     return Standard_True;
+  }
+
+  //! Auxiliary function to parse font aspect style argument
+  static Standard_Boolean parseFontStyle (const TCollection_AsciiString& theArg,
+                                          Font_FontAspect&               theAspect)
+  {
+    if (theArg == "regular"
+     || *theArg.ToCString() == 'r')
+    {
+      theAspect = Font_FA_Regular;
+      return Standard_True;
+    }
+    else if (theArg == "bolditalic"
+          || theArg == "bold-italic"
+          || theArg == "italic-bold"
+          || theArg == "italicbold")
+    {
+      theAspect = Font_FA_BoldItalic;
+      return Standard_True;
+    }
+    else if (theArg == "bold"
+          || *theArg.ToCString() == 'b')
+    {
+      theAspect = Font_FA_Bold;
+      return Standard_True;
+    }
+    else if (theArg == "italic"
+          || *theArg.ToCString() == 'i')
+    {
+      theAspect = Font_FA_Italic;
+      return Standard_True;
+    }
+    return Standard_False;
+  }
+
+  //! Auxiliary function to parse font strict level argument
+  static Standard_Integer parseFontStrictLevel (const Standard_Integer theArgNb,
+                                                const char**           theArgVec,
+                                                Font_StrictLevel&      theLevel)
+  {
+    if (theArgNb >= 1)
+    {
+      TCollection_AsciiString anArg (theArgVec[0]);
+      anArg.LowerCase();
+      if (anArg == "any")
+      {
+        theLevel = Font_StrictLevel_Any;
+        return 1;
+      }
+      else if (anArg == "aliases")
+      {
+        theLevel = Font_StrictLevel_Aliases;
+        return 1;
+      }
+      else if (anArg == "strict")
+      {
+        theLevel = Font_StrictLevel_Strict;
+        return 1;
+      }
+    }
+    theLevel = Font_StrictLevel_Strict;
+    return 0;
   }
 }
 
@@ -561,9 +653,9 @@ static int VTrihedron (Draw_Interpretor& ,
   NCollection_DataMap<TCollection_AsciiString, TCollection_AsciiString> aStringParams;
 
   Handle(AIS_Trihedron) aTrihedron;
-  if (GetMapOfAIS().IsBound2 (aName))
+  Handle(AIS_InteractiveObject) anObject;
+  if (GetMapOfAIS().Find2 (aName, anObject))
   {
-    Handle(AIS_InteractiveObject) anObject = Handle(AIS_InteractiveObject)::DownCast (GetMapOfAIS().Find2 (aName));
     aTrihedron = Handle(AIS_Trihedron)::DownCast (anObject);
     if (aTrihedron.IsNull())
     {
@@ -641,8 +733,7 @@ static int VSize (Draw_Interpretor& di, Standard_Integer argc, const char** argv
 
     while ( it.More() ) {
 
-      Handle(AIS_InteractiveObject) aShape=
-        Handle(AIS_InteractiveObject)::DownCast(it.Key1());
+      Handle(AIS_InteractiveObject) aShape = it.Key1();
 
       if (!aShape.IsNull() &&  TheAISContext()->IsSelected(aShape) )
       {
@@ -702,14 +793,9 @@ static int VSize (Draw_Interpretor& di, Standard_Integer argc, const char** argv
     TCollection_AsciiString name=argv[1];
 
     // on verifie que ce nom correspond bien a une shape
-    Standard_Boolean IsBound= GetMapOfAIS().IsBound2(name);
-
-    if (IsBound) {
-
-      // on recupere la shape dans la map des objets displayes
-      Handle(AIS_InteractiveObject) aShape =
-        Handle(AIS_InteractiveObject)::DownCast(GetMapOfAIS().Find2(name));
-
+    Handle(AIS_InteractiveObject) aShape;
+    if (GetMapOfAIS().Find2(name, aShape))
+    {
       // On verifie que l'AIS InteraciveObject est bien
       // un AIS_Trihedron
       if (!aShape.IsNull() &&
@@ -1097,14 +1183,12 @@ static Standard_Integer VPlaneBuilder (Draw_Interpretor& /*di*/,
   // There are some arguments
   if (hasArg)
   {
-    if (!GetMapOfAIS().IsBound2(argv[2] ))
+    Handle(AIS_InteractiveObject) aShapeA;
+    if (!GetMapOfAIS().Find2 (argv[2], aShapeA))
     {
       std::cout<<"vplane: error 1st name doesn't exist in the GetMapOfAIS()\n";
       return 1;
     }
-    // Get shape from map
-    Handle(AIS_InteractiveObject) aShapeA =
-      Handle(AIS_InteractiveObject)::DownCast (GetMapOfAIS().Find2(argv[2] ));
 
     // The first argument is an AIS_Point
     if (!aShapeA.IsNull() &&
@@ -1112,14 +1196,12 @@ static Standard_Integer VPlaneBuilder (Draw_Interpretor& /*di*/,
         aShapeA->Signature()==1)
     {
         // The second argument must also be an AIS_Point
-        if (argc<5 || !GetMapOfAIS().IsBound2(argv[3]))
+        Handle(AIS_InteractiveObject) aShapeB;
+        if (argc<5 || !GetMapOfAIS().Find2 (argv[3], aShapeB))
         {
           std::cout<<"vplane: error 2nd name doesn't exist in the GetMapOfAIS()\n";
           return 1;
         }
-        // Get shape from map
-        Handle(AIS_InteractiveObject) aShapeB =
-          Handle(AIS_InteractiveObject)::DownCast (GetMapOfAIS().Find2(argv[3]));
         // If B is not an AIS_Point
         if (aShapeB.IsNull() ||
           (!(aShapeB->Type()==AIS_KOI_Datum && aShapeB->Signature()==1)))
@@ -1128,14 +1210,12 @@ static Standard_Integer VPlaneBuilder (Draw_Interpretor& /*di*/,
           return 1;
         }
         // The third object is an AIS_Point
-        if (!GetMapOfAIS().IsBound2(argv[4]) ) 
+        Handle(AIS_InteractiveObject) aShapeC;
+        if (!GetMapOfAIS().Find2(argv[4], aShapeC)) 
         {
           std::cout<<"vplane: error 3d name doesn't exist in the GetMapOfAIS().\n";
           return 1; 
         }
-        // Get shape from map
-        Handle(AIS_InteractiveObject) aShapeC =
-          Handle(AIS_InteractiveObject)::DownCast (GetMapOfAIS().Find2(argv[4]));
         // If C is not an AIS_Point
         if (aShapeC.IsNull() ||
           (!(aShapeC->Type()==AIS_KOI_Datum && aShapeC->Signature()==1)))
@@ -1215,14 +1295,12 @@ static Standard_Integer VPlaneBuilder (Draw_Interpretor& /*di*/,
       // Creation of a plane orthogonal to the axis through a point
     else if (aShapeA->Type()==AIS_KOI_Datum && aShapeA->Signature()==2 ) {
       // The second argument should be an AIS_Point
-      if (argc!=4 || !GetMapOfAIS().IsBound2(argv[3] ) )
+      Handle(AIS_InteractiveObject) aShapeB;
+      if (argc!=4 || !GetMapOfAIS().Find2 (argv[3], aShapeB))
       {
         std::cout<<"vplane: error 2d name doesn't exist in the GetMapOfAIS()\n";
         return 1;
       }
-      // Get shape from map
-      Handle(AIS_InteractiveObject) aShapeB =
-        Handle(AIS_InteractiveObject)::DownCast (GetMapOfAIS().Find2(argv[3]));
       // If B is not an AIS_Point
       if (aShapeB.IsNull() ||
         (!(aShapeB->Type()==AIS_KOI_Datum && aShapeB->Signature()==1)))
@@ -1274,14 +1352,12 @@ static Standard_Integer VPlaneBuilder (Draw_Interpretor& /*di*/,
     else if (aShapeA->Type()==AIS_KOI_Datum && aShapeA->Signature()==7)
     {
       // The second argument should be an AIS_Point
-      if (argc!=4 || !GetMapOfAIS().IsBound2(argv[3]))
+      Handle(AIS_InteractiveObject) aShapeB;
+      if (argc!=4 || !GetMapOfAIS().Find2 (argv[3], aShapeB))
       {
         std::cout<<"vplane: error 2d name doesn't exist in the GetMapOfAIS()\n";
         return 1;
       }
-      // Get shape from map
-      Handle(AIS_InteractiveObject) aShapeB =
-        Handle(AIS_InteractiveObject)::DownCast (GetMapOfAIS().Find2(argv[3]));
       // B should be an AIS_Point
       if (aShapeB.IsNull() ||
          (!(aShapeB->Type()==AIS_KOI_Datum && aShapeB->Signature()==1)))
@@ -1734,15 +1810,13 @@ static int VLineBuilder(Draw_Interpretor& di, Standard_Integer argc, const char*
   // Parametres: AIS_Point AIS_Point
   // ===============================
   if (argc==4) {
-    theShapeA=
-      Handle(AIS_InteractiveObject)::DownCast (GetMapOfAIS().Find2(argv[2]));
+    GetMapOfAIS().Find2 (argv[2], theShapeA);
     // On verifie que c'est bien une AIS_Point
     if (!theShapeA.IsNull() &&
       theShapeA->Type()==AIS_KOI_Datum && theShapeA->Signature()==1) {
         // on recupere le deuxieme AIS_Point
-        theShapeB=
-          Handle(AIS_InteractiveObject)::DownCast (GetMapOfAIS().Find2(argv[3]));
-        if (theShapeA.IsNull() ||
+        GetMapOfAIS().Find2 (argv[3], theShapeB);
+        if (theShapeB.IsNull() ||
           (!(theShapeB->Type()==AIS_KOI_Datum && theShapeB->Signature()==1)))
         {
           di <<"vline error: wrong type of 2de argument.\n";
@@ -1961,9 +2035,7 @@ void DisplayCircle (Handle (Geom_Circle) theGeomCircle,
   // and remove it from context
   if (GetMapOfAIS().IsBound2(theName)) 
   {
-    Handle(Standard_Transient) anObj = GetMapOfAIS().Find2(theName);
-    Handle(AIS_InteractiveObject) anInterObj = 
-         Handle(AIS_InteractiveObject)::DownCast(anObj);
+    Handle(AIS_InteractiveObject) anInterObj = GetMapOfAIS().Find2(theName);
     TheAISContext()->Remove(anInterObj, Standard_False);
     GetMapOfAIS().UnBind2(theName);
    }
@@ -1992,14 +2064,9 @@ static int VCircleBuilder(Draw_Interpretor& /*di*/, Standard_Integer argc, const
     TCollection_AsciiString aName(argv[1]);
     Standard_Boolean isFilled = Draw::Atoi(argv[5]) != 0;
 
-    Handle(AIS_InteractiveObject) theShapeA;
-    Handle(AIS_InteractiveObject) theShapeB;
-
-    theShapeA =
-      Handle(AIS_InteractiveObject)::DownCast(GetMapOfAIS().Find2(argv[2]));
-    theShapeB =
-      Handle(AIS_InteractiveObject)::DownCast(GetMapOfAIS().Find2(argv[3]));
-
+    Handle(AIS_InteractiveObject) theShapeA, theShapeB;
+    GetMapOfAIS().Find2 (argv[2], theShapeA);
+    GetMapOfAIS().Find2 (argv[3], theShapeB);
 
     // Arguments: AIS_Point AIS_Point AIS_Point
     // ========================================
@@ -2012,8 +2079,8 @@ static int VCircleBuilder(Draw_Interpretor& /*di*/, Standard_Integer argc, const
         return 1; // TCL_ERROR 
       }
       // The third object must be a point
-      Handle(AIS_InteractiveObject) theShapeC =
-        Handle(AIS_InteractiveObject)::DownCast(GetMapOfAIS().Find2(argv[4]));
+      Handle(AIS_InteractiveObject) theShapeC;
+      GetMapOfAIS().Find2 (argv[4], theShapeC);
       if (theShapeC.IsNull() ||
         theShapeC->Type()!=AIS_KOI_Datum || theShapeC->Signature()!=1 ) 
       {
@@ -2070,7 +2137,7 @@ static int VCircleBuilder(Draw_Interpretor& /*di*/, Standard_Integer argc, const
         {
           theGeomCircle = Cir.Value();
         }
-        catch (StdFail_NotDone)
+        catch (StdFail_NotDone const&)
         {
           std::cout << "vcircle error: can't create circle\n";
           return -1; // TCL_ERROR
@@ -2117,7 +2184,7 @@ static int VCircleBuilder(Draw_Interpretor& /*di*/, Standard_Integer argc, const
       {
         theGeomCircle = Cir.Value();
       }
-      catch (StdFail_NotDone)
+      catch (StdFail_NotDone const&)
       {
         std::cout << "vcircle error: can't create circle\n";
         return -1; // TCL_ERROR
@@ -2170,7 +2237,7 @@ static int VCircleBuilder(Draw_Interpretor& /*di*/, Standard_Integer argc, const
       // Get isFilled
       Standard_Boolean isFilled;
       std::cout << "Enter filled status (0 or 1)\n";
-      cin >> isFilled;
+      std::cin >> isFilled;
 
       // Construction of the circle
       gp_Pnt A = BRep_Tool::Pnt (TopoDS::Vertex (aShapeA));
@@ -2183,7 +2250,7 @@ static int VCircleBuilder(Draw_Interpretor& /*di*/, Standard_Integer argc, const
       {
         theGeomCircle = Cir.Value();
       }
-      catch (StdFail_NotDone)
+      catch (StdFail_NotDone const&)
       {
         std::cout << "vcircle error: can't create circle\n";
         return -1; // TCL_ERROR
@@ -2201,13 +2268,13 @@ static int VCircleBuilder(Draw_Interpretor& /*di*/, Standard_Integer argc, const
       do 
       {
         std::cout << " Enter the value of the radius:\n";
-        cin >> theRad;
+        std::cin >> theRad;
       } while (theRad <= 0);
       
       // Get filled status
       Standard_Boolean isFilled;
       std::cout << "Enter filled status (0 or 1)\n";
-      cin >> isFilled;
+      std::cin >> isFilled;
 
       // Recover the normal to the plane. tag
       TopoDS_Face myFace = TopoDS::Face(aShapeA);
@@ -2228,7 +2295,7 @@ static int VCircleBuilder(Draw_Interpretor& /*di*/, Standard_Integer argc, const
       {
         theGeomCircle = Cir.Value();
       }
-      catch (StdFail_NotDone)
+      catch (StdFail_NotDone const&)
       {
         std::cout << "vcircle error: can't create circle\n";
         return -1; // TCL_ERROR
@@ -2458,22 +2525,13 @@ static int VDrawText (Draw_Interpretor& theDI,
 
       TCollection_AsciiString anOption (theArgVec[anArgIt]);
       anOption.LowerCase();
-      if (anOption.IsEqual ("regular"))
+      Font_FontAspect aFontAspect = Font_FA_Undefined;
+      if (!parseFontStyle (anOption, aFontAspect))
       {
-        aTextPrs->SetFontAspect (Font_FA_Regular);
+        std::cout << "Error: unknown font aspect '" << anOption << "'.\n";
+        return 1;
       }
-      else if (anOption.IsEqual ("bold"))
-      {
-        aTextPrs->SetFontAspect (Font_FA_Bold);
-      }
-      else if (anOption.IsEqual ("italic"))
-      {
-        aTextPrs->SetFontAspect (Font_FA_Italic);
-      }
-      else if (anOption.IsEqual ("bolditalic"))
-      {
-        aTextPrs->SetFontAspect (Font_FA_BoldItalic);
-      }
+      aTextPrs->SetFontAspect (aFontAspect);
     }
     else if (aParam == "-font")
     {
@@ -2529,6 +2587,8 @@ static int VDrawText (Draw_Interpretor& theDI,
         aDisplayType = Aspect_TODT_DIMENSION;
       else if (aType == "normal")
         aDisplayType = Aspect_TODT_NORMAL;
+      else if (aType == "shadow")
+        aDisplayType = Aspect_TODT_SHADOW;
       else
       {
         std::cout << "Error: wrong display type '" << aType << "'.\n";
@@ -2960,7 +3020,7 @@ static int VDrawSphere (Draw_Interpretor& /*di*/, Standard_Integer argc, const c
   Handle(TColStd_HArray1OfInteger) aColorArray = new TColStd_HArray1OfInteger (1, aNumberPoints);
   for (Standard_Integer aNodeId = 1; aNodeId <= aNumberPoints; ++aNodeId)
   {
-    aColorArray->SetValue (aNodeId, *reinterpret_cast<const Standard_Integer*> (&aColor));
+    aColorArray->SetValue (aNodeId, *reinterpret_cast<const Standard_Integer*> (aColor.GetData()));
   }
   aShape->SetColors (aColorArray);
 
@@ -2988,8 +3048,8 @@ static int VDrawSphere (Draw_Interpretor& /*di*/, Standard_Integer argc, const c
 
   // Setting material properties, very important for desirable visual result!
   Graphic3d_MaterialAspect aMat (Graphic3d_NOM_PLASTIC);
-  aMat.SetAmbient  (0.2f);
-  aMat.SetSpecular (0.5f);
+  aMat.SetAmbientColor (Quantity_Color (Graphic3d_Vec3 (0.04f)));
+  aMat.SetSpecularColor(Quantity_Color (Graphic3d_Vec3 (0.50f)));
   Handle(Graphic3d_AspectFillArea3d) anAspect
     = new Graphic3d_AspectFillArea3d (Aspect_IS_SOLID,
                                       Quantity_NOC_RED,
@@ -2999,14 +3059,7 @@ static int VDrawSphere (Draw_Interpretor& /*di*/, Standard_Integer argc, const c
                                       aMat,
                                       aMat);
   Handle(Prs3d_ShadingAspect) aShAsp = new Prs3d_ShadingAspect();
-  if (toShowEdges)
-  {
-    anAspect->SetEdgeOn();
-  }
-  else
-  {
-    anAspect->SetEdgeOff();
-  }
+  anAspect->SetDrawEdges (toShowEdges);
   aShAsp->SetAspect (anAspect);
   aShape->Attributes()->SetShadingAspect (aShAsp);
 
@@ -3019,75 +3072,23 @@ static int VDrawSphere (Draw_Interpretor& /*di*/, Standard_Integer argc, const c
 //purpose  :
 //=============================================================================
 
-static int VComputeHLR (Draw_Interpretor& di,
-                        Standard_Integer argc,
-                        const char** argv)
+static int VComputeHLR (Draw_Interpretor& ,
+                        Standard_Integer theArgNb,
+                        const char** theArgVec)
 {
-  Handle(AIS_InteractiveContext) aContextAIS = ViewerTest::GetAISContext ();
-
-  if (aContextAIS.IsNull ())
-  {
-    di << "Please call vinit before\n";
-    return 1;
-  }
-
-  if ( argc != 3 &&  argc != 12 )
-  {
-    di << "Usage: " << argv[0] << " ShapeName HlrName "
-       << "[ eye_x eye_y eye_z dir_x dir_y dir_z upx upy upz ]\n"
-       << "                    ShapeName - name of the initial shape\n"
-       << "                    HlrName - result hlr object from initial shape\n"
-       << "                    eye, dir are eye position and look direction\n"
-       << "                    up is the look up direction vector\n"
-       << "                    Use vtop to see projected hlr shape\n";
-    return 1;
-  }
-
-  // shape and new object name
-  TCollection_AsciiString aShapeName (argv[1]);
-  TCollection_AsciiString aHlrName (argv[2]);
-
-  TopoDS_Shape aSh = DBRep::Get (argv[1]);
-  if (aSh.IsNull()) 
-  {
-    BRep_Builder aBrepBuilder;
-    BRepTools::Read (aSh, argv[1], aBrepBuilder);
-    if (aSh.IsNull ())
-    {
-      di << "No shape with name " << argv[1] << " found\n";
-      return 1;
-    }
-  }
-
-  if (GetMapOfAIS ().IsBound2 (aHlrName))
-  {
-    di << "Presentable object with name " << argv[2] << " already exists\n";
-    return 1;
-  }
-
-  Handle(HLRBRep_PolyAlgo) aPolyAlgo = new HLRBRep_PolyAlgo();
-  HLRBRep_PolyHLRToShape aHLRToShape;
-
+  TCollection_AsciiString aShapeName, aHlrName;
+  TopoDS_Shape aSh;
   gp_Pnt anEye;
   gp_Dir aDir;
   gp_Ax2 aProjAx;
-  if (argc == 9)
-  {
-    gp_Dir anUp;
-
-    anEye.SetCoord (Draw::Atof (argv[3]), Draw::Atof (argv[4]), Draw::Atof (argv[5]));
-    aDir.SetCoord (Draw::Atof (argv[6]), Draw::Atof (argv[7]), Draw::Atof (argv[8]));
-    anUp.SetCoord (Draw::Atof (argv[9]), Draw::Atof (argv[10]), Draw::Atof (argv[11]));
-    aProjAx.SetLocation (anEye);
-    aProjAx.SetDirection (aDir);
-    aProjAx.SetYDirection (anUp);
-  }
-  else
+  bool hasViewDirArg = false;
+  Prs3d_TypeOfHLR anAlgoType = Prs3d_TOH_PolyAlgo;
+  bool toShowCNEdges = false, toShowHiddenEdges = false;
+  int aNbIsolines = 0;
+  if (Handle(V3d_Viewer) aViewer = ViewerTest::GetViewerFromContext())
   {
     gp_Dir aRight;
-
-    Handle(V3d_Viewer) aViewer = ViewerTest::GetViewerFromContext();
-    Handle(V3d_View)   aView   = ViewerTest::CurrentView();
+    Handle(V3d_View) aView = ViewerTest::CurrentView();
     Standard_Integer aWidth, aHeight;
     Standard_Real aCentX, aCentY, aCentZ, aDirX, aDirY, aDirZ;
     Standard_Real aRightX, aRightY, aRightZ;
@@ -3096,7 +3097,6 @@ static int VComputeHLR (Draw_Interpretor& di,
     aView->ConvertWithProj (aWidth, aHeight/2, 
                             aRightX, aRightY, aRightZ,
                             aDirX, aDirY, aDirZ);
-
     aView->ConvertWithProj (aWidth/2, aHeight/2, 
                             aCentX, aCentY, aCentZ,
                             aDirX, aDirY, aDirZ);
@@ -3108,39 +3108,212 @@ static int VComputeHLR (Draw_Interpretor& di,
     aProjAx.SetDirection (aDir);
     aProjAx.SetXDirection (aRight);
   }
+  for (Standard_Integer anArgIter = 1; anArgIter < theArgNb; ++anArgIter)
+  {
+    TCollection_AsciiString anArgCase (theArgVec[anArgIter]);
+    anArgCase.LowerCase();
+    if (anArgIter + 1 < theArgNb
+     && (anArgCase == "-algotype"
+      || anArgCase == "-algo"
+      || anArgCase == "-type"))
+    {
+      TCollection_AsciiString anArgNext (theArgVec[++anArgIter]);
+      anArgNext.LowerCase();
+      if (anArgNext == "polyalgo")
+      {
+        anAlgoType = Prs3d_TOH_PolyAlgo;
+      }
+      else if (anArgNext == "algo")
+      {
+        anAlgoType = Prs3d_TOH_Algo;
+      }
+      else
+      {
+        std::cout << "Syntax error: unknown algo type '" << anArgNext << "'\n";
+        return 1;
+      }
+    }
+    else if (anArgCase == "-showhiddenedges"
+          || anArgCase == "-hiddenedges"
+          || anArgCase == "-hidden")
+    {
+      toShowHiddenEdges = true;
+      if (anArgIter + 1 < theArgNb
+       && ViewerTest::ParseOnOff (theArgVec[anArgIter + 1], toShowHiddenEdges))
+      {
+        ++anArgIter;
+      }
+    }
+    else if (anArgCase == "-showtangentedges"
+          || anArgCase == "-tangentedges"
+          || anArgCase == "-tangent")
+    {
+      toShowCNEdges = true;
+      if (anArgIter + 1 < theArgNb
+       && ViewerTest::ParseOnOff (theArgVec[anArgIter + 1], toShowCNEdges))
+      {
+        ++anArgIter;
+      }
+    }
+    else if (anArgIter + 1 < theArgNb
+          && (anArgCase == "-nbiso"
+           || anArgCase == "-nbisolines"))
+    {
+      aNbIsolines = Draw::Atoi (theArgVec[++anArgIter]);
+    }
+    else if (aSh.IsNull())
+    {
+      aSh = DBRep::Get (theArgVec[anArgIter]);
+      aShapeName = theArgVec[anArgIter];
+      if (aSh.IsNull())
+      {
+        BRep_Builder aBrepBuilder;
+        BRepTools::Read (aSh, theArgVec[anArgIter], aBrepBuilder);
+        if (aSh.IsNull())
+        {
+          std::cout << "Syntax error: no shape with name " << theArgVec[anArgIter] << " found\n";
+          return 1;
+        }
+      }
+    }
+    else if (aHlrName.IsEmpty())
+    {
+      aHlrName = theArgVec[anArgIter];
+    }
+    else if (!hasViewDirArg
+          && anArgIter + 8 < theArgNb)
+    {
+      hasViewDirArg = true;
+      gp_Dir anUp;
+      anEye.SetCoord (Draw::Atof (theArgVec[anArgIter + 0]), Draw::Atof (theArgVec[anArgIter + 1]), Draw::Atof (theArgVec[anArgIter + 2]));
+      aDir .SetCoord (Draw::Atof (theArgVec[anArgIter + 3]), Draw::Atof (theArgVec[anArgIter + 4]), Draw::Atof (theArgVec[anArgIter + 5]));
+      anUp .SetCoord (Draw::Atof (theArgVec[anArgIter + 6]), Draw::Atof (theArgVec[anArgIter + 7]), Draw::Atof (theArgVec[anArgIter + 8]));
+      aProjAx.SetLocation (anEye);
+      aProjAx.SetDirection (aDir);
+      aProjAx.SetYDirection (anUp);
+      anArgIter += 8;
+    }
+    else
+    {
+      std::cout << "Syntax error: unknown argument '" << theArgVec[anArgIter] << "'\n";
+      return 1;
+    }
+  }
+
+  if (aHlrName.IsEmpty() || aSh.IsNull()
+   || (ViewerTest::GetAISContext().IsNull() && hasViewDirArg))
+  {
+    std::cout << "Syntax error: wrong number of arguments\n";
+    return 1;
+  }
 
   HLRAlgo_Projector aProjector (aProjAx);
-  aPolyAlgo->Projector (aProjector);
-  aPolyAlgo->Load (aSh);
-  aPolyAlgo->Update ();
+  TopoDS_Shape aVisible[6];
+  TopoDS_Shape aHidden[6];
+  if (anAlgoType == Prs3d_TOH_PolyAlgo)
+  {
+    Handle(HLRBRep_PolyAlgo) aPolyAlgo = new HLRBRep_PolyAlgo();
+    aPolyAlgo->Projector (aProjector);
+    aPolyAlgo->Load (aSh);
+    aPolyAlgo->Update();
 
-  aHLRToShape.Update (aPolyAlgo);
+    HLRBRep_PolyHLRToShape aHLRToShape;
+    aHLRToShape.Update (aPolyAlgo);
 
-  // make hlr shape from input shape
-  TopoDS_Compound aHlrShape;
+    aVisible[HLRBRep_Sharp]   = aHLRToShape.VCompound();
+    aVisible[HLRBRep_OutLine] = aHLRToShape.OutLineVCompound(); // extract visible outlines
+    aVisible[HLRBRep_Rg1Line] = aHLRToShape.Rg1LineVCompound();
+    if (toShowCNEdges)
+    {
+      aVisible[HLRBRep_RgNLine] = aHLRToShape.RgNLineVCompound();
+    }
+    if (toShowHiddenEdges)
+    {
+      aHidden[HLRBRep_Sharp]   = aHLRToShape.HCompound();
+      aHidden[HLRBRep_OutLine] = aHLRToShape.OutLineHCompound();
+      aHidden[HLRBRep_Rg1Line] = aHLRToShape.Rg1LineHCompound();
+      if (toShowCNEdges)
+      {
+        aHidden[HLRBRep_RgNLine] = aHLRToShape.RgNLineHCompound();
+      }
+    }
+  }
+  else
+  {
+    Handle(HLRBRep_Algo) aHlrAlgo = new HLRBRep_Algo();
+    aHlrAlgo->Add (aSh, aNbIsolines);
+    aHlrAlgo->Projector (aProjector);
+    aHlrAlgo->Update();
+    aHlrAlgo->Hide();
+
+    HLRBRep_HLRToShape aHLRToShape (aHlrAlgo);
+    aVisible[HLRBRep_Sharp]   = aHLRToShape.VCompound();
+    aVisible[HLRBRep_OutLine] = aHLRToShape.OutLineVCompound();
+    aVisible[HLRBRep_Rg1Line] = aHLRToShape.Rg1LineVCompound();
+    if (toShowCNEdges)
+    {
+      aVisible[HLRBRep_RgNLine] = aHLRToShape.RgNLineVCompound();
+    }
+    aVisible[HLRBRep_IsoLine] = aHLRToShape.IsoLineVCompound();
+
+    if (toShowHiddenEdges)
+    {
+      aHidden[HLRBRep_Sharp]   = aHLRToShape.HCompound();
+      aHidden[HLRBRep_OutLine] = aHLRToShape.OutLineHCompound();
+      aHidden[HLRBRep_Rg1Line] = aHLRToShape.Rg1LineHCompound();
+      if (toShowCNEdges)
+      {
+        aHidden[HLRBRep_RgNLine] = aHLRToShape.RgNLineHCompound();
+      }
+      aHidden[HLRBRep_IsoLine] = aHLRToShape.IsoLineHCompound();
+    }
+    // extract 3d
+    //aVisible[HLRBRep_Sharp]   = aHLRToShape.CompoundOfEdges (HLRBRep_Sharp, Standard_True, Standard_True);
+    //aVisible[HLRBRep_OutLine] = aHLRToShape.OutLineVCompound3d();
+  }
+
+  TopoDS_Compound aCompRes, aCompVis, aCompHid;
   BRep_Builder aBuilder;
-  aBuilder.MakeCompound (aHlrShape);
-
-  TopoDS_Shape aCompound = aHLRToShape.VCompound();
-  if (!aCompound.IsNull ())
+  aBuilder.MakeCompound (aCompVis);
+  aBuilder.MakeCompound (aCompHid);
+  aBuilder.MakeCompound (aCompRes);
+  for (int aTypeIter = 0; aTypeIter < 6; ++aTypeIter)
   {
-    aBuilder.Add (aHlrShape, aCompound);
+    if (!aVisible[aTypeIter].IsNull())
+    {
+      aBuilder.Add (aCompVis, aVisible[aTypeIter]);
+    }
+    if (!aHidden[aTypeIter].IsNull())
+    {
+      aBuilder.Add (aCompHid, aHidden[aTypeIter]);
+    }
   }
-  
-  // extract visible outlines
-  aCompound = aHLRToShape.OutLineVCompound();
-  if (!aCompound.IsNull ())
-  {
-    aBuilder.Add (aHlrShape, aCompound);
-  }
+  aBuilder.Add (aCompRes, aCompVis);
+  aBuilder.Add (aCompRes, aCompHid);
 
   // create an AIS shape and display it
-  Handle(AIS_Shape) anObject = new AIS_Shape (aHlrShape);
-  GetMapOfAIS().Bind (anObject, aHlrName);
-  aContextAIS->Display (anObject, Standard_False);
+  if (!ViewerTest::GetAISContext().IsNull())
+  {
+    Handle(AIS_ColoredShape) anObject = new AIS_ColoredShape (aCompRes);
+    if (toShowHiddenEdges)
+    {
+      Handle(Prs3d_LineAspect) aLineAspect = new Prs3d_LineAspect (Quantity_Color (Quantity_NOC_RED), Aspect_TOL_DASH, 1.0f);
+      for (int aTypeIter = 0; aTypeIter < 6; ++aTypeIter)
+      {
+        if (!aHidden[aTypeIter].IsNull())
+        {
+          Handle(AIS_ColoredDrawer) aDrawer = anObject->CustomAspects (aHidden[aTypeIter]);
+          aDrawer->SetLineAspect (aLineAspect);
+          aDrawer->SetWireAspect (aLineAspect);
+          aDrawer->SetFreeBoundaryAspect (aLineAspect);
+          aDrawer->SetUnFreeBoundaryAspect (aLineAspect);
+        }
+      }
+    }
+    ViewerTest::Display (aHlrName, anObject, true);
+  }
 
-  aContextAIS->UpdateCurrentViewer ();
-
+  DBRep::Set (aHlrName.ToCString(), aCompRes);
   return 0;
 }
 
@@ -3152,14 +3325,28 @@ class MyPArrayObject : public AIS_InteractiveObject
 
 public:
 
-  MyPArrayObject (Handle(TColStd_HArray1OfAsciiString) theArrayDescription,
-                  Handle(Graphic3d_AspectMarker3d) theMarkerAspect = NULL)
+  MyPArrayObject (const Handle(Graphic3d_ArrayOfPrimitives)& thePArray) : myPArray (thePArray) {}
+
+  MyPArrayObject (Graphic3d_TypeOfPrimitiveArray thePrimType,
+                  const Handle(TColStd_HArray1OfAsciiString)& theDesc,
+                  const Handle(Graphic3d_AspectMarker3d)& theMarkerAspect)
   {
-    myArrayDescription = theArrayDescription;
-    myMarkerAspect = theMarkerAspect;
+    Init (thePrimType, theDesc, theMarkerAspect, Standard_False);
   }
 
+  //! Initialize the array from specified description.
+  Standard_Boolean Init (Graphic3d_TypeOfPrimitiveArray thePrimType,
+                         const Handle(TColStd_HArray1OfAsciiString)& theDesc,
+                         const Handle(Graphic3d_AspectMarker3d)& theMarkerAspect,
+                         Standard_Boolean theToPatch);
+
   DEFINE_STANDARD_RTTI_INLINE(MyPArrayObject,AIS_InteractiveObject);
+
+  virtual Standard_Boolean AcceptDisplayMode (const Standard_Integer theMode) const Standard_OVERRIDE { return theMode == 0; }
+
+  //! Sets color to this interactive object
+  //! @param theColor the color to be set
+  virtual void SetColor (const Quantity_Color& theColor) Standard_OVERRIDE;
 
 private:
 
@@ -3171,67 +3358,113 @@ private:
                          const Standard_Integer /*theMode*/) Standard_OVERRIDE;
 
   bool CheckInputCommand (const TCollection_AsciiString theCommand,
-                          const Handle(TColStd_HArray1OfAsciiString) theArgsArray,
+                          const Handle(TColStd_HArray1OfAsciiString)& theArgsArray,
                           Standard_Integer &theArgIndex,
                           Standard_Integer theArgCount,
                           Standard_Integer theMaxArgs);
 
+  //! Sets color for the shading aspect of the drawer used in this interactive object
+  //! @param theColor the color to be set
+  void setColorForShadingAspect(const Quantity_Color& theColor);
+
+  //! Replaces shading aspect from myDrawer->Link() with the own shading aspect of myDrawer for this interactive object
+  void replaceShadingAspect();
+
 protected:
 
-  Handle(TColStd_HArray1OfAsciiString) myArrayDescription;
   Handle(Graphic3d_AspectMarker3d) myMarkerAspect;
+  Handle(Graphic3d_ArrayOfPrimitives) myPArray;
 
 };
 
-
 void MyPArrayObject::Compute (const Handle(PrsMgr_PresentationManager3d)& /*aPresentationManager*/,
-                              const Handle(Prs3d_Presentation)& aPresentation,
-                              const Standard_Integer /*aMode*/)
+                              const Handle(Prs3d_Presentation)& thePrs,
+                              const Standard_Integer theMode)
 {
+  if (myPArray.IsNull() || theMode != 0)
+  {
+    return;
+  }
+
+  Handle(Graphic3d_Group) aGroup = thePrs->NewGroup();
+  if (!myMarkerAspect.IsNull())
+  {
+    aGroup->SetGroupPrimitivesAspect (myMarkerAspect);
+  }
+  else
+  {
+    aGroup->SetGroupPrimitivesAspect (myDrawer->ShadingAspect()->Aspect());
+  }
+  aGroup->AddPrimitiveArray (myPArray);
+}
+
+Standard_Boolean MyPArrayObject::Init (Graphic3d_TypeOfPrimitiveArray thePrimType,
+                                       const Handle(TColStd_HArray1OfAsciiString)& theDesc,
+                                       const Handle(Graphic3d_AspectMarker3d)& theMarkerAspect,
+                                       Standard_Boolean theToPatch)
+{
+  myMarkerAspect = theMarkerAspect;
+  if (!theToPatch)
+  {
+    myPArray.Nullify();
+  }
 
   // Parsing array description
   Standard_Integer aVertexNum = 0, aBoundNum = 0, aEdgeNum = 0;
-  Standard_Boolean hasVColors, hasBColors, hasNormals, hasTexels;
-  hasVColors = hasNormals = hasBColors = hasTexels = Standard_False;
+  Graphic3d_ArrayFlags anArrayFlags = Graphic3d_ArrayFlags_None;
 
-  Standard_Integer anArgIndex = 0;
-  Standard_Integer anArgsCount = myArrayDescription->Length();
-  TCollection_AsciiString anArrayType = myArrayDescription->Value (anArgIndex++);
-
+  const Standard_Integer anArgsCount = theDesc->Length();
   TCollection_AsciiString aCommand;
-  while (anArgIndex < anArgsCount)
+  for (Standard_Integer anArgIndex = theDesc->Lower(); anArgIndex <= theDesc->Upper(); )
   {
-    aCommand = myArrayDescription->Value (anArgIndex);
+    aCommand = theDesc->Value (anArgIndex);
     aCommand.LowerCase();
 
+    if (CheckInputCommand ("-deinterleaved", theDesc, anArgIndex, 0, anArgsCount))
+    {
+      anArrayFlags |= Graphic3d_ArrayFlags_AttribsDeinterleaved;
+    }
+    else if (CheckInputCommand ("-mutable", theDesc, anArgIndex, 0, anArgsCount))
+    {
+      anArrayFlags |= Graphic3d_ArrayFlags_AttribsMutable;
+      anArrayFlags |= Graphic3d_ArrayFlags_IndexesMutable;
+    }
     // vertex command
-    if (CheckInputCommand ("v", myArrayDescription, anArgIndex, 3, anArgsCount))
+    else if (CheckInputCommand ("v", theDesc, anArgIndex, 3, anArgsCount))
     {
       // vertex has a normal or normal with color or texel
-      if (CheckInputCommand ("n", myArrayDescription, anArgIndex, 3, anArgsCount))
-        hasNormals = Standard_True;
+      if (CheckInputCommand ("n", theDesc, anArgIndex, 3, anArgsCount))
+      {
+        anArrayFlags = anArrayFlags | Graphic3d_ArrayFlags_VertexNormal;
+      }
 
       // vertex has a color
-      if (CheckInputCommand ("c", myArrayDescription, anArgIndex, 3, anArgsCount))
-        hasVColors = Standard_True;
+      if (CheckInputCommand ("c", theDesc, anArgIndex, 3, anArgsCount))
+      {
+        anArrayFlags = anArrayFlags | Graphic3d_ArrayFlags_VertexColor;
+      }
 
       // vertex has a texel
-      if (CheckInputCommand ("t", myArrayDescription, anArgIndex, 2, anArgsCount))
-        hasTexels = Standard_True;
+      if (CheckInputCommand ("t", theDesc, anArgIndex, 2, anArgsCount))
+      {
+        anArrayFlags = anArrayFlags | Graphic3d_ArrayFlags_VertexTexel;
+      }
 
       aVertexNum++;
     }
     // bound command
-    else if (CheckInputCommand ("b", myArrayDescription, anArgIndex, 1, anArgsCount))
+    else if (CheckInputCommand ("b", theDesc, anArgIndex, 1, anArgsCount))
     {
       // bound has color
-      if (CheckInputCommand ("c", myArrayDescription, anArgIndex, 3, anArgsCount))
-        hasBColors = Standard_True;
+      if (CheckInputCommand ("c", theDesc, anArgIndex, 3, anArgsCount))
+      {
+        anArrayFlags = anArrayFlags | Graphic3d_ArrayFlags_BoundColor;
+      }
 
       aBoundNum++;
     }
     // edge command
-    else if (CheckInputCommand ("e", myArrayDescription, anArgIndex, 1, anArgsCount))
+    else if (CheckInputCommand ("e", theDesc, anArgIndex, 1, anArgsCount))
     {
       aEdgeNum++;
     }
@@ -3240,134 +3473,191 @@ void MyPArrayObject::Compute (const Handle(PrsMgr_PresentationManager3d)& /*aPre
       anArgIndex++;
   }
 
-  Handle(Graphic3d_ArrayOfPrimitives) anArray;
-  if (anArrayType == "points")
+  if (myPArray.IsNull())
   {
-    anArray = new Graphic3d_ArrayOfPoints (aVertexNum);
+    myPArray = Graphic3d_ArrayOfPrimitives::CreateArray (thePrimType, aVertexNum, aBoundNum, aEdgeNum, anArrayFlags);
   }
-  else if (anArrayType == "segments")
-    anArray = new Graphic3d_ArrayOfSegments (aVertexNum, aEdgeNum, hasVColors);
-  else if (anArrayType == "polylines")
-    anArray = new Graphic3d_ArrayOfPolylines (aVertexNum, aBoundNum, aEdgeNum,
-                                              hasVColors, hasBColors);
-  else if (anArrayType == "triangles")
-    anArray = new Graphic3d_ArrayOfTriangles (aVertexNum, aEdgeNum, hasNormals,
-                                              hasVColors, hasTexels);
-  else if (anArrayType == "trianglefans")
-    anArray = new Graphic3d_ArrayOfTriangleFans (aVertexNum, aBoundNum,
-                                                 hasNormals, hasVColors,
-                                                 hasBColors, hasTexels);
-  else if (anArrayType == "trianglestrips")
-    anArray = new Graphic3d_ArrayOfTriangleStrips (aVertexNum, aBoundNum,
-                                                   hasNormals, hasVColors,
-                                                   hasBColors, hasTexels);
-  else if (anArrayType == "quads")
-    anArray = new Graphic3d_ArrayOfQuadrangles (aVertexNum, aEdgeNum,
-                                                hasNormals, hasVColors,
-                                                hasTexels);
-  else if (anArrayType == "quadstrips")
-    anArray = new Graphic3d_ArrayOfQuadrangleStrips (aVertexNum, aBoundNum,
-                                                     hasNormals, hasVColors,
-                                                     hasBColors, hasTexels);
-  else if (anArrayType == "polygons")
-    anArray = new Graphic3d_ArrayOfPolygons (aVertexNum, aBoundNum, aEdgeNum,
-                                             hasNormals, hasVColors, hasBColors,
-                                             hasTexels);
-
-  anArgIndex = 1;
-  while (anArgIndex < anArgsCount)
+  else
   {
-    aCommand = myArrayDescription->Value (anArgIndex);
-    aCommand.LowerCase();
-    if (!aCommand.IsAscii())
-      break;
-
-    // vertex command
-    if (CheckInputCommand ("v", myArrayDescription, anArgIndex, 3, anArgsCount))
+    if (myPArray->Type() != thePrimType
+    ||  aVertexNum > myPArray->VertexNumberAllocated()
+    ||  aEdgeNum   > myPArray->EdgeNumberAllocated()
+    ||  aBoundNum  > myPArray->BoundNumberAllocated()
+    || !myPArray->Attributes()->IsMutable()
+    || (!myPArray->Indices().IsNull() && !myPArray->Indices()->IsMutable()))
     {
-      anArray->AddVertex (myArrayDescription->Value (anArgIndex - 3).RealValue(),
-                          myArrayDescription->Value (anArgIndex - 2).RealValue(),
-                          myArrayDescription->Value (anArgIndex - 1).RealValue());
-      const Standard_Integer aVertIndex = anArray->VertexNumber();
+      std::cout << "Syntax error: array cannot be patched\n";
+      return Standard_False;
+    }
+
+    myPArray->Attributes()->NbElements = aVertexNum;
+    if (Handle(Graphic3d_AttribBuffer) anAttribs = Handle(Graphic3d_AttribBuffer)::DownCast (myPArray->Attributes()))
+    {
+      anAttribs->Invalidate (0, aVertexNum - 1);
+    }
+    if (!myPArray->Indices().IsNull())
+    {
+      myPArray->Indices()->NbElements = aEdgeNum;
+    }
+    if (!myPArray->Bounds().IsNull())
+    {
+      myPArray->Bounds()->NbBounds = aBoundNum;
+    }
+  }
+
+  Standard_Integer aVertIndex = 0;
+  for (Standard_Integer anArgIndex = theDesc->Lower(); anArgIndex <= theDesc->Upper(); )
+  {
+    aCommand = theDesc->Value (anArgIndex);
+    aCommand.LowerCase();
+    if (!aCommand.IsAscii()
+      || aCommand.IsEmpty())
+    {
+      break;
+    }
+
+    // skip beautifiers (syntax is not actually validated)
+    if (aCommand == "-deinterleaved"
+     || aCommand == "-mutable"
+     || aCommand.Value (1) == '('
+     || aCommand.Value (1) == ')'
+     || aCommand.Value (1) == ',')
+    {
+      ++anArgIndex;
+    }
+    // vertex command
+    else if (CheckInputCommand ("v", theDesc, anArgIndex, 3, anArgsCount))
+    {
+      const Graphic3d_Vec3 aVert ((float )theDesc->Value (anArgIndex - 3).RealValue(),
+                                  (float )theDesc->Value (anArgIndex - 2).RealValue(),
+                                  (float )theDesc->Value (anArgIndex - 1).RealValue());
+      if ((anArrayFlags & Graphic3d_ArrayFlags_AttribsDeinterleaved) != 0
+       || (anArrayFlags & Graphic3d_ArrayFlags_AttribsMutable) != 0)
+      {
+        ++aVertIndex;
+        myPArray->SetVertice (aVertIndex, aVert.x(), aVert.y(), aVert.z());
+      }
+      else
+      {
+        aVertIndex = myPArray->AddVertex (aVert);
+      }
 
       // vertex has a normal or normal with color or texel
-      if (CheckInputCommand ("n", myArrayDescription, anArgIndex, 3, anArgsCount))
-        anArray->SetVertexNormal (aVertIndex,
-                                  myArrayDescription->Value (anArgIndex - 3).RealValue(),
-                                  myArrayDescription->Value (anArgIndex - 2).RealValue(),
-                                  myArrayDescription->Value (anArgIndex - 1).RealValue());
+      if (CheckInputCommand ("n", theDesc, anArgIndex, 3, anArgsCount))
+      {
+        const Graphic3d_Vec3 aNorm ((float )theDesc->Value (anArgIndex - 3).RealValue(),
+                                    (float )theDesc->Value (anArgIndex - 2).RealValue(),
+                                    (float )theDesc->Value (anArgIndex - 1).RealValue());
+        myPArray->SetVertexNormal (aVertIndex, aNorm.x(), aNorm.y(), aNorm.z());
+      }
       
-      if (CheckInputCommand ("c", myArrayDescription, anArgIndex, 3, anArgsCount))
-        anArray->SetVertexColor (aVertIndex,
-                                 myArrayDescription->Value (anArgIndex - 3).RealValue(),
-                                 myArrayDescription->Value (anArgIndex - 2).RealValue(),
-                                 myArrayDescription->Value (anArgIndex - 1).RealValue());
-      
-      if (CheckInputCommand ("t", myArrayDescription, anArgIndex, 2, anArgsCount))
-        anArray->SetVertexTexel (aVertIndex,
-                                 myArrayDescription->Value (anArgIndex - 2).RealValue(),
-                                 myArrayDescription->Value (anArgIndex - 1).RealValue());
+      if (CheckInputCommand ("c", theDesc, anArgIndex, 3, anArgsCount))
+      {
+        const Graphic3d_Vec3d aCol (theDesc->Value (anArgIndex - 3).RealValue(),
+                                    theDesc->Value (anArgIndex - 2).RealValue(),
+                                    theDesc->Value (anArgIndex - 1).RealValue());
+        myPArray->SetVertexColor (aVertIndex, aCol.r(), aCol.g(), aCol.b());
+      }
+      if (CheckInputCommand ("t", theDesc, anArgIndex, 2, anArgsCount))
+      {
+        const Graphic3d_Vec2 aTex ((float )theDesc->Value (anArgIndex - 2).RealValue(),
+                                   (float )theDesc->Value (anArgIndex - 1).RealValue());
+        myPArray->SetVertexTexel (aVertIndex, aTex.x(), aTex.y());
+      }
     }
     // bounds command
-    else if (CheckInputCommand ("b", myArrayDescription, anArgIndex, 1, anArgsCount))
+    else if (CheckInputCommand ("b", theDesc, anArgIndex, 1, anArgsCount))
     {
-      Standard_Integer aVertCount = myArrayDescription->Value (anArgIndex - 1).IntegerValue();
+      Standard_Integer aVertCount = theDesc->Value (anArgIndex - 1).IntegerValue();
 
-      if (CheckInputCommand ("c", myArrayDescription, anArgIndex, 3, anArgsCount))
-        anArray->AddBound (aVertCount,
-                           myArrayDescription->Value (anArgIndex - 3).RealValue(),
-                           myArrayDescription->Value (anArgIndex - 2).RealValue(),
-                           myArrayDescription->Value (anArgIndex - 1).RealValue());
+      if (CheckInputCommand ("c", theDesc, anArgIndex, 3, anArgsCount))
+        myPArray->AddBound (aVertCount,
+                            theDesc->Value (anArgIndex - 3).RealValue(),
+                            theDesc->Value (anArgIndex - 2).RealValue(),
+                            theDesc->Value (anArgIndex - 1).RealValue());
 
       else
-        anArray->AddBound (aVertCount);
+        myPArray->AddBound (aVertCount);
     }
     // edge command
-    else if (CheckInputCommand ("e", myArrayDescription, anArgIndex, 1, anArgsCount))
+    else if (CheckInputCommand ("e", theDesc, anArgIndex, 1, anArgsCount))
     {
-      const Standard_Integer aVertIndex = myArrayDescription->Value (anArgIndex - 1).IntegerValue();
-      anArray->AddEdge (aVertIndex);
+      const Standard_Integer anEdge = theDesc->Value (anArgIndex - 1).IntegerValue();
+      myPArray->AddEdge (anEdge);
     }
     // unknown command
     else
-      anArgIndex++;
+    {
+      std::cout << "Syntax error: unknown argument '" << theDesc->Value(anArgIndex) << "'\n";
+      return Standard_False;
+    }
   }
+  return Standard_True;
+}
 
-  aPresentation->Clear();
-  if (!myMarkerAspect.IsNull())
+//=======================================================================
+// function : SetColor
+// purpose  :
+//=======================================================================
+void MyPArrayObject::SetColor (const Quantity_Color& theColor)
+{
+  AIS_InteractiveObject::SetColor (theColor);
+  setColorForShadingAspect (theColor);
+  if (myMarkerAspect)
   {
-    Prs3d_Root::CurrentGroup (aPresentation)->SetGroupPrimitivesAspect (myMarkerAspect);
+    myMarkerAspect->SetColor (theColor);
   }
-  Prs3d_Root::CurrentGroup (aPresentation)->SetGroupPrimitivesAspect (myDrawer->LineAspect()->Aspect());
-  Prs3d_Root::CurrentGroup (aPresentation)->SetGroupPrimitivesAspect (myDrawer->ShadingAspect()->Aspect());
-  Prs3d_Root::CurrentGroup (aPresentation)->AddPrimitiveArray (anArray);
+  SynchronizeAspects();
 }
 
 void MyPArrayObject::ComputeSelection (const Handle(SelectMgr_Selection)& theSelection,
-                                       const Standard_Integer /*theMode*/)
+                                       const Standard_Integer theMode)
 {
-  Handle(SelectMgr_EntityOwner) anEntityOwner = new SelectMgr_EntityOwner (this);
-
-  Standard_Integer anArgIndex = 1;
-  while (anArgIndex < myArrayDescription->Length())
+  if (theMode != 0
+   || myPArray.IsNull())
   {
-    if (CheckInputCommand ("v", myArrayDescription, anArgIndex, 3, myArrayDescription->Length()))
+    return;
+  }
+
+  Handle(SelectMgr_EntityOwner) anOwner = new SelectMgr_EntityOwner (this);
+  if (Handle(Graphic3d_ArrayOfTriangles) aTris = Handle(Graphic3d_ArrayOfTriangles)::DownCast (myPArray))
+  {
+    Handle(Select3D_SensitivePrimitiveArray) aSensitive = new Select3D_SensitivePrimitiveArray (anOwner);
+    aSensitive->InitTriangulation (myPArray->Attributes(), myPArray->Indices(), TopLoc_Location(), true);
+    theSelection->Add (aSensitive);
+  }
+  else if (Handle(Graphic3d_ArrayOfSegments) aSegs = Handle(Graphic3d_ArrayOfSegments)::DownCast (myPArray))
+  {
+    if (aSegs->EdgeNumber() > 0)
     {
-      gp_Pnt aPoint (myArrayDescription->Value (anArgIndex - 3).RealValue(),
-                     myArrayDescription->Value (anArgIndex - 2).RealValue(),
-                     myArrayDescription->Value (anArgIndex - 1).RealValue());
-      Handle(Select3D_SensitivePoint) aSensetivePoint = new Select3D_SensitivePoint (anEntityOwner, aPoint);
-      theSelection->Add (aSensetivePoint);
+      for (Standard_Integer aPntIter = 1; aPntIter <= aSegs->EdgeNumber(); aPntIter += 2)
+      {
+        Handle(Select3D_SensitiveSegment) aSeg = new Select3D_SensitiveSegment (anOwner, aSegs->Vertice (aSegs->Edge (aPntIter)), aSegs->Vertice (aSegs->Edge (aPntIter + 1)));
+        aSeg->SetSensitivityFactor (4);
+        theSelection->Add (aSeg);
+      }
     }
     else
     {
-      anArgIndex++;
+      for (Standard_Integer aPntIter = 1; aPntIter <= aSegs->VertexNumber(); aPntIter += 2)
+      {
+        Handle(Select3D_SensitiveSegment) aSeg = new Select3D_SensitiveSegment (anOwner, aSegs->Vertice (aPntIter), aSegs->Vertice (aPntIter + 1));
+        aSeg->SetSensitivityFactor (4);
+        theSelection->Add (aSeg);
+      }
     }
+  }
+  else
+  {
+    Handle(Select3D_SensitivePrimitiveArray) aSensitive = new Select3D_SensitivePrimitiveArray (anOwner);
+    aSensitive->SetSensitivityFactor (8);
+    aSensitive->InitPoints (myPArray->Attributes(), myPArray->Indices(), TopLoc_Location(), true);
+    theSelection->Add (aSensitive);
   }
 }
 
 bool MyPArrayObject::CheckInputCommand (const TCollection_AsciiString theCommand,
-                                       const Handle(TColStd_HArray1OfAsciiString) theArgsArray,
+                                       const Handle(TColStd_HArray1OfAsciiString)& theArgsArray,
                                        Standard_Integer &theArgIndex,
                                        Standard_Integer theArgCount,
                                        Standard_Integer theMaxArgs)
@@ -3396,6 +3686,34 @@ bool MyPArrayObject::CheckInputCommand (const TCollection_AsciiString theCommand
   return true;
 }
 
+//=======================================================================
+// function : setColorForShadingAspect
+// purpose  :
+//=======================================================================
+void MyPArrayObject::setColorForShadingAspect (const Quantity_Color& theColor)
+{
+  if (myDrawer->SetupOwnShadingAspect())
+  {
+    replaceShadingAspect();
+  }
+  myDrawer->ShadingAspect()->SetColor (theColor);
+}
+
+//=======================================================================
+// function : replaceShadingAspect
+// purpose  :
+//=======================================================================
+void MyPArrayObject::replaceShadingAspect()
+{
+  if (!myDrawer->Link())
+  {
+    return;
+  }
+  Graphic3d_MapOfAspectsToAspects anAspectReplacementMap;
+  anAspectReplacementMap.Bind (myDrawer->Link()->ShadingAspect()->Aspect(), myDrawer->ShadingAspect()->Aspect());
+  replaceAspects (anAspectReplacementMap);
+}
+
 //=============================================================================
 //function : VDrawPArray
 //purpose  : Draws primitives array from list of vertexes, bounds, edges
@@ -3406,55 +3724,116 @@ static int VDrawPArray (Draw_Interpretor& di, Standard_Integer argc, const char*
   Handle(AIS_InteractiveContext) aContextAIS = ViewerTest::GetAISContext();
   if (aContextAIS.IsNull())
   {
-    di << "Call vinit before!\n";
+    std::cout << "Error: no active Viewer\n";
     return 1;
   }
   else if (argc < 3)
   {
-    di << "Use: " << argv[0] << " Name TypeOfArray"
-       << " [vertex] ... [bounds] ... [edges]\n"
-       << "  TypeOfArray={ points | segments | polylines | triangles |\n"
-       << "                trianglefans | trianglestrips | quads |\n"
-       << "                quadstrips | polygons }\n"
-       << "  vertex={ 'v' x y z [normal={ 'n' nx ny nz }] [color={ 'c' r g b }]"
-       << " [texel={ 't' tx ty }] } \n"
-       << "  bounds={ 'b' verticies_count [color={ 'c' r g b }] }\n"
-       << "  edges={ 'e' vertex_id }\n";
+    std::cout << "Syntax error: wrong number of arguments\n";
     return 1;
   }
 
   // read the arguments
-  Standard_Integer aArgIndex = 1;
-  TCollection_AsciiString aName (argv[aArgIndex++]);
-  TCollection_AsciiString anArrayType (argv[aArgIndex++]);
+  Standard_Integer anArgIndex = 1;
+  TCollection_AsciiString aName (argv[anArgIndex++]);
+  TCollection_AsciiString anArrayType (argv[anArgIndex++]);
+  anArrayType.LowerCase();
+  Handle(MyPArrayObject) aPObject;
+  if (anArrayType == "-shape")
+  {
+    Standard_CString aShapeName = argv[anArgIndex++];
+    TopoDS_Shape aShape = DBRep::Get (aShapeName);
+    Handle(Graphic3d_ArrayOfPrimitives) aTris = StdPrs_ShadedShape::FillTriangles (aShape);
+    if (aShape.IsNull())
+    {
+      std::cout << "Syntax error: shape '" << aShapeName << "' is not found\n";
+      return 1;
+    }
+    else if (aTris.IsNull())
+    {
+      std::cout << "Syntax error: shape '" << aShapeName << "' is not triangulated\n";
+      return 1;
+    }
+
+    aPObject = new MyPArrayObject (aTris);
+    ViewerTest::Display (aName, aPObject);
+    return 0;
+  }
+  else if (anArrayType == "-patch"
+        || anArrayType == "-modify"
+        || anArrayType == "-edit")
+  {
+    if (argc >= 3)
+    {
+      anArrayType = argv[anArgIndex++];
+      anArrayType.LowerCase();
+    }
+
+    if (GetMapOfAIS().IsBound2 (aName))
+    {
+      aPObject = Handle(MyPArrayObject)::DownCast (GetMapOfAIS().Find2 (aName));
+    }
+    if (aPObject.IsNull())
+    {
+      std::cout << "Syntax error: object '" << aName << "' cannot be found\n";
+      return 1;
+    }
+  }
 
   Standard_Boolean hasVertex = Standard_False;
 
-  Handle(TColStd_HArray1OfAsciiString) anArgsArray = new TColStd_HArray1OfAsciiString (0, argc - 2);
-  anArgsArray->SetValue (0, anArrayType);
-
-  if (anArrayType != "points"         &&
-      anArrayType != "segments"       &&
-      anArrayType != "polylines"      &&
-      anArrayType != "triangles"      &&
-      anArrayType != "trianglefans"   &&
-      anArrayType != "trianglestrips" &&
-      anArrayType != "quads"          &&
-      anArrayType != "quadstrips"     &&
-      anArrayType != "polygons")
+  Graphic3d_TypeOfPrimitiveArray aPrimType = Graphic3d_TOPA_UNDEFINED;
+  if (anArrayType == "points")
   {
-    di << "Unexpected type of primitives array\n";
+    aPrimType = Graphic3d_TOPA_POINTS;
+  }
+  else if (anArrayType == "segments")
+  {
+    aPrimType = Graphic3d_TOPA_SEGMENTS;
+  }
+  else if (anArrayType == "polylines")
+  {
+    aPrimType = Graphic3d_TOPA_POLYLINES;
+  }
+  else if (anArrayType == "triangles")
+  {
+    aPrimType = Graphic3d_TOPA_TRIANGLES;
+  }
+  else if (anArrayType == "trianglefans")
+  {
+    aPrimType = Graphic3d_TOPA_TRIANGLEFANS;
+  }
+  else if (anArrayType == "trianglestrips")
+  {
+    aPrimType = Graphic3d_TOPA_TRIANGLESTRIPS;
+  }
+  else if (anArrayType == "quads")
+  {
+    aPrimType = Graphic3d_TOPA_QUADRANGLES;
+  }
+  else if (anArrayType == "quadstrips")
+  {
+    aPrimType = Graphic3d_TOPA_QUADRANGLESTRIPS;
+  }
+  else if (anArrayType == "polygons")
+  {
+    aPrimType = Graphic3d_TOPA_POLYGONS;
+  }
+  if (aPrimType == Graphic3d_TOPA_UNDEFINED)
+  {
+    std::cout << "Syntax error: unexpected type of primitives array\n";
     return 1;
   }
 
-  TCollection_AsciiString aCommand;
-  for (Standard_Integer anArgIndex = 3; anArgIndex < argc; anArgIndex++)
+  Standard_Integer aLowerArg = anArgIndex;
+  Handle(TColStd_HArray1OfAsciiString) anArgsArray = new TColStd_HArray1OfAsciiString (0, argc - 3);
+  for (; anArgIndex < argc; ++anArgIndex)
   {
-    aCommand = argv[anArgIndex];
+    TCollection_AsciiString aCommand (argv[anArgIndex]);
     aCommand.LowerCase();
     if (!aCommand.IsAscii())
     {
-      di << "Unexpected argument: #" << aArgIndex - 1 << " , "
+      di << "Unexpected argument: #" << anArgIndex - 1 << " , "
          << "should be an array element: 'v', 'b', 'e' \n";
       break;
     }
@@ -3464,7 +3843,7 @@ static int VDrawPArray (Draw_Interpretor& di, Standard_Integer argc, const char*
       hasVertex = Standard_True;
     }
 
-    anArgsArray->SetValue (anArgIndex - 2, aCommand);
+    anArgsArray->SetValue (anArgIndex - aLowerArg, aCommand);
   }
 
   if (!hasVertex)
@@ -3474,17 +3853,23 @@ static int VDrawPArray (Draw_Interpretor& di, Standard_Integer argc, const char*
   }
 
   Handle(Graphic3d_AspectMarker3d)    anAspPoints;
-  if (anArrayType == "points")
+  if (aPrimType == Graphic3d_TOPA_POINTS)
   {
     anAspPoints = new Graphic3d_AspectMarker3d (Aspect_TOM_POINT, Quantity_NOC_YELLOW, 1.0f);
   }
 
   // create primitives array object
-  Handle(MyPArrayObject) aPObject = new MyPArrayObject (anArgsArray, anAspPoints);
-
-  // register the object in map
-  VDisplayAISObject (aName, aPObject);
-
+  if (aPObject.IsNull())
+  {
+    // register the object in map
+    aPObject = new MyPArrayObject (aPrimType, anArgsArray, anAspPoints);
+    VDisplayAISObject (aName, aPObject);
+  }
+  else
+  {
+    aPObject->Init (aPrimType, anArgsArray, anAspPoints, Standard_True);
+    ViewerTest::CurrentView()->Redraw();
+  }
   return 0;
 }
 
@@ -3555,11 +3940,7 @@ static Standard_Integer VSetLocation (Draw_Interpretor& theDI,
     else if (anObj.IsNull())
     {
       const TCollection_AsciiString aName (theArgVec[anArgIter]);
-      const ViewerTest_DoubleMapOfInteractiveAndName& aMap = GetMapOfAIS();
-      if (aMap.IsBound2 (aName))
-      {
-        anObj = Handle(AIS_InteractiveObject)::DownCast (aMap.Find2 (aName));
-      }
+      GetMapOfAIS().Find2 (aName, anObj);
       if (anObj.IsNull())
       {
         std::cout << "Error: object '" << aName << "' is not displayed!\n";
@@ -3581,12 +3962,8 @@ static Standard_Integer VSetLocation (Draw_Interpretor& theDI,
       }
 
       const TCollection_AsciiString aName2 (theArgVec[anArgIter + 1]);
-      const ViewerTest_DoubleMapOfInteractiveAndName& aMap = GetMapOfAIS();
       Handle(AIS_InteractiveObject) anObj2;
-      if (aMap.IsBound2 (aName2))
-      {
-        anObj2 = Handle(AIS_InteractiveObject)::DownCast (aMap.Find2 (aName2));
-      }
+      GetMapOfAIS().Find2 (aName2, anObj2);
       if (anObj2.IsNull())
       {
         std::cout << "Error: object '" << aName2 << "' is not displayed!\n";
@@ -3916,10 +4293,8 @@ static Standard_Integer VConnect (Draw_Interpretor& /*di*/,
       std::cout << "vconnect error: equal names for connected objects\n";
       continue;
     }
-    if (GetMapOfAIS().IsBound2 (anOriginObjectName))
+    if (GetMapOfAIS().Find2 (anOriginObjectName, anObject))
     {
-      Handle(Standard_Transient) anObj = GetMapOfAIS().Find2 (anOriginObjectName);
-      anObject = Handle(AIS_InteractiveObject)::DownCast(anObj);
       if (anObject.IsNull())
       {
         std::cout << "Object " << anOriginObjectName << " is used for non AIS viewer\n";
@@ -3969,10 +4344,9 @@ static Standard_Integer VConnect (Draw_Interpretor& /*di*/,
 
   // Check if there is another object with given name
   // and remove it from context
-  if(GetMapOfAIS().IsBound2(aName))
+  Handle(AIS_InteractiveObject) anObj;
+  if (GetMapOfAIS().Find2 (aName, anObj))
   {
-    Handle(AIS_InteractiveObject) anObj = 
-      Handle(AIS_InteractiveObject)::DownCast(GetMapOfAIS().Find2(aName));
     TheAISContext()->Remove(anObj, Standard_False);
     GetMapOfAIS().UnBind2(aName);
   }
@@ -4022,10 +4396,8 @@ static Standard_Integer VConnectTo (Draw_Interpretor& /*di*/,
     std::cout << "vconnect error: equal names for connected objects\n"; 
     return 1; // TCL_ERROR
   }
-  if (GetMapOfAIS().IsBound2 (anOriginObjectName))
+  if (GetMapOfAIS().Find2 (anOriginObjectName, anOriginObject))
   {
-    Handle(Standard_Transient) anObj = GetMapOfAIS().Find2 (anOriginObjectName);
-    anOriginObject = Handle(AIS_InteractiveObject)::DownCast(anObj);
     if (anOriginObject.IsNull())
     {
       std::cout << "Object " << anOriginObjectName << " is used for non AIS viewer\n";
@@ -4064,11 +4436,10 @@ static Standard_Integer VConnectTo (Draw_Interpretor& /*di*/,
 
   // Check if there is another object with given name
   // and remove it from context
-  if(GetMapOfAIS().IsBound2(aName))
+  Handle(AIS_InteractiveObject) anObj;
+  if (GetMapOfAIS().Find2 (aName, anObj))
   {
-    Handle(AIS_InteractiveObject) anObj = 
-      Handle(AIS_InteractiveObject)::DownCast(GetMapOfAIS().Find2(aName));
-    TheAISContext()->Remove(anObj, Standard_False);
+    TheAISContext()->Remove (anObj, Standard_False);
     GetMapOfAIS().UnBind2(aName);
   }
 
@@ -4136,7 +4507,7 @@ static Standard_Integer VDisconnect (Draw_Interpretor& di,
   }
 
   Handle(AIS_InteractiveObject) anIObj;
-  if (!aMap.IsBound2 (anObject))
+  if (!aMap.Find2 (anObject, anIObj))
   {
     // try to interpret second argument as child number
     if (anObjectNumber > 0 && anObjectNumber <= anAssembly->Children().Size())
@@ -4159,15 +4530,8 @@ static Standard_Integer VDisconnect (Draw_Interpretor& di,
     }    
   }
 
-  // if object was found by name
-  if (anIObj.IsNull())
-  {
-    anIObj = Handle(AIS_InteractiveObject)::DownCast (aMap.Find2 (anObject));
-  }
-
   aContext->Disconnect (anAssembly, anIObj);
   aContext->UpdateCurrentViewer();
-
   return 0;
 }
 
@@ -4215,13 +4579,11 @@ static Standard_Integer VAddConnected (Draw_Interpretor& di,
   }
 
   Handle(AIS_InteractiveObject) anIObj;
-  if (!aMap.IsBound2 (anObject))
+  if (!aMap.Find2 (anObject, anIObj))
   {
       std::cout << "Use 'vdisplay' before\n";
       return 1; 
   }
-
-  anIObj = Handle(AIS_InteractiveObject)::DownCast (aMap.Find2 (anObject));
 
   gp_Trsf aTrsf;
   aTrsf.SetTranslation (gp_Vec (aX, aY, aZ));
@@ -4278,9 +4640,10 @@ static Standard_Integer VListConnected (Draw_Interpretor& /*di*/,
   Standard_Integer aCounter = 1;
   for (PrsMgr_ListOfPresentableObjectsIter anIter (anAssembly->Children()); anIter.More(); anIter.Next())
   {
-    if (GetMapOfAIS().IsBound1 (anIter.Value()))
+    Handle(AIS_InteractiveObject) anObj = Handle(AIS_InteractiveObject)::DownCast (anIter.Value());
+    if (GetMapOfAIS().IsBound1 (anObj))
     {
-      TCollection_AsciiString aCuurrentName = GetMapOfAIS().Find1 (anIter.Value());
+      TCollection_AsciiString aCuurrentName = GetMapOfAIS().Find1 (anObj);
       std::cout << aCounter << ")  " << aCuurrentName << "    (" << anIter.Value()->DynamicType()->Name() << ")";
     }
 
@@ -4299,82 +4662,213 @@ static Standard_Integer VListConnected (Draw_Interpretor& /*di*/,
   return 0;
 }
 
-namespace
+//=======================================================================
+//function : VChild
+//purpose  :
+//=======================================================================
+static Standard_Integer VChild (Draw_Interpretor& ,
+                                Standard_Integer theNbArgs,
+                                const char** theArgVec)
 {
-  //! Checks if theMode is already turned on for theObj.
-  static Standard_Boolean InList (const Handle(AIS_InteractiveContext)& theAISContext,
-                                  const Handle(AIS_InteractiveObject)&  theObj,
-                                  const Standard_Integer                theMode)
+  Handle(AIS_InteractiveContext) aContext = ViewerTest::GetAISContext();
+  if (aContext.IsNull())
   {
-    TColStd_ListOfInteger anActiveModes;
-    theAISContext->ActivatedModes (theObj, anActiveModes);
-    for (TColStd_ListIteratorOfListOfInteger aModeIt (anActiveModes); aModeIt.More(); aModeIt.Next())
+    std::cout << "Error: no active view\n";
+    return 1;
+  }
+
+  int toAdd = -1;
+  Handle(AIS_InteractiveObject) aParent;
+  bool hasActions = false;
+  int toInheritTrsf = -1;
+  ViewerTest_AutoUpdater anUpdateTool (aContext, ViewerTest::CurrentView());
+  for (Standard_Integer anArgIter = 1; anArgIter < theNbArgs; ++anArgIter)
+  {
+    TCollection_AsciiString anArg (theArgVec[anArgIter]);
+    anArg.LowerCase();
+    if (anUpdateTool.parseRedrawMode (anArg))
     {
-      if (aModeIt.Value() == theMode)
+      continue;
+    }
+    else if (anArg == "-add")
+    {
+      toAdd = 1;
+      continue;
+    }
+    else if (anArg == "-remove")
+    {
+      toAdd = 0;
+      continue;
+    }
+    else if (anArg == "-inheritparenttrsf"
+      || anArg == "-inheritparentloc"
+      || anArg == "-inheritparentlocation"
+      || anArg == "-inheritparent"
+      || anArg == "-noinheritparenttrsf"
+      || anArg == "-noinheritparentloc"
+      || anArg == "-noinheritparentlocation"
+      || anArg == "-noinheritparent"
+      || anArg == "-ignoreparenttrsf"
+      || anArg == "-ignoreparentloc"
+      || anArg == "-ignoreparentlocation"
+      || anArg == "-ignoreparent")
+    {
+      bool aVal = true;
+      if (anArgIter + 1 < theNbArgs
+        && ViewerTest::ParseOnOff(theArgVec[anArgIter + 1], aVal))
       {
-        return Standard_True;
+        ++anArgIter;
+      }
+      if (anArg.StartsWith("-no")
+        || anArg.StartsWith("-ignore"))
+      {
+        aVal = !aVal;
+      }
+      toInheritTrsf = aVal ? 1 : 0;
+      continue;
+    }
+
+    Handle(AIS_InteractiveObject) aChild;
+    if (!GetMapOfAIS().Find2 (theArgVec[anArgIter], aChild))
+    {
+      std::cout << "Syntax error: object '" << theArgVec[anArgIter] << "' is not found\n";
+      return 1;
+    }
+
+    if (aParent.IsNull())
+    {
+      aParent = aChild;
+    }
+    else if (toAdd == -1)
+    {
+      std::cout << "Syntax error: no action specified\n";
+      return 1;
+    }
+    else
+    {
+      hasActions = true;
+      if (toAdd == 1)
+      {
+        if(toInheritTrsf == 0)
+          aParent->AddChildWithCurrentTransformation(aChild);
+        else
+          aParent->AddChild (aChild);
+      }
+      else
+      {
+        if (toInheritTrsf == 0)
+          aParent->RemoveChildWithRestoreTransformation(aChild);
+        else
+          aParent->RemoveChild (aChild);
       }
     }
-    return Standard_False;
   }
+  if (!hasActions)
+  {
+    std::cout << "Syntax error: not enough arguments\n";
+    return 1;
+  }
+  return 0;
+}
+
+//=======================================================================
+//function : VParent
+//purpose  :
+//=======================================================================
+static Standard_Integer VParent(Draw_Interpretor&,
+  Standard_Integer theNbArgs,
+  const char** theArgVec)
+{
+  Handle(AIS_InteractiveContext) aContext = ViewerTest::GetAISContext();
+  if (aContext.IsNull())
+  {
+    std::cout << "Error: no active view\n";
+    return 1;
+  }
+
+  if (theNbArgs < 2 )
+  {
+    std::cout << theArgVec[0] << " error: expect at least 2 arguments\n";
+    return 1;
+  }
+
+  TCollection_AsciiString aName(theArgVec[1]);
+  Handle(AIS_InteractiveObject) aParent;
+  if (!GetMapOfAIS().Find2(theArgVec[1], aParent))
+  {
+    std::cout << "Syntax error: object '" << theArgVec[1] << "' is not found\n";
+    return 1;
+  }
+
+  ViewerTest_AutoUpdater anUpdateTool(aContext, ViewerTest::CurrentView());
+  for (Standard_Integer anArgIter = 2; anArgIter < theNbArgs; ++anArgIter)
+  {
+    TCollection_AsciiString anArg(theArgVec[anArgIter]);
+    anArg.LowerCase();
+    if (anArg == "-ignorevisu")
+      aParent->SetPropagateVisualState(Standard_False);
+  }
+  return 0;
 }
 
 //===============================================================================================
 //function : VSetSelectionMode
-//purpose  : Sets input selection mode for input object or for all displayed objects 
-//Draw arg : vselmode [object] mode On/Off (1/0)
+//purpose  : vselmode
 //===============================================================================================
 static Standard_Integer VSetSelectionMode (Draw_Interpretor& /*di*/,
-                                           Standard_Integer  theArgc,
+                                           Standard_Integer  theNbArgs,
                                            const char**      theArgv)
 {
   // Check errors
   Handle(AIS_InteractiveContext) anAISContext = ViewerTest::GetAISContext();
   if (anAISContext.IsNull())
   {
-    std::cerr << "Call vinit before!" << std::endl;
+    std::cout << "Error: no active Viewer\n";
     return 1;
   }
 
-  // Check the arguments
-  if (theArgc < 3 && theArgc > 5)
-  {
-    std::cerr << "vselmode error : expects at least 2 arguments.\n"
-              << "Type help "<< theArgv[0] <<" for more information." << std::endl;
-    return 1;
-  }
-
-  TCollection_AsciiString aLastArg (theArgv[theArgc - 1]);
-  aLastArg.LowerCase();
-  Standard_Boolean isToOpenLocalCtx = aLastArg == "-local";
-
-  // get objects to change selection mode
-  AIS_ListOfInteractive aTargetIOs;
-  Standard_Integer anArgNb = isToOpenLocalCtx ? theArgc - 1 : theArgc;
-  if (anArgNb == 3)
-  {
-    anAISContext->DisplayedObjects (aTargetIOs);
-  }
-  else
-  {
-    // Check if there is an object with given name in context
-    const TCollection_AsciiString aNameIO (theArgv[1]);
-    if (GetMapOfAIS().IsBound2 (aNameIO))
-    {
-      Handle(AIS_InteractiveObject) anIO = Handle(AIS_InteractiveObject)::DownCast (GetMapOfAIS().Find2 (aNameIO));
-      if (anIO.IsNull())
-      {
-        std::cerr << "vselmode error : object name is used for non AIS viewer" << std::endl;
-        return 1;
-      }
-      aTargetIOs.Append (anIO);
-    }
-  }
-
+  NCollection_Sequence<TCollection_AsciiString> anObjNames;
   Standard_Integer aSelectionMode = -1;
   Standard_Boolean toTurnOn = Standard_True;
+  AIS_SelectionModesConcurrency aSelModeConcurrency = AIS_SelectionModesConcurrency_GlobalOrLocal;
+  for (Standard_Integer anArgIter = 1; anArgIter < theNbArgs; ++anArgIter)
   {
-    const TCollection_AsciiString aSelModeString (theArgv[anArgNb == 3 ? 1 : 2]);
+    TCollection_AsciiString anArgCase (theArgv[anArgIter]);
+    anArgCase.LowerCase();
+    if (anArgCase == "-set"
+     || anArgCase == "-replace"
+     || anArgCase == "-single"
+     || anArgCase == "-exclusive")
+    {
+      aSelModeConcurrency = AIS_SelectionModesConcurrency_Single;
+    }
+    else if (anArgCase == "-add"
+          || anArgCase == "-combine"
+          || anArgCase == "-combination"
+          || anArgCase == "-multiple")
+    {
+      aSelModeConcurrency = AIS_SelectionModesConcurrency_Multiple;
+    }
+    else if (anArgCase == "-globalorlocal"
+          || anArgCase == "-localorglobal")
+    {
+      aSelModeConcurrency = AIS_SelectionModesConcurrency_GlobalOrLocal;
+    }
+    else
+    {
+      anObjNames.Append (theArgv[anArgIter]);
+    }
+  }
+  if (anObjNames.Size() < 2
+  || !ViewerTest::ParseOnOff (anObjNames.Last().ToCString(), toTurnOn))
+  {
+    std::cout << "Syntax error: wrong number of arguments\n";
+    return 1;
+  }
+  anObjNames.Remove (anObjNames.Upper());
+  {
+    const TCollection_AsciiString aSelModeString = anObjNames.Last();
+    anObjNames.Remove (anObjNames.Upper());
     TopAbs_ShapeEnum aShapeType = TopAbs_SHAPE;
     if (aSelModeString.IsIntegerValue())
     {
@@ -4390,77 +4884,30 @@ static Standard_Integer VSetSelectionMode (Draw_Interpretor& /*di*/,
       return 1;
     }
   }
-  if (!ViewerTest::ParseOnOff (theArgv[anArgNb == 3 ? 2 : 3], toTurnOn))
+
+  AIS_ListOfInteractive aTargetIOs;
+  for (NCollection_Sequence<TCollection_AsciiString>::Iterator anObjIter (anObjNames); anObjIter.More(); anObjIter.Next())
   {
-    std::cout << "Syntax error: on/off is expected by found '" << theArgv[anArgNb == 3 ? 2 : 3] << "'\n";
-    return 1;
+    const TCollection_AsciiString& aNameIO = anObjIter.Value();
+    Handle(AIS_InteractiveObject) anIO;
+    GetMapOfAIS().Find2 (aNameIO, anIO);
+    if (anIO.IsNull())
+    {
+      std::cout << "Syntax error: undefined presentable object " << aNameIO << "\n";
+      return 1;
+    }
+    aTargetIOs.Append (anIO);
+  }
+  if (aTargetIOs.IsEmpty())
+  {
+    anAISContext->DisplayedObjects (aTargetIOs);
   }
 
-  Standard_DISABLE_DEPRECATION_WARNINGS
-  if (aSelectionMode == 0 && anAISContext->HasOpenedContext())
+  for (AIS_ListIteratorOfListOfInteractive aTargetIt (aTargetIOs); aTargetIt.More(); aTargetIt.Next())
   {
-    anAISContext->CloseLocalContext();
+    const Handle(AIS_InteractiveObject)& anIO = aTargetIt.Value();
+    anAISContext->SetSelectionModeActive (anIO, aSelectionMode, toTurnOn, aSelModeConcurrency);
   }
-  Standard_ENABLE_DEPRECATION_WARNINGS
-
-  if (aSelectionMode == 0)
-  {
-    if (toTurnOn)
-    {
-      for (AIS_ListIteratorOfListOfInteractive aTargetIt (aTargetIOs); aTargetIt.More(); aTargetIt.Next())
-      {
-        const Handle(AIS_InteractiveObject)& anIO = aTargetIt.Value();
-        TColStd_ListOfInteger anActiveModes;
-        anAISContext->ActivatedModes (anIO, anActiveModes);
-        if (!anActiveModes.IsEmpty())
-        {
-          anAISContext->Deactivate (anIO);
-        }
-        if (!InList (anAISContext, anIO, aSelectionMode))
-        {
-          anAISContext->Activate (anIO);
-        }
-      }
-    }
-    else
-    {
-      for (AIS_ListIteratorOfListOfInteractive aTargetIt (aTargetIOs); aTargetIt.More(); aTargetIt.Next())
-      {
-        const Handle(AIS_InteractiveObject)& anIO = aTargetIt.Value();
-        if (InList (anAISContext, anIO, aSelectionMode))
-        {
-          anAISContext->Deactivate (anIO);
-        }
-      }
-    }
-  }
-
-  if (aSelectionMode != 0 && toTurnOn) // Turn on specified mode
-  {
-    Standard_DISABLE_DEPRECATION_WARNINGS
-    if (!anAISContext->HasOpenedContext() && isToOpenLocalCtx)
-    {
-      anAISContext->OpenLocalContext (Standard_False);
-    }
-    Standard_ENABLE_DEPRECATION_WARNINGS
-
-    for (AIS_ListIteratorOfListOfInteractive aTargetIt (aTargetIOs); aTargetIt.More(); aTargetIt.Next())
-    {
-      const Handle(AIS_InteractiveObject)& anIO = aTargetIt.Value();
-      anAISContext->Deactivate (anIO, 0);
-      anAISContext->Load (anIO, -1, Standard_True);
-      anAISContext->Activate (anIO, aSelectionMode);
-    }
-  }
-
-  if (aSelectionMode != 0 && !toTurnOn) // Turn off specified mode
-  {
-    for (AIS_ListIteratorOfListOfInteractive aTargetIt (aTargetIOs); aTargetIt.More(); aTargetIt.Next())
-    {
-      anAISContext->Deactivate (aSelectionMode);
-    }
-  }
-
   return 0;
 }
 
@@ -4508,313 +4955,71 @@ static Standard_Integer VSelectionPrevious(Draw_Interpretor& /*theDI*/,
   return 0;
 }
 
-
-//==========================================================================
-//class   : Triangle 
-//purpose : creates Triangle based on AIS_InteractiveObject. 
-//          This class was implemented for testing Select3D_SensitiveTriangle
-//===========================================================================
-
-class Triangle: public AIS_InteractiveObject 
-{
-public: 
-  // CASCADE RTTI
-  DEFINE_STANDARD_RTTI_INLINE(Triangle,AIS_InteractiveObject);
-  Triangle (const gp_Pnt& theP1, 
-            const gp_Pnt& theP2, 
-            const gp_Pnt& theP3);
-protected:
-  void Compute (  const Handle(PrsMgr_PresentationManager3d)& thePresentationManager,
-                  const Handle(Prs3d_Presentation)& thePresentation,
-                  const Standard_Integer theMode) Standard_OVERRIDE;
-
-  void ComputeSelection (  const Handle(SelectMgr_Selection)& theSelection, 
-                           const Standard_Integer theMode) Standard_OVERRIDE;
-private: 
-  gp_Pnt myPoint1;
-  gp_Pnt myPoint2;
-  gp_Pnt myPoint3;
-};
-
-
-Triangle::Triangle (const gp_Pnt& theP1,
-                    const gp_Pnt& theP2,
-                    const gp_Pnt& theP3)
-{
-  myPoint1 = theP1;
-  myPoint2 = theP2;
-  myPoint3 = theP3;
-}
-
-void Triangle::Compute(const Handle(PrsMgr_PresentationManager3d)& /*thePresentationManager*/,
-                       const Handle(Prs3d_Presentation)& thePresentation,
-                       const Standard_Integer /*theMode*/)
-{
-  thePresentation->Clear();
-
-  BRepBuilderAPI_MakeEdge anEdgeMaker1(myPoint1, myPoint2),
-                          anEdgeMaker2(myPoint2, myPoint3),
-                          anEdgeMaker3(myPoint3, myPoint1);
-
-  TopoDS_Edge anEdge1 = anEdgeMaker1.Edge(),
-              anEdge2 = anEdgeMaker2.Edge(),
-              anEdge3 = anEdgeMaker3.Edge();
-  if(anEdge1.IsNull() || anEdge2.IsNull() || anEdge3.IsNull())
-    return;
-
-  BRepBuilderAPI_MakeWire aWireMaker(anEdge1, anEdge2, anEdge3);
-  TopoDS_Wire aWire = aWireMaker.Wire();
-  if(aWire.IsNull()) return;
-
-  BRepBuilderAPI_MakeFace aFaceMaker(aWire);
-  TopoDS_Face aFace = aFaceMaker.Face();
-  if(aFace.IsNull()) return;
-
-  StdPrs_ShadedShape::Add(thePresentation, aFace, myDrawer);
-}
-
-void Triangle::ComputeSelection(const Handle(SelectMgr_Selection)& theSelection, 
-                                const Standard_Integer /*theMode*/)
-{
-  Handle(SelectMgr_EntityOwner) anEntityOwner = new SelectMgr_EntityOwner(this);
-  Handle(Select3D_SensitiveTriangle) aSensTriangle = 
-    new Select3D_SensitiveTriangle(anEntityOwner, myPoint1, myPoint2, myPoint3);
-  theSelection->Add(aSensTriangle);
-}
-
 //===========================================================================
 //function : VTriangle 
 //Draw arg : vtriangle Name PointName PointName PointName
 //purpose  : creates and displays Triangle
 //===========================================================================
-
-//function: IsPoint
-//purpose : checks if the object with theName is AIS_Point, 
-//          if yes initialize thePoint from MapOfAIS
-Standard_Boolean IsPoint (const TCollection_AsciiString& theName,
-                          Handle(AIS_Point)& thePoint)
-{
-  Handle(AIS_InteractiveObject) anObject = 
-    Handle(AIS_InteractiveObject)::DownCast(GetMapOfAIS().Find2(theName));
-  if(anObject.IsNull() || 
-     anObject->Type() != AIS_KOI_Datum || 
-     anObject->Signature() != 1)
-  {
-    return Standard_False;
-  }
-  thePoint = Handle(AIS_Point)::DownCast(anObject);
-  if(thePoint.IsNull())
-    return Standard_False;
-  return Standard_True;
-}
-
-//function: IsMatch
-//purpose: checks if thePoint1 is equal to thePoint2
-Standard_Boolean IsMatch (const Handle(Geom_CartesianPoint)& thePoint1,
-                          const Handle(Geom_CartesianPoint)& thePoint2)
-{
-  if(Abs(thePoint1->X()-thePoint2->X()) <= Precision::Confusion() &&
-     Abs(thePoint1->Y()-thePoint2->Y()) <= Precision::Confusion() &&
-     Abs(thePoint1->Z()-thePoint2->Z()) <= Precision::Confusion())
-  {
-    return Standard_True;
-  }
-  return Standard_False;
-}
-
 static Standard_Integer VTriangle (Draw_Interpretor& /*di*/,
                                    Standard_Integer argc,
                                    const char ** argv)
 {
-  // Check arguments
-  if (argc != 5)
+  const Standard_Boolean isTri = TCollection_AsciiString (argv[0]) == "vtriangle";
+  Handle(Graphic3d_ArrayOfPrimitives) aPrims;
+  if (isTri)
   {
-    std::cout<<"vtriangle error: expects 4 argumnets\n";
-    return 1; // TCL_ERROR
+    aPrims = new Graphic3d_ArrayOfTriangles (3);
+  }
+  else
+  {
+    aPrims = new Graphic3d_ArrayOfSegments (2);
   }
 
-  // Get and check values
-  TCollection_AsciiString aName(argv[1]);
-
-  Handle(AIS_Point) aPoint1, aPoint2, aPoint3;
-  if (!IsPoint(argv[2], aPoint1))
+  if (argc != (2 + aPrims->VertexNumberAllocated()))
   {
-    std::cout<<"vtriangle error: the 2nd argument must be a point\n";
-    return 1; // TCL_ERROR
-  }
-  if (!IsPoint(argv[3], aPoint2))
-  {
-    std::cout<<"vtriangle error: the 3d argument must be a point\n";
-    return 1; // TCL_ERROR
-  }
-  if (!IsPoint(argv[4], aPoint3))
-  {
-    std::cout<<"vtriangle error: the 4th argument must be a point\n";
-    return 1; // TCL_ERROR
+    std::cout << "Syntax error: wrong number of arguments\n";
+    return 1;
   }
 
-  // Check that points are different
-  Handle(Geom_CartesianPoint) aCartPoint1 = 
-    Handle(Geom_CartesianPoint)::DownCast(aPoint1->Component());
-  Handle(Geom_CartesianPoint) aCartPoint2 = 
-    Handle(Geom_CartesianPoint)::DownCast(aPoint2->Component());
-  // Test aPoint1 = aPoint2
-  if (IsMatch(aCartPoint1, aCartPoint2))
+  gp_Pnt aPnts[3];
+  for (Standard_Integer aPntIter = 0; aPntIter < aPrims->VertexNumberAllocated(); ++aPntIter)
   {
-    std::cout<<"vtriangle error: the 1st and the 2nd points are equal\n";
-    return 1; // TCL_ERROR
-  }
-  // Test aPoint2 = aPoint3
-  Handle(Geom_CartesianPoint) aCartPoint3 = 
-    Handle(Geom_CartesianPoint)::DownCast(aPoint3->Component());
-  if (IsMatch(aCartPoint2, aCartPoint3))
-  {
-    std::cout<<"vtriangle error: the 2nd and the 3d points are equal\n";
-    return 1; // TCL_ERROR
-  }
-  // Test aPoint3 = aPoint1
-  if (IsMatch(aCartPoint1, aCartPoint3))
-  {
-    std::cout<<"vtriangle error: the 1st and the 3d points are equal\n";
-    return 1; // TCL_ERROR
-  }
+    const TCollection_AsciiString aName (argv[2 + aPntIter]);
+    if (Handle(AIS_Point) aPntPrs = Handle(AIS_Point)::DownCast (GetMapOfAIS().IsBound2 (aName) ? GetMapOfAIS().Find2 (aName) : NULL))
+    {
+      aPnts[aPntIter] = aPntPrs->Component()->Pnt();
+    }
+    else
+    {
+      TopoDS_Shape aShape = DBRep::Get (argv[2 + aPntIter]);
+      if (aShape.IsNull()
+       || aShape.ShapeType() != TopAbs_VERTEX)
+      {
+        std::cout << "Syntax error: argument " << aName << " must be a point\n";
+        return 1;
+      }
+      aPnts[aPntIter] = BRep_Tool::Pnt (TopoDS::Vertex (aShape));
+    }
 
-  // Create triangle
-  Handle(Triangle) aTriangle = new Triangle(aCartPoint1->Pnt(),
-                                            aCartPoint2->Pnt(),
-                                            aCartPoint3->Pnt());
+    for (Standard_Integer aPnt2Iter = 0; aPnt2Iter < aPntIter; ++aPnt2Iter)
+    {
+      if (aPnts[aPnt2Iter].IsEqual (aPnts[aPntIter], Precision::Confusion()))
+      {
+        std::cout << "Syntax error: points should not be equal\n";
+        return 1;
+      }
+    }
 
-  // Check if there is an object with given name
-  // and remove it from context
-  if (GetMapOfAIS().IsBound2(aName))
-  {
-    Handle(Standard_Transient) anObj = GetMapOfAIS().Find2(aName);
-    Handle(AIS_InteractiveObject) anInterObj = 
-         Handle(AIS_InteractiveObject)::DownCast(anObj);
-    TheAISContext()->Remove(anInterObj, Standard_False);
-    GetMapOfAIS().UnBind2(aName);
+    aPrims->AddVertex (aPnts[aPntIter]);
   }
 
-  // Bind triangle to its name
-  GetMapOfAIS().Bind(aTriangle, aName);
-
-  // Display triangle
-  TheAISContext()->Display (aTriangle, Standard_True);
-  return 0;
-}
-
-//class  : SegmentObject
-//purpose: creates segment based on AIS_InteractiveObject.
-//         This class was implemented for testing Select3D_SensitiveCurve
-
-class SegmentObject: public AIS_InteractiveObject
-{
-public:
-  // CASCADE RTTI
-  DEFINE_STANDARD_RTTI_INLINE(SegmentObject,AIS_InteractiveObject); 
-  SegmentObject (const gp_Pnt& thePnt1, const gp_Pnt& thePnt2);
-protected:
-  void Compute (const Handle(PrsMgr_PresentationManager3d)& thePresentationManager,
-                const Handle(Prs3d_Presentation)& thePresentation,
-                const Standard_Integer theMode) Standard_OVERRIDE;
-
-  void ComputeSelection (const Handle(SelectMgr_Selection)& theSelection, 
-                         const Standard_Integer theMode) Standard_OVERRIDE;
-private:
-  gp_Pnt myPoint1;
-  gp_Pnt myPoint2;
-};
-
-
-SegmentObject::SegmentObject (const gp_Pnt& thePnt1, const gp_Pnt& thePnt2)
-{
-  myPoint1 = thePnt1;
-  myPoint2 = thePnt2;
-}
-
-void SegmentObject::Compute (const Handle(PrsMgr_PresentationManager3d) &/*thePresentationManager*/,
-                             const Handle(Prs3d_Presentation) &thePresentation,
-                             const Standard_Integer /*theMode*/)
-{
-  thePresentation->Clear();
-  BRepBuilderAPI_MakeEdge anEdgeMaker(myPoint1, myPoint2);
-  TopoDS_Edge anEdge = anEdgeMaker.Edge();
-  if (anEdge.IsNull())
-    return;
-  BRepAdaptor_Curve aCurveAdaptor(anEdge);
-  StdPrs_Curve::Add(thePresentation, aCurveAdaptor, myDrawer);
-}
-
-void SegmentObject::ComputeSelection (const Handle(SelectMgr_Selection) &theSelection,
-                                      const Standard_Integer /*theMode*/)
-{
-  Handle(SelectMgr_EntityOwner) anOwner = new SelectMgr_EntityOwner(this);
-  Handle(TColgp_HArray1OfPnt) anArray = new TColgp_HArray1OfPnt(1, 2);
-  anArray->SetValue(1, myPoint1);
-  anArray->SetValue(2, myPoint2);
-  Handle(Select3D_SensitiveCurve) aSensCurve = 
-    new Select3D_SensitiveCurve(anOwner, anArray);
-  theSelection->Add(aSensCurve);
-}
-
-//=======================================================================
-//function  : VSegment
-//Draw args : vsegment Name PointName PointName
-//purpose   : creates and displays Segment
-//=======================================================================
-static Standard_Integer VSegment (Draw_Interpretor& /*di*/,
-                                  Standard_Integer argc,
-                                  const char ** argv)
-{
-  // Check arguments
-  if(argc!=4)
+  Handle(AIS_InteractiveObject) aPrs = new MyPArrayObject (aPrims);
+  if (!isTri)
   {
-    std::cout<<"vsegment error: expects 3 arguments\n";
-    return 1; // TCL_ERROR
+    aPrs->Attributes()->SetupOwnShadingAspect();
+    aPrs->Attributes()->ShadingAspect()->Aspect()->SetColor (aPrs->Attributes()->LineAspect()->Aspect()->Color());
   }
-
-  // Get and check arguments
-  TCollection_AsciiString aName(argv[1]);
-  Handle(AIS_Point) aPoint1, aPoint2;
-  if (!IsPoint(argv[2], aPoint1))
-  {
-    std::cout<<"vsegment error: the 2nd argument should be a point\n";
-    return 1; // TCL_ERROR
-  }
-  if (!IsPoint(argv[3], aPoint2))
-  {
-    std::cout<<"vsegment error: the 3d argument should be a point\n";
-    return 1; // TCL_ERROR
-  }
-  //Check that points are different
-  Handle(Geom_CartesianPoint) aCartPoint1 = 
-    Handle(Geom_CartesianPoint)::DownCast(aPoint1->Component());
-  Handle(Geom_CartesianPoint) aCartPoint2 = 
-    Handle(Geom_CartesianPoint)::DownCast(aPoint2->Component());
-  if(IsMatch(aCartPoint1, aCartPoint2))
-  {
-    std::cout<<"vsegment error: equal points\n";
-    return 1; // TCL_ERROR
-  }
-  
-  // Create segment
-  Handle(SegmentObject) aSegment = new SegmentObject(aCartPoint1->Pnt(), aCartPoint2->Pnt());
-  // Check if there is an object with given name
-  // and remove it from context
-  if (GetMapOfAIS().IsBound2(aName))
-  {
-    Handle(Standard_Transient) anObj = GetMapOfAIS().Find2(aName);
-    Handle(AIS_InteractiveObject) anInterObj = 
-         Handle(AIS_InteractiveObject)::DownCast(anObj);
-    TheAISContext()->Remove(anInterObj, Standard_False);
-    GetMapOfAIS().UnBind2(aName);
-  }
-
-  // Bind segment to its name
-  GetMapOfAIS().Bind(aSegment, aName);
-
-  // Display segment
-  TheAISContext()->Display (aSegment, Standard_True);
+  ViewerTest::Display (argv[1], aPrs);
   return 0;
 }
 
@@ -4852,20 +5057,11 @@ static Standard_Integer VObjZLayer (Draw_Interpretor& di,
 
   // find object
   TCollection_AsciiString aName (argv[2]);
-  ViewerTest_DoubleMapOfInteractiveAndName& aMap = GetMapOfAIS();
-  if (!aMap.IsBound2 (aName))
-  {
-    di << "Use 'vdisplay' before\n";
-    return 1;
-  }
-
-  // find interactive object
-  Handle(Standard_Transient) anObj = GetMapOfAIS().Find2 (aName);
-  Handle(AIS_InteractiveObject) anInterObj =
-    Handle(AIS_InteractiveObject)::DownCast (anObj);
+  Handle(AIS_InteractiveObject) anInterObj;
+  GetMapOfAIS().Find2 (aName, anInterObj);
   if (anInterObj.IsNull())
   {
-    di << "Not an AIS interactive object!\n";
+    std::cout << "Syntax error: object '" << aName << "' is not displayed\n";
     return 1;
   }
 
@@ -4910,19 +5106,10 @@ static Standard_Integer VPolygonOffset(Draw_Interpretor& /*di*/,
   if (argc >= 2)
   {
     TCollection_AsciiString aName (argv[1]);
-    ViewerTest_DoubleMapOfInteractiveAndName& aMap = GetMapOfAIS();
-    if (!aMap.IsBound2 (aName))
+    if (!GetMapOfAIS().Find2 (aName, anInterObj)
+      || anInterObj.IsNull())
     {
-      std::cout << "Use 'vdisplay' before" << std::endl;
-      return 1;
-    }
-
-    // find interactive object
-    Handle(Standard_Transient) anObj = GetMapOfAIS().Find2 (aName);
-    anInterObj = Handle(AIS_InteractiveObject)::DownCast (anObj);
-    if (anInterObj.IsNull())
-    {
-      std::cout << "Not an AIS interactive object!" << std::endl;
+      std::cout << "Syntax error: object '" << aName << "' is not displayed\n";
       return 1;
     }
   }
@@ -4965,122 +5152,7 @@ static Standard_Integer VPolygonOffset(Draw_Interpretor& /*di*/,
   return 0;
 }
 
-//=======================================================================
-//function : VShowFaceBoundaries
-//purpose  : Set face boundaries drawing on/off for ais object
-//=======================================================================
-static Standard_Integer VShowFaceBoundary (Draw_Interpretor& /*di*/,
-                                           Standard_Integer argc,
-                                           const char ** argv)
-{
-  Handle(AIS_InteractiveContext) aContext = ViewerTest::GetAISContext ();
-  if (aContext.IsNull ())
-  {
-    std::cout << argv[0] << " Call 'vinit' before!\n";
-    return 1;
-  }
-
-  if ((argc != 3 && argc < 6) || argc > 8)
-  {
-    std::cout << "Usage :\n " << argv[0]
-              << " ObjectName isOn [R G B [LineWidth [LineStyle]]]\n"
-              << "   ObjectName - name of AIS interactive object. \n"
-              << "                if ObjectName = \"\", then set as default\n"
-              << "                settings for all newly displayed objects\n"
-              << "   isOn       - flag indicating whether the boundaries\n"
-              << "                should be turned on or off (can be set\n"
-              << "                to 0 (off) or 1 (on)).\n"
-              << "   R, G, B    - red, green and blue components of boundary\n"
-              << "                color in range (0 - 255).\n"
-              << "                (default is (0, 0, 0)\n"
-              << "   LineWidth  - line width\n"
-              << "                (default is 1)\n"
-              << "   LineStyle  - line fill style :\n"
-              << "                 0 - solid  \n"
-              << "                 1 - dashed \n"
-              << "                 2 - dot    \n"
-              << "                 3 - dashdot\n"
-              << "                 (default is solid)";
-    return 1;
-  }
-
-  TCollection_AsciiString aName (argv[1]);
-
-  Standard_Real aRed   = 0.0;
-  Standard_Real aGreen = 0.0;
-  Standard_Real aBlue  = 0.0;
-  Standard_Real aWidth = 1.0;
-  Aspect_TypeOfLine aLineType = Aspect_TOL_SOLID;
-  
-  // find object
-  Handle(AIS_InteractiveObject) anInterObj;
-
-  // if name is empty - apply attributes for default aspect
-  if (!aName.IsEmpty ())
-  {
-    ViewerTest_DoubleMapOfInteractiveAndName& aMap = GetMapOfAIS ();
-    if (!aMap.IsBound2 (aName))
-    {
-      std::cout << "Use 'vdisplay' on " << aName << " before" << std::endl;
-      return 1;
-    }
-
-    // find interactive object
-    Handle(Standard_Transient) anObj = GetMapOfAIS ().Find2 (aName);
-    anInterObj = Handle(AIS_InteractiveObject)::DownCast (anObj);
-    if (anInterObj.IsNull ())
-    {
-      std::cout << "Not an AIS interactive object!" << std::endl;
-      return 1;
-    }
-  }
-  
-  const Handle(Prs3d_Drawer)& aDrawer = (aName.IsEmpty ()) ?
-    TheAISContext ()->DefaultDrawer () : anInterObj->Attributes ();
-
-  // turn boundaries on/off
-  Standard_Boolean isBoundaryDraw = (Draw::Atoi (argv[2]) == 1);
-  aDrawer->SetFaceBoundaryDraw (isBoundaryDraw);
-  
-  // set boundary line color
-  if (argc >= 6)
-  {
-    // Text color
-    aRed   = Draw::Atof (argv[3])/255.;
-    aGreen = Draw::Atof (argv[4])/255.;
-    aBlue  = Draw::Atof (argv[5])/255.;
-  }
-
-  // set line width
-  if (argc >= 7)
-  {
-    aWidth = (Standard_Real)Draw::Atof (argv[6]);
-  }
-
-  // select appropriate line type
-  if (argc == 8)
-  {
-    if (!ViewerTest::ParseLineType (argv[7], aLineType))
-    {
-      std::cout << "Syntax error: unknown line type '" << argv[7] << "'\n";
-      return 1;
-    }
-  }
-
-  Quantity_Color aColor (aRed, aGreen, aBlue, Quantity_TOC_RGB);
-
-  Handle(Prs3d_LineAspect) aBoundaryAspect = 
-    new Prs3d_LineAspect (aColor, aLineType, aWidth);
-
-  aDrawer->SetFaceBoundaryAspect (aBoundaryAspect);
-
-  TheAISContext()->Redisplay (anInterObj, Standard_True);
-  
-  return 0;
-}
-
 // This class is used for testing markers.
-
 class ViewerTest_MarkersArrayObject : public AIS_InteractiveObject
 {
 
@@ -5269,49 +5341,6 @@ static Standard_Integer VMarkersTest (Draw_Interpretor&,
   return 0;
 }
 
-//! Auxiliary function to parse font aspect style argument
-static Standard_Boolean parseFontStyle (const TCollection_AsciiString& theArg,
-                                        Font_FontAspect&               theAspect)
-{
-  if (theArg == "regular"
-   || *theArg.ToCString() == 'r')
-  {
-    theAspect = Font_FA_Regular;
-    return Standard_True;
-  }
-  else if (theArg == "bolditalic")
-  {
-    theAspect = Font_FA_BoldItalic;
-    return Standard_True;
-  }
-  else if (theArg == "bold"
-        || *theArg.ToCString() == 'b')
-  {
-    theAspect = Font_FA_Bold;
-    return Standard_True;
-  }
-  else if (theArg == "italic"
-        || *theArg.ToCString() == 'i')
-  {
-    theAspect = Font_FA_Italic;
-    return Standard_True;
-  }
-  return Standard_False;
-}
-
-//! Auxiliary function
-static TCollection_AsciiString fontStyleString (const Font_FontAspect theAspect)
-{
-  switch (theAspect)
-  {
-    case Font_FA_Regular:    return "regular";
-    case Font_FA_BoldItalic: return "bolditalic";
-    case Font_FA_Bold:       return "bold";
-    case Font_FA_Italic:     return "italic";
-    default:                 return "undefined";
-  }
-}
-
 //=======================================================================
 //function : TextToBrep
 //purpose  : Tool for conversion text to occt-shapes
@@ -5343,7 +5372,7 @@ static int TextToBRep (Draw_Interpretor& /*theDI*/,
 
   Graphic3d_HorizontalTextAlignment aHJustification = Graphic3d_HTA_LEFT;
   Graphic3d_VerticalTextAlignment   aVJustification = Graphic3d_VTA_BOTTOM;
-
+  Font_StrictLevel aStrictLevel = Font_StrictLevel_Any;
   for (; anArgIt < theArgNb; ++anArgIt)
   {
     TCollection_AsciiString aParam (theArgVec[anArgIt]);
@@ -5442,26 +5471,9 @@ static int TextToBRep (Draw_Interpretor& /*theDI*/,
 
       TCollection_AsciiString anOption (theArgVec[anArgIt]);
       anOption.LowerCase();
-
-      if (anOption.IsEqual ("regular"))
+      if (!parseFontStyle (anOption, aFontAspect))
       {
-        aFontAspect = Font_FA_Regular;
-      }
-      else if (anOption.IsEqual ("bold"))
-      {
-        aFontAspect = Font_FA_Bold;
-      }
-      else if (anOption.IsEqual ("italic"))
-      {
-        aFontAspect = Font_FA_Italic;
-      }
-      else if (anOption.IsEqual ("bolditalic"))
-      {
-        aFontAspect = Font_FA_BoldItalic;
-      }
-      else
-      {
-        std::cout << "Error: wrong syntax at '" << aParam.ToCString() << "'.\n";
+        std::cout << "Error: unknown font aspect '" << anOption << "'.\n";
         return 1;
       }
     }
@@ -5474,6 +5486,12 @@ static int TextToBRep (Draw_Interpretor& /*theDI*/,
       }
 
       aFontName = theArgVec[anArgIt];
+    }
+    else if (aParam == "-strict")
+    {
+      anArgIt += parseFontStrictLevel (theArgNb  - anArgIt - 1,
+                                       theArgVec + anArgIt + 1,
+                                       aStrictLevel);
     }
     else if (aParam == "-composite")
     {
@@ -5510,9 +5528,9 @@ static int TextToBRep (Draw_Interpretor& /*theDI*/,
   }
 
   aFont.SetCompositeCurveMode (anIsCompositeCurve);
-  if (!aFont.Init (aFontName.ToCString(), aFontAspect, aTextHeight))
+  if (!aFont.FindAndInit (aFontName.ToCString(), aFontAspect, aTextHeight, aStrictLevel))
   {
-    std::cerr << "Font initialization error\n";
+    std::cout << "Error: unable to load Font\n";
     return 1;
   }
 
@@ -5527,6 +5545,14 @@ static int TextToBRep (Draw_Interpretor& /*theDI*/,
 //function : VFont
 //purpose  : Font management
 //=======================================================================
+struct FontComparator
+{
+  bool operator() (const Handle(Font_SystemFont)& theFontA,
+                   const Handle(Font_SystemFont)& theFontB)
+  {
+    return theFontA->FontKey().IsLess (theFontB->FontKey());
+  }
+};
 
 static int VFont (Draw_Interpretor& theDI,
                   Standard_Integer  theArgNb,
@@ -5537,37 +5563,45 @@ static int VFont (Draw_Interpretor& theDI,
   {
     // just print the list of available fonts
     Standard_Boolean isFirst = Standard_True;
-    for (Font_NListOfSystemFont::Iterator anIter (aMgr->GetAvailableFonts());
-         anIter.More(); anIter.Next())
+    const Font_NListOfSystemFont aFonts = aMgr->GetAvailableFonts();
+    std::vector<Handle(Font_SystemFont)> aFontsSorted;
+    aFontsSorted.reserve (aFonts.Size());
+    for (Font_NListOfSystemFont::Iterator aFontIter (aFonts); aFontIter.More(); aFontIter.Next())
     {
-      const Handle(Font_SystemFont)& aFont = anIter.Value();
+      aFontsSorted.push_back (aFontIter.Value());
+    }
+    std::stable_sort (aFontsSorted.begin(), aFontsSorted.end(), FontComparator());
+    for (std::vector<Handle(Font_SystemFont)>::iterator aFontIter = aFontsSorted.begin(); aFontIter != aFontsSorted.end(); ++aFontIter)
+    {
+      const Handle(Font_SystemFont)& aFont = *aFontIter;
       if (!isFirst)
       {
         theDI << "\n";
       }
 
-      theDI << aFont->FontName()->String()
-            << " " << fontStyleString (aFont->FontAspect())
-            << " " << aFont->FontPath()->String();
+      theDI << aFont->ToString();
       isFirst = Standard_False;
     }
     return 0;
   }
 
+  Font_StrictLevel aStrictLevel = Font_StrictLevel_Any;
   for (Standard_Integer anArgIter = 1; anArgIter < theArgNb; ++anArgIter)
   {
     const TCollection_AsciiString anArg (theArgVec[anArgIter]);
     TCollection_AsciiString anArgCase (anArg);
     anArgCase.LowerCase();
-    if (anArgCase == "find")
+    if (anArgCase == "-strict")
     {
-      if (++anArgIter >= theArgNb)
-      {
-        std::cerr << "Wrong syntax at argument '" << anArg.ToCString() << "'!\n";
-        return 1;
-      }
-
-      Standard_CString aFontName   = theArgVec[anArgIter];
+      anArgIter += parseFontStrictLevel (theArgNb  - anArgIter - 1,
+                                         theArgVec + anArgIter + 1,
+                                         aStrictLevel);
+    }
+    else if (anArgIter + 1 < theArgNb
+          && (anArgCase == "-find"
+           || anArgCase == "find"))
+    {
+      Standard_CString aFontName   = theArgVec[++anArgIter];
       Font_FontAspect  aFontAspect = Font_FA_Undefined;
       if (++anArgIter < theArgNb)
       {
@@ -5578,42 +5612,50 @@ static int VFont (Draw_Interpretor& theDI,
           --anArgIter;
         }
       }
-      Handle(Font_SystemFont) aFont = aMgr->FindFont (new TCollection_HAsciiString (aFontName), aFontAspect, -1);
-      if (aFont.IsNull())
-      {
-        std::cerr << "Error: font '" << aFontName << "' is not found!\n";
-        continue;
-      }
 
-      theDI << aFont->FontName()->String()
-            << " " << fontStyleString (aFont->FontAspect())
-            << " " << aFont->FontPath()->String();
-    }
-    else if (anArgCase == "add"
-          || anArgCase == "register")
-    {
-      if (++anArgIter >= theArgNb)
+      if (Handle(Font_SystemFont) aFont = aMgr->FindFont (aFontName, aStrictLevel, aFontAspect))
       {
-        std::cerr << "Wrong syntax at argument '" << anArg.ToCString() << "'!\n";
-        return 1;
+        theDI << aFont->ToString();
       }
-      Standard_CString aFontPath   = theArgVec[anArgIter];
-      Standard_CString aFontName   = NULL;
-      Font_FontAspect  aFontAspect = Font_FA_Undefined;
-      if (++anArgIter < theArgNb)
+      else
       {
-        if (!parseFontStyle (anArgCase, aFontAspect))
+        std::cout << "Error: font '" << aFontName << "' is not found!\n";
+      }
+    }
+    else if (anArgIter + 1 < theArgNb
+          && (anArgCase == "-add"
+           || anArgCase == "add"
+           || anArgCase == "-register"
+           || anArgCase == "register"))
+    {
+      ++anArgIter;
+      Standard_CString aFontPath = theArgVec[anArgIter++];
+      TCollection_AsciiString aFontName;
+      Font_FontAspect  aFontAspect = Font_FA_Undefined;
+      Standard_Integer isSingelStroke = -1;
+      for (; anArgIter < theArgNb; ++anArgIter)
+      {
+        anArgCase = theArgVec[anArgIter];
+        anArgCase.LowerCase();
+        if (aFontAspect == Font_FontAspect_UNDEFINED
+         && parseFontStyle (anArgCase, aFontAspect))
+        {
+          continue;
+        }
+        else if (anArgCase == "singlestroke"
+              || anArgCase == "singleline"
+              || anArgCase == "oneline")
+        {
+          isSingelStroke = 1;
+        }
+        else if (aFontName.IsEmpty())
         {
           aFontName = theArgVec[anArgIter];
         }
-        if (++anArgIter < theArgNb)
+        else
         {
-          anArgCase = theArgVec[anArgIter];
-          anArgCase.LowerCase();
-          if (!parseFontStyle (anArgCase, aFontAspect))
-          {
-            --anArgIter;
-          }
+          --anArgIter;
+          break;
         }
       }
 
@@ -5624,209 +5666,67 @@ static int VFont (Draw_Interpretor& theDI,
         continue;
       }
 
-      if (aFontAspect != Font_FA_Undefined
-       || aFontName   != NULL)
+      if (aFontAspect != Font_FontAspect_UNDEFINED
+      || !aFontName.IsEmpty())
       {
-        if (aFontAspect == Font_FA_Undefined)
+        TCollection_AsciiString aName = aFont->FontName();
+        if (!aFontName.IsEmpty())
         {
-          aFontAspect = aFont->FontAspect();
+          aName = aFontName;
         }
-        Handle(TCollection_HAsciiString) aName = aFont->FontName();
-        if (aFontName != NULL)
+        Handle(Font_SystemFont) aFont2 = new Font_SystemFont (aName);
+        if (aFontAspect != Font_FontAspect_UNDEFINED)
         {
-          aName = new TCollection_HAsciiString (aFontName);
+          aFont2->SetFontPath (aFontAspect, aFontPath);
         }
-        aFont = new Font_SystemFont (aName, aFontAspect, new TCollection_HAsciiString (aFontPath));
+        else
+        {
+          for (int anAspectIter = 0; anAspectIter < Font_FontAspect_NB; ++anAspectIter)
+          {
+            aFont2->SetFontPath ((Font_FontAspect )anAspectIter, aFont->FontPath ((Font_FontAspect )anAspectIter));
+          }
+        }
+        aFont = aFont2;
+      }
+      if (isSingelStroke != -1)
+      {
+        aFont->SetSingleStrokeFont (isSingelStroke == 1);
       }
 
       aMgr->RegisterFont (aFont, Standard_True);
-      theDI << aFont->FontName()->String()
-            << " " << fontStyleString (aFont->FontAspect())
-            << " " << aFont->FontPath()->String();
+      theDI << aFont->ToString();
+    }
+    else if (anArgCase == "-verbose"
+          || anArgCase == "-trace")
+    {
+      bool toEnable = true;
+      if (anArgIter + 1 < theArgNb
+       && ViewerTest::ParseOnOff (theArgVec[anArgIter + 1], toEnable))
+      {
+        ++anArgIter;
+      }
+      aMgr->SetTraceAliases (toEnable);
+    }
+    else if (anArgCase == "-unicodefallback"
+          || anArgCase == "-fallback"
+          || anArgCase == "-touseunicodesubsetfallback")
+    {
+      bool toEnable = true;
+      if (anArgIter + 1 < theArgNb
+       && ViewerTest::ParseOnOff (theArgVec[anArgIter + 1], toEnable))
+      {
+        ++anArgIter;
+      }
+      Font_FontMgr::ToUseUnicodeSubsetFallback() = toEnable;
     }
     else
     {
-      std::cerr << "Warning! Unknown argument '" << anArg.ToCString() << "'\n";
+      std::cerr << "Warning! Unknown argument '" << anArg << "'\n";
     }
   }
 
   return 0;
 }
-
-//=======================================================================
-//function : VSetEdgeType
-//purpose  : Edges type management
-//=======================================================================
-
-static int VSetEdgeType (Draw_Interpretor& theDI,
-                         Standard_Integer  theArgNum,
-                         const char**      theArgs)
-{
-  if (theArgNum < 4 || theArgNum > 9)
-  {
-    theDI << theArgs[0] << " error: wrong number of parameters. Type 'help "
-          << theArgs[0] << "' for more information.\n";
-    return 1;
-  }
-
-  Standard_Boolean isForceRedisplay = Standard_False;
-
-  // Get shape name
-  TCollection_AsciiString aName(theArgs[1]);
-  if (!GetMapOfAIS().IsBound2 (aName))
-  {
-    theDI <<  theArgs[0] << " error: wrong object name.\n";
-    return 1;
-  }
-  
-  Handle(AIS_InteractiveObject) anObject = 
-    Handle(AIS_InteractiveObject)::DownCast(GetMapOfAIS().Find2(aName));
-  
-  // Enable triangle edge mode
-  if (!anObject->Attributes()->HasOwnShadingAspect())
-  {
-    anObject->Attributes()->SetShadingAspect (new Prs3d_ShadingAspect());
-    *anObject->Attributes()->ShadingAspect()->Aspect() = *anObject->Attributes()->Link()->ShadingAspect()->Aspect();
-  }
-  const Handle(Prs3d_ShadingAspect)& aFillAreaAspect = anObject->Attributes()->ShadingAspect();
-  aFillAreaAspect->Aspect()->SetEdgeOn();
-
-  // Parse parameters
-  for (Standard_Integer anIt = 2; anIt < theArgNum; ++anIt)
-  {
-    TCollection_AsciiString aParam ((theArgs[anIt]));
-    if (aParam.Value (1) == '-' && !aParam.IsRealValue())
-    {
-      if (aParam.IsEqual ("-type"))
-      {
-        if (theArgNum <= anIt + 1)
-        {
-          theDI <<  theArgs[0] << " error: wrong number of values for parameter '"
-                << aParam.ToCString() << "'.\n";
-          return 1;
-        }
-
-        ++anIt;
-        Aspect_TypeOfLine aTypeEnum = Aspect_TOL_SOLID;
-        if (!ViewerTest::ParseLineType (theArgs[anIt], aTypeEnum))
-        {
-          std::cout << "Syntax error: wrong line type: '" << theArgs[anIt] << "'.\n";
-          return 1;
-        }
-        anObject->Attributes()->ShadingAspect()->Aspect()->SetEdgeLineType (aTypeEnum);
-      }
-      else if (aParam.IsEqual ("-color"))
-      {
-        if (theArgNum <= anIt + 3)
-        {
-          theDI <<  theArgs[0] << " error: wrong number of values for parameter '"
-                << aParam.ToCString() << "'.\n";
-          return 1;
-        }
-
-        Standard_Real aR = Draw::Atof(theArgs[++anIt]);
-        Standard_Real aG = Draw::Atof(theArgs[++anIt]);
-        Standard_Real aB = Draw::Atof(theArgs[++anIt]);
-        Quantity_Color aColor = Quantity_Color (aR > 1 ? aR / 255.0 : aR,
-                                                aG > 1 ? aG / 255.0 : aG,
-                                                aB > 1 ? aB / 255.0 : aB,
-                                                Quantity_TOC_RGB);
-
-        aFillAreaAspect->Aspect()->SetEdgeColor (aColor);
-      }
-      else if (aParam.IsEqual ("-force"))
-      {
-        isForceRedisplay = Standard_True;
-      }
-      else
-      {
-        theDI <<  theArgs[0] << " error: unknown parameter '"
-              << aParam.ToCString() << "'.\n";
-        return 1;
-      }
-    }
-  }
-
-  // Update shape presentation as aspect parameters were changed
-  if (isForceRedisplay)
-  {
-    ViewerTest::GetAISContext()->Redisplay (anObject, Standard_False);
-  }
-  else
-  {
-    anObject->SetAspect (aFillAreaAspect);
-  }
-
-  //Update view
-  ViewerTest::CurrentView()->Redraw();
-
-  return 0;
-}
-
-//=======================================================================
-//function : VUnsetEdgeType
-//purpose  : Unsets edges visibility in shading mode
-//=======================================================================
-
-static int VUnsetEdgeType (Draw_Interpretor& theDI,
-                         Standard_Integer  theArgNum,
-                         const char**      theArgs)
-{
-  if (theArgNum != 2 && theArgNum != 3)
-  {
-    theDI << theArgs[0] << " error: wrong number of parameters. Type 'help "
-          << theArgs[0] << "' for more information.\n";
-    return 1;
-  }
-
-  Standard_Boolean isForceRedisplay = Standard_False;
-
-  // Get shape name
-  TCollection_AsciiString aName (theArgs[1]);
-  if (!GetMapOfAIS().IsBound2 (aName))
-  {
-    theDI <<  theArgs[0] << " error: wrong object name.\n";
-    return 1;
-  }
-
-  Handle(AIS_InteractiveObject) anObject = 
-    Handle(AIS_InteractiveObject)::DownCast (GetMapOfAIS().Find2(aName));
-
-  // Enable trianle edge mode
-  anObject->Attributes()->ShadingAspect()->Aspect()->SetEdgeOff();
-
-  // Parse parameters
-  if (theArgNum == 3)
-  {
-    TCollection_AsciiString aParam ((theArgs[2]));
-    if (aParam.IsEqual ("-force"))
-    {
-      isForceRedisplay = Standard_True;
-    }
-    else
-    {
-       theDI <<  theArgs[0] << " error: unknown parameter '"
-              << aParam.ToCString() << "'.\n";
-       return 1;
-    }
-  }
-
-  // Update shape presentation as aspect parameters were changed
-  if (isForceRedisplay)
-  {
-    ViewerTest::GetAISContext()->Redisplay (anObject, Standard_False);
-  }
-  else
-  {
-    anObject->SetAspect (anObject->Attributes()->ShadingAspect());
-  }
-
-  //Update view
-  ViewerTest::CurrentView()->Redraw();
-
-  return 0;
-}
-
 
 //=======================================================================
 //function : VVertexMode
@@ -5885,12 +5785,11 @@ static int VVertexMode (Draw_Interpretor& theDI,
     for (Standard_Integer aCount = 3; aCount < theArgNum; aCount++)
     {
       TCollection_AsciiString aName (theArgs[aCount]);
-      if (!GetMapOfAIS().IsBound2 (aName))
+      if (!GetMapOfAIS().Find2 (aName, anObject))
       {
         theDI << "Warning: wrong object name ignored - " << theArgs[0] << "\n";
         continue;
       }
-      anObject = Handle(AIS_InteractiveObject)::DownCast (GetMapOfAIS().Find2(aName));
       anObjs.Append (anObject);
     }
 
@@ -5908,16 +5807,15 @@ static int VVertexMode (Draw_Interpretor& theDI,
     return 0;
   }
 
-  if (theArgNum > 2)
+  Handle(AIS_InteractiveObject) anObject;
+  if (theArgNum > 2
+  || !GetMapOfAIS().Find2 (aParam, anObject))
   {
     std::cout << "Error: invalid number of arguments" << std::endl;
-    std::cout << "Type 'help vvertexmode' for usage hints" << std::endl;
     return 1;
   }
 
   // One argument (object name) --> print the current vertex draw mode for the object
-  Handle(AIS_InteractiveObject) anObject =
-    Handle(AIS_InteractiveObject)::DownCast (GetMapOfAIS().Find2 (aParam));
   Prs3d_VertexDrawMode aCurrMode = anObject->Attributes()->VertexDrawMode();
   theDI <<  "Object's vertex draw mode: " << (aCurrMode == Prs3d_VDM_Isolated ? "'isolated'" : "'all'") << "\n";
   return 0;
@@ -5973,6 +5871,7 @@ static Standard_Integer VPointCloud (Draw_Interpretor& theDI,
   Standard_Boolean toRandColors = Standard_False;
   Standard_Boolean hasNormals   = Standard_True;
   Standard_Boolean isSetArgNorm = Standard_False;
+  Standard_Boolean hasUV        = Standard_False;
   for (Standard_Integer anArgIter = 1; anArgIter < theArgNum; ++anArgIter)
   {
     Standard_CString anArg = theArgs[anArgIter];
@@ -6006,9 +5905,27 @@ static Standard_Integer VPointCloud (Draw_Interpretor& theDI,
       isSetArgNorm = Standard_True;
       hasNormals   = Standard_False;
     }
+    else if (aFlag == "-uv"
+          || aFlag == "-texels")
+    {
+      hasUV = Standard_True;
+    }
   }
 
   Standard_CString aName = theArgs[1];
+  Graphic3d_ArrayFlags aFlags = Graphic3d_ArrayFlags_None;
+  if (hasNormals)
+  {
+    aFlags |= Graphic3d_ArrayFlags_VertexNormal;
+  }
+  if (toRandColors)
+  {
+    aFlags |= Graphic3d_ArrayFlags_VertexColor;
+  }
+  if (hasUV)
+  {
+    aFlags |= Graphic3d_ArrayFlags_VertexTexel;
+  }
 
   // generate arbitrary set of points
   Handle(Graphic3d_ArrayOfPoints) anArrayPoints;
@@ -6041,7 +5958,7 @@ static Standard_Integer VPointCloud (Draw_Interpretor& theDI,
       return 1;
     }
 
-    anArrayPoints = new Graphic3d_ArrayOfPoints (aNbPoints, toRandColors, hasNormals);
+    anArrayPoints = new Graphic3d_ArrayOfPoints (aNbPoints, aFlags);
     for (TopExp_Explorer aFaceIt (aShape, TopAbs_FACE); aFaceIt.More(); aFaceIt.Next())
     {
       const TopoDS_Face& aFace = TopoDS::Face (aFaceIt.Current());
@@ -6087,6 +6004,11 @@ static Standard_Integer VPointCloud (Draw_Interpretor& theDI,
         {
           anArrayPoints->SetVertexNormal (anIndexOfPoint, aNormals (aNodeIter));
         }
+        if (hasUV
+         && aTriangulation->HasUVNodes())
+        {
+          anArrayPoints->SetVertexTexel (anIndexOfPoint, aTriangulation->UVNode (aNodeIter));
+        }
       }
     }
   }
@@ -6110,7 +6032,7 @@ static Standard_Integer VPointCloud (Draw_Interpretor& theDI,
 
     gp_Pnt aCenter(aCenterX, aCenterY, aCenterZ);
 
-    anArrayPoints = new Graphic3d_ArrayOfPoints (aNbPoints, toRandColors, hasNormals);
+    anArrayPoints = new Graphic3d_ArrayOfPoints (aNbPoints, aFlags);
     for (Standard_Integer aPntIt = 0; aPntIt < aNbPoints; ++aPntIt)
     {
       Standard_Real anAlpha   = (Standard_Real (rand() % 2000) / 1000.0) * M_PI;
@@ -6134,6 +6056,11 @@ static Standard_Integer VPointCloud (Draw_Interpretor& theDI,
       if (hasNormals)
       {
         anArrayPoints->SetVertexNormal (anIndexOfPoint, aDir);
+      }
+      if (hasUV)
+      {
+        anArrayPoints->SetVertexTexel (anIndexOfPoint, gp_Pnt2d (anAlpha / 2.0 * M_PI,
+                                                                 aBeta   / 2.0 * M_PI));
       }
     }
   }
@@ -6197,11 +6124,7 @@ static int VPriority (Draw_Interpretor& theDI,
 
     TCollection_AsciiString aName (theArgs[anArgIter]);
     Handle(AIS_InteractiveObject) anIObj;
-    if (GetMapOfAIS().IsBound2 (aName))
-    {
-      anIObj = Handle(AIS_InteractiveObject)::DownCast (GetMapOfAIS().Find2 (aName));
-    }
-
+    GetMapOfAIS().Find2 (aName, anIObj);
     if (anIObj.IsNull())
     {
       std::cout << "Error: the object '" << theArgs[1] << "' is not displayed" << std::endl;
@@ -6445,8 +6368,9 @@ void ViewerTest::ObjectCommands(Draw_Interpretor& theCommands)
                    "\n\t\t: [-dispMode {wireframe|shading} ]"
                    "\n\t\t: [-origin x y z ]"
                    "\n\t\t: [-zaxis u v w -xaxis u v w ]"
-                   "\n\t\t: [-drawaxes {X|Y|Z|XY|YZ|XZ|XYZ}]"
-                   "\n\t\t: [-hidelabels {on|off}]"
+                   "\n\t\t: [-drawAxes {X|Y|Z|XY|YZ|XZ|XYZ}]"
+                   "\n\t\t: [-hideLabels {on|off}]"
+                   "\n\t\t: [-hideArrows {on|off}]"
                    "\n\t\t: [-label {XAxis|YAxis|ZAxis} value]"
                    "\n\t\t: [-attribute {XAxisLength|YAxisLength|ZAxisLength"
                    "\n\t\t:             |TubeRadiusPercent|ConeRadiusPercent"
@@ -6454,8 +6378,8 @@ void ViewerTest::ObjectCommands(Draw_Interpretor& theCommands)
                    "\n\t\t:             |ShadingNumberOfFacettes} value]"
                    "\n\t\t: [-color {Origin|XAxis|YAxis|ZAxis|XOYAxis|YOZAxis"
                    "\n\t\t:         |XOZAxis|Whole} {r g b | colorName}]"
-                   "\n\t\t: [-textcolor {r g b | colorName}]"
-                   "\n\t\t: [-arrowscolor {r g b | colorName}]"
+                   "\n\t\t: [-textColor {r g b | colorName}]"
+                   "\n\t\t: [-arrowColor {r g b | colorName}]"
                    "\n\t\t: [-priority {Origin|XAxis|YAxis|ZAxis|XArrow"
                    "\n\t\t:            |YArrow|ZArrow|XOYAxis|YOZAxis"
                    "\n\t\t:            |XOZAxis|Whole} value]"
@@ -6470,14 +6394,15 @@ void ViewerTest::ObjectCommands(Draw_Interpretor& theCommands)
                    "\n\t\t: -zaxis/-xaxis allows to set trihedron X and Z"
                    "\n\t\t:               directions. The directions should"
                    "\n\t\t:               be orthogonal. Y direction is calculated."
-                   "\n\t\t: -drawaxes allows to set what axes are drawn in the"
+                   "\n\t\t: -drawAxes allows to set what axes are drawn in the"
                    "\n\t\t:           trihedron, default state is XYZ"
-                   "\n\t\t: -hidelabels allows to hide or show trihedron labels"
-                   "\n\t\t: -labels allows to change default X/Y/Z titles of axes"
+                   "\n\t\t: -hideLabels allows to show/hide trihedron labels"
+                   "\n\t\t: -hideArrows allows to show/hide trihedron arrows"
+                   "\n\t\t: -label allows to change default X/Y/Z titles of axes"
                    "\n\t\t: -attribute sets parameters of trihedron"
                    "\n\t\t: -color sets color properties of parts of trihedron"
-                   "\n\t\t: -textcolor sets color properties of trihedron labels"
-                   "\n\t\t: -arrowscolor sets color properties of trihedron arrows"
+                   "\n\t\t: -textColor sets color properties of trihedron labels"
+                   "\n\t\t: -arrowColor sets color properties of trihedron arrows"
                    "\n\t\t: -priority allows to change default selection priority"
                    "\n\t\t: of trihedron components",
                    __FILE__,VTrihedron,group);
@@ -6572,14 +6497,14 @@ void ViewerTest::ObjectCommands(Draw_Interpretor& theCommands)
                    "\n\t\t: [-angle angle=0]"
                    "\n\t\t: [-zoom {0|1}=0]"
                    "\n\t\t: [-height height=16]"
-                   "\n\t\t: [-aspect {regular|bold|italic|bolditalic}=regular]"
+                   "\n\t\t: [-aspect {regular|bold|italic|boldItalic}=regular]"
                    "\n\t\t: [-font font=Times]"
                    "\n\t\t: [-2d]"
                    "\n\t\t: [-perspos {X Y Z}=0 0 0], where"
                    "\n\t\t X and Y define the coordinate origin in 2d space relative to the view window"
                    "\n\t\t Example: X=0 Y=0 is center, X=1 Y=1 is upper right corner etc..."
                    "\n\t\t Z coordinate defines the gap from border of view window (except center position)."
-                   "\n\t\t: [-disptype {blend|decal|subtitle|dimension|normal}=normal}"
+                   "\n\t\t: [-disptype {blend|decal|shadow|subtitle|dimension|normal}=normal}"
                    "\n\t\t: [-subcolor {R G B|name}=white]"
                    "\n\t\t: [-noupdate]"
                    "\n\t\t: [-plane NormX NormY NormZ DirX DirY DirZ]"
@@ -6602,6 +6527,7 @@ void ViewerTest::ObjectCommands(Draw_Interpretor& theCommands)
       "\n\t\t:   [-setLocation X Y [Z]]"
       "\n\t\t:   [-setRotation QX QY QZ QW]"
       "\n\t\t:   [-setScale [X Y Z] scale]"
+      "\n\t\t:   [-inheritParentTrsf {on|off}]"
       "\n\t\t: Object local transformation management:"
       "\n\t\t:   -reset       reset transformation to identity"
       "\n\t\t:   -translate   translate object"
@@ -6610,19 +6536,50 @@ void ViewerTest::ObjectCommands(Draw_Interpretor& theCommands)
       "\n\t\t:   -mirror      applies mirror   to local transformation"
       "\n\t\t:   -setLocation assign object location"
       "\n\t\t:   -setRotation assign object rotation (quaternion)"
-      "\n\t\t:   -setScale    assign object scale factor",
+      "\n\t\t:   -setScale    assign object scale factor"
+      "\n\t\t:   -inheritParentTrsf option to inherit parent"
+      "\n\t\t:                transformation or not (ON by default)",
         __FILE__, VSetLocation, group);
   theCommands.Add ("vsetlocation",
                    "alias for vlocation",
         __FILE__, VSetLocation, group);
-
-  theCommands.Add (
-    "vcomputehlr",
-    "vcomputehlr: shape hlrname [ eyex eyey eyez lookx looky lookz ]",
+  theCommands.Add ("vchild",
+                   "vchild parent [-add] [-remove] [-ignoreParentTrsf {0|1}] child1 [child2] [...]"
+      "\n\t\t: Command for testing low-level presentation connections."
+      "\n\t\t: vconnect command should be used instead.",
+        __FILE__, VChild, group);
+  theCommands.Add("vparent",
+    "vparent parent [-ignoreVisu]"
+    "\n\t\t: Command for testing object properties as parent in the hierarchy."
+    "\n\t\t: Arguments:"
+    "\n\t\t:   -ignoreVisu do not propagate the visual state (display/erase/color) to children objects",
+    __FILE__, VParent, group);
+  theCommands.Add ("vcomputehlr",
+                "vcomputehlr shapeInput hlrResult [-algoType {algo|polyAlgo}=polyAlgo]"
+      "\n\t\t:   [eyeX eyeY eyeZ dirX dirY dirZ upX upY upZ]"
+      "\n\t\t:   [-showTangentEdges {on|off}=off] [-nbIsolines N=0] [-showHiddenEdges {on|off}=off]"
+      "\n\t\t: Arguments:"
+      "\n\t\t:  shapeInput - name of the initial shape"
+      "\n\t\t:  hlrResult - result HLR object from initial shape"
+      "\n\t\t:  eye, dir are eye position and look direction"
+      "\n\t\t:  up is the look up direction vector"
+      "\n\t\t:  -algoType HLR algorithm to use"
+      "\n\t\t:  -showTangentEdges include tangent edges"
+      "\n\t\t:  -nbIsolines include isolines"
+      "\n\t\t:  -showHiddenEdges include hidden edges"
+      "\n\t\t: Use vtop to see projected HLR shape.",
     __FILE__, VComputeHLR, group);
 
   theCommands.Add("vdrawparray",
-    "vdrawparray : vdrawparray Name TypeOfArray [vertex = { 'v' x y z [vertex_normal = { 'n' x y z }] [vertex_color = { 'c' r g b }] ] ... [bound = { 'b' vertex_count [bound_color = { 'c' r g b }] ] ... [edge = { 'e' vertex_id ]",
+                "vdrawparray name TypeOfArray={points|segments|polylines|triangles"
+      "\n\t\t:                                |trianglefans|trianglestrips|quads|quadstrips|polygons}"
+      "\n\t\t:              [-deinterleaved|-mutable]"
+      "\n\t\t:              [vertex={'v' x y z [normal={'n' nx ny nz}] [color={'c' r g b}] [texel={'t' tx ty}]]"
+      "\n\t\t:              [bound= {'b' nbVertices [bound_color={'c' r g b}]]"
+      "\n\t\t:              [edge=  {'e' vertexId]"
+      "\n\t\t:              [-shape shapeName] [-patch]"
+      "\n\t\t: Commands create an Interactive Object for specified Primitive Array definition (Graphic3d_ArrayOfPrimitives)"
+      "\n\t\t: with the main purpose is covering various combinations by tests",
     __FILE__,VDrawPArray,group);
 
   theCommands.Add("vconnect", 
@@ -6653,24 +6610,19 @@ void ViewerTest::ObjectCommands(Draw_Interpretor& theCommands)
 
 
   theCommands.Add("vselmode", 
-    "vselmode : [object] mode_number is_turned_on=(1|0)\n"
-    "  switches selection mode for the determined object or\n"
-    "  for all objects in context.\n"
-    "  mode_number is non-negative integer that has different\n"
-    "    meaning for different interactive object classes.\n"
-    "    For shapes the following mode_number values are allowed:\n"
-    "      0 - shape\n"
-    "      1 - vertex\n"
-    "      2 - edge\n"
-    "      3 - wire\n"
-    "      4 - face\n"
-    "      5 - shell\n"
-    "      6 - solid\n"
-    "      7 - compsolid\n"
-    "      8 - compound\n"
-    "  is_turned_on is:\n"
-    "    1 if mode is to be switched on\n"
-    "    0 if mode is to be switched off\n", 
+                "vselmode [object] selectionMode {on|off}"
+      "\n\t\t:            [{-add|-set|-globalOrLocal}=-globalOrLocal]"
+      "\n\t\t: Switches selection mode for the specified object or for all objects in context."
+      "\n\t\t: Selection mode is either an integer number specific to Interactive Object,"
+      "\n\t\t: or sub-shape type in case of AIS_Shape:"
+      "\n\t\t:   Shape, Vertex, Edge, Wire, Face, Shell, Solid, CompSolid, Compound"
+      "\n\t\t: The integer mode 0 (Shape in case of AIS_Shape) is reserved for selecting object as whole."
+      "\n\t\t: Additional options:"
+      "\n\t\t:  -add           already activated selection modes will be left activated"
+      "\n\t\t:  -set           already activated selection modes will be deactivated"
+      "\n\t\t:  -globalOrLocal (default) if new mode is Global selection mode,"
+      "\n\t\t:                 then active local selection modes will be deactivated"
+      "\n\t\t:                 and the samthen active local selection modes will be deactivated",
     __FILE__, VSetSelectionMode, group);
 
   theCommands.Add("vselnext",
@@ -6689,7 +6641,7 @@ void ViewerTest::ObjectCommands(Draw_Interpretor& theCommands)
   theCommands.Add("vsegment",
     "vsegment Name PointName PointName"
     "\n\t\t: Creates and displays a segment from named points.", 
-    __FILE__, VSegment,group);
+    __FILE__, VTriangle,group);
 
   theCommands.Add("vobjzlayer",
     "vobjzlayer : set/get object [layerid] - set or get z layer id for the interactive object",
@@ -6698,12 +6650,6 @@ void ViewerTest::ObjectCommands(Draw_Interpretor& theCommands)
   theCommands.Add("vpolygonoffset",
     "vpolygonoffset : [object [mode factor units]] - sets/gets polygon offset parameters for an object, without arguments prints the default values",
     __FILE__, VPolygonOffset, group);
-
-  theCommands.Add ("vshowfaceboundary",
-    "vshowfaceboundary : ObjectName isOn (1/0) [R G B [LineWidth [LineStyle]]]"
-    "- turns on/off drawing of face boundaries for ais object "
-    "and defines boundary line style.",
-    __FILE__, VShowFaceBoundary, group);
 
   theCommands.Add ("vmarkerstest",
                    "vmarkerstest: name X Y Z [PointsOnSide=10] [MarkerType=0] [Scale=1.0] [FileName=ImageFile]\n",
@@ -6715,27 +6661,16 @@ void ViewerTest::ObjectCommands(Draw_Interpretor& theCommands)
                    "\n\t\t: [-halign {left|center|right}=left]"
                    "\n\t\t: [-valign {top|center|bottom|topfirstline}=bottom}]"
                    "\n\t\t: [-height height=16]"
-                   "\n\t\t: [-aspect {regular|bold|italic|bolditalic}=regular]"
-                   "\n\t\t: [-font font=Courier]"
+                   "\n\t\t: [-aspect {regular|bold|italic|boldItalic}=regular]"
+                   "\n\t\t: [-font font=Courier] [-strict {strict|aliases|any}=any]"
                    "\n\t\t: [-composite {on|off}=off]"
                    "\n\t\t: [-plane NormX NormY NormZ DirX DirY DirZ]",
                    __FILE__, TextToBRep, group);
   theCommands.Add ("vfont",
-                            "vfont [add pathToFont [fontName] [regular,bold,italic,bolditalic=undefined]]"
-                   "\n\t\t:        [find fontName [regular,bold,italic,bolditalic=undefined]]",
+                            "vfont [-add pathToFont [fontName] [regular,bold,italic,boldItalic=undefined] [singleStroke]]"
+                   "\n\t\t:        [-strict {any|aliases|strict}] [-find fontName [regular,bold,italic,boldItalic=undefined]] [-verbose {on|off}]"
+                   "\n\t\t:        [-unicodeFallback {on|off}]",
                    __FILE__, VFont, group);
-  
-  theCommands.Add ("vsetedgetype",
-                   "vsetedgetype usage:\n"
-                   "vsetedgetype ShapeName [-force] [-type {solid, dash, dot}] [-color R G B] "
-                   "\n\t\t:        Sets edges type and color for input shape",
-                   __FILE__, VSetEdgeType, group);
-
-  theCommands.Add ("vunsetedgetype",
-                   "vunsetedgetype usage:\n"
-                   "vunsetedgetype ShapeName [-force]"
-                   "\n\t\t:        Unsets edges type and color for input shape",
-                   __FILE__, VUnsetEdgeType, group);
 
   theCommands.Add ("vvertexmode",
                    "vvertexmode [name | -set {isolated | all | inherited} [name1 name2 ...]]\n"
@@ -6746,12 +6681,12 @@ void ViewerTest::ObjectCommands(Draw_Interpretor& theCommands)
                    __FILE__, VVertexMode, group);
 
   theCommands.Add ("vpointcloud",
-                   "vpointcloud name shape [-randColor] [-normals] [-noNormals]"
+                   "vpointcloud name shape [-randColor] [-normals] [-noNormals] [-uv]"
                    "\n\t\t: Create an interactive object for arbitary set of points"
                    "\n\t\t: from triangulated shape."
                    "\n"
                    "vpointcloud name x y z r npts {surface|volume}\n"
-                   "            ... [-randColor] [-normals] [-noNormals]"
+                   "            ... [-randColor] [-normals] [-noNormals] [-uv]"
                    "\n\t\t: Create arbitrary set of points (npts) randomly distributed"
                    "\n\t\t: on spheric surface or within spheric volume (x y z r)."
                    "\n\t\t:"

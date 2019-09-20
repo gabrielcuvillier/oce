@@ -34,7 +34,7 @@ public:
 
   //! Constructs a sensitive triangle object defined by the
   //! owner theOwnerId, the points P1, P2, P3, and the type of sensitivity Sensitivity.
-  Standard_EXPORT Select3D_SensitiveTriangle (const Handle(SelectBasics_EntityOwner)& theOwnerId,
+  Standard_EXPORT Select3D_SensitiveTriangle (const Handle(SelectMgr_EntityOwner)& theOwnerId,
                                               const gp_Pnt& thePnt0,
                                               const gp_Pnt& thePnt1,
                                               const gp_Pnt& thePnt2,
@@ -53,7 +53,7 @@ public:
   }
 
   //! Returns the center point of the sensitive triangle created at construction time.
-  Standard_EXPORT gp_Pnt Center3D() const { return myCentroid; }
+  gp_Pnt Center3D() const { return myCentroid; }
 
   //! Returns the copy of this
   Standard_EXPORT virtual Handle(Select3D_SensitiveEntity) GetConnected() Standard_OVERRIDE;

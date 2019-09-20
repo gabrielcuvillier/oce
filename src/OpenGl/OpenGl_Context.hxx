@@ -132,12 +132,17 @@ template<typename theBaseClass_t> struct OpenGl_TmplCore44;
 typedef OpenGl_TmplCore44<OpenGl_GlCore43Back> OpenGl_GlCore44Back;
 typedef OpenGl_TmplCore44<OpenGl_GlCore43>     OpenGl_GlCore44;
 
+template<typename theBaseClass_t> struct OpenGl_TmplCore45;
+typedef OpenGl_TmplCore45<OpenGl_GlCore44Back> OpenGl_GlCore45Back;
+typedef OpenGl_TmplCore45<OpenGl_GlCore44>     OpenGl_GlCore45;
+
 class Graphic3d_PresentationAttributes;
-class OpenGl_AspectFace;
+class OpenGl_Aspects;
 class OpenGl_FrameBuffer;
 class OpenGl_Sampler;
 class OpenGl_ShaderProgram;
 class OpenGl_ShaderManager;
+class OpenGl_FrameStats;
 
 enum OpenGl_FeatureFlag
 {
@@ -199,6 +204,8 @@ class OpenGl_Context : public Standard_Transient
   DEFINE_STANDARD_RTTIEXT(OpenGl_Context, Standard_Transient)
   friend class OpenGl_Window;
 public:
+
+  typedef NCollection_Shared< NCollection_DataMap<TCollection_AsciiString, Handle(OpenGl_Resource)> > OpenGl_ResourcesMap;
 
   //! Function for getting power of to number larger or equal to input number.
   //! @param theNumber    number to 'power of two'
@@ -306,6 +313,26 @@ public:
   //! Pointer to function retrieved from library is statically casted
   //! to requested type - there no way to check real signature of exported function.
   //! The context should be bound before call.
+  //! @param theLastFailFuncName [out] set to theFuncName in case of failure, unmodified on success
+  //! @param theFuncName [in] function name to find
+  //! @param theFuncPtr [out] retrieved function pointer
+  //! @return TRUE on success
+  template <typename FuncType_t>
+  Standard_Boolean FindProcVerbose (const char*& theLastFailFuncName,
+                                    const char* theFuncName,
+                                    FuncType_t& theFuncPtr)
+  {
+    theFuncPtr = (FuncType_t )findProc (theFuncName);
+    if (theFuncPtr == NULL)
+    {
+      theLastFailFuncName = theFuncName;
+      return Standard_False;
+    }
+    return Standard_True;
+  }
+
+  //! Auxiliary template to retrieve GL function pointer.
+  //! Same as FindProcVerbose() but without auxiliary last function name argument.
   template <typename FuncType_t>
   Standard_Boolean FindProc (const char* theFuncName,
                              FuncType_t& theFuncPtr)
@@ -444,6 +471,9 @@ public:
   //! Clean up the delayed release queue.
   Standard_EXPORT void ReleaseDelayed();
 
+  //! Return map of shared resources.
+  const OpenGl_ResourcesMap& SharedResources() const { return *mySharedResources; }
+
   //! @return tool for management of clippings within this context.
   inline OpenGl_Clipping& ChangeClipping() { return myClippingState; }
 
@@ -467,8 +497,22 @@ public:
   //! @return value for GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS
   Standard_Integer MaxCombinedTextureUnits() const { return myMaxTexCombined; }
 
+  //! This method returns the multi-texture limit for obsolete fixed-function pipeline.
+  //! Use MaxCombinedTextureUnits() instead for limits for using programmable pipeline.
+  //! @return value for GL_MAX_TEXTURE_UNITS
+  Standard_Integer MaxTextureUnitsFFP() const { return myMaxTexUnitsFFP; }
+
+  //! @return texture unit to be used for sprites
+  Graphic3d_TextureUnit SpriteTextureUnit() const { return mySpriteTexUnit; }
+
   //! @return value for GL_MAX_SAMPLES
   Standard_Integer MaxMsaaSamples() const { return myMaxMsaaSamples; }
+
+  //! @return maximum FBO width for image dump
+  Standard_Integer MaxDumpSizeX() const { return myMaxDumpSizeX; }
+
+  //! @return maximum FBO height for image dump
+  Standard_Integer MaxDumpSizeY() const { return myMaxDumpSizeY; }
 
   //! @return value for GL_MAX_DRAW_BUFFERS
   Standard_Integer MaxDrawBuffers() const { return myMaxDrawBuffers; }
@@ -490,6 +534,9 @@ public:
 
   //! @return TRUE if adaptive screen sampling in ray tracing mode is supported
   Standard_Boolean HasRayTracingAdaptiveSampling() const { return myHasRayTracingAdaptiveSampling; }
+
+  //! @return TRUE if atomic adaptive screen sampling in ray tracing mode is supported
+  Standard_Boolean HasRayTracingAdaptiveSamplingAtomic() const { return myHasRayTracingAdaptiveSamplingAtomic; }
 
   //! Returns true if VBO is supported and permitted.
   inline bool ToUseVbo() const
@@ -536,6 +583,12 @@ public:
   //! implementation derived from OpenGl_LineAttributes class.
   //! @return old type of hatch.
   Standard_EXPORT Standard_Integer SetPolygonHatchStyle (const Handle(Graphic3d_HatchStyle)& theStyle);
+
+  //! Sets and applies current polygon offset.
+  Standard_EXPORT void SetPolygonOffset (const Graphic3d_PolygonOffset& theOffset);
+
+  //! Returns currently applied polygon offset parameters.
+  const Graphic3d_PolygonOffset& PolygonOffset() const { return myPolygonOffset; }
 
   //! Applies matrix stored in ModelWorldState to OpenGl.
   Standard_EXPORT void ApplyModelWorldMatrix();
@@ -590,6 +643,13 @@ public:
 
 public: //! @name methods to alter or retrieve current state
 
+  //! Return structure holding frame statistics.
+  const Handle(OpenGl_FrameStats)& FrameStats() const { return myFrameStats; }
+
+  //! Set structure holding frame statistics.
+  //! This call makes sense only if application defines OpenGl_FrameStats sub-class.
+  void SetFrameStats (const Handle(OpenGl_FrameStats)& theStats) { myFrameStats = theStats; }
+
   //! Return cached viewport definition (x, y, width, height).
   const Standard_Integer* Viewport() const { return myViewport; }
 
@@ -607,9 +667,12 @@ public: //! @name methods to alter or retrieve current state
   Standard_EXPORT void SetReadBuffer (const Standard_Integer theReadBuffer);
 
   //! Return active draw buffer attached to a render target referred by index (layout location).
-  Standard_Integer DrawBuffer (const Standard_Integer theIndex = 0)
+  Standard_Integer DrawBuffer (Standard_Integer theIndex = 0) const
   {
-    return myDrawBuffers.IsBound (theIndex) ? myDrawBuffers.Value (theIndex) : GL_NONE;
+    return theIndex >= myDrawBuffers.Lower()
+        && theIndex <= myDrawBuffers.Upper()
+         ? myDrawBuffers.Value (theIndex)
+         : GL_NONE;
   }
 
   //! Switch draw buffer, wrapper for ::glDrawBuffer().
@@ -624,6 +687,24 @@ public: //! @name methods to alter or retrieve current state
     SetReadBuffer (theBuffer);
     SetDrawBuffer (theBuffer);
   }
+
+  //! Return cached flag indicating writing into color buffer is enabled or disabled (glColorMask).
+  bool ColorMask() const { return myColorMask; }
+
+  //! Enable/disable writing into color buffer (wrapper for glColorMask).
+  Standard_EXPORT bool SetColorMask (bool theToWriteColor);
+
+  //! Return TRUE if GL_SAMPLE_ALPHA_TO_COVERAGE usage is allowed.
+  bool AllowSampleAlphaToCoverage() const { return myAllowAlphaToCov; }
+
+  //! Allow GL_SAMPLE_ALPHA_TO_COVERAGE usage.
+  void SetAllowSampleAlphaToCoverage (bool theToEnable) { myAllowAlphaToCov = theToEnable; }
+
+  //! Return GL_SAMPLE_ALPHA_TO_COVERAGE state.
+  bool SampleAlphaToCoverage() const { return myAlphaToCoverage; }
+
+  //! Enable/disable GL_SAMPLE_ALPHA_TO_COVERAGE.
+  Standard_EXPORT bool SetSampleAlphaToCoverage (bool theToEnable);
 
   //! Return back face culling state.
   bool ToCullBackFaces() const { return myToCullBackFaces; }
@@ -656,17 +737,17 @@ public: //! @name methods to alter or retrieve current state
   Standard_EXPORT Standard_Boolean BindProgram (const Handle(OpenGl_ShaderProgram)& theProgram);
 
   //! Setup current shading material.
-  Standard_EXPORT void SetShadingMaterial (const OpenGl_AspectFace* theAspect,
+  Standard_EXPORT void SetShadingMaterial (const OpenGl_Aspects* theAspect,
                                            const Handle(Graphic3d_PresentationAttributes)& theHighlight);
 
   //! Checks if transparency is required for the given aspect and highlight style.
-  Standard_EXPORT static Standard_Boolean CheckIsTransparent (const OpenGl_AspectFace* theAspect,
+  Standard_EXPORT static Standard_Boolean CheckIsTransparent (const OpenGl_Aspects* theAspect,
                                                               const Handle(Graphic3d_PresentationAttributes)& theHighlight,
                                                               Standard_ShortReal& theAlphaFront,
                                                               Standard_ShortReal& theAlphaBack);
 
   //! Checks if transparency is required for the given aspect and highlight style.
-  static Standard_Boolean CheckIsTransparent (const OpenGl_AspectFace* theAspect,
+  static Standard_Boolean CheckIsTransparent (const OpenGl_Aspects* theAspect,
                                               const Handle(Graphic3d_PresentationAttributes)& theHighlight)
   {
     Standard_ShortReal anAlphaFront = 1.0f, anAlphaBack = 1.0f;
@@ -734,6 +815,9 @@ public: //! @name methods to alter or retrieve current state
   //! Rendering scale factor (inverted value).
   Standard_ShortReal RenderScaleInv() const { return myRenderScaleInv; }
 
+  //! Return scale factor for line width.
+  Standard_ShortReal LineWidthScale() const { return myLineWidthScale; }
+
   //! Set resolution ratio.
   //! Note that this method rounds @theRatio to nearest integer.
   void SetResolution (unsigned int theResolution,
@@ -754,6 +838,15 @@ public: //! @name methods to alter or retrieve current state
     myLineWidthScale  = Max (1.0f, std::floor (theRatio + 0.5f));
   }
 
+  //! Return line feater width in pixels.
+  Standard_ShortReal LineFeather() const { return myLineFeather; }
+
+  //! Set line feater width.
+  void SetLineFeather(Standard_ShortReal theValue) { myLineFeather = theValue; }
+
+  //! Return Graphics Driver's vendor.
+  const TCollection_AsciiString& Vendor() const { return myVendor; }
+
 private:
 
   //! Wrapper to system function to retrieve GL function pointer by name.
@@ -763,8 +856,9 @@ private:
   //! Note that this will never happen when using GLX, since returned functions can not be validated.
   //! @param theGlVerMajor the OpenGL major version with missing functions
   //! @param theGlVerMinor the OpenGL minor version with missing functions
-  Standard_EXPORT void checkWrongVersion (const Standard_Integer theGlVerMajor,
-                                          const Standard_Integer theGlVerMinor);
+  //! @param theLastFailedProc function name which cannot be found
+  Standard_EXPORT void checkWrongVersion (Standard_Integer theGlVerMajor, Standard_Integer theGlVerMinor,
+                                          const char* theLastFailedProc);
 
   //! Private initialization function that should be called only once.
   Standard_EXPORT void init (const Standard_Boolean theIsCoreProfile);
@@ -789,6 +883,8 @@ public: //! @name core profiles
   OpenGl_GlCore43Back* core43back; //!< OpenGL 4.3 backward compatibility profile
   OpenGl_GlCore44*     core44;     //!< OpenGL 4.4 core profile
   OpenGl_GlCore44Back* core44back; //!< OpenGL 4.4 backward compatibility profile
+  OpenGl_GlCore45*     core45;     //!< OpenGL 4.5 core profile
+  OpenGl_GlCore45Back* core45back; //!< OpenGL 4.5 backward compatibility profile
 
   Handle(OpenGl_Caps) caps; //!< context options
 
@@ -797,10 +893,13 @@ public: //! @name extensions
   Standard_Boolean       hasHighp;           //!< highp in GLSL ES fragment shader is supported
   Standard_Boolean       hasUintIndex;       //!< GLuint for index buffer is supported (always available on desktop; on OpenGL ES - since 3.0 or as extension GL_OES_element_index_uint)
   Standard_Boolean       hasTexRGBA8;        //!< always available on desktop; on OpenGL ES - since 3.0 or as extension GL_OES_rgb8_rgba8
+  OpenGl_FeatureFlag     hasFlatShading;     //!< Complex flag indicating support of Flat shading (Graphic3d_TOSM_FACET) (always available on desktop; on OpenGL ES - since 3.0 or as extension GL_OES_standard_derivatives)
+  OpenGl_FeatureFlag     hasGlslBitwiseOps;  //!< GLSL supports bitwise operations; OpenGL 3.0 / OpenGL ES 3.0 (GLSL 130 / GLSL ES 300) or OpenGL 2.1 + GL_EXT_gpu_shader4
   OpenGl_FeatureFlag     hasDrawBuffers;     //!< Complex flag indicating support of multiple draw buffers (desktop OpenGL 2.0, OpenGL ES 3.0, GL_ARB_draw_buffers, GL_EXT_draw_buffers)
   OpenGl_FeatureFlag     hasFloatBuffer;     //!< Complex flag indicating support of float color buffer format (desktop OpenGL 3.0, GL_ARB_color_buffer_float, GL_EXT_color_buffer_float)
   OpenGl_FeatureFlag     hasHalfFloatBuffer; //!< Complex flag indicating support of half-float color buffer format (desktop OpenGL 3.0, GL_ARB_color_buffer_float, GL_EXT_color_buffer_half_float)
   OpenGl_FeatureFlag     hasSampleVariables; //!< Complex flag indicating support of MSAA variables in GLSL shader (desktop OpenGL 4.0, GL_ARB_sample_shading)
+  OpenGl_FeatureFlag     hasGeometryStage;   //!< Complex flag indicating support of Geometry shader (desktop OpenGL 3.2, OpenGL ES 3.2, GL_EXT_geometry_shader)
   Standard_Boolean       arbDrawBuffers;     //!< GL_ARB_draw_buffers
   Standard_Boolean       arbNPTW;            //!< GL_ARB_texture_non_power_of_two
   Standard_Boolean       arbTexRG;           //!< GL_ARB_texture_rg
@@ -823,6 +922,7 @@ public: //! @name extensions
   Standard_Boolean       atiMem;             //!< GL_ATI_meminfo
   Standard_Boolean       nvxMem;             //!< GL_NVX_gpu_memory_info
   Standard_Boolean       oesSampleVariables; //!< GL_OES_sample_variables
+  Standard_Boolean       oesStdDerivatives;  //!< GL_OES_standard_derivatives
 
 public: //! @name public properties tracking current state
 
@@ -855,9 +955,7 @@ private: // system-dependent fields
 private: // context info
 
   typedef NCollection_Shared< NCollection_DataMap<TCollection_AsciiString, Standard_Integer> > OpenGl_DelayReleaseMap;
-  typedef NCollection_Shared< NCollection_DataMap<TCollection_AsciiString, Handle(OpenGl_Resource)> > OpenGl_ResourcesMap;
   typedef NCollection_Shared< NCollection_List<Handle(OpenGl_Resource)> > OpenGl_ResourcesStack;
-  typedef NCollection_SparseArray<Standard_Integer> OpenGl_DrawBuffers;
 
   Handle(OpenGl_ResourcesMap)    mySharedResources; //!< shared resources with unique identification key
   Handle(OpenGl_DelayReleaseMap) myDelayed;         //!< shared resources for delayed release
@@ -872,6 +970,9 @@ private: // context info
   Standard_Integer myTexClamp;             //!< either GL_CLAMP_TO_EDGE (1.2+) or GL_CLAMP (1.1)
   Standard_Integer myMaxTexDim;            //!< value for GL_MAX_TEXTURE_SIZE
   Standard_Integer myMaxTexCombined;       //!< value for GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS
+  Standard_Integer myMaxTexUnitsFFP;       //!< value for GL_MAX_TEXTURE_UNITS (fixed-function pipeline only)
+  Standard_Integer myMaxDumpSizeX;         //!< maximum FBO width  for image dump
+  Standard_Integer myMaxDumpSizeY;         //!< maximum FBO height for image dump
   Standard_Integer myMaxClipPlanes;        //!< value for GL_MAX_CLIP_PLANES
   Standard_Integer myMaxMsaaSamples;       //!< value for GL_MAX_SAMPLES
   Standard_Integer myMaxDrawBuffers;       //!< value for GL_MAX_DRAW_BUFFERS
@@ -882,15 +983,18 @@ private: // context info
   Standard_Boolean myIsStereoBuffers;      //!< context supports stereo buffering
   Standard_Boolean myIsGlNormalizeEnabled; //!< GL_NORMALIZE flag
                                            //!< Used to tell OpenGl that normals should be normalized
+  Graphic3d_TextureUnit mySpriteTexUnit;   //!< texture unit for point sprite texture
 
-  Standard_Boolean myHasRayTracing;                 //! indicates whether ray tracing mode is supported 
-  Standard_Boolean myHasRayTracingTextures;         //! indicates whether textures in ray tracing mode are supported 
-  Standard_Boolean myHasRayTracingAdaptiveSampling; //! indicates whether adaptive screen sampling in ray tracing mode is supported 
+  Standard_Boolean myHasRayTracing;                 //! indicates whether ray tracing mode is supported
+  Standard_Boolean myHasRayTracingTextures;         //! indicates whether textures in ray tracing mode are supported
+  Standard_Boolean myHasRayTracingAdaptiveSampling; //! indicates whether adaptive screen sampling in ray tracing mode is supported
+  Standard_Boolean myHasRayTracingAdaptiveSamplingAtomic; //! indicates whether atomic adaptive screen sampling in ray tracing mode is supported
 
   Handle(OpenGl_ShaderManager) myShaderManager; //! support object for managing shader programs
 
 private: //! @name fields tracking current state
 
+  Handle(OpenGl_FrameStats)     myFrameStats;      //!< structure accumulating frame statistics
   Handle(OpenGl_ShaderProgram)  myActiveProgram;   //!< currently active GLSL program
   Handle(OpenGl_TextureSet)     myActiveTextures;  //!< currently bound textures
                                                    //!< currently active sampler objects
@@ -901,10 +1005,15 @@ private: //! @name fields tracking current state
   Standard_Integer              myPointSpriteOrig; //!< GL_POINT_SPRITE_COORD_ORIGIN state (GL_UPPER_LEFT by default)
   Standard_Integer              myRenderMode;      //!< value for active rendering mode
   Standard_Integer              myPolygonMode;     //!< currently used polygon rasterization mode (glPolygonMode)
+  Graphic3d_PolygonOffset       myPolygonOffset;   //!< currently applied polygon offset
   bool                          myToCullBackFaces; //!< back face culling mode enabled state (glIsEnabled (GL_CULL_FACE))
   Standard_Integer              myReadBuffer;      //!< current read buffer
-  OpenGl_DrawBuffers            myDrawBuffers;     //!< current draw buffers
+  NCollection_Array1<Standard_Integer>
+                                myDrawBuffers;     //!< current draw buffers
   unsigned int                  myDefaultVao;      //!< default Vertex Array Object
+  Standard_Boolean              myColorMask;       //!< flag indicating writing into color buffer is enabled or disabled (glColorMask)
+  Standard_Boolean              myAllowAlphaToCov; //!< flag allowing   GL_SAMPLE_ALPHA_TO_COVERAGE usage
+  Standard_Boolean              myAlphaToCoverage; //!< flag indicating GL_SAMPLE_ALPHA_TO_COVERAGE state
   Standard_Boolean              myIsGlDebugCtx;    //!< debug context initialization state
   TCollection_AsciiString       myVendor;          //!< Graphics Driver's vendor
   TColStd_PackedMapOfInteger    myFilters[6];      //!< messages suppressing filter (for sources from GL_DEBUG_SOURCE_API_ARB to GL_DEBUG_SOURCE_OTHER_ARB)
@@ -912,6 +1021,7 @@ private: //! @name fields tracking current state
   Standard_ShortReal            myResolutionRatio; //!< scaling factor for parameters like text size
                                                    //!  to be properly displayed on device (screen / printer)
   Standard_ShortReal            myLineWidthScale;  //!< scaling factor for line width
+  Standard_ShortReal            myLineFeather;     //!< line feater width in pixels
   Standard_ShortReal            myRenderScale;     //!< scaling factor for rendering resolution
   Standard_ShortReal            myRenderScaleInv;  //!< scaling factor for rendering resolution (inverted value)
   OpenGl_Material               myMatFront;        //!< current front material state (cached to reduce GL context updates)

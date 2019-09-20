@@ -29,8 +29,6 @@
 #include "../Shaders/Shaders_RaytraceSmooth_fs.pxx"
 #include "../Shaders/Shaders_Display_fs.pxx"
 
-using namespace OpenGl_Raytrace;
-
 //! Use this macro to output ray-tracing debug info
 // #define RAY_TRACE_PRINT_INFO
 
@@ -42,24 +40,6 @@ namespace
 {
   static const OpenGl_Vec4 THE_WHITE_COLOR (1.0f, 1.0f, 1.0f, 1.0f);
   static const OpenGl_Vec4 THE_BLACK_COLOR (0.0f, 0.0f, 0.0f, 1.0f);
-
-  //! Operator returning TRUE for positional light sources.
-  struct IsLightPositional
-  {
-    bool operator() (const OpenGl_Light& theLight)
-    {
-      return theLight.Type != Graphic3d_TOLS_DIRECTIONAL;
-    }
-  };
-
-  //! Operator returning TRUE for any non-ambient light sources.
-  struct IsNotAmbient
-  {
-    bool operator() (const OpenGl_Light& theLight)
-    {
-      return theLight.Type != Graphic3d_TOLS_AMBIENT;
-    }
-  };
 }
 
 namespace
@@ -125,15 +105,20 @@ Standard_Boolean OpenGl_View::updateRaytraceGeometry (const RaytraceUpdateMode  
   // of changes in OpenGL scene (only for path tracing)
   std::set<Standard_Integer> aNonRaytraceIDs;
 
-  const OpenGl_Layer& aLayer = myZLayers.Layer (Graphic3d_ZLayerId_Default);
-
-  if (aLayer.NbStructures() != 0)
+  for (NCollection_List<Handle(Graphic3d_Layer)>::Iterator aLayerIter (myZLayers.Layers()); aLayerIter.More(); aLayerIter.Next())
   {
-    const OpenGl_ArrayOfIndexedMapOfStructure& aStructArray = aLayer.ArrayOfStructures();
+    const Handle(OpenGl_Layer)& aLayer = aLayerIter.Value();
+    if (aLayer->NbStructures() == 0
+    || !aLayer->LayerSettings().IsRaytracable()
+    ||  aLayer->LayerSettings().IsImmediate())
+    {
+      continue;
+    }
 
+    const Graphic3d_ArrayOfIndexedMapOfStructure& aStructArray = aLayer->ArrayOfStructures();
     for (Standard_Integer anIndex = 0; anIndex < aStructArray.Length(); ++anIndex)
     {
-      for (OpenGl_IndexedMapOfStructure::Iterator aStructIt (aStructArray (anIndex)); aStructIt.More(); aStructIt.Next())
+      for (OpenGl_Structure::StructIterator aStructIt (aStructArray.Value (anIndex)); aStructIt.More(); aStructIt.Next())
       {
         const OpenGl_Structure* aStructure = aStructIt.Value();
 
@@ -362,93 +347,70 @@ void buildTextureTransform (const Handle(Graphic3d_TextureParams)& theParams, BV
 // function : convertMaterial
 // purpose  : Creates ray-tracing material properties
 // =======================================================================
-OpenGl_RaytraceMaterial OpenGl_View::convertMaterial (const OpenGl_AspectFace*      theAspect,
+OpenGl_RaytraceMaterial OpenGl_View::convertMaterial (const OpenGl_Aspects* theAspect,
                                                       const Handle(OpenGl_Context)& theGlContext)
 {
-  OpenGl_RaytraceMaterial theMaterial;
+  OpenGl_RaytraceMaterial aResMat;
 
   const Graphic3d_MaterialAspect& aSrcMat = theAspect->Aspect()->FrontMaterial();
   const OpenGl_Vec3& aMatCol  = theAspect->Aspect()->InteriorColor();
-  const bool         isPhysic = aSrcMat.MaterialType (Graphic3d_MATERIAL_PHYSIC);
   const float        aShine   = 128.0f * float(aSrcMat.Shininess());
 
-  // ambient component
-  if (aSrcMat.ReflectionMode (Graphic3d_TOR_AMBIENT))
+  const OpenGl_Vec3& aSrcAmb = aSrcMat.AmbientColor();
+  const OpenGl_Vec3& aSrcDif = aSrcMat.DiffuseColor();
+  const OpenGl_Vec3& aSrcSpe = aSrcMat.SpecularColor();
+  const OpenGl_Vec3& aSrcEms = aSrcMat.EmissiveColor();
+  switch (aSrcMat.MaterialType())
   {
-    const OpenGl_Vec3& aSrcAmb = isPhysic ? aSrcMat.AmbientColor() : aMatCol;
-    theMaterial.Ambient = BVH_Vec4f (aSrcAmb * (float )aSrcMat.Ambient(),  1.0f);
-  }
-  else
-  {
-    theMaterial.Ambient = THE_BLACK_COLOR;
+    case Graphic3d_MATERIAL_ASPECT:
+    {
+      aResMat.Ambient .SetValues (aSrcAmb * aMatCol,  1.0f);
+      aResMat.Diffuse .SetValues (aSrcDif * aMatCol, -1.0f); // -1 is no texture
+      aResMat.Emission.SetValues (aSrcEms * aMatCol,  1.0f);
+      break;
+    }
+    case Graphic3d_MATERIAL_PHYSIC:
+    {
+      aResMat.Ambient .SetValues (aSrcAmb,  1.0f);
+      aResMat.Diffuse .SetValues (aSrcDif, -1.0f); // -1 is no texture
+      aResMat.Emission.SetValues (aSrcEms,  1.0f);
+      break;
+    }
   }
 
-  // diffusion component
-  if (aSrcMat.ReflectionMode (Graphic3d_TOR_DIFFUSE))
   {
-    const OpenGl_Vec3& aSrcDif = isPhysic ? aSrcMat.DiffuseColor() : aMatCol;
-    theMaterial.Diffuse = BVH_Vec4f (aSrcDif * (float )aSrcMat.Diffuse(), -1.0f); // -1 is no texture
-  }
-  else
-  {
-    theMaterial.Diffuse = BVH_Vec4f (THE_BLACK_COLOR.rgb(), -1.0f);
-  }
-
-  // specular component
-  if (aSrcMat.ReflectionMode (Graphic3d_TOR_SPECULAR))
-  {
-    const OpenGl_Vec3& aSrcSpe  = aSrcMat.SpecularColor();
-    const OpenGl_Vec3& aSrcSpe2 = isPhysic ? aSrcSpe : THE_WHITE_COLOR.rgb();
-    theMaterial.Specular = BVH_Vec4f (aSrcSpe2 * (float )aSrcMat.Specular(), aShine);
-
-    const Standard_ShortReal aMaxRefl = Max (theMaterial.Diffuse.x() + theMaterial.Specular.x(),
-                                        Max (theMaterial.Diffuse.y() + theMaterial.Specular.y(),
-                                             theMaterial.Diffuse.z() + theMaterial.Specular.z()));
-
+    // interior color is always ignored for Specular
+    aResMat.Specular.SetValues (aSrcSpe, aShine);
+    const Standard_ShortReal aMaxRefl = Max (aResMat.Diffuse.x() + aResMat.Specular.x(),
+                                        Max (aResMat.Diffuse.y() + aResMat.Specular.y(),
+                                             aResMat.Diffuse.z() + aResMat.Specular.z()));
     const Standard_ShortReal aReflectionScale = 0.75f / aMaxRefl;
-
-    // ignore isPhysic here
-    theMaterial.Reflection = BVH_Vec4f (aSrcSpe * (float )aSrcMat.Specular() * aReflectionScale, 0.0f);
-  }
-  else
-  {
-    theMaterial.Specular = BVH_Vec4f (THE_BLACK_COLOR.rgb(), aShine);
-  }
-
-  // emission component
-  if (aSrcMat.ReflectionMode (Graphic3d_TOR_EMISSION))
-  {
-    const OpenGl_Vec3& aSrcEms = isPhysic ? aSrcMat.EmissiveColor() : aMatCol;
-    theMaterial.Emission = BVH_Vec4f (aSrcEms * (float )aSrcMat.Emissive(), 1.0f);
-  }
-  else
-  {
-    theMaterial.Emission = THE_BLACK_COLOR;
+    aResMat.Reflection.SetValues (aSrcSpe * aReflectionScale, 0.0f);
   }
 
   const float anIndex = (float )aSrcMat.RefractionIndex();
-  theMaterial.Transparency = BVH_Vec4f (aSrcMat.Alpha(), aSrcMat.Transparency(),
-                                        anIndex == 0 ? 1.0f : anIndex,
-                                        anIndex == 0 ? 1.0f : 1.0f / anIndex);
+  aResMat.Transparency = BVH_Vec4f (aSrcMat.Alpha(), aSrcMat.Transparency(),
+                                    anIndex == 0 ? 1.0f : anIndex,
+                                    anIndex == 0 ? 1.0f : 1.0f / anIndex);
 
   // Serialize physically-based material properties
   const Graphic3d_BSDF& aBSDF = aSrcMat.BSDF();
 
-  theMaterial.BSDF.Kc = aBSDF.Kc;
-  theMaterial.BSDF.Ks = aBSDF.Ks;
-  theMaterial.BSDF.Kd = BVH_Vec4f (aBSDF.Kd, -1.f); // no texture
-  theMaterial.BSDF.Kt = BVH_Vec4f (aBSDF.Kt,  0.f);
-  theMaterial.BSDF.Le = BVH_Vec4f (aBSDF.Le,  0.f);
+  aResMat.BSDF.Kc = aBSDF.Kc;
+  aResMat.BSDF.Ks = aBSDF.Ks;
+  aResMat.BSDF.Kd = BVH_Vec4f (aBSDF.Kd, -1.f); // no texture
+  aResMat.BSDF.Kt = BVH_Vec4f (aBSDF.Kt,  0.f);
+  aResMat.BSDF.Le = BVH_Vec4f (aBSDF.Le,  0.f);
 
-  theMaterial.BSDF.Absorption = aBSDF.Absorption;
+  aResMat.BSDF.Absorption = aBSDF.Absorption;
 
-  theMaterial.BSDF.FresnelCoat = aBSDF.FresnelCoat.Serialize ();
-  theMaterial.BSDF.FresnelBase = aBSDF.FresnelBase.Serialize ();
+  aResMat.BSDF.FresnelCoat = aBSDF.FresnelCoat.Serialize ();
+  aResMat.BSDF.FresnelBase = aBSDF.FresnelBase.Serialize ();
 
   // Handle material textures
   if (!theAspect->Aspect()->ToMapTexture())
   {
-    return theMaterial;
+    return aResMat;
   }
 
   const Handle(OpenGl_TextureSet)& aTextureSet = theAspect->TextureSet (theGlContext);
@@ -456,30 +418,26 @@ OpenGl_RaytraceMaterial OpenGl_View::convertMaterial (const OpenGl_AspectFace*  
    || aTextureSet->IsEmpty()
    || aTextureSet->First().IsNull())
   {
-    return theMaterial;
+    return aResMat;
   }
 
   if (theGlContext->HasRayTracingTextures())
   {
     const Handle(OpenGl_Texture)& aTexture = aTextureSet->First();
-    buildTextureTransform (aTexture->Sampler()->Parameters(), theMaterial.TextureTransform);
+    buildTextureTransform (aTexture->Sampler()->Parameters(), aResMat.TextureTransform);
 
     // write texture ID to diffuse w-component
-    theMaterial.Diffuse.w() = theMaterial.BSDF.Kd.w() = static_cast<Standard_ShortReal> (myRaytraceGeometry.AddTexture (aTexture));
+    aResMat.Diffuse.w() = aResMat.BSDF.Kd.w() = static_cast<Standard_ShortReal> (myRaytraceGeometry.AddTexture (aTexture));
   }
   else if (!myIsRaytraceWarnTextures)
   {
-    const TCollection_ExtendedString aWarnMessage =
-      "Warning: texturing in Ray-Trace requires GL_ARB_bindless_texture extension which is missing. "
-      "Please try to update graphics card driver. At the moment textures will be ignored.";
-
-    theGlContext->PushMessage (GL_DEBUG_SOURCE_APPLICATION,
-      GL_DEBUG_TYPE_PORTABILITY, 0, GL_DEBUG_SEVERITY_HIGH, aWarnMessage);
-
+    theGlContext->PushMessage (GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_PORTABILITY, 0, GL_DEBUG_SEVERITY_HIGH,
+                               "Warning: texturing in Ray-Trace requires GL_ARB_bindless_texture extension which is missing. "
+                               "Please try to update graphics card driver. At the moment textures will be ignored.");
     myIsRaytraceWarnTextures = Standard_True;
   }
 
-  return theMaterial;
+  return aResMat;
 }
 
 // =======================================================================
@@ -527,22 +485,20 @@ Standard_Boolean OpenGl_View::addRaytraceGroups (const OpenGl_Structure*        
   {
     // Get group material
     OpenGl_RaytraceMaterial aGroupMaterial;
-    if (aGroupIter.Value()->AspectFace() != NULL)
+    if (aGroupIter.Value()->GlAspects() != NULL)
     {
-      aGroupMaterial = convertMaterial (
-        aGroupIter.Value()->AspectFace(), theGlContext);
+      aGroupMaterial = convertMaterial (aGroupIter.Value()->GlAspects(), theGlContext);
     }
 
     Standard_Integer aMatID = static_cast<Standard_Integer> (myRaytraceGeometry.Materials.size());
 
     // Use group material if available, otherwise use structure material
-    myRaytraceGeometry.Materials.push_back (
-      aGroupIter.Value()->AspectFace() != NULL ? aGroupMaterial : theStructMat);
+    myRaytraceGeometry.Materials.push_back (aGroupIter.Value()->GlAspects() != NULL ? aGroupMaterial : theStructMat);
 
     // Add OpenGL elements from group (extract primitives arrays and aspects)
     for (const OpenGl_ElementNode* aNode = aGroupIter.Value()->FirstNode(); aNode != NULL; aNode = aNode->next)
     {
-      OpenGl_AspectFace* anAspect = dynamic_cast<OpenGl_AspectFace*> (aNode->elem);
+      OpenGl_Aspects* anAspect = dynamic_cast<OpenGl_Aspects*> (aNode->elem);
 
       if (anAspect != NULL)
       {
@@ -638,53 +594,43 @@ Handle(OpenGl_TriangleSet) OpenGl_View::addRaytracePrimitiveArray (const OpenGl_
     aSet->TexCrds.reserve  (anAttribs->NbElements);
 
     const size_t aVertFrom = aSet->Vertices.size();
-    for (Standard_Integer anAttribIter = 0; anAttribIter < anAttribs->NbAttributes; ++anAttribIter)
-    {
-      const Graphic3d_Attribute& anAttrib = anAttribs->Attribute       (anAttribIter);
-      const size_t               anOffset = anAttribs->AttributeOffset (anAttribIter);
-      if (anAttrib.Id == Graphic3d_TOA_POS)
-      {
-        if (anAttrib.DataType == Graphic3d_TOD_VEC3
-         || anAttrib.DataType == Graphic3d_TOD_VEC4)
-        {
-          for (Standard_Integer aVertIter = 0; aVertIter < anAttribs->NbElements; ++aVertIter)
-          {
-            aSet->Vertices.push_back (
-              *reinterpret_cast<const Graphic3d_Vec3*> (anAttribs->value (aVertIter) + anOffset));
-          }
-        }
-        else if (anAttrib.DataType == Graphic3d_TOD_VEC2)
-        {
-          for (Standard_Integer aVertIter = 0; aVertIter < anAttribs->NbElements; ++aVertIter)
-          {
-            const Standard_ShortReal* aCoords =
-              reinterpret_cast<const Standard_ShortReal*> (anAttribs->value (aVertIter) + anOffset);
 
-            aSet->Vertices.push_back (BVH_Vec3f (aCoords[0], aCoords[1], 0.0f));
-          }
+    Standard_Integer anAttribIndex = 0;
+    Standard_Size anAttribStride = 0;
+    if (const Standard_Byte* aPosData = anAttribs->AttributeData (Graphic3d_TOA_POS, anAttribIndex, anAttribStride))
+    {
+      const Graphic3d_Attribute& anAttrib = anAttribs->Attribute (anAttribIndex);
+      if (anAttrib.DataType == Graphic3d_TOD_VEC2
+       || anAttrib.DataType == Graphic3d_TOD_VEC3
+       || anAttrib.DataType == Graphic3d_TOD_VEC4)
+      {
+        for (Standard_Integer aVertIter = 0; aVertIter < anAttribs->NbElements; ++aVertIter)
+        {
+          const float* aCoords = reinterpret_cast<const float*> (aPosData + anAttribStride * aVertIter);
+          aSet->Vertices.push_back (BVH_Vec3f (aCoords[0], aCoords[1], anAttrib.DataType != Graphic3d_TOD_VEC2 ? aCoords[2] : 0.0f));
         }
       }
-      else if (anAttrib.Id == Graphic3d_TOA_NORM)
+    }
+    if (const Standard_Byte* aNormData = anAttribs->AttributeData (Graphic3d_TOA_NORM, anAttribIndex, anAttribStride))
+    {
+      const Graphic3d_Attribute& anAttrib = anAttribs->Attribute (anAttribIndex);
+      if (anAttrib.DataType == Graphic3d_TOD_VEC3
+       || anAttrib.DataType == Graphic3d_TOD_VEC4)
       {
-        if (anAttrib.DataType == Graphic3d_TOD_VEC3
-         || anAttrib.DataType == Graphic3d_TOD_VEC4)
+        for (Standard_Integer aVertIter = 0; aVertIter < anAttribs->NbElements; ++aVertIter)
         {
-          for (Standard_Integer aVertIter = 0; aVertIter < anAttribs->NbElements; ++aVertIter)
-          {
-            aSet->Normals.push_back (
-              *reinterpret_cast<const Graphic3d_Vec3*> (anAttribs->value (aVertIter) + anOffset));
-          }
+          aSet->Normals.push_back (*reinterpret_cast<const Graphic3d_Vec3*> (aNormData + anAttribStride * aVertIter));
         }
       }
-      else if (anAttrib.Id == Graphic3d_TOA_UV)
+    }
+    if (const Standard_Byte* aTexData = anAttribs->AttributeData (Graphic3d_TOA_UV, anAttribIndex, anAttribStride))
+    {
+      const Graphic3d_Attribute& anAttrib = anAttribs->Attribute (anAttribIndex);
+      if (anAttrib.DataType == Graphic3d_TOD_VEC2)
       {
-        if (anAttrib.DataType == Graphic3d_TOD_VEC2)
+        for (Standard_Integer aVertIter = 0; aVertIter < anAttribs->NbElements; ++aVertIter)
         {
-          for (Standard_Integer aVertIter = 0; aVertIter < anAttribs->NbElements; ++aVertIter)
-          {
-            aSet->TexCrds.push_back (
-              *reinterpret_cast<const Graphic3d_Vec2*> (anAttribs->value (aVertIter) + anOffset));
-          }
+          aSet->TexCrds.push_back (*reinterpret_cast<const Graphic3d_Vec2*> (aTexData + anAttribStride * aVertIter));
         }
       }
     }
@@ -1164,11 +1110,14 @@ TCollection_AsciiString OpenGl_View::generateShaderPrefix (const Handle(OpenGl_C
 
     if (myRaytraceParameters.AdaptiveScreenSampling) // adaptive screen sampling requested
     {
-      // to activate the feature we need OpenGL 4.4 and GL_NV_shader_atomic_float extension
-      if (theGlContext->IsGlGreaterEqual (4, 4) && theGlContext->CheckExtension ("GL_NV_shader_atomic_float"))
+      if (theGlContext->IsGlGreaterEqual (4, 4))
       {
-        aPrefixString += TCollection_AsciiString ("\n#define ADAPTIVE_SAMPLING") +
-          TCollection_AsciiString ("\n#define BLOCK_SIZE ") + TCollection_AsciiString (OpenGl_TileSampler::TileSize());
+        aPrefixString += TCollection_AsciiString ("\n#define ADAPTIVE_SAMPLING");
+        if (myRaytraceParameters.AdaptiveScreenSamplingAtomic
+         && theGlContext->CheckExtension ("GL_NV_shader_atomic_float"))
+        {
+          aPrefixString += TCollection_AsciiString ("\n#define ADAPTIVE_SAMPLING_ATOMIC");
+        }
       }
     }
 
@@ -1221,71 +1170,20 @@ Handle(OpenGl_ShaderObject) OpenGl_View::initShader (const GLenum               
                                                      const Handle(OpenGl_Context)& theGlContext)
 {
   Handle(OpenGl_ShaderObject) aShader = new OpenGl_ShaderObject (theType);
-
   if (!aShader->Create (theGlContext))
   {
-    const TCollection_ExtendedString aMessage = TCollection_ExtendedString ("Error: Failed to create ") +
-      (theType == GL_VERTEX_SHADER ? "vertex" : "fragment") + " shader object";
-
-    theGlContext->PushMessage (GL_DEBUG_SOURCE_APPLICATION,
-      GL_DEBUG_TYPE_ERROR, 0, GL_DEBUG_SEVERITY_HIGH, aMessage);
-
-    aShader->Release (theGlContext.operator->());
-
+    theGlContext->PushMessage (GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, 0, GL_DEBUG_SEVERITY_HIGH,
+                               TCollection_ExtendedString ("Error: Failed to create ") +
+                               (theType == GL_VERTEX_SHADER ? "vertex" : "fragment") + " shader object");
+    aShader->Release (theGlContext.get());
     return Handle(OpenGl_ShaderObject)();
   }
 
-  if (!aShader->LoadSource (theGlContext, theSource.Source()))
+  if (!aShader->LoadAndCompile (theGlContext, "", theSource.Source()))
   {
-    const TCollection_ExtendedString aMessage = TCollection_ExtendedString ("Error: Failed to set ") +
-      (theType == GL_VERTEX_SHADER ? "vertex" : "fragment") + " shader source";
-
-    theGlContext->PushMessage (GL_DEBUG_SOURCE_APPLICATION,
-      GL_DEBUG_TYPE_ERROR, 0, GL_DEBUG_SEVERITY_HIGH, aMessage);
-
-    aShader->Release (theGlContext.operator->());
-
+    aShader->Release (theGlContext.get());
     return Handle(OpenGl_ShaderObject)();
   }
-
-  TCollection_AsciiString aBuildLog;
-
-  if (!aShader->Compile (theGlContext))
-  {
-    aShader->FetchInfoLog (theGlContext, aBuildLog);
-
-    const TCollection_ExtendedString aMessage = TCollection_ExtendedString ("Error: Failed to compile ") +
-      (theType == GL_VERTEX_SHADER ? "vertex" : "fragment") + " shader object:\n" + aBuildLog;
-
-    theGlContext->PushMessage (GL_DEBUG_SOURCE_APPLICATION,
-      GL_DEBUG_TYPE_ERROR, 0, GL_DEBUG_SEVERITY_HIGH, aMessage);
-
-    aShader->Release (theGlContext.operator->());
-
-#ifdef RAY_TRACE_PRINT_INFO
-    std::cout << "Shader build log:\n" << aBuildLog << "\n";
-#endif
-
-    return Handle(OpenGl_ShaderObject)();
-  }
-  else if (theGlContext->caps->glslWarnings)
-  {
-    aShader->FetchInfoLog (theGlContext, aBuildLog);
-
-    if (!aBuildLog.IsEmpty() && !aBuildLog.IsEqual ("No errors.\n"))
-    {
-      const TCollection_ExtendedString aMessage = TCollection_ExtendedString (theType == GL_VERTEX_SHADER ?
-        "Vertex" : "Fragment") + " shader was compiled with following warnings:\n" + aBuildLog;
-
-      theGlContext->PushMessage (GL_DEBUG_SOURCE_APPLICATION,
-        GL_DEBUG_TYPE_PORTABILITY, 0, GL_DEBUG_SEVERITY_LOW, aMessage);
-    }
-
-#ifdef RAY_TRACE_PRINT_INFO
-    std::cout << "Shader build log:\n" << aBuildLog << "\n";
-#endif
-  }
-
   return aShader;
 }
 
@@ -1295,9 +1193,11 @@ Handle(OpenGl_ShaderObject) OpenGl_View::initShader (const GLenum               
 // =======================================================================
 Handle(OpenGl_ShaderProgram) OpenGl_View::initProgram (const Handle(OpenGl_Context)&      theGlContext,
                                                        const Handle(OpenGl_ShaderObject)& theVertShader,
-                                                       const Handle(OpenGl_ShaderObject)& theFragShader)
+                                                       const Handle(OpenGl_ShaderObject)& theFragShader,
+                                                       const TCollection_AsciiString& theName)
 {
-  Handle(OpenGl_ShaderProgram) aProgram = new OpenGl_ShaderProgram;
+  const TCollection_AsciiString anId = TCollection_AsciiString("occt_rt_") + theName;
+  Handle(OpenGl_ShaderProgram) aProgram = new OpenGl_ShaderProgram(Handle(Graphic3d_ShaderProgram)(), anId);
 
   if (!aProgram->Create (theGlContext))
   {
@@ -1356,7 +1256,9 @@ Handle(OpenGl_ShaderProgram) OpenGl_View::initProgram (const Handle(OpenGl_Conte
 // function : initRaytraceResources
 // purpose  : Initializes OpenGL/GLSL shader programs
 // =======================================================================
-Standard_Boolean OpenGl_View::initRaytraceResources (const Handle(OpenGl_Context)& theGlContext)
+Standard_Boolean OpenGl_View::initRaytraceResources (const Standard_Integer theSizeX,
+                                                     const Standard_Integer theSizeY,
+                                                     const Handle(OpenGl_Context)& theGlContext)
 {
   if (myRaytraceInitStatus == OpenGl_RT_FAIL)
   {
@@ -1400,46 +1302,25 @@ Standard_Boolean OpenGl_View::initRaytraceResources (const Handle(OpenGl_Context
       }
     }
 
-    Standard_Integer aNbTilesX = 8;
-    Standard_Integer aNbTilesY = 8;
-
-    for (Standard_Integer anIdx = 0; aNbTilesX * aNbTilesY < myRenderParams.NbRayTracingTiles; ++anIdx)
-    {
-      (anIdx % 2 == 0 ? aNbTilesX : aNbTilesY) <<= 1;
-    }
-
     if (myRenderParams.RaytracingDepth             != myRaytraceParameters.NbBounces
      || myRenderParams.IsTransparentShadowEnabled  != myRaytraceParameters.TransparentShadows
      || myRenderParams.IsGlobalIlluminationEnabled != myRaytraceParameters.GlobalIllumination
      || myRenderParams.TwoSidedBsdfModels          != myRaytraceParameters.TwoSidedBsdfModels
-     || myRaytraceGeometry.HasTextures()           != myRaytraceParameters.UseBindlessTextures
-     || aNbTilesX                                  != myRaytraceParameters.NbTilesX
-     || aNbTilesY                                  != myRaytraceParameters.NbTilesY)
+     || myRaytraceGeometry.HasTextures()           != myRaytraceParameters.UseBindlessTextures)
     {
       myRaytraceParameters.NbBounces           = myRenderParams.RaytracingDepth;
       myRaytraceParameters.TransparentShadows  = myRenderParams.IsTransparentShadowEnabled;
       myRaytraceParameters.GlobalIllumination  = myRenderParams.IsGlobalIlluminationEnabled;
       myRaytraceParameters.TwoSidedBsdfModels  = myRenderParams.TwoSidedBsdfModels;
       myRaytraceParameters.UseBindlessTextures = myRaytraceGeometry.HasTextures();
-
-#ifdef RAY_TRACE_PRINT_INFO
-      if (aNbTilesX != myRaytraceParameters.NbTilesX
-       || aNbTilesY != myRaytraceParameters.NbTilesY)
-      {
-        std::cout << "Number of tiles X: " << aNbTilesX << "\n";
-        std::cout << "Number of tiles Y: " << aNbTilesY << "\n";
-      }
-#endif
-
-      myRaytraceParameters.NbTilesX = aNbTilesX;
-      myRaytraceParameters.NbTilesY = aNbTilesY;
-
       aToRebuildShaders = Standard_True;
     }
 
-    if (myRenderParams.AdaptiveScreenSampling != myRaytraceParameters.AdaptiveScreenSampling)
+    if (myRenderParams.AdaptiveScreenSampling       != myRaytraceParameters.AdaptiveScreenSampling
+     || myRenderParams.AdaptiveScreenSamplingAtomic != myRaytraceParameters.AdaptiveScreenSamplingAtomic)
     {
-      myRaytraceParameters.AdaptiveScreenSampling = myRenderParams.AdaptiveScreenSampling;
+      myRaytraceParameters.AdaptiveScreenSampling       = myRenderParams.AdaptiveScreenSampling;
+      myRaytraceParameters.AdaptiveScreenSamplingAtomic = myRenderParams.AdaptiveScreenSamplingAtomic;
       if (myRenderParams.AdaptiveScreenSampling) // adaptive sampling was requested
       {
         if (!theGlContext->HasRayTracingAdaptiveSampling())
@@ -1447,12 +1328,21 @@ Standard_Boolean OpenGl_View::initRaytraceResources (const Handle(OpenGl_Context
           // disable the feature if it is not supported
           myRaytraceParameters.AdaptiveScreenSampling = myRenderParams.AdaptiveScreenSampling = Standard_False;
           theGlContext->PushMessage (GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_PORTABILITY, 0, GL_DEBUG_SEVERITY_LOW,
-                                     "Adaptive sampling not supported (OpenGL 4.4 or GL_NV_shader_atomic_float is missing)");
+                                     "Adaptive sampling is not supported (OpenGL 4.4 is missing)");
+        }
+        else if (myRaytraceParameters.AdaptiveScreenSamplingAtomic
+             && !theGlContext->HasRayTracingAdaptiveSamplingAtomic())
+        {
+          // disable the feature if it is not supported
+          myRaytraceParameters.AdaptiveScreenSamplingAtomic = myRenderParams.AdaptiveScreenSamplingAtomic = Standard_False;
+          theGlContext->PushMessage (GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_PORTABILITY, 0, GL_DEBUG_SEVERITY_LOW,
+                                     "Atomic adaptive sampling is not supported (GL_NV_shader_atomic_float is missing)");
         }
       }
 
       aToRebuildShaders = Standard_True;
     }
+    myTileSampler.SetSize (myRenderParams, myRaytraceParameters.AdaptiveScreenSampling ? Graphic3d_Vec2i (theSizeX, theSizeY) : Graphic3d_Vec2i (0, 0));
 
     const bool toEnableDof = !myCamera->IsOrthographic() && myRaytraceParameters.GlobalIllumination;
     if (myRaytraceParameters.DepthOfField != toEnableDof)
@@ -1485,27 +1375,10 @@ Standard_Boolean OpenGl_View::initRaytraceResources (const Handle(OpenGl_Context
       myPostFSAAShaderSource.SetPrefix (aPrefixString);
       myOutImageShaderSource.SetPrefix (aPrefixString);
 
-      if (!myRaytraceShader->LoadSource (theGlContext, myRaytraceShaderSource.Source())
-       || !myPostFSAAShader->LoadSource (theGlContext, myPostFSAAShaderSource.Source())
-       || !myOutImageShader->LoadSource (theGlContext, myOutImageShaderSource.Source()))
+      if (!myRaytraceShader->LoadAndCompile (theGlContext, myRaytraceProgram->ResourceId(), myRaytraceShaderSource.Source())
+       || !myPostFSAAShader->LoadAndCompile (theGlContext, myPostFSAAProgram->ResourceId(), myPostFSAAShaderSource.Source())
+       || !myOutImageShader->LoadAndCompile (theGlContext, myOutImageProgram->ResourceId(), myOutImageShaderSource.Source()))
       {
-        return safeFailBack ("Failed to load source into ray-tracing fragment shaders", theGlContext);
-      }
-
-      TCollection_AsciiString aLog;
-
-      if (!myRaytraceShader->Compile (theGlContext)
-       || !myPostFSAAShader->Compile (theGlContext)
-       || !myOutImageShader->Compile (theGlContext))
-      {
-#ifdef RAY_TRACE_PRINT_INFO
-        myRaytraceShader->FetchInfoLog (theGlContext, aLog);
-
-        if (!aLog.IsEmpty())
-        {
-          std::cout << "Failed to compile ray-tracing shader: " << aLog << "\n";
-        }
-#endif
         return safeFailBack ("Failed to compile ray-tracing fragment shaders", theGlContext);
       }
 
@@ -1517,14 +1390,6 @@ Standard_Boolean OpenGl_View::initRaytraceResources (const Handle(OpenGl_Context
        || !myPostFSAAProgram->Link (theGlContext)
        || !myOutImageProgram->Link (theGlContext))
       {
-#ifdef RAY_TRACE_PRINT_INFO
-        myRaytraceProgram->FetchInfoLog (theGlContext, aLog);
-
-        if (!aLog.IsEmpty())
-        {
-          std::cout << "Failed to compile ray-tracing shader: " << aLog << "\n";
-        }
-#endif
         return safeFailBack ("Failed to initialize vertex attributes for ray-tracing program", theGlContext);
       }
     }
@@ -1613,7 +1478,7 @@ Standard_Boolean OpenGl_View::initRaytraceResources (const Handle(OpenGl_Context
         return safeFailBack ("Failed to initialize ray-trace fragment shader", theGlContext);
       }
 
-      myRaytraceProgram = initProgram (theGlContext, aBasicVertShader, myRaytraceShader);
+      myRaytraceProgram = initProgram (theGlContext, aBasicVertShader, myRaytraceShader, "main");
       if (myRaytraceProgram.IsNull())
       {
         return safeFailBack ("Failed to initialize ray-trace shader program", theGlContext);
@@ -1648,7 +1513,7 @@ Standard_Boolean OpenGl_View::initRaytraceResources (const Handle(OpenGl_Context
         return safeFailBack ("Failed to initialize FSAA fragment shader", theGlContext);
       }
 
-      myPostFSAAProgram = initProgram (theGlContext, aBasicVertShader, myPostFSAAShader);
+      myPostFSAAProgram = initProgram (theGlContext, aBasicVertShader, myPostFSAAShader, "fsaa");
       if (myPostFSAAProgram.IsNull())
       {
         return safeFailBack ("Failed to initialize FSAA shader program", theGlContext);
@@ -1683,7 +1548,7 @@ Standard_Boolean OpenGl_View::initRaytraceResources (const Handle(OpenGl_Context
         return safeFailBack ("Failed to set display fragment shader source", theGlContext);
       }
 
-      myOutImageProgram = initProgram (theGlContext, aBasicVertShader, myOutImageShader);
+      myOutImageProgram = initProgram (theGlContext, aBasicVertShader, myOutImageShader, "out");
       if (myOutImageProgram.IsNull())
       {
         return safeFailBack ("Failed to initialize display shader program", theGlContext);
@@ -1800,8 +1665,14 @@ Standard_Boolean OpenGl_View::initRaytraceResources (const Handle(OpenGl_Context
 
       myUniformLocations[anIndex][OpenGl_RT_uRenderImage] =
         aShaderProgram->GetUniformLocation (theGlContext, "uRenderImage");
+      myUniformLocations[anIndex][OpenGl_RT_uTilesImage] =
+        aShaderProgram->GetUniformLocation (theGlContext, "uTilesImage");
       myUniformLocations[anIndex][OpenGl_RT_uOffsetImage] =
         aShaderProgram->GetUniformLocation (theGlContext, "uOffsetImage");
+      myUniformLocations[anIndex][OpenGl_RT_uTileSize] =
+        aShaderProgram->GetUniformLocation (theGlContext, "uTileSize");
+      myUniformLocations[anIndex][OpenGl_RT_uVarianceScaleFactor] =
+        aShaderProgram->GetUniformLocation (theGlContext, "uVarianceScaleFactor");
 
       myUniformLocations[anIndex][OpenGl_RT_uBackColorTop] =
         aShaderProgram->GetUniformLocation (theGlContext, "uBackColorTop");
@@ -1851,7 +1722,7 @@ inline void nullifyResource (const Handle(OpenGl_Context)& theGlContext, Handle(
 {
   if (!theResource.IsNull())
   {
-    theResource->Release (theGlContext.operator->());
+    theResource->Release (theGlContext.get());
     theResource.Nullify();
   }
 }
@@ -1872,10 +1743,10 @@ void OpenGl_View::releaseRaytraceResources (const Handle(OpenGl_Context)& theGlC
 
   if (!theToRebuild) // complete release
   {
-    myRaytraceFBO1[0]->Release (theGlContext.operator->());
-    myRaytraceFBO1[1]->Release (theGlContext.operator->());
-    myRaytraceFBO2[0]->Release (theGlContext.operator->());
-    myRaytraceFBO2[1]->Release (theGlContext.operator->());
+    myRaytraceFBO1[0]->Release (theGlContext.get());
+    myRaytraceFBO1[1]->Release (theGlContext.get());
+    myRaytraceFBO2[0]->Release (theGlContext.get());
+    myRaytraceFBO2[1]->Release (theGlContext.get());
 
     nullifyResource (theGlContext, myRaytraceOutputTexture[0]);
     nullifyResource (theGlContext, myRaytraceOutputTexture[1]);
@@ -1884,6 +1755,8 @@ void OpenGl_View::releaseRaytraceResources (const Handle(OpenGl_Context)& theGlC
     nullifyResource (theGlContext, myRaytraceTileOffsetsTexture[1]);
     nullifyResource (theGlContext, myRaytraceVisualErrorTexture[0]);
     nullifyResource (theGlContext, myRaytraceVisualErrorTexture[1]);
+    nullifyResource (theGlContext, myRaytraceTileSamplesTexture[0]);
+    nullifyResource (theGlContext, myRaytraceTileSamplesTexture[1]);
 
     nullifyResource (theGlContext, mySceneNodeInfoTexture);
     nullifyResource (theGlContext, mySceneMinPointTexture);
@@ -1902,7 +1775,7 @@ void OpenGl_View::releaseRaytraceResources (const Handle(OpenGl_Context)& theGlC
 
     if (myRaytraceScreenQuad.IsValid ())
     {
-      myRaytraceScreenQuad.Release (theGlContext.operator->());
+      myRaytraceScreenQuad.Release (theGlContext.get());
     }
   }
 }
@@ -1928,107 +1801,91 @@ Standard_Boolean OpenGl_View::updateRaytraceBuffers (const Standard_Integer     
 
   if (myRaytraceParameters.AdaptiveScreenSampling)
   {
-    const Standard_Integer aSizeX = std::max (myRaytraceParameters.NbTilesX * 64, theSizeX);
-    const Standard_Integer aSizeY = std::max (myRaytraceParameters.NbTilesY * 64, theSizeY);
-
-    myRaytraceFBO1[0]->InitLazy (theGlContext, aSizeX, aSizeY, GL_RGBA32F, myFboDepthFormat);
-    myRaytraceFBO2[0]->InitLazy (theGlContext, aSizeX, aSizeY, GL_RGBA32F, myFboDepthFormat);
-
+    Graphic3d_Vec2i aMaxViewport = myTileSampler.OffsetTilesViewportMax().cwiseMax (Graphic3d_Vec2i (theSizeX, theSizeY));
+    myRaytraceFBO1[0]->InitLazy (theGlContext, aMaxViewport.x(), aMaxViewport.y(), GL_RGBA32F, myFboDepthFormat);
+    myRaytraceFBO2[0]->InitLazy (theGlContext, aMaxViewport.x(), aMaxViewport.y(), GL_RGBA32F, myFboDepthFormat);
     if (myRaytraceFBO1[1]->IsValid()) // second FBO not needed
     {
       myRaytraceFBO1[1]->Release (theGlContext.operator->());
       myRaytraceFBO2[1]->Release (theGlContext.operator->());
     }
   }
-  else // non-adaptive mode
+
+  for (int aViewIter = 0; aViewIter < 2; ++aViewIter)
   {
-    if (myRaytraceFBO1[0]->GetSizeX() != theSizeX
-     || myRaytraceFBO1[0]->GetSizeY() != theSizeY)
+    if (myRaytraceTileOffsetsTexture[aViewIter].IsNull())
     {
-      myAccumFrames = 0; // accumulation should be restarted
+      myRaytraceOutputTexture[aViewIter] = new OpenGl_Texture();
+      myRaytraceVisualErrorTexture[aViewIter] = new OpenGl_Texture();
+      myRaytraceTileSamplesTexture[aViewIter] = new OpenGl_Texture();
+      myRaytraceTileOffsetsTexture[aViewIter] = new OpenGl_Texture();
     }
 
-    myRaytraceFBO1[0]->InitLazy (theGlContext, theSizeX, theSizeY, GL_RGBA32F, myFboDepthFormat);
-    myRaytraceFBO2[0]->InitLazy (theGlContext, theSizeX, theSizeY, GL_RGBA32F, myFboDepthFormat);
-
-    // Init second set of buffers for stereographic rendering
-    if (myCamera->ProjectionType() == Graphic3d_Camera::Projection_Stereo)
-    {
-      myRaytraceFBO1[1]->InitLazy (theGlContext, theSizeX, theSizeY, GL_RGBA32F, myFboDepthFormat);
-      myRaytraceFBO2[1]->InitLazy (theGlContext, theSizeX, theSizeY, GL_RGBA32F, myFboDepthFormat);
-    }
-    else if (myRaytraceFBO1[1]->IsValid()) // second FBO not needed
+    if (aViewIter == 1
+     && myCamera->ProjectionType() != Graphic3d_Camera::Projection_Stereo)
     {
       myRaytraceFBO1[1]->Release (theGlContext.operator->());
       myRaytraceFBO2[1]->Release (theGlContext.operator->());
-    }
-  }
-
-  myTileSampler.SetSize (theSizeX, theSizeY);
-
-  if (myRaytraceTileOffsetsTexture[0].IsNull()
-   || myRaytraceTileOffsetsTexture[1].IsNull())
-  {
-    myRaytraceOutputTexture[0] = new OpenGl_Texture();
-    myRaytraceOutputTexture[1] = new OpenGl_Texture();
-
-    myRaytraceTileOffsetsTexture[0] = new OpenGl_Texture();
-    myRaytraceTileOffsetsTexture[1] = new OpenGl_Texture();
-    myRaytraceVisualErrorTexture[0] = new OpenGl_Texture();
-    myRaytraceVisualErrorTexture[1] = new OpenGl_Texture();
-  }
-
-  if (myRaytraceOutputTexture[0]->SizeX() / 3 != theSizeX
-   || myRaytraceOutputTexture[0]->SizeY() / 2 != theSizeY)
-  {
-    myAccumFrames = 0;
-
-    // Due to limitations of OpenGL image load-store extension
-    // atomic operations are supported only for single-channel
-    // images, so we define GL_R32F image. It is used as array
-    // of 6D floating point vectors:
-    // 0 - R color channel
-    // 1 - G color channel
-    // 2 - B color channel
-    // 3 - hit time transformed into OpenGL NDC space
-    // 4 - luminance accumulated for odd samples only
-    myRaytraceOutputTexture[0]->InitRectangle (theGlContext,
-      theSizeX * 3, theSizeY * 2, OpenGl_TextureFormat::Create<GLfloat, 1>());
-
-    // workaround for some NVIDIA drivers
-    myRaytraceVisualErrorTexture[0]->Release (theGlContext.operator->());
-    myRaytraceTileOffsetsTexture[0]->Release (theGlContext.operator->());
-
-    myRaytraceVisualErrorTexture[0]->Init (theGlContext,
-      GL_R32I, GL_RED_INTEGER, GL_INT, myTileSampler.NbTilesX(), myTileSampler.NbTilesY(), Graphic3d_TOT_2D);
-
-    myRaytraceTileOffsetsTexture[0]->Init (theGlContext,
-      GL_RG32I, GL_RG_INTEGER, GL_INT, myTileSampler.NbTilesX(), myTileSampler.NbTilesY(), Graphic3d_TOT_2D);
-  }
-
-  if (myCamera->ProjectionType() == Graphic3d_Camera::Projection_Stereo)
-  {
-    if (myRaytraceOutputTexture[1]->SizeX() / 3 != theSizeX
-     || myRaytraceOutputTexture[1]->SizeY() / 2 != theSizeY)
-    {
-      myRaytraceOutputTexture[1]->InitRectangle (theGlContext,
-        theSizeX * 3, theSizeY * 2, OpenGl_TextureFormat::Create<GLfloat, 1>());
-
+      myRaytraceOutputTexture[1]->Release (theGlContext.operator->());
       myRaytraceVisualErrorTexture[1]->Release (theGlContext.operator->());
       myRaytraceTileOffsetsTexture[1]->Release (theGlContext.operator->());
+      continue;
+    }
 
-      myRaytraceVisualErrorTexture[1]->Init (theGlContext,
-        GL_R32I, GL_RED_INTEGER, GL_INT, myTileSampler.NbTilesX(), myTileSampler.NbTilesY(), Graphic3d_TOT_2D);
+    if (myRaytraceParameters.AdaptiveScreenSampling)
+    {
+      if (myRaytraceOutputTexture[aViewIter]->SizeX() / 3 == theSizeX
+       && myRaytraceOutputTexture[aViewIter]->SizeY() / 2 == theSizeY
+       && myRaytraceVisualErrorTexture[aViewIter]->SizeX() == myTileSampler.NbTilesX()
+       && myRaytraceVisualErrorTexture[aViewIter]->SizeY() == myTileSampler.NbTilesY())
+      {
+        if (myRaytraceParameters.AdaptiveScreenSamplingAtomic)
+        {
+          continue; // offsets texture is dynamically resized
+        }
+        else if (myRaytraceTileSamplesTexture[aViewIter]->SizeX() == myTileSampler.NbTilesX()
+              && myRaytraceTileSamplesTexture[aViewIter]->SizeY() == myTileSampler.NbTilesY())
+        {
+          continue;
+        }
+      }
 
-      myRaytraceTileOffsetsTexture[1]->Init (theGlContext,
-        GL_RG32I, GL_RG_INTEGER, GL_INT, myTileSampler.NbTilesX(), myTileSampler.NbTilesY(), Graphic3d_TOT_2D);
+      myAccumFrames = 0;
+
+      // Due to limitations of OpenGL image load-store extension
+      // atomic operations are supported only for single-channel
+      // images, so we define GL_R32F image. It is used as array
+      // of 6D floating point vectors:
+      // 0 - R color channel
+      // 1 - G color channel
+      // 2 - B color channel
+      // 3 - hit time transformed into OpenGL NDC space
+      // 4 - luminance accumulated for odd samples only
+      myRaytraceOutputTexture[aViewIter]->InitRectangle (theGlContext, theSizeX * 3, theSizeY * 2, OpenGl_TextureFormat::Create<GLfloat, 1>());
+
+      // workaround for some NVIDIA drivers
+      myRaytraceVisualErrorTexture[aViewIter]->Release (theGlContext.operator->());
+      myRaytraceTileSamplesTexture[aViewIter]->Release (theGlContext.operator->());
+      myRaytraceVisualErrorTexture[aViewIter]->Init (theGlContext, GL_R32I, GL_RED_INTEGER, GL_INT,
+                                                     myTileSampler.NbTilesX(), myTileSampler.NbTilesY(), Graphic3d_TOT_2D);
+      if (!myRaytraceParameters.AdaptiveScreenSamplingAtomic)
+      {
+        myRaytraceTileSamplesTexture[aViewIter]->Init (theGlContext, GL_R32I, GL_RED_INTEGER, GL_INT,
+                                                       myTileSampler.NbTilesX(), myTileSampler.NbTilesY(), Graphic3d_TOT_2D);
+      }
+    }
+    else // non-adaptive mode
+    {
+      if (myRaytraceFBO1[aViewIter]->GetSizeX() != theSizeX
+       || myRaytraceFBO1[aViewIter]->GetSizeY() != theSizeY)
+      {
+        myAccumFrames = 0; // accumulation should be restarted
+      }
+
+      myRaytraceFBO1[aViewIter]->InitLazy (theGlContext, theSizeX, theSizeY, GL_RGBA32F, myFboDepthFormat);
+      myRaytraceFBO2[aViewIter]->InitLazy (theGlContext, theSizeX, theSizeY, GL_RGBA32F, myFboDepthFormat);
     }
   }
-  else
-  {
-    myRaytraceOutputTexture[1]->Release (theGlContext.operator->());
-  }
-
   return Standard_True;
 }
 
@@ -2491,68 +2348,75 @@ Standard_Boolean OpenGl_View::uploadRaytraceData (const Handle(OpenGl_Context)& 
 // =======================================================================
 Standard_Boolean OpenGl_View::updateRaytraceLightSources (const OpenGl_Mat4& theInvModelView, const Handle(OpenGl_Context)& theGlContext)
 {
-  std::vector<OpenGl_Light> aLightSources;
-
-  if (myShadingModel != Graphic3d_TOSM_NONE)
+  std::vector<Handle(Graphic3d_CLight)> aLightSources;
+  myRaytraceGeometry.Ambient = BVH_Vec4f (0.f, 0.f, 0.f, 0.f);
+  if (myShadingModel != Graphic3d_TOSM_UNLIT
+  && !myLights.IsNull())
   {
-    aLightSources.assign (myLights.begin(), myLights.end());
+    const Graphic3d_Vec4& anAmbient = myLights->AmbientColor();
+    myRaytraceGeometry.Ambient = BVH_Vec4f (anAmbient.r(), anAmbient.g(), anAmbient.b(), 0.0f);
 
     // move positional light sources at the front of the list
-    std::partition (aLightSources.begin(), aLightSources.end(), IsLightPositional());
+    aLightSources.reserve (myLights->Extent());
+    for (Graphic3d_LightSet::Iterator aLightIter (myLights, Graphic3d_LightSet::IterationFilter_ExcludeDisabledAndAmbient);
+         aLightIter.More(); aLightIter.Next())
+    {
+      const Graphic3d_CLight& aLight = *aLightIter.Value();
+      if (aLight.Type() != Graphic3d_TOLS_DIRECTIONAL)
+      {
+        aLightSources.push_back (aLightIter.Value());
+      }
+    }
+
+    for (Graphic3d_LightSet::Iterator aLightIter (myLights, Graphic3d_LightSet::IterationFilter_ExcludeDisabledAndAmbient);
+         aLightIter.More(); aLightIter.Next())
+    {
+      if (aLightIter.Value()->Type() == Graphic3d_TOLS_DIRECTIONAL)
+      {
+        aLightSources.push_back (aLightIter.Value());
+      }
+    }
   }
 
   // get number of 'real' (not ambient) light sources
-  const size_t aNbLights = std::count_if (aLightSources.begin(), aLightSources.end(), IsNotAmbient());
-
+  const size_t aNbLights = aLightSources.size();
   Standard_Boolean wasUpdated = myRaytraceGeometry.Sources.size () != aNbLights;
-
   if (wasUpdated)
   {
     myRaytraceGeometry.Sources.resize (aNbLights);
   }
 
-  myRaytraceGeometry.Ambient = BVH_Vec4f (0.f, 0.f, 0.f, 0.f);
-
   for (size_t aLightIdx = 0, aRealIdx = 0; aLightIdx < aLightSources.size(); ++aLightIdx)
   {
-    const OpenGl_Light& aLight = aLightSources[aLightIdx];
-
-    if (aLight.Type == Graphic3d_TOLS_AMBIENT)
-    {
-      myRaytraceGeometry.Ambient += BVH_Vec4f (aLight.Color.r() * aLight.Intensity,
-                                               aLight.Color.g() * aLight.Intensity,
-                                               aLight.Color.b() * aLight.Intensity,
-                                               0.0f);
-      continue;
-    }
-
-    BVH_Vec4f aEmission  (aLight.Color.r() * aLight.Intensity,
-                          aLight.Color.g() * aLight.Intensity,
-                          aLight.Color.b() * aLight.Intensity,
+    const Graphic3d_CLight& aLight = *aLightSources[aLightIdx];
+    const Graphic3d_Vec4& aLightColor = aLight.PackedColor();
+    BVH_Vec4f aEmission  (aLightColor.r() * aLight.Intensity(),
+                          aLightColor.g() * aLight.Intensity(),
+                          aLightColor.b() * aLight.Intensity(),
                           1.0f);
 
-    BVH_Vec4f aPosition (-aLight.Direction.x(),
-                         -aLight.Direction.y(),
-                         -aLight.Direction.z(),
+    BVH_Vec4f aPosition (-aLight.PackedDirection().x(),
+                         -aLight.PackedDirection().y(),
+                         -aLight.PackedDirection().z(),
                          0.0f);
 
-    if (aLight.Type != Graphic3d_TOLS_DIRECTIONAL)
+    if (aLight.Type() != Graphic3d_TOLS_DIRECTIONAL)
     {
-      aPosition = BVH_Vec4f (static_cast<float>(aLight.Position.x()),
-                             static_cast<float>(aLight.Position.y()),
-                             static_cast<float>(aLight.Position.z()),
+      aPosition = BVH_Vec4f (static_cast<float>(aLight.Position().X()),
+                             static_cast<float>(aLight.Position().Y()),
+                             static_cast<float>(aLight.Position().Z()),
                              1.0f);
 
       // store smoothing radius in W-component
-      aEmission.w() = Max (aLight.Smoothness, 0.f);
+      aEmission.w() = Max (aLight.Smoothness(), 0.f);
     }
     else
     {
       // store cosine of smoothing angle in W-component
-      aEmission.w() = cosf (Min (Max (aLight.Smoothness, 0.f), static_cast<Standard_ShortReal> (M_PI / 2.0)));
+      aEmission.w() = cosf (Min (Max (aLight.Smoothness(), 0.f), static_cast<Standard_ShortReal> (M_PI / 2.0)));
     }
 
-    if (aLight.IsHeadlight)
+    if (aLight.IsHeadlight())
     {
       aPosition = theInvModelView * aPosition;
     }
@@ -2701,12 +2565,13 @@ Standard_Boolean OpenGl_View::setUniformState (const Standard_Integer        the
   }
 
   // Set background colors (only gradient background supported)
-  if (myBgGradientArray != NULL && myBgGradientArray->IsDefined())
+  if (myBackgrounds[Graphic3d_TOB_GRADIENT] != NULL
+   && myBackgrounds[Graphic3d_TOB_GRADIENT]->IsDefined())
   {
     theProgram->SetUniform (theGlContext,
-      myUniformLocations[theProgramId][OpenGl_RT_uBackColorTop], myBgGradientArray->GradientColor (0));
+      myUniformLocations[theProgramId][OpenGl_RT_uBackColorTop], myBackgrounds[Graphic3d_TOB_GRADIENT]->GradientColor (0));
     theProgram->SetUniform (theGlContext,
-      myUniformLocations[theProgramId][OpenGl_RT_uBackColorBot], myBgGradientArray->GradientColor (1));
+      myUniformLocations[theProgramId][OpenGl_RT_uBackColorBot], myBackgrounds[Graphic3d_TOB_GRADIENT]->GradientColor (1));
   }
   else
   {
@@ -2767,25 +2632,30 @@ Standard_Boolean OpenGl_View::setUniformState (const Standard_Integer        the
 // function : bindRaytraceTextures
 // purpose  : Binds ray-trace textures to corresponding texture units
 // =======================================================================
-void OpenGl_View::bindRaytraceTextures (const Handle(OpenGl_Context)& theGlContext)
+void OpenGl_View::bindRaytraceTextures (const Handle(OpenGl_Context)& theGlContext,
+                                        int theStereoView)
 {
-  if (myRaytraceParameters.AdaptiveScreenSampling)
+  if (myRaytraceParameters.AdaptiveScreenSampling
+   && myRaytraceParameters.GlobalIllumination)
   {
   #if !defined(GL_ES_VERSION_2_0)
-    theGlContext->core42->glBindImageTexture (OpenGl_RT_OutputImageLft,
-      myRaytraceOutputTexture[0]->TextureId(), 0, GL_TRUE, 0, GL_READ_WRITE, GL_R32F);
-    theGlContext->core42->glBindImageTexture (OpenGl_RT_OutputImageRgh,
-      myRaytraceOutputTexture[1]->TextureId(), 0, GL_TRUE, 0, GL_READ_WRITE, GL_R32F);
-
-    theGlContext->core42->glBindImageTexture (OpenGl_RT_VisualErrorImageLft,
-      myRaytraceVisualErrorTexture[0]->TextureId(), 0, GL_TRUE, 0, GL_READ_WRITE, GL_R32I);
-    theGlContext->core42->glBindImageTexture (OpenGl_RT_VisualErrorImageRgh,
-      myRaytraceVisualErrorTexture[1]->TextureId(), 0, GL_TRUE, 0, GL_READ_WRITE, GL_R32I);
-    theGlContext->core42->glBindImageTexture (OpenGl_RT_TileOffsetsImageLft,
-      myRaytraceTileOffsetsTexture[0]->TextureId(), 0, GL_TRUE, 0, GL_READ_ONLY, GL_RG32I);
-    theGlContext->core42->glBindImageTexture (OpenGl_RT_TileOffsetsImageRgh,
-      myRaytraceTileOffsetsTexture[1]->TextureId(), 0, GL_TRUE, 0, GL_READ_ONLY, GL_RG32I);
-#endif
+    theGlContext->core42->glBindImageTexture (OpenGl_RT_OutputImage,
+                                              myRaytraceOutputTexture[theStereoView]->TextureId(), 0, GL_TRUE, 0, GL_READ_WRITE, GL_R32F);
+    theGlContext->core42->glBindImageTexture (OpenGl_RT_VisualErrorImage,
+                                              myRaytraceVisualErrorTexture[theStereoView]->TextureId(), 0, GL_TRUE, 0, GL_READ_WRITE, GL_R32I);
+    if (myRaytraceParameters.AdaptiveScreenSamplingAtomic)
+    {
+      theGlContext->core42->glBindImageTexture (OpenGl_RT_TileOffsetsImage,
+                                                myRaytraceTileOffsetsTexture[theStereoView]->TextureId(), 0, GL_TRUE, 0, GL_READ_ONLY, GL_RG32I);
+    }
+    else
+    {
+      theGlContext->core42->glBindImageTexture (OpenGl_RT_TileSamplesImage,
+                                                myRaytraceTileSamplesTexture[theStereoView]->TextureId(), 0, GL_TRUE, 0, GL_READ_WRITE, GL_R32I);
+    }
+  #else
+    (void )theStereoView;
+  #endif
   }
 
   if (!myTextureEnv.IsNull()
@@ -2847,7 +2717,8 @@ Standard_Boolean OpenGl_View::runRaytraceShaders (const Standard_Integer        
 
   if (myRaytraceParameters.GlobalIllumination) // path tracing
   {
-    aResult &= runPathtrace (theSizeX, theSizeY, theProjection, theReadDrawFbo, theGlContext);
+    aResult &= runPathtrace    (theSizeX, theSizeY, theProjection, theGlContext);
+    aResult &= runPathtraceOut (theProjection, theReadDrawFbo, theGlContext);
   }
   else // Whitted-style ray-tracing
   {
@@ -2869,13 +2740,9 @@ Standard_Boolean OpenGl_View::runRaytrace (const Standard_Integer        theSize
 {
   Standard_Boolean aResult = Standard_True;
 
-  bindRaytraceTextures (theGlContext);
-
-  Handle(OpenGl_FrameBuffer) aRenderImageFramebuffer;
-  Handle(OpenGl_FrameBuffer) aDepthSourceFramebuffer;
-
   // Choose proper set of frame buffers for stereo rendering
-  const Standard_Integer aFBOIdx (theProjection == Graphic3d_Camera::Projection_MonoRightEye);
+  const Standard_Integer aFBOIdx = (theProjection == Graphic3d_Camera::Projection_MonoRightEye) ? 1 : 0;
+  bindRaytraceTextures (theGlContext, aFBOIdx);
 
   if (myRenderParams.IsAntialiasingEnabled) // if second FSAA pass is used
   {
@@ -2945,8 +2812,8 @@ Standard_Boolean OpenGl_View::runRaytrace (const Standard_Integer        theSize
       aFramebuffer->ColorTexture()->Bind (theGlContext, OpenGl_RT_FsaaInputTexture);
     }
 
-    aRenderImageFramebuffer = myRaytraceFBO2[aFBOIdx];
-    aDepthSourceFramebuffer = myRaytraceFBO1[aFBOIdx];
+    const Handle(OpenGl_FrameBuffer)& aRenderImageFramebuffer = myRaytraceFBO2[aFBOIdx];
+    const Handle(OpenGl_FrameBuffer)& aDepthSourceFramebuffer = myRaytraceFBO1[aFBOIdx];
 
     glEnable (GL_DEPTH_TEST);
 
@@ -2986,11 +2853,8 @@ Standard_Boolean OpenGl_View::runRaytrace (const Standard_Integer        theSize
 Standard_Boolean OpenGl_View::runPathtrace (const Standard_Integer              theSizeX,
                                             const Standard_Integer              theSizeY,
                                             const Graphic3d_Camera::Projection  theProjection,
-                                            OpenGl_FrameBuffer*                 theReadDrawFbo,
                                             const Handle(OpenGl_Context)&       theGlContext)
 {
-  Standard_Boolean aResult = Standard_True;
-
   if (myToUpdateEnvironmentMap) // check whether the map was changed
   {
     myAccumFrames = myToUpdateEnvironmentMap = 0;
@@ -2999,15 +2863,13 @@ Standard_Boolean OpenGl_View::runPathtrace (const Standard_Integer              
   if (myRenderParams.CameraApertureRadius != myPrevCameraApertureRadius
    || myRenderParams.CameraFocalPlaneDist != myPrevCameraFocalPlaneDist)
   {
-
     myPrevCameraApertureRadius = myRenderParams.CameraApertureRadius;
     myPrevCameraFocalPlaneDist = myRenderParams.CameraFocalPlaneDist;
-
     myAccumFrames = 0;
   }
 
   // Choose proper set of frame buffers for stereo rendering
-  const Standard_Integer aFBOIdx (theProjection == Graphic3d_Camera::Projection_MonoRightEye);
+  const Standard_Integer aFBOIdx = (theProjection == Graphic3d_Camera::Projection_MonoRightEye) ? 1 : 0;
 
   if (myRaytraceParameters.AdaptiveScreenSampling)
   {
@@ -3016,106 +2878,120 @@ Standard_Boolean OpenGl_View::runPathtrace (const Standard_Integer              
       myTileSampler.Reset(); // reset tile sampler to its initial state
 
       // Adaptive sampling is starting at the second frame
-      myTileSampler.Upload (theGlContext,
-                            myRaytraceTileOffsetsTexture[aFBOIdx],
-                            myRaytraceParameters.NbTilesX,
-                            myRaytraceParameters.NbTilesY,
-                            false);
-    }
-  }
+      if (myRaytraceParameters.AdaptiveScreenSamplingAtomic)
+      {
+        myTileSampler.UploadOffsets (theGlContext, myRaytraceTileOffsetsTexture[aFBOIdx], false);
+      }
+      else
+      {
+        myTileSampler.UploadSamples (theGlContext, myRaytraceTileSamplesTexture[aFBOIdx], false);
+      }
 
-  bindRaytraceTextures (theGlContext);
-
-  Handle(OpenGl_FrameBuffer) aRenderImageFramebuffer;
-  Handle(OpenGl_FrameBuffer) aDepthSourceFramebuffer;
-  Handle(OpenGl_FrameBuffer) anAccumImageFramebuffer;
-
-  const Standard_Integer anImageId = (aFBOIdx != 0)
-                                   ? OpenGl_RT_OutputImageRgh
-                                   : OpenGl_RT_OutputImageLft;
-
-  const Standard_Integer anErrorId = (aFBOIdx != 0)
-                                   ? OpenGl_RT_VisualErrorImageRgh
-                                   : OpenGl_RT_VisualErrorImageLft;
-
-  const Standard_Integer anOffsetId = (aFBOIdx != 0)
-                                    ? OpenGl_RT_TileOffsetsImageRgh
-                                    : OpenGl_RT_TileOffsetsImageLft;
-
-  aRenderImageFramebuffer = myAccumFrames % 2 ? myRaytraceFBO1[aFBOIdx] : myRaytraceFBO2[aFBOIdx];
-  anAccumImageFramebuffer = myAccumFrames % 2 ? myRaytraceFBO2[aFBOIdx] : myRaytraceFBO1[aFBOIdx];
-
-  aDepthSourceFramebuffer = aRenderImageFramebuffer;
-
-  anAccumImageFramebuffer->ColorTexture()->Bind (theGlContext, OpenGl_RT_PrevAccumTexture);
-
-  aRenderImageFramebuffer->BindBuffer (theGlContext);
-
-  if (myAccumFrames == 0)
-  {
-    myRNG.SetSeed(); // start RNG from beginning
-  }
-
-  // Clear adaptive screen sampling images
-  if (myRaytraceParameters.AdaptiveScreenSampling)
-  {
-  #if !defined(GL_ES_VERSION_2_0)
-    if (myAccumFrames == 0 || (myAccumFrames == 1 && myCamera->IsStereo()))
-    {
+    #if !defined(GL_ES_VERSION_2_0)
       theGlContext->core44->glClearTexImage (myRaytraceOutputTexture[aFBOIdx]->TextureId(), 0, GL_RED, GL_FLOAT, NULL);
+    #endif
     }
 
+    // Clear adaptive screen sampling images
+  #if !defined(GL_ES_VERSION_2_0)
     theGlContext->core44->glClearTexImage (myRaytraceVisualErrorTexture[aFBOIdx]->TextureId(), 0, GL_RED_INTEGER, GL_INT, NULL);
   #endif
   }
 
-  // Set frame accumulation weight
-  myRaytraceProgram->SetUniform (theGlContext,
-    myUniformLocations[0][OpenGl_RT_uAccumSamples], myAccumFrames);
+  bindRaytraceTextures (theGlContext, aFBOIdx);
 
-  // Set random number generator seed
-  myRaytraceProgram->SetUniform (theGlContext,
-    myUniformLocations[0][OpenGl_RT_uFrameRndSeed], static_cast<Standard_Integer> (myRNG.NextInt() >> 2));
+  const Handle(OpenGl_FrameBuffer)& anAccumImageFramebuffer = myAccumFrames % 2 ? myRaytraceFBO2[aFBOIdx] : myRaytraceFBO1[aFBOIdx];
+  anAccumImageFramebuffer->ColorTexture()->Bind (theGlContext, OpenGl_RT_PrevAccumTexture);
+
+  // Set frame accumulation weight
+  myRaytraceProgram->SetUniform (theGlContext, myUniformLocations[0][OpenGl_RT_uAccumSamples], myAccumFrames);
 
   // Set image uniforms for render program
-  myRaytraceProgram->SetUniform (theGlContext,
-    myUniformLocations[0][OpenGl_RT_uRenderImage], anImageId);
-  myRaytraceProgram->SetUniform (theGlContext,
-    myUniformLocations[0][OpenGl_RT_uOffsetImage], anOffsetId);
-
-  glDisable (GL_DEPTH_TEST);
-
-  if (myRaytraceParameters.AdaptiveScreenSampling
-   && ((myAccumFrames > 0 && !myCamera->IsStereo()) || myAccumFrames > 1))
+  if (myRaytraceParameters.AdaptiveScreenSampling)
   {
-    glViewport (0,
-                0,
-                myTileSampler.TileSize() * myRaytraceParameters.NbTilesX,
-                myTileSampler.TileSize() * myRaytraceParameters.NbTilesY);
+    myRaytraceProgram->SetUniform (theGlContext, myUniformLocations[0][OpenGl_RT_uRenderImage], OpenGl_RT_OutputImage);
+    myRaytraceProgram->SetUniform (theGlContext, myUniformLocations[0][OpenGl_RT_uTilesImage],  OpenGl_RT_TileSamplesImage);
+    myRaytraceProgram->SetUniform (theGlContext, myUniformLocations[0][OpenGl_RT_uOffsetImage], OpenGl_RT_TileOffsetsImage);
+    myRaytraceProgram->SetUniform (theGlContext, myUniformLocations[0][OpenGl_RT_uTileSize], myTileSampler.TileSize());
+  }
+
+  const Handle(OpenGl_FrameBuffer)& aRenderImageFramebuffer = myAccumFrames % 2 ? myRaytraceFBO1[aFBOIdx] : myRaytraceFBO2[aFBOIdx];
+  aRenderImageFramebuffer->BindBuffer (theGlContext);
+  if (myRaytraceParameters.AdaptiveScreenSampling
+   && myRaytraceParameters.AdaptiveScreenSamplingAtomic)
+  {
+    // extend viewport here, so that tiles at boundaries (cut tile size by target rendering viewport)
+    // redirected to inner tiles (full tile size) are drawn entirely
+    const Graphic3d_Vec2i anOffsetViewport = myTileSampler.OffsetTilesViewport (myAccumFrames > 1); // shrunk offsets texture will be uploaded since 3rd frame
+    glViewport (0, 0, anOffsetViewport.x(), anOffsetViewport.y());
   }
 
   // Generate for the given RNG seed
-  theGlContext->core20fwd->glDrawArrays (GL_TRIANGLES, 0, 6);
+  glDisable (GL_DEPTH_TEST);
+
+  // Adaptive Screen Sampling computes the same overall amount of samples per frame redraw as normal Path Tracing,
+  // but distributes them unequally across pixels (grouped in tiles), so that some pixels do not receive new samples at all.
+  //
+  // Offsets map (redirecting currently rendered tile to another tile) allows performing Adaptive Screen Sampling in single pass,
+  // but current implementation relies on atomic float operations (AdaptiveScreenSamplingAtomic) for this.
+  // So that when atomic floats are not supported by GPU, multi-pass rendering is used instead.
+  //
+  // Single-pass rendering is more optimal due to smaller amount of draw calls,
+  // memory synchronization barriers, discarding most of the fragments and bad parallelization in case of very small amount of tiles requiring more samples.
+  // However, atomic operations on float values still produces different result (close, but not bit exact) making non-regression testing not robust.
+  // It should be possible following single-pass rendering approach but using extra accumulation buffer and resolving pass as possible improvement.
+  const int aNbPasses = myRaytraceParameters.AdaptiveScreenSampling
+                    && !myRaytraceParameters.AdaptiveScreenSamplingAtomic
+                      ? myTileSampler.MaxTileSamples()
+                      : 1;
+  if (myAccumFrames == 0)
+  {
+    myRNG.SetSeed(); // start RNG from beginning
+  }
+  for (int aPassIter = 0; aPassIter < aNbPasses; ++aPassIter)
+  {
+    myRaytraceProgram->SetUniform (theGlContext, myUniformLocations[0][OpenGl_RT_uFrameRndSeed], static_cast<Standard_Integer> (myRNG.NextInt() >> 2));
+    theGlContext->core20fwd->glDrawArrays (GL_TRIANGLES, 0, 6);
+    if (myRaytraceParameters.AdaptiveScreenSampling)
+    {
+    #if !defined(GL_ES_VERSION_2_0)
+      theGlContext->core44->glMemoryBarrier (GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+    #endif
+    }
+  }
+  aRenderImageFramebuffer->UnbindBuffer (theGlContext);
 
   if (myRaytraceParameters.AdaptiveScreenSampling
-   && ((myAccumFrames > 0 && !myCamera->IsStereo()) || myAccumFrames > 1))
+   && myRaytraceParameters.AdaptiveScreenSamplingAtomic)
   {
-    glViewport (0,
-                0,
-                theSizeX,
-                theSizeY);
+    glViewport (0, 0, theSizeX, theSizeY);
   }
+  return true;
+}
 
+// =======================================================================
+// function : runPathtraceOut
+// purpose  :
+// =======================================================================
+Standard_Boolean OpenGl_View::runPathtraceOut (const Graphic3d_Camera::Projection  theProjection,
+                                               OpenGl_FrameBuffer*                 theReadDrawFbo,
+                                               const Handle(OpenGl_Context)&       theGlContext)
+{
   // Output accumulated path traced image
   theGlContext->BindProgram (myOutImageProgram);
+
+  // Choose proper set of frame buffers for stereo rendering
+  const Standard_Integer aFBOIdx = (theProjection == Graphic3d_Camera::Projection_MonoRightEye) ? 1 : 0;
 
   if (myRaytraceParameters.AdaptiveScreenSampling)
   {
     // Set uniforms for display program
-    myOutImageProgram->SetUniform (theGlContext, "uRenderImage",   anImageId);
+    myOutImageProgram->SetUniform (theGlContext, "uRenderImage",   OpenGl_RT_OutputImage);
     myOutImageProgram->SetUniform (theGlContext, "uAccumFrames",   myAccumFrames);
-    myOutImageProgram->SetUniform (theGlContext, "uVarianceImage", anErrorId);
+    myOutImageProgram->SetUniform (theGlContext, "uVarianceImage", OpenGl_RT_VisualErrorImage);
     myOutImageProgram->SetUniform (theGlContext, "uDebugAdaptive", myRenderParams.ShowSamplingTiles ?  1 : 0);
+    myOutImageProgram->SetUniform (theGlContext, "uTileSize",      myTileSampler.TileSize());
+    myOutImageProgram->SetUniform (theGlContext, "uVarianceScaleFactor", myTileSampler.VarianceScaleFactor());
   }
 
   if (myRaytraceParameters.GlobalIllumination)
@@ -3135,40 +3011,33 @@ Standard_Boolean OpenGl_View::runPathtrace (const Standard_Integer              
   {
     theReadDrawFbo->BindBuffer (theGlContext);
   }
-  else
-  {
-    aRenderImageFramebuffer->UnbindBuffer (theGlContext);
-  }
 
+  const Handle(OpenGl_FrameBuffer)& aRenderImageFramebuffer = myAccumFrames % 2 ? myRaytraceFBO1[aFBOIdx] : myRaytraceFBO2[aFBOIdx];
   aRenderImageFramebuffer->ColorTexture()->Bind (theGlContext, OpenGl_RT_PrevAccumTexture);
 
-  glEnable (GL_DEPTH_TEST);
-
   // Copy accumulated image with correct depth values
+  glEnable (GL_DEPTH_TEST);
   theGlContext->core20fwd->glDrawArrays (GL_TRIANGLES, 0, 6);
 
   aRenderImageFramebuffer->ColorTexture()->Unbind (theGlContext, OpenGl_RT_PrevAccumTexture);
 
   if (myRaytraceParameters.AdaptiveScreenSampling)
   {
-    myRaytraceVisualErrorTexture[aFBOIdx]->Bind (theGlContext);
-
-    // Download visual error map from the GPU and build
-    // adjusted tile offsets for optimal image sampling
-    myTileSampler.GrabVarianceMap (theGlContext);
-
-    myTileSampler.Upload (theGlContext,
-                          myRaytraceTileOffsetsTexture[aFBOIdx],
-                          myRaytraceParameters.NbTilesX,
-                          myRaytraceParameters.NbTilesY,
-                          myAccumFrames > 0);
+    // Download visual error map from the GPU and build adjusted tile offsets for optimal image sampling
+    myTileSampler.GrabVarianceMap (theGlContext, myRaytraceVisualErrorTexture[aFBOIdx]);
+    if (myRaytraceParameters.AdaptiveScreenSamplingAtomic)
+    {
+      myTileSampler.UploadOffsets (theGlContext, myRaytraceTileOffsetsTexture[aFBOIdx], myAccumFrames != 0);
+    }
+    else
+    {
+      myTileSampler.UploadSamples (theGlContext, myRaytraceTileSamplesTexture[aFBOIdx], myAccumFrames != 0);
+    }
   }
 
   unbindRaytraceTextures (theGlContext);
-
   theGlContext->BindProgram (NULL);
-
-  return aResult;
+  return true;
 }
 
 // =======================================================================
@@ -3181,7 +3050,7 @@ Standard_Boolean OpenGl_View::raytrace (const Standard_Integer        theSizeX,
                                         OpenGl_FrameBuffer*           theReadDrawFbo,
                                         const Handle(OpenGl_Context)& theGlContext)
 {
-  if (!initRaytraceResources (theGlContext))
+  if (!initRaytraceResources (theSizeX, theSizeY, theGlContext))
   {
     return Standard_False;
   }

@@ -30,8 +30,16 @@
 #include <tk.h>
 #endif
 
+// prevent disabling some MSVC warning messages by VTK headers 
+#ifdef _MSC_VER
+#pragma warning(push)
+#endif
 #include <vtkRenderWindowInteractor.h>
 #include <vtkSmartPointer.h>
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+
 #include <IVtkTools_ShapePicker.hxx>
 #include <IVtkDraw_HighlightAndSelectionPipeline.hxx>
 #include <Aspect_Window.hxx>
@@ -50,6 +58,7 @@ public:
   virtual void Enable();
   virtual void Start() { }
 
+  const PSelector& Selector() const { return mySelector; }
   void SetShapePicker (const PSelector& theSelector);
   void SetPipelines (const Handle(ShapePipelineMap)& thePipelines);
   void SetOCCWindow (const Handle(Aspect_Window)& theWindow);

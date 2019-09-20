@@ -20,7 +20,7 @@
 #include <Standard_Handle.hxx>
 
 #include <BOPDS_PDS.hxx>
-#include <BOPCol_ListOfShape.hxx>
+#include <TopTools_ListOfShape.hxx>
 #include <BOPAlgo_PBuilder.hxx>
 #include <Standard_Boolean.hxx>
 #include <Standard_Real.hxx>
@@ -59,14 +59,16 @@ public:
   
   Standard_EXPORT static BOPAlgo_Splitter& Splitter();
   
-  Standard_EXPORT static BOPCol_ListOfShape& Shapes();
+  Standard_EXPORT static TopTools_ListOfShape& Shapes();
   
-  Standard_EXPORT static BOPCol_ListOfShape& Tools();
+  Standard_EXPORT static TopTools_ListOfShape& Tools();
   
   Standard_EXPORT static void SetBuilder (const BOPAlgo_PBuilder& theBuilder);
   
   Standard_EXPORT static void SetBuilderDefault();
-  
+
+  Standard_EXPORT static void SetDefaultOptions();
+
   Standard_EXPORT static void SetRunParallel (const Standard_Boolean theFlag);
   
   Standard_EXPORT static Standard_Boolean RunParallel();
@@ -86,6 +88,23 @@ public:
   Standard_EXPORT static void SetDrawWarnShapes(const Standard_Boolean bDraw);
 
   Standard_EXPORT static Standard_Boolean DrawWarnShapes();
+
+  Standard_EXPORT static void SetCheckInverted(const Standard_Boolean bCheck);
+
+  Standard_EXPORT static Standard_Boolean CheckInverted();
+
+  Standard_EXPORT static void SetUseOBB(const Standard_Boolean bUseOBB);
+
+  Standard_EXPORT static Standard_Boolean UseOBB();
+
+  Standard_EXPORT static void SetUnifyEdges(const Standard_Boolean bUE);
+  Standard_EXPORT static Standard_Boolean UnifyEdges();
+
+  Standard_EXPORT static void SetUnifyFaces(const Standard_Boolean bUF);
+  Standard_EXPORT static Standard_Boolean UnifyFaces();
+
+  Standard_EXPORT static void SetAngular(const Standard_Real bAngTol);
+  Standard_EXPORT static Standard_Real Angular();
 
 protected:
 

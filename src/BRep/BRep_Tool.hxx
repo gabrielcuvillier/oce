@@ -96,13 +96,28 @@ public:
   //! parametric  space of  the  face.  Returns   a NULL
   //! handle  if this curve  does not exist.  Returns in
   //! <First> and <Last> the parameter range.
-  Standard_EXPORT static Handle(Geom2d_Curve) CurveOnSurface (const TopoDS_Edge& E, const TopoDS_Face& F, Standard_Real& First, Standard_Real& Last);
+  //! If the surface is a plane the curve can be not stored but created a new
+  //! each time. The flag pointed by <theIsStored> serves to indicate storage status. 
+  //! It is valued if the pointer is non-null.
+  Standard_EXPORT static Handle(Geom2d_Curve) CurveOnSurface (const TopoDS_Edge& E,
+                                                              const TopoDS_Face& F,
+                                                              Standard_Real& First,
+                                                              Standard_Real& Last,
+                                                              Standard_Boolean* theIsStored = NULL);
   
   //! Returns the  curve associated to   the edge in the
   //! parametric  space of the   surface. Returns a NULL
   //! handle  if this curve does  not exist.  Returns in
   //! <First> and <Last> the parameter range.
-  Standard_EXPORT static Handle(Geom2d_Curve) CurveOnSurface (const TopoDS_Edge& E, const Handle(Geom_Surface)& S, const TopLoc_Location& L, Standard_Real& First, Standard_Real& Last);
+  //! If the surface is a plane the curve can be not stored but created a new
+  //! each time. The flag pointed by <theIsStored> serves to indicate storage status. 
+  //! It is valued if the pointer is non-null.
+  Standard_EXPORT static Handle(Geom2d_Curve) CurveOnSurface(const TopoDS_Edge& E,
+                                                              const Handle(Geom_Surface)& S,
+                                                              const TopLoc_Location& L,
+                                                              Standard_Real& First,
+                                                              Standard_Real& Last,
+                                                              Standard_Boolean* theIsStored = NULL);
 
   //! For the planar surface builds the 2d curve for the edge
   //! by projection of the edge on plane.
@@ -227,6 +242,9 @@ public:
   //! Returns True if the edge has regularity on some
   //! two surfaces
   Standard_EXPORT static Standard_Boolean HasContinuity (const TopoDS_Edge& E);
+
+  //! Returns the max continuity of edge between some surfaces or GeomAbs_C0 if there no such surfaces.
+  Standard_EXPORT static GeomAbs_Shape MaxContinuity (const TopoDS_Edge& theEdge);
   
   //! Returns the 3d point.
   Standard_EXPORT static gp_Pnt Pnt (const TopoDS_Vertex& V);

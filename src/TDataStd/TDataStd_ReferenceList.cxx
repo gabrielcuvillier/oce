@@ -56,10 +56,8 @@ static Handle(TDataStd_ReferenceList) SetAttr(const TDF_Label&       label,
 //function : TDataStd_ReferenceList
 //purpose  : Empty Constructor
 //=======================================================================
-TDataStd_ReferenceList::TDataStd_ReferenceList() 
-{
-
-}
+TDataStd_ReferenceList::TDataStd_ReferenceList() : myID(GetID())
+{}
 
 //=======================================================================
 //function : Set
@@ -382,6 +380,6 @@ Standard_OStream& TDataStd_ReferenceList::Dump (Standard_OStream& anOS) const
   Standard_Character sguid[Standard_GUID_SIZE_ALLOC];
   myID.ToCString(sguid);
   anOS << sguid;
-  anOS << endl;
+  anOS << std::endl;
   return anOS;
 }

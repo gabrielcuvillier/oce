@@ -19,7 +19,6 @@ void QABugs::Commands(Draw_Interpretor& theCommands) {
   QABugs::Commands_1(theCommands);
   QABugs::Commands_2(theCommands);
   QABugs::Commands_3(theCommands);
-  QABugs::Commands_4(theCommands);
   QABugs::Commands_5(theCommands);
   QABugs::Commands_6(theCommands);
   QABugs::Commands_7(theCommands);
@@ -36,6 +35,7 @@ void QABugs::Commands(Draw_Interpretor& theCommands) {
   QABugs::Commands_18(theCommands);
   QABugs::Commands_19(theCommands);
   QABugs::Commands_20(theCommands);
+  QABugs::Commands_BVH(theCommands);
 
   return;
 }

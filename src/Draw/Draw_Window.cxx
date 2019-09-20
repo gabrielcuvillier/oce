@@ -30,8 +30,8 @@
 #include <Image_AlienPixMap.hxx>
 #include <NCollection_List.hxx>
 
+extern Standard_Boolean Draw_Batch;
 extern Standard_Boolean Draw_VirtualWindows;
-static Tcl_Interp *interp;        /* Interpreter for this application. */
 static NCollection_List<Draw_Window::FCallbackBeforeTerminate> MyCallbacks;
 
 void Draw_Window::AddCallbackBeforeTerminate(FCallbackBeforeTerminate theCB)
@@ -72,26 +72,16 @@ void Draw_Window::RemoveCallbackBeforeTerminate(FCallbackBeforeTerminate theCB)
 
 static void Prompt(Tcl_Interp *Interp, int partial)
 {
-
-  // MKV 29.03.05
-#if ((TCL_MAJOR_VERSION > 8) || ((TCL_MAJOR_VERSION == 8) && (TCL_MINOR_VERSION >= 4))) && !defined(USE_NON_CONST)
-    const char *promptCmd;
-#else
-    char *promptCmd;
-#endif
-    int code;
-    Tcl_Channel  outChannel, errChannel;
-    outChannel = Tcl_GetStdChannel(TCL_STDOUT);
-    promptCmd = Tcl_GetVar(Interp,(char*)
-        (partial ? "tcl_prompt2" : "tcl_prompt1"), TCL_GLOBAL_ONLY);
-
+    Tcl_Channel errChannel;
+    Tcl_Channel outChannel = Tcl_GetStdChannel(TCL_STDOUT);
+    const char* promptCmd = Tcl_GetVar (Interp, partial ? "tcl_prompt2" : "tcl_prompt1", TCL_GLOBAL_ONLY);
     if (promptCmd == NULL) {
 defaultPrompt:
       if (!partial && outChannel) {
         Tcl_Write(outChannel, "% ", 2);
       }
     } else {
-      code = Tcl_Eval(Interp, promptCmd);
+      int code = Tcl_Eval(Interp, promptCmd);
       outChannel = Tcl_GetStdChannel(TCL_STDOUT);
       errChannel = Tcl_GetStdChannel(TCL_STDERR);
       if (code != TCL_OK) {
@@ -1109,14 +1099,14 @@ Standard_Boolean Init_Appli()
 {
   Draw_Interpretor& aCommands = Draw::GetInterpretor();
   aCommands.Init();
-  interp = aCommands.Interp();
+  Tcl_Interp *interp = aCommands.Interp();
+  Tcl_Init (interp);
 
-  Tcl_Init(interp) ;
   try {
     OCC_CATCH_SIGNALS
     Tk_Init(interp) ;
-  } catch  (Standard_Failure) {
-    cout <<" Pb au lancement de TK_Init "<<endl;
+  } catch  (Standard_Failure const&) {
+    std::cout <<" Pb au lancement de TK_Init "<<std::endl;
   }
 
   Tcl_StaticPackage(interp, "Tk", Tk_Init, (Tcl_PackageInitProc *) NULL);
@@ -1145,7 +1135,7 @@ Standard_Boolean Init_Appli()
     {
       Draw_DisplayConnection = new Aspect_DisplayConnection();
     }
-    catch (Standard_Failure)
+    catch (Standard_Failure const&)
     {
       std::cout << "Cannot open display. Interpret commands in batch mode." << std::endl;
       return Standard_False;
@@ -1301,9 +1291,9 @@ static void StdinProc(ClientData clientData, int )
    */
 
 prompt:
-  if (tty) Prompt(interp, gotPartial);
+  if (tty) Prompt(Draw::GetInterpretor().Interp(), gotPartial);
 
- } catch (Standard_Failure) {}
+ } catch (Standard_Failure const&) {}
 
 }
 
@@ -1634,10 +1624,12 @@ void DrawWindow::ReleaseMemDC(HDC theMemDC)
 \*--------------------------------------------------------*/
 void DrawWindow::SetPosition(Standard_Integer posX, Standard_Integer posY)
 {
-  SetWindowPos(win, 0,
-               posX, posY,
-               0, 0,
-               SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
+  UINT aFlags = SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER;
+  if (Draw_VirtualWindows)
+  {
+    aFlags |= SWP_NOSENDCHANGING;
+  }
+  SetWindowPos (win, 0, posX, posY, 0, 0, aFlags);
 }
 
 
@@ -1646,10 +1638,12 @@ void DrawWindow::SetPosition(Standard_Integer posX, Standard_Integer posY)
 \*--------------------------------------------------------*/
 void DrawWindow::SetDimension(Standard_Integer dimX, Standard_Integer dimY)
 {
-  SetWindowPos(win, 0,
-               0, 0,
-               dimX, dimY,
-               SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOZORDER);
+  UINT aFlags = SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOZORDER;
+  if (Draw_VirtualWindows)
+  {
+    aFlags |= SWP_NOSENDCHANGING;
+  }
+  SetWindowPos (win, 0, 0, 0, dimX, dimY, aFlags);
 }
 
 
@@ -1795,8 +1789,8 @@ static Standard_Boolean SaveBitmap (HBITMAP     theHBitmap,
   }
 
   Image_AlienPixMap anImage;
-  const Standard_Size aSizeRowBytes = Standard_Size(aBitmap.bmWidth) * 4;
-  if (!anImage.InitTrash (Image_Format_BGR32, Standard_Size(aBitmap.bmWidth), Standard_Size(aBitmap.bmHeight), aSizeRowBytes))
+  const Standard_Size aSizeRowBytes = ((Standard_Size(aBitmap.bmWidth) * 24 + 31) / 32) * 4; // 4 bytes alignment for GetDIBits()
+  if (!anImage.InitTrash (Image_Format_BGR, Standard_Size(aBitmap.bmWidth), Standard_Size(aBitmap.bmHeight), aSizeRowBytes))
   {
     return Standard_False;
   }
@@ -1809,7 +1803,7 @@ static Standard_Boolean SaveBitmap (HBITMAP     theHBitmap,
   aBitmapInfo.biWidth       = aBitmap.bmWidth;
   aBitmapInfo.biHeight      = aBitmap.bmHeight; // positive means bottom-up!
   aBitmapInfo.biPlanes      = 1;
-  aBitmapInfo.biBitCount    = 32; // use 32bit for automatic word-alignment per row
+  aBitmapInfo.biBitCount    = 24;
   aBitmapInfo.biCompression = BI_RGB;
 
   // Copy the pixels
@@ -2017,8 +2011,7 @@ static Tk_Window mainWindow;
 //* threads sinchronization *//
 DWORD  dwMainThreadId;
 console_semaphore_value volatile console_semaphore = WAIT_CONSOLE_COMMAND;
-#define THE_COMMAND_SIZE 1000     /* Console Command size */
-wchar_t console_command[THE_COMMAND_SIZE];
+wchar_t console_command[DRAW_COMMAND_SIZE + 1];
 bool volatile isTkLoopStarted = false;
 
 /*--------------------------------------------------------*\
@@ -2027,14 +2020,9 @@ bool volatile isTkLoopStarted = false;
 Standard_Boolean Init_Appli(HINSTANCE hInst,
                             HINSTANCE hPrevInst, int nShow, HWND& hWndFrame )
 {
-  Draw_Interpretor& aCommands = Draw::GetInterpretor();
-
   DWORD IDThread;
   HANDLE hThread;
   console_semaphore = STOP_CONSOLE;
-  aCommands.Init();
-  interp = aCommands.Interp();
-  Tcl_Init(interp) ;
 
   dwMainThreadId = GetCurrentThreadId();
 
@@ -2046,13 +2034,18 @@ Standard_Boolean Init_Appli(HINSTANCE hInst,
                            0,                       // use default creation flags
                            &IDThread);
   if (!hThread) {
-    cout << "Tcl/Tk main loop thread not created. Switching to batch mode..." << endl;
+    std::cout << "Failed to create Tcl/Tk main loop thread. Switching to batch mode..." << std::endl;
+    Draw_Batch = Standard_True;
+    Draw_Interpretor& aCommands = Draw::GetInterpretor();
+    aCommands.Init();
+    Tcl_Interp *interp = aCommands.Interp();
+    Tcl_Init(interp);
 #ifdef _TK
     try {
       OCC_CATCH_SIGNALS
-      Tk_Init(interp) ;
-    } catch  (Standard_Failure) {
-      cout <<" Pb au lancement de TK_Init "<<endl;
+      Tk_Init(interp);
+    } catch  (Standard_Failure& anExcept) {
+      std::cout << "Failed to initialize Tk: " << anExcept.GetMessageString() << std::endl;
     }
 
     Tcl_StaticPackage(interp, "Tk", Tk_Init, (Tcl_PackageInitProc *) NULL);
@@ -2121,7 +2114,7 @@ static DWORD WINAPI readStdinThreadFunc()
      && isConsoleInput)
     {
       DWORD aNbRead = 0;
-      if (ReadConsoleW (anStdIn, console_command, THE_COMMAND_SIZE, &aNbRead, NULL))
+      if (ReadConsoleW (anStdIn, console_command, DRAW_COMMAND_SIZE, &aNbRead, NULL))
       {
         console_command[aNbRead] = L'\0';
         console_semaphore = HAS_CONSOLE_COMMAND;
@@ -2141,7 +2134,7 @@ static DWORD WINAPI readStdinThreadFunc()
     }
 
     // fgetws() works only for characters within active locale (see setlocale())
-    if (fgetws (console_command, THE_COMMAND_SIZE, stdin))
+    if (fgetws (console_command, DRAW_COMMAND_SIZE, stdin))
     {
       console_semaphore = HAS_CONSOLE_COMMAND;
     }
@@ -2162,15 +2155,122 @@ void exitProc(ClientData /*dc*/)
   TerminateProcess(proc, 0);
 }
 
+// This is fixed version of TclpGetDefaultStdChannel() defined in tclWinChan.c
+// See https://core.tcl.tk/tcl/tktview/91c9bc1c457fda269ae18595944fc3c2b54d961d
+static Tcl_Channel
+TclpGetDefaultStdChannel(
+    int type)			/* One of TCL_STDIN, TCL_STDOUT, or
+				 * TCL_STDERR. */
+{
+    Tcl_Channel channel;
+    HANDLE handle;
+    int mode = -1;
+    const char *bufMode = NULL;
+    DWORD handleId = (DWORD) -1;
+				/* Standard handle to retrieve. */
+
+    switch (type) {
+    case TCL_STDIN:
+	handleId = STD_INPUT_HANDLE;
+	mode = TCL_READABLE;
+	bufMode = "line";
+	break;
+    case TCL_STDOUT:
+	handleId = STD_OUTPUT_HANDLE;
+	mode = TCL_WRITABLE;
+	bufMode = "line";
+	break;
+    case TCL_STDERR:
+	handleId = STD_ERROR_HANDLE;
+	mode = TCL_WRITABLE;
+	bufMode = "none";
+	break;
+    default:
+	Tcl_Panic("TclGetDefaultStdChannel: Unexpected channel type");
+	break;
+    }
+
+    handle = GetStdHandle(handleId);
+
+    /*
+     * Note that we need to check for 0 because Windows may return 0 if this
+     * is not a console mode application, even though this is not a valid
+     * handle.
+     */
+
+    if ((handle == INVALID_HANDLE_VALUE) || (handle == 0)) {
+	return (Tcl_Channel) NULL;
+    }
+
+    /*
+     * Make duplicate of the standard handle as it may be altered
+     * (closed, reopened with another type of the object etc.) by
+     * the system or a user code at any time, e.g. by call to _dup2()
+     */
+    if (! DuplicateHandle (GetCurrentProcess(), handle, 
+                           GetCurrentProcess(), &handle,
+                           0, FALSE, DUPLICATE_SAME_ACCESS)) {
+	return (Tcl_Channel) NULL;
+    }
+
+    channel = Tcl_MakeFileChannel(handle, mode);
+
+    if (channel == NULL) {
+	return (Tcl_Channel) NULL;
+    }
+
+    /*
+     * Set up the normal channel options for stdio handles.
+     */
+
+    if (Tcl_SetChannelOption(NULL,channel,"-translation","auto")!=TCL_OK ||
+	    Tcl_SetChannelOption(NULL,channel,"-eofchar","\032 {}")!=TCL_OK ||
+	    Tcl_SetChannelOption(NULL,channel,"-buffering",bufMode)!=TCL_OK) {
+	Tcl_Close(NULL, channel);
+	return (Tcl_Channel) NULL;
+    }
+    return channel;
+}
+
+// helper functuion
+static void ResetStdChannel (int type)
+{
+  Tcl_Channel aChannel = TclpGetDefaultStdChannel (type);
+  Tcl_SetStdChannel (aChannel, type);
+  if (aChannel)
+  {
+    Tcl_RegisterChannel (NULL, aChannel);
+  }
+}
+
 /*--------------------------------------------------------*\
 |  tkLoop: implements Tk_Main()-like behaviour in a separate thread
 \*--------------------------------------------------------*/
 static DWORD WINAPI tkLoop(VOID)
 {
-  Draw_Interpretor& aCommands = Draw::GetInterpretor();
-
   Tcl_CreateExitHandler(exitProc, 0);
+  
+  Draw_Interpretor& aCommands = Draw::GetInterpretor();
+  aCommands.Init();
+  Tcl_Interp *interp = aCommands.Interp();
+  Tcl_Init(interp);
+
+  // Work-around against issue with Tcl standard channels on Windows.
+  // These channels by default use OS handles owned by the system which
+  // may get invalidated e.g. by dup2() (see dlog command).
+  // If this happens, output to stdout from Tcl (e.g. puts) gets broken
+  // (sympthom is error message: "error writing "stdout": bad file number").
+  // To prevent this, we set standard channels using duplicate of system handles.
+  // The effect is that Tcl channel becomes independent on C file descriptor
+  // and even if stdout/stderr are redirected using dup2(), Tcl keeps using
+  // original device.
+  ResetStdChannel (TCL_STDOUT);
+  ResetStdChannel (TCL_STDERR);
+
 #if (TCL_MAJOR_VERSION > 8) || ((TCL_MAJOR_VERSION == 8) && (TCL_MINOR_VERSION >= 5))
+  // Plain Tcl (8.6.4+) initializes interpretor channels automatically, but 
+  // ActiveState Tcl (at least 8.6.4) does not seem to do that, so channels 
+  // need to be set into interpretor explicitly
   {
     Tcl_Channel aChannelIn  = Tcl_GetStdChannel (TCL_STDIN);
     Tcl_Channel aChannelOut = Tcl_GetStdChannel (TCL_STDOUT);
@@ -2203,15 +2303,15 @@ static DWORD WINAPI tkLoop(VOID)
       if (res != TCL_OK)
       {
 #if ((TCL_MAJOR_VERSION > 8) || ((TCL_MAJOR_VERSION == 8) && (TCL_MINOR_VERSION >= 5)))
-        cout << "tkLoop: error in Tk initialization. Tcl reported: " << Tcl_GetStringResult(interp) << endl;
+        std::cout << "tkLoop: error in Tk initialization. Tcl reported: " << Tcl_GetStringResult(interp) << std::endl;
 #else
-        cout << "tkLoop: error in Tk initialization. Tcl reported: " << interp->result << endl;
+        std::cout << "tkLoop: error in Tk initialization. Tcl reported: " << interp->result << std::endl;
 #endif
       }
     }
     catch (Standard_Failure)
     {
-      cout << "tkLoop: exception in TK_Init\n";
+      std::cout << "tkLoop: exception in TK_Init\n";
     }
     Tcl_StaticPackage (interp, "Tk", Tk_Init, (Tcl_PackageInitProc* ) NULL);
     mainWindow = Tk_MainWindow (interp);
@@ -2222,7 +2322,7 @@ static DWORD WINAPI tkLoop(VOID)
 #else
       fprintf (stderr, "%s\n", interp->result);
 #endif
-      cout << "tkLoop: Tk_MainWindow() returned NULL. Exiting...\n";
+      std::cout << "tkLoop: Tk_MainWindow() returned NULL. Exiting...\n";
       Tcl_Exit (0);
     }
     Tk_Name(mainWindow) = Tk_GetUid (Tk_SetAppName (mainWindow, "Draw"));
@@ -2245,27 +2345,28 @@ static DWORD WINAPI tkLoop(VOID)
   Standard_Boolean toLoop = Standard_True;
   while (toLoop)
   {
-    while(Tcl_DoOneEvent(TCL_ALL_EVENTS | TCL_DONT_WAIT));
+    // The natural way is first flushing events, already put into queue, and then processing custom code in-between.
+    // Unfortunately, Tcl has no API returning the number of queued events like XPending(), and only empty state can be checked.
+    // Since events can be continuously fed from parallel threads, Tcl_DoOneEvent might never return empty state at all.
+    const bool isTclEventQueueEmpty = Tcl_DoOneEvent(TCL_ALL_EVENTS | TCL_DONT_WAIT) == 0;
     if (console_semaphore == HAS_CONSOLE_COMMAND)
     {
-      TCollection_AsciiString aCmdUtf8 (console_command);
-      if (Draw_Interprete (aCmdUtf8.ToCString()))
+      const TCollection_AsciiString aCmdUtf8 (console_command);
+      const bool wasInterpreted = Draw_Interprete (aCmdUtf8.ToCString());
+      if (Draw_IsConsoleSubsystem)
       {
-        if (Draw_IsConsoleSubsystem) Prompt (interp, 0);
-      }
-      else
-      {
-        if (Draw_IsConsoleSubsystem) Prompt (interp, 1);
+        Prompt (interp, wasInterpreted ? 0 : 1);
       }
       console_semaphore = WAIT_CONSOLE_COMMAND;
     }
-    else
+    else if (isTclEventQueueEmpty)
     {
-      Sleep(100);
+      // release CPU while polling
+      Sleep (1);
     }
   #ifdef _TK
     // We should not exit until the Main Tk window is closed
-    toLoop = (Tk_GetNumMainWindows() > 0) || Draw_VirtualWindows;
+    toLoop = (Draw_VirtualWindows || Tk_GetNumMainWindows() > 0);
   #endif
   }
   Tcl_Exit(0);
@@ -2295,7 +2396,7 @@ void Run_Appli(HWND hWnd)
                            0,                       // use default creation flags
                            &IDThread);              // returns thread identifier
     if (!hThread) {
-      cout << "pb in creation of the thread reading stdin" << endl;
+      std::cout << "pb in creation of the thread reading stdin" << std::endl;
       Draw_IsConsoleSubsystem = Standard_False;
       Init_Appli (GetModuleHandleW (NULL),
                   GetModuleHandleW (NULL),

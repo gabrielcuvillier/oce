@@ -20,7 +20,7 @@
 #include <BinXCAFDrivers.hxx>
 #include <BinXCAFDrivers_DocumentRetrievalDriver.hxx>
 #include <BinXCAFDrivers_DocumentStorageDriver.hxx>
-#include <CDM_MessageDriver.hxx>
+#include <Message_Messenger.hxx>
 #include <Plugin_Macro.hxx>
 #include <Standard_Failure.hxx>
 #include <Standard_GUID.hxx>
@@ -38,7 +38,7 @@ const Handle(Standard_Transient)& BinXCAFDrivers::Factory(const Standard_GUID& t
   if (theGUID == BinXCAFStorageDriver)
   {
 #ifdef OCCT_DEBUG
-    cout << "BinXCAFDrivers : Storage Plugin" << endl;
+    std::cout << "BinXCAFDrivers : Storage Plugin" << std::endl;
 #endif
     static Handle(Standard_Transient) model_sd =
       new BinXCAFDrivers_DocumentStorageDriver;
@@ -48,7 +48,7 @@ const Handle(Standard_Transient)& BinXCAFDrivers::Factory(const Standard_GUID& t
   if (theGUID == BinXCAFRetrievalDriver)
   {
 #ifdef OCCT_DEBUG
-    cout << "BinXCAFDrivers : Retrieval Plugin" << endl;
+    std::cout << "BinXCAFDrivers : Retrieval Plugin" << std::endl;
 #endif
     static Handle(Standard_Transient) model_rd =
       new BinXCAFDrivers_DocumentRetrievalDriver;
@@ -74,7 +74,7 @@ void BinXCAFDrivers::DefineFormat (const Handle(TDocStd_Application)& theApp)
 //function :
 //purpose  : 
 //=======================================================================
-Handle(BinMDF_ADriverTable) BinXCAFDrivers::AttributeDrivers(const Handle(CDM_MessageDriver)& aMsgDrv) {
+Handle(BinMDF_ADriverTable) BinXCAFDrivers::AttributeDrivers(const Handle(Message_Messenger)& aMsgDrv) {
   // Standard Drivers
   Handle(BinMDF_ADriverTable) aTable = BinDrivers::AttributeDrivers(aMsgDrv);
 

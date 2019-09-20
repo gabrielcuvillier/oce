@@ -17,6 +17,7 @@
 
 #include <NCollection_AlignedAllocator.hxx>
 #include <OSD_Parallel.hxx>
+#include <Standard_Atomic.hxx>
 
 IMPLEMENT_STANDARD_RTTIEXT(Select3D_SensitivePrimitiveArray, Select3D_SensitiveSet)
 
@@ -154,12 +155,13 @@ private:
 // function : Select3D_SensitivePrimitiveArray
 // purpose  :
 // =======================================================================
-Select3D_SensitivePrimitiveArray::Select3D_SensitivePrimitiveArray (const Handle(SelectBasics_EntityOwner)& theOwnerId)
+Select3D_SensitivePrimitiveArray::Select3D_SensitivePrimitiveArray (const Handle(SelectMgr_EntityOwner)& theOwnerId)
 : Select3D_SensitiveSet (theOwnerId),
+  myPosData (NULL),
+  myPosStride (Standard_Size(-1)),
   myPrimType (Graphic3d_TOPA_UNDEFINED),
   myIndexLower (0),
   myIndexUpper (0),
-  myPosOffset (Standard_Size(-1)),
   myPatchSizeMax (1),
   myPatchDistance (ShortRealLast()),
   myIs3d (false),
@@ -242,7 +244,8 @@ bool Select3D_SensitivePrimitiveArray::InitTriangulation (const Handle(Graphic3d
   myIndices.Nullify();
   myIndexLower = 0;
   myIndexUpper = 0;
-  myPosOffset = Standard_Size(-1);
+  myPosData = NULL;
+  myPosStride = Standard_Size(-1);
   myBvhIndices.release();
   myIs3d = false;
   myInitLocation = theInitLoc;
@@ -253,27 +256,19 @@ bool Select3D_SensitivePrimitiveArray::InitTriangulation (const Handle(Graphic3d
     return false;
   }
 
-  for (Standard_Integer anAttribIter = 0; anAttribIter < theVerts->NbAttributes; ++anAttribIter)
+  Standard_Integer aPosAttribIndex = 0;
+  myPosData = theVerts->AttributeData (Graphic3d_TOA_POS, aPosAttribIndex, myPosStride);
+  if (myPosData == NULL)
   {
-    const Graphic3d_Attribute& anAttrib = theVerts->Attribute (anAttribIter);
-    if (anAttrib.Id == Graphic3d_TOA_POS)
-    {
-      if (anAttrib.DataType == Graphic3d_TOD_VEC3
-       || anAttrib.DataType == Graphic3d_TOD_VEC4)
-      {
-        myIs3d = true;
-      }
-      else if (anAttrib.DataType != Graphic3d_TOD_VEC2)
-      {
-        return false;
-      }
-
-      myPosOffset = theVerts->AttributeOffset (anAttribIter);
-      break;
-    }
+    return false;
   }
-  if (myPosOffset == Standard_Size(-1))
+
+  const Graphic3d_Attribute& anAttrib = theVerts->Attribute (aPosAttribIndex);
+  myIs3d = anAttrib.DataType == Graphic3d_TOD_VEC3
+        || anAttrib.DataType == Graphic3d_TOD_VEC4;
+  if (!myIs3d && anAttrib.DataType != Graphic3d_TOD_VEC2)
   {
+    myPosData = NULL;
     return false;
   }
 
@@ -364,7 +359,7 @@ bool Select3D_SensitivePrimitiveArray::InitTriangulation (const Handle(Graphic3d
       const Graphic3d_Vec2& aNode1 = getPosVec2 (aTriNodes[0]);
       const Graphic3d_Vec2& aNode2 = getPosVec2 (aTriNodes[1]);
       const Graphic3d_Vec2& aNode3 = getPosVec2 (aTriNodes[2]);
-      aCenter.xy() += (aNode1 + aNode2 + aNode3) / 3.0;
+      aCenter += Graphic3d_Vec3((aNode1 + aNode2 + aNode3) / 3.0);
     }
     if (myBvhIndices.HasPatches())
     {
@@ -421,7 +416,8 @@ bool Select3D_SensitivePrimitiveArray::InitPoints (const Handle(Graphic3d_Buffer
   myIndices.Nullify();
   myIndexLower = 0;
   myIndexUpper = 0;
-  myPosOffset = Standard_Size(-1);
+  myPosData = NULL;
+  myPosStride = Standard_Size(-1);
   myBvhIndices.release();
   myIs3d = false;
   myInitLocation = theInitLoc;
@@ -431,27 +427,19 @@ bool Select3D_SensitivePrimitiveArray::InitPoints (const Handle(Graphic3d_Buffer
     return false;
   }
 
-  for (Standard_Integer anAttribIter = 0; anAttribIter < theVerts->NbAttributes; ++anAttribIter)
+  Standard_Integer aPosAttribIndex = 0;
+  myPosData = theVerts->AttributeData (Graphic3d_TOA_POS, aPosAttribIndex, myPosStride);
+  if (myPosData == NULL)
   {
-    const Graphic3d_Attribute& anAttrib = theVerts->Attribute (anAttribIter);
-    if (anAttrib.Id == Graphic3d_TOA_POS)
-    {
-      if (anAttrib.DataType == Graphic3d_TOD_VEC3
-       || anAttrib.DataType == Graphic3d_TOD_VEC4)
-      {
-        myIs3d = true;
-      }
-      else if (anAttrib.DataType != Graphic3d_TOD_VEC2)
-      {
-        return false;
-      }
-
-      myPosOffset = theVerts->AttributeOffset (anAttribIter);
-      break;
-    }
+    return false;
   }
-  if (myPosOffset == Standard_Size(-1))
+
+  const Graphic3d_Attribute& anAttrib = theVerts->Attribute (aPosAttribIndex);
+  myIs3d = anAttrib.DataType == Graphic3d_TOD_VEC3
+        || anAttrib.DataType == Graphic3d_TOD_VEC4;
+  if (!myIs3d && anAttrib.DataType != Graphic3d_TOD_VEC2)
   {
+    myPosData = NULL;
     return false;
   }
 
@@ -542,7 +530,7 @@ bool Select3D_SensitivePrimitiveArray::InitPoints (const Handle(Graphic3d_Buffer
     else
     {
       aPnt2d = &getPosVec2 (aPointIndex);
-      aCenter.xy() += *aPnt2d;
+      aCenter += Graphic3d_Vec3(*aPnt2d);
     }
 
     if (myBvhIndices.HasPatches())
@@ -622,7 +610,7 @@ Handle(Select3D_SensitiveEntity) Select3D_SensitivePrimitiveArray::GetConnected(
 //function : Set
 //purpose  :
 //=======================================================================
-void Select3D_SensitivePrimitiveArray::Set (const Handle(SelectBasics_EntityOwner)& theOwnerId)
+void Select3D_SensitivePrimitiveArray::Set (const Handle(SelectMgr_EntityOwner)& theOwnerId)
 {
   base_type::Set (theOwnerId);
   if (!myGroups.IsNull())
@@ -907,7 +895,7 @@ Standard_Boolean Select3D_SensitivePrimitiveArray::Matches (SelectBasics_Selecti
    || theMgr.GetActiveSelectionType() == SelectBasics_SelectingVolumeManager::Point
    || !toDetectRange)
   {
-    if (!Select3D_SensitiveSet::Matches (theMgr, thePickResult))
+    if (!matches (theMgr, thePickResult, toDetectRange))
     {
       return Standard_False;
     }
@@ -927,51 +915,35 @@ Standard_Boolean Select3D_SensitivePrimitiveArray::Matches (SelectBasics_Selecti
     return Standard_True;
   }
 
-  Standard_Real aDepth = RealLast();
-  bool isFailed = false;
-  const bool toMatchAll = !theMgr.IsOverlapAllowed();
+  SelectBasics_PickResult aPickResult;
+  bool hasResults = false;
   for (Standard_Integer aGroupIter = 0; aGroupIter < myBvhIndices.NbElements; ++aGroupIter)
   {
     const Standard_Integer anElemIdx = myBvhIndices.Index (aGroupIter);
-    SelectBasics_PickResult aMatchResult;
     Handle(Select3D_SensitivePrimitiveArray)& aChild = myGroups->ChangeValue (anElemIdx);
-    const bool isMatched = aChild->Matches (theMgr, aMatchResult);
-    if (!myDetectedElemMap.IsNull())
+    if (aChild->Matches (theMgr, aPickResult))
     {
-      myDetectedElemMap->ChangeMap().Unite (aChild->myDetectedElemMap->Map());
-    }
-    if (!myDetectedNodeMap.IsNull())
-    {
-      myDetectedNodeMap->ChangeMap().Unite (aChild->myDetectedNodeMap->Map());
-    }
-
-    if (!isMatched)
-    {
-      if (toMatchAll)
+      hasResults = true;
+      if (!myDetectedElemMap.IsNull())
       {
-        isFailed = true;
-        if (!toDetectRange)
-        {
-          break;
-        }
+        myDetectedElemMap->ChangeMap().Unite (aChild->myDetectedElemMap->Map());
       }
-    }
-    else
-    {
-      if (aDepth > aMatchResult.Depth())
+      if (!myDetectedNodeMap.IsNull())
+      {
+        myDetectedNodeMap->ChangeMap().Unite (aChild->myDetectedNodeMap->Map());
+      }
+      if (thePickResult.Depth() > aPickResult.Depth())
       {
         myDetectedIdx = aGroupIter;
-        aDepth = aMatchResult.Depth();
+        thePickResult = aPickResult;
       }
     }
   }
-  if (isFailed)
+  if (!hasResults)
   {
-    thePickResult = SelectBasics_PickResult (RealLast(), RealLast());
     return Standard_False;
   }
-
-  thePickResult = SelectBasics_PickResult (aDepth, theMgr.DistToGeometryCenter (CenterOfGeometry()));
+  thePickResult.SetDistToGeomCenter(theMgr.DistToGeometryCenter(CenterOfGeometry()));
   return Standard_True;
 }
 
@@ -979,27 +951,21 @@ Standard_Boolean Select3D_SensitivePrimitiveArray::Matches (SelectBasics_Selecti
 // function : overlapsElement
 // purpose  :
 // =======================================================================
-Standard_Boolean Select3D_SensitivePrimitiveArray::overlapsElement (SelectBasics_SelectingVolumeManager& theMgr,
+Standard_Boolean Select3D_SensitivePrimitiveArray::overlapsElement (SelectBasics_PickResult& thePickResult,
+                                                                    SelectBasics_SelectingVolumeManager& theMgr,
                                                                     Standard_Integer theElemIdx,
-                                                                    Standard_Real& theMatchDepth)
+                                                                    Standard_Boolean theIsFullInside)
 {
   const Standard_Integer anElemIdx = myBvhIndices.Index (theElemIdx);
   if (!myGroups.IsNull())
   {
-    SelectBasics_PickResult aResult;
-    if (myGroups->Value (anElemIdx)->Matches (theMgr, aResult))
-    {
-      theMatchDepth = aResult.Depth();
-      return Standard_True;
-    }
-    theMatchDepth = RealLast();
-    return Standard_False;
+    return myGroups->Value (anElemIdx)->Matches (theMgr, thePickResult);
   }
 
   const Standard_Integer aPatchSize = myBvhIndices.PatchSize (theElemIdx);
   Select3D_BndBox3d aBox;
   Standard_Boolean aResult = Standard_False;
-  Standard_Real aMinDepth  = RealLast();
+  SelectBasics_PickResult aPickResult;
   switch (myPrimType)
   {
     case Graphic3d_TOPA_POINTS:
@@ -1020,16 +986,15 @@ Standard_Boolean Select3D_SensitivePrimitiveArray::overlapsElement (SelectBasics
           aPoint = vecToPnt (getPosVec2 (aPointIndex));
         }
 
-        Standard_Real aCurrentDepth = RealLast();
         if (myToDetectNode
          || myToDetectElem)
         {
-          if (theMgr.Overlaps (aPoint, aCurrentDepth))
+          if (theIsFullInside || theMgr.Overlaps (aPoint, aPickResult))
           {
-            if (aCurrentDepth <= myMinDepthNode)
+            if (aPickResult.Depth() <= myMinDepthNode)
             {
               myDetectedElem = myDetectedNode = aPointIndex;
-              myMinDepthElem = myMinDepthNode = aCurrentDepth;
+              myMinDepthElem = myMinDepthNode = aPickResult.Depth();
             }
             if (theMgr.GetActiveSelectionType() != SelectBasics_SelectingVolumeManager::Point)
             {
@@ -1045,7 +1010,7 @@ Standard_Boolean Select3D_SensitivePrimitiveArray::overlapsElement (SelectBasics
             aResult = Standard_True;
           }
         }
-        aMinDepth = Min (aMinDepth, aCurrentDepth);
+        thePickResult = SelectBasics_PickResult::Min (thePickResult, aPickResult);
       }
       break;
     }
@@ -1071,34 +1036,33 @@ Standard_Boolean Select3D_SensitivePrimitiveArray::overlapsElement (SelectBasics
           aPnts[2] = vecToPnt (getPosVec2 (aTriNodes[2]));
         }
 
-        Standard_Real aCurrentDepth = RealLast();
         if (myToDetectElem)
         {
-          if (theMgr.Overlaps (aPnts[0], aPnts[1], aPnts[2], Select3D_TOS_INTERIOR, aCurrentDepth))
+          if (theIsFullInside || theMgr.Overlaps (aPnts[0], aPnts[1], aPnts[2], Select3D_TOS_INTERIOR, aPickResult))
           {
-            if (aCurrentDepth <= myMinDepthElem)
+            if (aPickResult.Depth() <= myMinDepthElem)
             {
               myDetectedElem = aTriIndex;
-              myMinDepthElem = aCurrentDepth;
+              myMinDepthElem = aPickResult.Depth();
             }
             aResult = Standard_True;
-          }
-          if (!myDetectedElemMap.IsNull()
-            && theMgr.GetActiveSelectionType() != SelectBasics_SelectingVolumeManager::Point)
-          {
-            myDetectedElemMap->ChangeMap().Add (aTriIndex);
+            if (!myDetectedElemMap.IsNull()
+              && theMgr.GetActiveSelectionType() != SelectBasics_SelectingVolumeManager::Point)
+            {
+              myDetectedElemMap->ChangeMap().Add(aTriIndex);
+            }
           }
         }
         if (myToDetectNode)
         {
           for (int aNodeIter = 0; aNodeIter < 3; ++aNodeIter)
           {
-            if (theMgr.Overlaps (aPnts[aNodeIter], aCurrentDepth))
+            if (theIsFullInside || theMgr.Overlaps (aPnts[aNodeIter], aPickResult))
             {
-              if (aCurrentDepth <= myMinDepthNode)
+              if (aPickResult.Depth() <= myMinDepthNode)
               {
                 myDetectedNode = aTriNodes[aNodeIter];
-                myMinDepthNode = aCurrentDepth;
+                myMinDepthNode = aPickResult.Depth();
               }
               if (!myDetectedNodeMap.IsNull()
                 && theMgr.GetActiveSelectionType() != SelectBasics_SelectingVolumeManager::Point)
@@ -1115,19 +1079,19 @@ Standard_Boolean Select3D_SensitivePrimitiveArray::overlapsElement (SelectBasics
           {
             int aNode1 = aNodeIter == 0 ? 2 : (aNodeIter - 1);
             int aNode2 = aNodeIter;
-            if (theMgr.Overlaps (aPnts[aNode1], aPnts[aNode2], aCurrentDepth))
+            if (theIsFullInside || theMgr.Overlaps (aPnts[aNode1], aPnts[aNode2], aPickResult))
             {
-              if (aCurrentDepth <= myMinDepthEdge)
+              if (aPickResult.Depth() <= myMinDepthEdge)
               {
                 myDetectedEdgeNode1 = aTriNodes[aNode1];
                 myDetectedEdgeNode2 = aTriNodes[aNode2];
-                myMinDepthEdge = aCurrentDepth;
+                myMinDepthEdge = aPickResult.Depth();
               }
               aResult = Standard_True;
             }
           }
         }
-        aMinDepth = Min (aMinDepth, aCurrentDepth);
+        thePickResult = SelectBasics_PickResult::Min (thePickResult, aPickResult);
       }
       break;
     }
@@ -1137,7 +1101,6 @@ Standard_Boolean Select3D_SensitivePrimitiveArray::overlapsElement (SelectBasics
     }
   }
 
-  theMatchDepth = aMinDepth;
   return aResult;
 }
 
@@ -1155,13 +1118,14 @@ Standard_Real Select3D_SensitivePrimitiveArray::distanceToCOG (SelectBasics_Sele
 // purpose  :
 // =======================================================================
 Standard_Boolean Select3D_SensitivePrimitiveArray::elementIsInside (SelectBasics_SelectingVolumeManager& theMgr,
-                                                                    const Standard_Integer               theElemIdx)
+                                                                    Standard_Integer theElemIdx,
+                                                                    Standard_Boolean theIsFullInside)
 {
   const Standard_Integer anElemIdx = myBvhIndices.Index (theElemIdx);
   if (!myGroups.IsNull())
   {
-    Standard_Real aDummy;
-    return overlapsElement (theMgr, theElemIdx, aDummy);
+    SelectBasics_PickResult aDummy;
+    return myGroups->Value (anElemIdx)->Matches (theMgr, aDummy);
   }
 
   const Standard_Integer aPatchSize = myBvhIndices.PatchSize (theElemIdx);
@@ -1184,7 +1148,7 @@ Standard_Boolean Select3D_SensitivePrimitiveArray::elementIsInside (SelectBasics
         {
           aPoint = vecToPnt (getPosVec2 (aPointIndex));
         }
-        if (!theMgr.Overlaps (aPoint))
+        if (!theIsFullInside && !theMgr.Overlaps (aPoint))
         {
           return Standard_False;
         }
@@ -1225,9 +1189,9 @@ Standard_Boolean Select3D_SensitivePrimitiveArray::elementIsInside (SelectBasics
           aPnts[2] = vecToPnt (getPosVec2 (aTriNodes[2]));
         }
 
-        if (!theMgr.Overlaps (aPnts[0])
-         || !theMgr.Overlaps (aPnts[1])
-         || !theMgr.Overlaps (aPnts[2]))
+        if (!theIsFullInside && (   !theMgr.Overlaps (aPnts[0])
+                                 || !theMgr.Overlaps (aPnts[1])
+                                 || !theMgr.Overlaps (aPnts[2])))
         {
           return Standard_False;
         }

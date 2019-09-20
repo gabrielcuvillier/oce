@@ -12,32 +12,26 @@
 // commercial license or contractual agreement.
 
 #include <Graphic3d_CView.hxx>
+
+#include <Graphic3d_Layer.hxx>
 #include <Graphic3d_MapIteratorOfMapOfStructure.hxx>
 #include <Graphic3d_StructureManager.hxx>
 
 IMPLEMENT_STANDARD_RTTIEXT(Graphic3d_CView,Graphic3d_DataStructureManager)
-
-namespace
-{
-  static const int THE_DEFAULT_LAYERS[] = { Graphic3d_ZLayerId_Top,
-                                            Graphic3d_ZLayerId_Topmost,
-                                            Graphic3d_ZLayerId_BotOSD,
-                                            Graphic3d_ZLayerId_TopOSD };
-
-  static const int THE_NB_DEFAULT_LAYERS = sizeof(THE_DEFAULT_LAYERS) / sizeof(*THE_DEFAULT_LAYERS);
-
-}
 
 //=======================================================================
 //function : Constructor
 //purpose  :
 //=======================================================================
 Graphic3d_CView::Graphic3d_CView (const Handle(Graphic3d_StructureManager)& theMgr)
-: myStructureManager       (theMgr),
+: myBgColor                (Quantity_NOC_BLACK),
+  myStructureManager       (theMgr),
+  myCamera                 (new Graphic3d_Camera()),
   myHiddenObjects          (new Graphic3d_NMapOfTransient()),
   myIsInComputedMode       (Standard_False),
   myIsActive               (Standard_False),
   myIsRemoved              (Standard_False),
+  myShadingModel           (Graphic3d_TOSM_FRAGMENT),
   myVisualization          (Graphic3d_TOV_WIREFRAME)
 {
   myId = myStructureManager->Identification (this);
@@ -355,6 +349,28 @@ void Graphic3d_CView::Update (const Graphic3d_ZLayerId theLayerId)
 }
 
 // =======================================================================
+// function : InvalidateZLayerBoundingBox
+// purpose  :
+// =======================================================================
+void Graphic3d_CView::InvalidateZLayerBoundingBox (const Graphic3d_ZLayerId theLayerId)
+{
+  if (Handle(Graphic3d_Layer) aLayer = Layer (theLayerId))
+  {
+    aLayer->InvalidateBoundingBox();
+    return;
+  }
+
+  for (NCollection_List<Handle(Graphic3d_Layer)>::Iterator aLayerIter (Layers()); aLayerIter.More(); aLayerIter.Next())
+  {
+    const Handle(Graphic3d_Layer)& aLayer = aLayerIter.Value();
+    if (aLayer->NbOfTransformPersistenceObjects() > 0)
+    {
+      aLayer->InvalidateBoundingBox();
+    }
+  }
+}
+
+// =======================================================================
 // function : ContainsFacet
 // purpose  :
 // =======================================================================
@@ -404,40 +420,25 @@ void Graphic3d_CView::DisplayedStructures (Graphic3d_MapOfStructure& theStructur
 // =======================================================================
 Bnd_Box Graphic3d_CView::MinMaxValues (const Standard_Boolean theToIncludeAuxiliary) const
 {
-  Bnd_Box aResult;
-
   if (!IsDefined())
   {
-    return aResult;
+    return Bnd_Box();
   }
 
-  Handle(Graphic3d_Camera) aCamera = Camera();
-  Standard_Integer aWinWidth  = 0;
-  Standard_Integer aWinHeight = 0;
+  const Handle(Graphic3d_Camera)& aCamera = Camera();
+  Graphic3d_Vec2i aWinSize;
+  Window()->Size (aWinSize.x(), aWinSize.y());
 
-  Window()->Size (aWinWidth, aWinHeight);
-
-  for (Standard_Integer aLayer = 0; aLayer < THE_NB_DEFAULT_LAYERS; ++aLayer)
+  Bnd_Box aResult;
+  for (NCollection_List<Handle(Graphic3d_Layer)>::Iterator aLayerIter (Layers()); aLayerIter.More(); aLayerIter.Next())
   {
-    Bnd_Box aBox = ZLayerBoundingBox (THE_DEFAULT_LAYERS[aLayer],
-                                      aCamera,
-                                      aWinWidth,
-                                      aWinHeight,
-                                      theToIncludeAuxiliary);
+    const Handle(Graphic3d_Layer)& aLayer = aLayerIter.Value();
+    Bnd_Box aBox = aLayer->BoundingBox (Identification(),
+                                        aCamera,
+                                        aWinSize.x(), aWinSize.y(),
+                                        theToIncludeAuxiliary);
     aResult.Add (aBox);
   }
-
-  Standard_Integer aMaxZLayer = ZLayerMax();
-  for (Standard_Integer aLayerId = Graphic3d_ZLayerId_Default; aLayerId <= aMaxZLayer; ++aLayerId)
-  {
-    Bnd_Box aBox = ZLayerBoundingBox (aLayerId,
-                                      aCamera,
-                                      aWinWidth,
-                                      aWinHeight,
-                                      theToIncludeAuxiliary);
-    aResult.Add(aBox);
-  }
-
   return aResult;
 }
 
@@ -452,21 +453,15 @@ Standard_Real Graphic3d_CView::ConsiderZoomPersistenceObjects()
     return 1.0;
   }
 
-  Handle(Graphic3d_Camera) aCamera = Camera();
-  Standard_Integer aWinWidth  = 0;
-  Standard_Integer aWinHeight = 0;
-
-  Window()->Size (aWinWidth, aWinHeight);
+  const Handle(Graphic3d_Camera)& aCamera = Camera();
+  Graphic3d_Vec2i aWinSize;
+  Window()->Size (aWinSize.x(), aWinSize.y());
 
   Standard_Real aMaxCoef = 1.0;
-  for (Standard_Integer aLayer = 0; aLayer < THE_NB_DEFAULT_LAYERS; ++aLayer)
+  for (NCollection_List<Handle(Graphic3d_Layer)>::Iterator aLayerIter (Layers()); aLayerIter.More(); aLayerIter.Next())
   {
-    aMaxCoef = Max (aMaxCoef, considerZoomPersistenceObjects (THE_DEFAULT_LAYERS[aLayer], aCamera, aWinWidth, aWinHeight));
-  }
-
-  for (Standard_Integer aLayer = Graphic3d_ZLayerId_Default; aLayer <= ZLayerMax(); ++aLayer)
-  {
-    aMaxCoef = Max (aMaxCoef, considerZoomPersistenceObjects (aLayer, aCamera, aWinWidth, aWinHeight));
+    const Handle(Graphic3d_Layer)& aLayer = aLayerIter.Value();
+    aMaxCoef = Max (aMaxCoef, aLayer->considerZoomPersistenceObjects (Identification(), aCamera, aWinSize.x(), aWinSize.y()));
   }
 
   return aMaxCoef;
@@ -617,7 +612,7 @@ void Graphic3d_CView::Compute()
 // function : Clear
 // purpose  :
 // =======================================================================
-void Graphic3d_CView::Clear (const Handle(Graphic3d_Structure)& theStructure,
+void Graphic3d_CView::Clear (Graphic3d_Structure* theStructure,
                              const Standard_Boolean theWithDestruction)
 {
   const Standard_Integer anIndex = IsComputed (theStructure);
@@ -633,8 +628,8 @@ void Graphic3d_CView::Clear (const Handle(Graphic3d_Structure)& theStructure,
 // function : Connect
 // purpose  :
 // =======================================================================
-void Graphic3d_CView::Connect (const Handle(Graphic3d_Structure)& theMother,
-                               const Handle(Graphic3d_Structure)& theDaughter)
+void Graphic3d_CView::Connect (const Graphic3d_Structure* theMother,
+                               const Graphic3d_Structure* theDaughter)
 {
   Standard_Integer anIndexM = IsComputed (theMother);
   Standard_Integer anIndexD = IsComputed (theDaughter);
@@ -651,8 +646,8 @@ void Graphic3d_CView::Connect (const Handle(Graphic3d_Structure)& theMother,
 // function : Disconnect
 // purpose  :
 // =======================================================================
-void Graphic3d_CView::Disconnect (const Handle(Graphic3d_Structure)& theMother,
-                                  const Handle(Graphic3d_Structure)& theDaughter)
+void Graphic3d_CView::Disconnect (const Graphic3d_Structure* theMother,
+                                  const Graphic3d_Structure* theDaughter)
 {
   Standard_Integer anIndexM = IsComputed (theMother);
   Standard_Integer anIndexD = IsComputed (theDaughter);
@@ -847,25 +842,25 @@ void Graphic3d_CView::Erase (const Handle(Graphic3d_Structure)& theStructure)
     return;
   }
 
-  Graphic3d_TypeOfAnswer anAnswer = acceptDisplay (theStructure->Visual());
-  if (!ComputedMode())
-  {
-    anAnswer = Graphic3d_TOA_YES;
-  }
-
+  const Graphic3d_TypeOfAnswer anAnswer = myIsInComputedMode ? acceptDisplay (theStructure->Visual()) : Graphic3d_TOA_YES;
   if (anAnswer != Graphic3d_TOA_COMPUTE)
   {
     eraseStructure (theStructure->CStructure());
   }
-  else if (anAnswer == Graphic3d_TOA_COMPUTE && myIsInComputedMode)
+
+  const Standard_Integer anIndex = !myStructsToCompute.IsEmpty() ? IsComputed (theStructure) : 0;
+  if (anIndex != 0)
   {
-    const Standard_Integer anIndex = IsComputed (theStructure);
-    if (anIndex != 0)
+    if (anAnswer == Graphic3d_TOA_COMPUTE
+     && myIsInComputedMode)
     {
       const Handle(Graphic3d_Structure)& aCompStruct = myStructsComputed.ChangeValue (anIndex);
       eraseStructure (aCompStruct->CStructure());
     }
+    myStructsComputed .Remove (anIndex);
+    myStructsToCompute.Remove (anIndex);
   }
+
   myStructsDisplayed.Remove (theStructure);
   Update (theStructure->GetZLayer());
 }
@@ -963,16 +958,16 @@ Standard_Boolean Graphic3d_CView::IsComputed (const Standard_Integer theStructId
 // function : IsComputed
 // purpose  :
 // =======================================================================
-Standard_Integer Graphic3d_CView::IsComputed (const Handle(Graphic3d_Structure)& theStructure) const
+Standard_Integer Graphic3d_CView::IsComputed (const Graphic3d_Structure* theStructure) const
 {
   const Standard_Integer aStructId  = theStructure->Identification();
-  const Standard_Integer aNbStructs = myStructsToCompute.Length();
-  for (Standard_Integer aStructIter = 1; aStructIter <= aNbStructs; ++aStructIter)
+  Standard_Integer aStructIndex = 1;
+  for (Graphic3d_SequenceOfStructure::Iterator aStructIter (myStructsToCompute); aStructIter.More(); aStructIter.Next(), ++aStructIndex)
   {
-    const Handle(Graphic3d_Structure)& aStruct = myStructsToCompute.Value (aStructIter);
+    const Handle(Graphic3d_Structure)& aStruct = aStructIter.Value();
     if (aStruct->Identification() == aStructId)
     {
-      return aStructIter;
+      return aStructIndex;
     }
   }
   return 0;
@@ -1081,10 +1076,23 @@ void Graphic3d_CView::CopySettings (const Handle(Graphic3d_CView)& theOther)
   SetBackgroundImage       (theOther->BackgroundImage());
   SetBackgroundImageStyle  (theOther->BackgroundImageStyle());
   SetTextureEnv            (theOther->TextureEnv());
-  SetCullingEnabled        (theOther->IsCullingEnabled());
   SetShadingModel          (theOther->ShadingModel());
   SetBackfacingModel       (theOther->BackfacingModel());
   SetCamera                (new Graphic3d_Camera (theOther->Camera()));
   SetLights                (theOther->Lights());
   SetClipPlanes            (theOther->ClipPlanes());
+}
+
+// =======================================================================
+// function : SetShadingModel
+// purpose  :
+// =======================================================================
+void Graphic3d_CView::SetShadingModel (Graphic3d_TypeOfShadingModel theModel)
+{
+  if (theModel == Graphic3d_TOSM_DEFAULT)
+  {
+    throw Standard_ProgramError ("Graphic3d_CView::SetShadingModel() - attempt to set invalid Shading Model!");
+  }
+
+  myShadingModel = theModel;
 }

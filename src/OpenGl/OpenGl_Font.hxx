@@ -61,6 +61,9 @@ public:
   //! Destroy object - will release GPU memory if any
   Standard_EXPORT virtual void Release (OpenGl_Context* theCtx) Standard_OVERRIDE;
 
+  //! Returns estimated GPU memory usage.
+  Standard_EXPORT virtual Standard_Size EstimatedDataSize() const Standard_OVERRIDE;
+
   //! @return key of shared resource
   inline const TCollection_AsciiString& ResourceKey() const
   {
@@ -103,12 +106,6 @@ public:
     return myDescender;
   }
 
-  //! @return default line spacing (the baseline-to-baseline distance)
-  inline float LineSpacing() const
-  {
-    return myLineSpacing;
-  }
-
   //! Render glyph to texture if not already.
   //! @param theCtx       active context
   //! @param theUChar     unicode symbol to render
@@ -132,8 +129,6 @@ protected:
   Handle(Font_FTFont)     myFont;          //!< FreeType font instance
   Standard_ShortReal      myAscender;      //!< ascender     provided my FT font
   Standard_ShortReal      myDescender;     //!< descender    provided my FT font
-  Standard_ShortReal      myLineSpacing;   //!< line spacing provided my FT font
-  Standard_Integer        myTileSizeX;     //!< tile width
   Standard_Integer        myTileSizeY;     //!< tile height
   Standard_Integer        myLastTileId;    //!< id of last tile
   RectI                   myLastTilePx;

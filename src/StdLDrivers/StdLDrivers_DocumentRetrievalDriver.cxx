@@ -100,7 +100,7 @@ Handle(StdObjMgt_Persistent) StdLDrivers_DocumentRetrievalDriver::read (
     myReaderStatus = PCDM_RS_OpenError;
 
     Standard_SStream aMsg;
-    aMsg << anException << endl;
+    aMsg << anException << std::endl;
     throw Standard_Failure(aMsg.str().c_str());
   }
   
@@ -123,7 +123,7 @@ Handle(StdObjMgt_Persistent) StdLDrivers_DocumentRetrievalDriver::read (
     myReaderStatus = PCDM_RS_NoDocument;
 
     Standard_SStream aMsg;
-    aMsg << "could not find any document in this file" << endl;
+    aMsg << "could not find any document in this file" << std::endl;
     throw Standard_Failure(aMsg.str().c_str());
   }
 
@@ -161,7 +161,7 @@ Handle(StdObjMgt_Persistent) StdLDrivers_DocumentRetrievalDriver::read (
       {
         aMsg << anUnknownTypes(i);
         if (i < anUnknownTypes.Length()) aMsg << ",";
-        else                             aMsg << endl;
+        else                             aMsg << std::endl;
       }
 
       throw Standard_Failure(aMsg.str().c_str());
@@ -184,7 +184,7 @@ Handle(StdObjMgt_Persistent) StdLDrivers_DocumentRetrievalDriver::read (
       aFileDriver->ReadReferenceType (aRef, aType);
       anError = Storage_VSOk;
     }
-    catch (Storage_StreamTypeMismatchError)
+    catch (Storage_StreamTypeMismatchError const&)
     {
       anError = Storage_VSTypeMismatch;
     }
@@ -208,9 +208,9 @@ Handle(StdObjMgt_Persistent) StdLDrivers_DocumentRetrievalDriver::read (
       aReadData.ReadPersistentObject (i);
       anError = Storage_VSOk;
     }
-    catch (Storage_StreamTypeMismatchError) { anError = Storage_VSTypeMismatch; }
-    catch (Storage_StreamFormatError      ) { anError = Storage_VSFormatError;  }
-    catch (Storage_StreamReadError        ) { anError = Storage_VSFormatError;  }
+    catch (Storage_StreamTypeMismatchError const&) { anError = Storage_VSTypeMismatch; }
+    catch (Storage_StreamFormatError const&      ) { anError = Storage_VSFormatError;  }
+    catch (Storage_StreamReadError const&        ) { anError = Storage_VSFormatError;  }
 
     raiseOnStorageError (anError);
   }
@@ -252,37 +252,37 @@ void StdLDrivers_DocumentRetrievalDriver::raiseOnStorageError (Storage_Error the
   case Storage_VSNotOpen:
   case Storage_VSAlreadyOpen:
     myReaderStatus = PCDM_RS_OpenError;
-    aMsg << "Stream Open Error" << endl;
+    aMsg << "Stream Open Error" << std::endl;
     throw Standard_Failure(aMsg.str().c_str());
 
   case Storage_VSModeError:
     myReaderStatus = PCDM_RS_WrongStreamMode;
-    aMsg << "Stream is opened with a wrong mode for operation" << endl;
+    aMsg << "Stream is opened with a wrong mode for operation" << std::endl;
     throw Standard_Failure(aMsg.str().c_str());
 
   case Storage_VSSectionNotFound:
     myReaderStatus = PCDM_RS_FormatFailure;
-    aMsg << "Section is not found" << endl;
+    aMsg << "Section is not found" << std::endl;
     throw Standard_Failure(aMsg.str().c_str());
 
   case Storage_VSFormatError:
     myReaderStatus = PCDM_RS_FormatFailure;
-    aMsg << "Wrong format error" << endl;
+    aMsg << "Wrong format error" << std::endl;
     throw Standard_Failure(aMsg.str().c_str());
 
   case Storage_VSUnknownType:
     myReaderStatus = PCDM_RS_TypeFailure;
-    aMsg << "Try to read an unknown type" << endl;
+    aMsg << "Try to read an unknown type" << std::endl;
     throw Standard_Failure(aMsg.str().c_str());
 
   case Storage_VSTypeMismatch:
     myReaderStatus = PCDM_RS_TypeFailure;
-    aMsg << "Try to read a wrong primitive type" << endl;
+    aMsg << "Try to read a wrong primitive type" << std::endl;
     throw Standard_Failure(aMsg.str().c_str());
 
   default:
     myReaderStatus = PCDM_RS_DriverFailure;
-    aMsg << "Retrieval Driver Failure" << endl;
+    aMsg << "Retrieval Driver Failure" << std::endl;
     throw Standard_Failure(aMsg.str().c_str());
   }
 }

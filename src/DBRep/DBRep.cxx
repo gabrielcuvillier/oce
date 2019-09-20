@@ -64,10 +64,10 @@ extern Draw_Viewer dout;
 
 Standard_EXPORT void DBRep_WriteColorOrientation ()
 {
-  cout << "\nrouge  FORWARD";
-  cout << "\nbleu   REVERSED";
-  cout << "\nrose   EXTERNAL";
-  cout << "\norange INTERNAL"<<endl;
+  std::cout << "\nrouge  FORWARD";
+  std::cout << "\nbleu   REVERSED";
+  std::cout << "\nrose   EXTERNAL";
+  std::cout << "\norange INTERNAL"<<std::endl;
 }
 
 Standard_EXPORT Draw_Color DBRep_ColorOrientation (const TopAbs_Orientation Or) 
@@ -341,8 +341,8 @@ static Standard_Integer triangles(Draw_Interpretor& ,
   if (n == 1) {
     disptriangles = !disptriangles;
 #ifdef OCCT_DEBUG
-    if (disptriangles) cout <<"Triangulations are always displayed"<<endl;
-    else cout <<"Triangulations are displayed only if there is no geometric representation"<<endl;
+    if (disptriangles) std::cout <<"Triangulations are always displayed"<<std::endl;
+    else std::cout <<"Triangulations are displayed only if there is no geometric representation"<<std::endl;
 #endif
   }
   else {
@@ -370,11 +370,22 @@ static Standard_Integer triangles(Draw_Interpretor& ,
 static Standard_Integer tclean(Draw_Interpretor& , 
 			       Standard_Integer n, const char** a)
 {
-  if (n < 1) return 1;
-  
-  for (Standard_Integer i = 1; i < n; i++) {
+  if (n == 1) return 1;
+
+  Standard_Integer aStart = 1;
+  Standard_Boolean toRemoveGeometry = Standard_False;
+  if (strcmp(a[1], "-geom") == 0)
+  {
+    aStart++;
+    toRemoveGeometry = Standard_True;
+  }
+
+  for (Standard_Integer i = aStart; i < n; i++) {
     TopoDS_Shape S = DBRep::Get(a[i]);
-    BRepTools::Clean(S);
+    if (toRemoveGeometry)
+      BRepTools::CleanGeometry(S);
+    else
+      BRepTools::Clean(S);
   }
   return 0;
 }
@@ -391,8 +402,8 @@ static Standard_Integer polygons(Draw_Interpretor& ,
   if (n == 1) {
     disppolygons = !disppolygons;
 #ifdef OCCT_DEBUG
-    if (disppolygons) cout <<"Polygons are always displayed"<<endl;
-    else cout <<"Polygons are displayed only if there is no geometric representation"<<endl;
+    if (disppolygons) std::cout <<"Polygons are always displayed"<<std::endl;
+    else std::cout <<"Polygons are displayed only if there is no geometric representation"<<std::endl;
 #endif
   }
   else {
@@ -1140,6 +1151,7 @@ static Standard_Integer normals (Draw_Interpretor& theDI,
   Standard_Boolean toUseMesh = Standard_False;
   Standard_Real    aLength   = 10.0;
   Standard_Integer aNbAlongU = 1, aNbAlongV = 1;
+  Standard_Boolean bPrint = Standard_False;
   for (Standard_Integer anArgIter = 2; anArgIter< theArgNum; ++anArgIter)
   {
     TCollection_AsciiString aParam (theArgs[anArgIter]);
@@ -1204,9 +1216,13 @@ static Standard_Integer normals (Draw_Interpretor& theDI,
         return 1;
       }
     }
+    else if (aParam == "-print")
+    {
+      bPrint = Standard_True;
+    }
     else
     {
-      std::cout << "Syntax error: unknwon argument '" << aParam << "'\n";
+      std::cout << "Syntax error: unknown argument '" << aParam << "'\n";
       return 1;
     }
   }
@@ -1225,12 +1241,29 @@ static Standard_Integer normals (Draw_Interpretor& theDI,
 
   for (NCollection_DataMap<TopoDS_Face, NCollection_Vector<std::pair<gp_Pnt, gp_Pnt> > >::Iterator aFaceIt (aNormals); aFaceIt.More(); aFaceIt.Next())
   {
-    const Draw_Color aColor = DBRep_ColorOrientation (aFaceIt.Key().Orientation());
+    Standard_Boolean bReverse = Standard_False;
+    TopAbs_Orientation aFaceOri = aFaceIt.Key().Orientation();
+    const Draw_Color aColor = DBRep_ColorOrientation (aFaceOri);
+    if (aFaceOri == TopAbs_REVERSED)
+      bReverse = Standard_True;
+
     for (NCollection_Vector<std::pair<gp_Pnt, gp_Pnt> >::Iterator aNormalsIt (aFaceIt.Value()); aNormalsIt.More(); aNormalsIt.Next())
     {
       const std::pair<gp_Pnt, gp_Pnt>& aVec = aNormalsIt.Value();
       Handle(Draw_Segment3D) aSeg = new Draw_Segment3D(aVec.first, aVec.second, aColor);
       dout << aSeg;
+      if (bPrint)
+      {
+        // Make the normal vector from the points
+        gp_Vec aV(aVec.first, aVec.second);
+        if (bReverse)
+          aV.Reverse();
+
+        // Print values of the vector avoiding printing "-0" values
+        theDI << "(" << (aV.X() == 0 ? 0 : aV.X()) << ", "
+                     << (aV.Y() == 0 ? 0 : aV.Y()) << ", "
+                     << (aV.Z() == 0 ? 0 : aV.Z()) << ")\n";
+      }
     }
   }
 
@@ -1258,42 +1291,43 @@ void  DBRep::Set(const Standard_CString Name, const TopoDS_Shape& S)
   Draw::Set(Name,D);
 }
 //=======================================================================
-//function : Get
-//purpose  : 
+//function : getShape
+//purpose  :
 //=======================================================================
-TopoDS_Shape  DBRep::Get(Standard_CString& name,
-			 const TopAbs_ShapeEnum typ,
-			 const Standard_Boolean complain)
+TopoDS_Shape DBRep::getShape (Standard_CString& theName,
+                              TopAbs_ShapeEnum theType,
+                              Standard_Boolean theToComplain)
 {
-  Standard_Boolean pick = name[0] == '.';
-  TopoDS_Shape S;
-  Handle(DBRep_DrawableShape) D;
-  Handle(Draw_Drawable3D) DD = Draw::Get(name,complain);
-  if (!DD.IsNull()) 
-    D = Handle(DBRep_DrawableShape)::DownCast(DD);
-  if (!D.IsNull()) {
-    S = D->Shape();
-    if (typ != TopAbs_SHAPE) {
-      if (typ != S.ShapeType()) {
-	// try to find prom pick
-	if (pick) {
-	  Standard_Real u,v;
-	  DBRep_DrawableShape::LastPick(S,u,v);
-	}
-      } 
-      if (typ != S.ShapeType()) {
-	if (complain) {
-	  cout << name << " is not a ";
-	  TopAbs::Print(typ,cout);
-	  cout << " but a ";
-	  TopAbs::Print(S.ShapeType(),cout);
-	  cout << endl;
-	}
-	S = TopoDS_Shape();
-      }
-    }
+  const Standard_Boolean toPick = theName[0] == '.';
+  Handle(DBRep_DrawableShape) aDrawable = Handle(DBRep_DrawableShape)::DownCast (Draw::Get (theName));
+  if (aDrawable.IsNull())
+  {
+    return TopoDS_Shape();
   }
-  return S;
+
+  TopoDS_Shape aShape = aDrawable->Shape();
+  if (theType != TopAbs_SHAPE
+   && theType != aShape.ShapeType()
+   && toPick)
+  {
+    // try to find prom pick
+    Standard_Real u, v;
+    DBRep_DrawableShape::LastPick (aShape, u, v);
+  }
+  if (theType != TopAbs_SHAPE
+   && theType != aShape.ShapeType())
+  {
+    if (theToComplain)
+    {
+      std::cout << theName << " is not a ";
+      TopAbs::Print (theType, std::cout);
+      std::cout << " but a ";
+      TopAbs::Print (aShape.ShapeType(), std::cout);
+      std::cout << std::endl;
+    }
+    return TopoDS_Shape();
+  }
+  return aShape;
 }
 
 static Standard_Integer XProgress (Draw_Interpretor& di, Standard_Integer argc, const char **argv)
@@ -1390,12 +1424,18 @@ void  DBRep::BasicCommands(Draw_Interpretor& theCommands)
   theCommands.Add("hlr" ,"[no]hlr, rg1, rgn, hid, ang",__FILE__,hlr ,g);
   theCommands.Add("vori","vori [name1 ...], edges are colored by orientation (see vconn)",__FILE__,dispor,g);
   theCommands.Add("triangles", "triangles [name1]..., display triangles of shapes if exists",__FILE__, triangles, g);
-  theCommands.Add("tclean", "tclean [name1]..., erase triangulations and polygons on triangulations from shapes",__FILE__, tclean, g); 
+  theCommands.Add("tclean", "tclean [-geom] [name1]..., depending on using or not key -geom, \n" 
+                   "\t erase geometry objects from shapes - key is used or \n"
+                   "\t erase triangulations and polygons on triangulations from shapes - key is omitted \n",
+                    __FILE__, tclean, g); 
   theCommands.Add("polygons", "polygons [name1]..., display polygons of shapes if exists",__FILE__, polygons, g);
   theCommands.Add("vconn","vconn [name1 ...] , edges are colored by number of faces (see vori)",__FILE__,dispor,g);
   theCommands.Add("discretisation","discretisation [nbpoints]",__FILE__,discretisation,g);
   theCommands.Add("compound","compound [name1 name2 ..] compound",__FILE__,compound,g);
-  theCommands.Add("add","add name1 name2",__FILE__,add,g);
+  theCommands.Add("add",
+                  "add what where"
+                  "\n  adds shape \"what\" to shape \"where\" ",
+                  __FILE__,add,g);
   theCommands.Add("explode","explode name [Cd/C/So/Sh/F/W/E/V]",__FILE__,explode,g);
   theCommands.Add("nexplode","stable numbered explode for vertex, edge and face: nexplode name [V/E/F]",__FILE__,nexplode,g);
   theCommands.Add("exwire","exwire wirename",__FILE__,exwire,g);
@@ -1406,7 +1446,7 @@ void  DBRep::BasicCommands(Draw_Interpretor& theCommands)
   theCommands.Add("treverse","treverse name1 name2 ...",__FILE__,orientation,g);
   theCommands.Add("complement","complement name1 name2 ...",__FILE__,orientation,g);
   theCommands.Add("invert","invert name, reverse subshapes",__FILE__,invert,g);
-  theCommands.Add("normals","normals shape [Length {10}] [-NbAlongU {1}] [-NbAlongV {1}] [-UseMesh], display normals",__FILE__,normals,g);
+  theCommands.Add("normals","normals shape [Length {10}] [-NbAlongU {1}] [-NbAlongV {1}] [-UseMesh] [-print], display normals",__FILE__,normals,g);
   theCommands.Add("nbshapes",
                   "\n nbshapes s - shows the number of sub-shapes in <s>;\n nbshapes s -t - shows the number of sub-shapes in <s> counting the same sub-shapes with different location as different sub-shapes.",
                   __FILE__,nbshapes,g);
@@ -1483,7 +1523,7 @@ static Standard_Boolean stest(const Handle(Draw_Drawable3D)& d)
   return d->IsInstance(STANDARD_TYPE(DBRep_DrawableShape));
 }
 
-static void ssave(const Handle(Draw_Drawable3D)&d, ostream& OS)
+static void ssave(const Handle(Draw_Drawable3D)&d, std::ostream& OS)
 {
   Handle(DBRep_DrawableShape) 
     N = Handle(DBRep_DrawableShape)::DownCast(d);
@@ -1498,7 +1538,7 @@ static void ssave(const Handle(Draw_Drawable3D)&d, ostream& OS)
   S.Write(N->Shape(),OS);
 }
 
-static Handle(Draw_Drawable3D) srestore (istream& IS)
+static Handle(Draw_Drawable3D) srestore (std::istream& IS)
 {
   BRep_Builder B;
   BRepTools_ShapeSet S(B);
@@ -1532,7 +1572,7 @@ static Draw_SaveAndRestore ssr("DBRep_DrawableShape",
 
 void dumps (const TopoDS_Shape& S)
 {
- BRepTools::Dump(S,cout);
+ BRepTools::Dump(S,std::cout);
 }
 
 //=======================================================================

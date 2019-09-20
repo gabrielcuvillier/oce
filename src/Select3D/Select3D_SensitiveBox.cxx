@@ -22,7 +22,7 @@ IMPLEMENT_STANDARD_RTTIEXT(Select3D_SensitiveBox,Select3D_SensitiveEntity)
 // Function: Select3D_SensitiveBox
 // Purpose :
 //==================================================
-Select3D_SensitiveBox::Select3D_SensitiveBox (const Handle(SelectBasics_EntityOwner)& theOwnerId,
+Select3D_SensitiveBox::Select3D_SensitiveBox (const Handle(SelectMgr_EntityOwner)& theOwnerId,
                                               const Bnd_Box& theBox)
 : Select3D_SensitiveEntity (theOwnerId)
 {
@@ -40,7 +40,7 @@ Select3D_SensitiveBox::Select3D_SensitiveBox (const Handle(SelectBasics_EntityOw
 // Purpose :
 //==================================================
 
-Select3D_SensitiveBox::Select3D_SensitiveBox (const Handle(SelectBasics_EntityOwner)& theOwnerId,
+Select3D_SensitiveBox::Select3D_SensitiveBox (const Handle(SelectMgr_EntityOwner)& theOwnerId,
                                               const Standard_Real theXMin,
                                               const Standard_Real theYMin,
                                               const Standard_Real theZMin,
@@ -86,23 +86,18 @@ Handle(Select3D_SensitiveEntity) Select3D_SensitiveBox::GetConnected()
 Standard_Boolean Select3D_SensitiveBox::Matches (SelectBasics_SelectingVolumeManager& theMgr,
                                                  SelectBasics_PickResult& thePickResult)
 {
-  thePickResult = SelectBasics_PickResult (RealLast(), RealLast());
-
   if (!theMgr.IsOverlapAllowed()) // check for inclusion
   {
     Standard_Boolean isInside = Standard_True;
     return theMgr.Overlaps (myBox.CornerMin(), myBox.CornerMax(), &isInside) && isInside;
   }
 
-  Standard_Real aDepth;
-  if (!theMgr.Overlaps (myBox.CornerMin(), myBox.CornerMax(), aDepth)) // check for overlap
+  if (!theMgr.Overlaps (myBox.CornerMin(), myBox.CornerMax(), thePickResult)) // check for overlap
   {
     return Standard_False;
   }
 
-  thePickResult = SelectBasics_PickResult (
-    aDepth, theMgr.DistToGeometryCenter (myCenter3d));
-
+  thePickResult.SetDistToGeomCenter (theMgr.DistToGeometryCenter(myCenter3d));
   return Standard_True;
 }
 

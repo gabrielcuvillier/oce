@@ -14,7 +14,7 @@
 // commercial license or contractual agreement.
 
 
-#include <CDM_MessageDriver.hxx>
+#include <Message_Messenger.hxx>
 #include <NCollection_LocalArray.hxx>
 #include <Standard_Type.hxx>
 #include <TColStd_HArray1OfByte.hxx>
@@ -34,7 +34,7 @@ IMPLEMENT_DOMSTRING (IsDeltaOn,        "delta")
 //function : XmlMDataStd_ByteArrayDriver
 //purpose  : Constructor
 //=======================================================================
-XmlMDataStd_ByteArrayDriver::XmlMDataStd_ByteArrayDriver(const Handle(CDM_MessageDriver)& theMsgDriver)
+XmlMDataStd_ByteArrayDriver::XmlMDataStd_ByteArrayDriver(const Handle(Message_Messenger)& theMsgDriver)
      : XmlMDF_ADriver (theMsgDriver, NULL)
 {
 
@@ -55,7 +55,7 @@ Handle(TDF_Attribute) XmlMDataStd_ByteArrayDriver::NewEmpty() const
 //=======================================================================
 Standard_Boolean XmlMDataStd_ByteArrayDriver::Paste(const XmlObjMgt_Persistent&  theSource,
                                                     const Handle(TDF_Attribute)& theTarget,
-                                                    XmlObjMgt_RRelocationTable&  ) const
+                                                    XmlObjMgt_RRelocationTable&  theRelocTable) const
 {
   Standard_Integer aFirstInd, aLastInd, aValue;
   const XmlObjMgt_Element& anElement = theSource;
@@ -70,7 +70,7 @@ Standard_Boolean XmlMDataStd_ByteArrayDriver::Paste(const XmlObjMgt_Persistent& 
       TCollection_ExtendedString("Cannot retrieve the first index"
                                  " for ByteArray attribute as \"")
         + aFirstIndex + "\"";
-    WriteMessage (aMessageString);
+    myMessageDriver->Send (aMessageString, Message_Fail);
     return Standard_False;
   }
 
@@ -81,7 +81,7 @@ Standard_Boolean XmlMDataStd_ByteArrayDriver::Paste(const XmlObjMgt_Persistent& 
       TCollection_ExtendedString("Cannot retrieve the last index"
                                  " for ByteArray attribute as \"")
         + aFirstIndex + "\"";
-    WriteMessage (aMessageString);
+    myMessageDriver->Send (aMessageString, Message_Fail);
     return Standard_False;
   }
 
@@ -90,12 +90,23 @@ Standard_Boolean XmlMDataStd_ByteArrayDriver::Paste(const XmlObjMgt_Persistent& 
     TCollection_ExtendedString aMessageString =
       TCollection_ExtendedString("The last index is greater than the first index"
                                  " for ByteArray attribute \"");
-    WriteMessage (aMessageString);
+    myMessageDriver->Send (aMessageString, Message_Fail);
     return Standard_False;
   }
 
 
   Handle(TDataStd_ByteArray) aByteArray = Handle(TDataStd_ByteArray)::DownCast(theTarget);
+  
+  // attribute id
+  Standard_GUID aGUID;
+  XmlObjMgt_DOMString aGUIDStr = anElement.getAttribute(::AttributeIDString());
+  if (aGUIDStr.Type() == XmlObjMgt_DOMString::LDOM_NULL)
+    aGUID = TDataStd_ByteArray::GetID(); //default case
+  else
+    aGUID = Standard_GUID(Standard_CString(aGUIDStr.GetString())); // user defined case
+
+  aByteArray->SetID(aGUID);
+
   Handle(TColStd_HArray1OfByte) hArr = new TColStd_HArray1OfByte(aFirstInd, aLastInd);
   TColStd_Array1OfByte& arr = hArr->ChangeArray1();
 
@@ -109,8 +120,8 @@ Standard_Boolean XmlMDataStd_ByteArrayDriver::Paste(const XmlObjMgt_Persistent& 
         TCollection_ExtendedString("Cannot retrieve integer member"
                                    " for ByteArray attribute as \"")
                                    + aValueStr + "\"";
-      WriteMessage (aMessageString);
-      return Standard_False;
+      myMessageDriver->Send (aMessageString, Message_Warning);
+      aValue = 0;
     }
     arr.SetValue(i, (Standard_Byte) aValue);
   }
@@ -118,7 +129,7 @@ Standard_Boolean XmlMDataStd_ByteArrayDriver::Paste(const XmlObjMgt_Persistent& 
   
   Standard_Boolean aDelta(Standard_False);
   
-  if(XmlMDataStd::DocumentVersion() > 2) {
+  if(theRelocTable.GetHeaderData()->StorageVersion().IntegerValue() > 2) {
     Standard_Integer aDeltaValue;
     if (!anElement.getAttribute(::IsDeltaOn()).GetInteger(aDeltaValue)) 
     {
@@ -126,27 +137,16 @@ Standard_Boolean XmlMDataStd_ByteArrayDriver::Paste(const XmlObjMgt_Persistent& 
         TCollection_ExtendedString("Cannot retrieve the isDelta value"
                                    " for ByteArray attribute as \"")
                                    + aDeltaValue + "\"";
-      WriteMessage (aMessageString);
+      myMessageDriver->Send (aMessageString, Message_Fail);
       return Standard_False;
     } 
     else
       aDelta = aDeltaValue != 0;
   }
 #ifdef OCCT_DEBUG
-  else if(XmlMDataStd::DocumentVersion() == -1)
-    cout << "Current DocVersion field is not initialized. "  <<endl;
+    std::cout << "Current Document Format Version = " << theRelocTable.GetHeaderData()->StorageVersion().IntegerValue() <<std::endl;
 #endif
   aByteArray->SetDelta(aDelta);
-
-  // attribute id
-  Standard_GUID aGUID;
-  XmlObjMgt_DOMString aGUIDStr = anElement.getAttribute(::AttributeIDString());
-  if (aGUIDStr.Type() == XmlObjMgt_DOMString::LDOM_NULL)
-    aGUID = TDataStd_ByteArray::GetID(); //default case
-  else
-    aGUID = Standard_GUID(Standard_CString(aGUIDStr.GetString())); // user defined case
-
-  aByteArray->SetID(aGUID);
 
   return Standard_True;
 }

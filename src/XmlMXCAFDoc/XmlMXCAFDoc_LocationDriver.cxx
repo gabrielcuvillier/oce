@@ -14,7 +14,7 @@
 // commercial license or contractual agreement.
 
 
-#include <CDM_MessageDriver.hxx>
+#include <Message_Messenger.hxx>
 #include <Standard_Type.hxx>
 #include <TDF_Attribute.hxx>
 #include <TopLoc_Datum3D.hxx>
@@ -41,7 +41,7 @@ IMPLEMENT_DOMSTRING (LocIdString,    "locId")
 //purpose  : Constructor
 //=======================================================================
 XmlMXCAFDoc_LocationDriver::XmlMXCAFDoc_LocationDriver
-                        (const Handle(CDM_MessageDriver)& theMsgDriver)
+                        (const Handle(Message_Messenger)& theMsgDriver)
       : XmlMDF_ADriver (theMsgDriver, "xcaf", "Location")
       , myLocations(0)
 {}
@@ -104,7 +104,7 @@ void XmlMXCAFDoc_LocationDriver::Translate (const TopLoc_Location&      theLoc,
   if( myLocations == 0 )
   {
 #ifdef OCCT_DEBUG
-    cout<<"Pointer to LocationSet is NULL\n";
+    std::cout<<"Pointer to LocationSet is NULL\n";
 #endif
     return;
   }
@@ -148,7 +148,7 @@ Standard_Boolean XmlMXCAFDoc_LocationDriver::Translate
   if (aLocElem == NULL)
     return Standard_False;
   
-  Standard_Integer aFileVer = XmlMNaming::DocumentVersion();
+  Standard_Integer aFileVer = theMap.GetHeaderData()->StorageVersion().IntegerValue();
   if( aFileVer > 5 && myLocations == 0 )
   {
     return Standard_False;

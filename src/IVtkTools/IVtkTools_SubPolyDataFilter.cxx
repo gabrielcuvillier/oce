@@ -15,13 +15,20 @@
 
 #include <IVtkTools_SubPolyDataFilter.hxx>
 #include <IVtkVTK_ShapeData.hxx>
+
+// prevent disabling some MSVC warning messages by VTK headers 
+#ifdef _MSC_VER
+#pragma warning(push)
+#endif
 #include <vtkCellData.h>
 #include <vtkIdList.h>
 #include <vtkIdTypeArray.h>
 #include <vtkInformation.h>
 #include <vtkInformationVector.h>
 #include <vtkObjectFactory.h>
-
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 vtkStandardNewMacro(IVtkTools_SubPolyDataFilter)
 
@@ -31,7 +38,7 @@ vtkStandardNewMacro(IVtkTools_SubPolyDataFilter)
 //================================================================
 IVtkTools_SubPolyDataFilter::IVtkTools_SubPolyDataFilter()
 {
-  myIdsArrayName = IVtkVTK_ShapeData::ARRNAME_SUBSHAPE_IDS;
+  myIdsArrayName = IVtkVTK_ShapeData::ARRNAME_SUBSHAPE_IDS();
   myDoFiltering = true;
 }
 

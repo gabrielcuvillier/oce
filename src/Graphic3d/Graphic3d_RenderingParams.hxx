@@ -16,7 +16,8 @@
 #ifndef _Graphic3d_RenderingParams_HeaderFile
 #define _Graphic3d_RenderingParams_HeaderFile
 
-#include <Graphic3d_Mat4.hxx>
+#include <Graphic3d_AspectText3d.hxx>
+#include <Graphic3d_TransformPers.hxx>
 #include <Graphic3d_RenderTransparentMethod.hxx>
 #include <Graphic3d_RenderingMode.hxx>
 #include <Graphic3d_StereoMode.hxx>
@@ -44,15 +45,61 @@ public:
     Anaglyph_UserDefined           //!< use externally specified matrices
   };
 
+  //! Statistics display flags.
+  //! If not specified otherwise, the counter value is computed for a single rendered frame.
+  enum PerfCounters
+  {
+    PerfCounters_NONE        = 0x000, //!< no stats
+    PerfCounters_FrameRate   = 0x001, //!< Frame Rate,        frames per second (number of frames within elapsed time)
+    PerfCounters_CPU         = 0x002, //!< CPU utilization as frames per second (number of frames within CPU utilization time (rendering thread))
+    PerfCounters_Layers      = 0x004, //!< count layers (groups of structures)
+    PerfCounters_Structures  = 0x008, //!< count low-level Structures (normal unhighlighted Presentable Object is usually represented by 1 Structure)
+    //
+    PerfCounters_Groups      = 0x010, //!< count primitive Groups (1 Structure holds 1 or more primitive Group)
+    PerfCounters_GroupArrays = 0x020, //!< count Arrays within Primitive Groups (optimal primitive Group holds 1 Array)
+    //
+    PerfCounters_Triangles   = 0x040, //!< count Triangles
+    PerfCounters_Points      = 0x080, //!< count Points
+    //
+    PerfCounters_EstimMem    = 0x100, //!< estimated GPU memory usage
+    //
+    PerfCounters_FrameTime   = 0x200, //!< frame CPU utilization time (rendering thread); @sa Graphic3d_FrameStatsTimer
+    PerfCounters_FrameTimeMax= 0x400, //!< maximum frame times
+    //
+    PerfCounters_SkipImmediate = 0x800, //!< do not include immediate viewer updates (e.g. lazy updates without redrawing entire view content)
+    //! show basic statistics
+    PerfCounters_Basic = PerfCounters_FrameRate | PerfCounters_CPU | PerfCounters_Layers | PerfCounters_Structures,
+    //! extended (verbose) statistics
+    PerfCounters_Extended = PerfCounters_Basic
+                          | PerfCounters_Groups | PerfCounters_GroupArrays
+                          | PerfCounters_Triangles | PerfCounters_Points
+                          | PerfCounters_EstimMem,
+    //! all counters
+    PerfCounters_All = PerfCounters_Extended
+                     | PerfCounters_FrameTime
+                     | PerfCounters_FrameTimeMax,
+  };
+
+  //! State of frustum culling optimization.
+  enum FrustumCulling
+  {
+    FrustumCulling_Off,     //!< culling is disabled
+    FrustumCulling_On,      //!< culling is active, and the list of culled entities is automatically updated before redraw
+    FrustumCulling_NoUpdate //!< culling is active, but the list of culled entities is not updated
+  };
+
 public:
 
   //! Creates default rendering parameters.
   Graphic3d_RenderingParams()
   : Method                      (Graphic3d_RM_RASTERIZATION),
     TransparencyMethod          (Graphic3d_RTM_BLEND_UNORDERED),
+    LineFeather                 (1.0f),
     OitDepthFactor              (0.0f),
     NbMsaaSamples               (0),
     RenderResolutionScale       (1.0f),
+    ToEnableDepthPrepass        (Standard_False),
+    ToEnableAlphaToCoverage     (Standard_True),
     // ray tracing parameters
     IsGlobalIlluminationEnabled (Standard_False),
     RaytracingDepth             (THE_DEFAULT_DEPTH),
@@ -63,13 +110,16 @@ public:
     UseEnvironmentMapBackground (Standard_False),
     CoherentPathTracingMode     (Standard_False),
     AdaptiveScreenSampling      (Standard_False),
+    AdaptiveScreenSamplingAtomic(Standard_False),
     ShowSamplingTiles           (Standard_False),
     TwoSidedBsdfModels          (Standard_False),
     RadianceClampingValue       (30.0),
     RebuildRayTracingShaders    (Standard_False),
+    RayTracingTileSize          (32),
     NbRayTracingTiles           (16 * 16),
     CameraApertureRadius        (0.0f),
     CameraFocalPlaneDist        (1.0f),
+    FrustumCullingState         (FrustumCulling_On),
     ToneMappingMethod           (Graphic3d_ToneMappingMethod_Disabled),
     Exposure                    (0.f),
     WhitePoint                  (1.f),
@@ -77,7 +127,18 @@ public:
     StereoMode (Graphic3d_StereoMode_QuadBuffer),
     AnaglyphFilter (Anaglyph_RedCyan_Optimized),
     ToReverseStereo (Standard_False),
-
+    //
+    StatsPosition (new Graphic3d_TransformPers (Graphic3d_TMF_2d, Aspect_TOTP_LEFT_UPPER,  Graphic3d_Vec2i (20, 20))),
+    ChartPosition (new Graphic3d_TransformPers (Graphic3d_TMF_2d, Aspect_TOTP_RIGHT_UPPER, Graphic3d_Vec2i (20, 20))),
+    ChartSize (-1, -1),
+    StatsTextAspect (new Graphic3d_AspectText3d()),
+    StatsUpdateInterval (1.0),
+    StatsTextHeight (16),
+    StatsNbFrames (1),
+    StatsMaxChartTime (0.1f),
+    CollectedStats (PerfCounters_Basic),
+    ToShowStats (Standard_False),
+    //
     Resolution (THE_DEFAULT_RESOLUTION)
   {
     const Graphic3d_Vec4 aZero (0.0f, 0.0f, 0.0f, 0.0f);
@@ -89,6 +150,13 @@ public:
     AnaglyphRight.SetRow (1, Graphic3d_Vec4 (0.0f,  1.0f,  0.0f, 0.0f));
     AnaglyphRight.SetRow (2, Graphic3d_Vec4 (0.0f,  0.0f,  1.0f, 0.0f));
     AnaglyphRight.SetRow (3, aZero);
+
+    StatsTextAspect->SetColor (Quantity_NOC_WHITE);
+    StatsTextAspect->SetColorSubTitle (Quantity_NOC_BLACK);
+    StatsTextAspect->SetFont (Font_NOF_ASCII_MONO);
+    StatsTextAspect->SetDisplayType (Aspect_TODT_SHADOW);
+    StatsTextAspect->SetTextZoomable (Standard_False);
+    StatsTextAspect->SetTextFontAspect (Font_FA_Regular);
   }
 
   //! Returns resolution ratio.
@@ -101,10 +169,14 @@ public:
 
   Graphic3d_RenderingMode           Method;                      //!< specifies rendering mode, Graphic3d_RM_RASTERIZATION by default
   Graphic3d_RenderTransparentMethod TransparencyMethod;          //!< specifies rendering method for transparent graphics
+  Standard_ShortReal                LineFeather;                 //!< line feater width in pixels (> 0.0), 1.0 by default;
+                                                                 //!  high values produce blurred results, small values produce sharp (aliased) edges
   Standard_ShortReal                OitDepthFactor;              //!< scalar factor [0-1] controlling influence of depth of a fragment to its final coverage
   Standard_Integer                  NbMsaaSamples;               //!< number of MSAA samples (should be within 0..GL_MAX_SAMPLES, power-of-two number), 0 by default
   Standard_ShortReal                RenderResolutionScale;       //!< rendering resolution scale factor, 1 by default;
                                                                  //!  incompatible with MSAA (e.g. NbMsaaSamples should be set to 0)
+  Standard_Boolean                  ToEnableDepthPrepass;        //!< enables/disables depth pre-pass, False by default
+  Standard_Boolean                  ToEnableAlphaToCoverage;     //!< enables/disables alpha to coverage, True by default
 
   Standard_Boolean                  IsGlobalIlluminationEnabled; //!< enables/disables global illumination effects (path tracing)
   Standard_Integer                  SamplesPerPixel;             //!< number of samples per pixel (SPP)
@@ -116,13 +188,18 @@ public:
   Standard_Boolean                  UseEnvironmentMapBackground; //!< enables/disables environment map background
   Standard_Boolean                  CoherentPathTracingMode;     //!< enables/disables 'coherent' tracing mode (single RNG seed within 16x16 image blocks)
   Standard_Boolean                  AdaptiveScreenSampling;      //!< enables/disables adaptive screen sampling mode for path tracing, FALSE by default
+  Standard_Boolean                  AdaptiveScreenSamplingAtomic;//!< enables/disables usage of atomic float operations within adaptive screen sampling, FALSE by default
   Standard_Boolean                  ShowSamplingTiles;           //!< enables/disables debug mode for adaptive screen sampling, FALSE by default
   Standard_Boolean                  TwoSidedBsdfModels;          //!< forces path tracing to use two-sided versions of original one-sided scattering models
   Standard_ShortReal                RadianceClampingValue;       //!< maximum radiance value used for clamping radiance estimation.
   Standard_Boolean                  RebuildRayTracingShaders;    //!< forces rebuilding ray tracing shaders at the next frame
-  Standard_Integer                  NbRayTracingTiles;           //!< total number of screen tiles used in adaptive sampling mode (PT only)
+  Standard_Integer                  RayTracingTileSize;          //!< screen tile size, 32 by default (adaptive sampling mode of path tracing);
+  Standard_Integer                  NbRayTracingTiles;           //!< maximum number of screen tiles per frame, 256 by default (adaptive sampling mode of path tracing);
+                                                                 //!  this parameter limits the number of tiles to be rendered per redraw, increasing Viewer interactivity,
+                                                                 //!  but also increasing the time for achieving a good quality; -1 means no limit
   Standard_ShortReal                CameraApertureRadius;        //!< aperture radius of perspective camera used for depth-of-field, 0.0 by default (no DOF) (path tracing only)
   Standard_ShortReal                CameraFocalPlaneDist;        //!< focal  distance of perspective camera used for depth-of field, 1.0 by default (path tracing only)
+  FrustumCulling                    FrustumCullingState;         //!< state of frustum culling optimization; FrustumCulling_On by default
 
   Graphic3d_ToneMappingMethod       ToneMappingMethod;           //!< specifies tone mapping method for path tracing, Graphic3d_ToneMappingMethod_Disabled by default
   Standard_ShortReal                Exposure;                    //!< exposure value used for tone mapping (path tracing), 0.0 by default
@@ -133,6 +210,24 @@ public:
   Graphic3d_Mat4                    AnaglyphLeft;                //!< left  anaglyph filter (in normalized colorspace), Color = AnaglyphRight * theColorRight + AnaglyphLeft * theColorLeft;
   Graphic3d_Mat4                    AnaglyphRight;               //!< right anaglyph filter (in normalized colorspace), Color = AnaglyphRight * theColorRight + AnaglyphLeft * theColorLeft;
   Standard_Boolean                  ToReverseStereo;             //!< flag to reverse stereo pair, FALSE by default
+
+  Handle(Graphic3d_TransformPers)   StatsPosition;               //!< location of stats, upper-left position by default
+  Handle(Graphic3d_TransformPers)   ChartPosition;               //!< location of stats chart, upper-right position by default
+  Graphic3d_Vec2i                   ChartSize;                   //!< chart size in pixels, (-1, -1) by default which means that chart will occupy a portion of viewport
+  Handle(Graphic3d_AspectText3d)    StatsTextAspect;             //!< stats text aspect
+  Standard_ShortReal                StatsUpdateInterval;         //!< time interval between stats updates in seconds, 1.0 second by default;
+                                                                 //!  too often updates might impact performance and will smear text within widgets
+                                                                 //!  (especially framerate, which is better averaging);
+                                                                 //!  0.0 interval will force updating on each frame
+  Standard_Integer                  StatsTextHeight;             //!< stats text size; 16 by default
+  Standard_Integer                  StatsNbFrames;               //!< number of data frames to collect history; 1 by default
+  Standard_ShortReal                StatsMaxChartTime;           //!< upper time limit within frame chart in seconds; 0.1 seconds by default (100 ms or 10 FPS)
+  PerfCounters                      CollectedStats;              //!< performance counters to collect, PerfCounters_Basic by default;
+                                                                 //!  too verbose options might impact rendering performance,
+                                                                 //!  because some counters might lack caching optimization (and will require expensive iteration through all data structures)
+  Standard_Boolean                  ToShowStats;                 //!< display performance statistics, FALSE by default;
+                                                                 //!  note that counters specified within CollectedStats will be updated nevertheless
+                                                                 //!  of visibility of widget managed by ToShowStats flag (e.g. stats can be retrieved by application for displaying using other methods)
 
   unsigned int                      Resolution;                  //!< Pixels density (PPI), defines scaling factor for parameters like text size
                                                                  //!  (when defined in screen-space units rather than in 3D) to be properly displayed

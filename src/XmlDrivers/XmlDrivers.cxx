@@ -14,7 +14,7 @@
 // commercial license or contractual agreement.
 
 
-#include <CDM_MessageDriver.hxx>
+#include <Message_Messenger.hxx>
 #include <Plugin_Macro.hxx>
 #include <Standard_GUID.hxx>
 #include <TDocStd_Application.hxx>
@@ -43,7 +43,7 @@ const Handle(Standard_Transient)& XmlDrivers::Factory(const Standard_GUID& theGU
   if (theGUID == XmlStorageDriver)
   {
 #ifdef OCCT_DEBUG
-    cout << "XmlDrivers : Storage Plugin" << endl;
+    std::cout << "XmlDrivers : Storage Plugin" << std::endl;
 #endif
     static Handle(Standard_Transient) model_sd =
       new XmlDrivers_DocumentStorageDriver
@@ -54,7 +54,7 @@ const Handle(Standard_Transient)& XmlDrivers::Factory(const Standard_GUID& theGU
   if (theGUID == XmlRetrievalDriver)
   {
 #ifdef OCCT_DEBUG
-    cout << "XmlDrivers : Retrieval Plugin" << endl;
+    std::cout << "XmlDrivers : Retrieval Plugin" << std::endl;
 #endif
     static Handle (Standard_Transient) model_rd =
       new XmlDrivers_DocumentRetrievalDriver ();
@@ -80,7 +80,7 @@ void XmlDrivers::DefineFormat (const Handle(TDocStd_Application)& theApp)
 //purpose  : 
 //=======================================================================
 Handle(XmlMDF_ADriverTable) XmlDrivers::AttributeDrivers
-                (const Handle(CDM_MessageDriver)& theMessageDriver)
+                (const Handle(Message_Messenger)& theMessageDriver)
 {
   Handle(XmlMDF_ADriverTable) aTable = new XmlMDF_ADriverTable();
   //

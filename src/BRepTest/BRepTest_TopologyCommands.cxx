@@ -45,6 +45,8 @@
 #include <TopTools_IndexedMapOfShape.hxx>
 #include <TopExp.hxx>
 
+Standard_DISABLE_DEPRECATION_WARNINGS
+
 //=======================================================================
 // topop
 //=======================================================================
@@ -116,7 +118,7 @@ static Standard_Integer section(Draw_Interpretor& , Standard_Integer n, const ch
       Sec.Approximation(Standard_True);
     else if (strcasecmp(a[i], "-p"))
     {
-      cout << "Unknown option: " << a[i] << endl;
+      std::cout << "Unknown option: " << a[i] << std::endl;
       return 1;
     }
   }
@@ -154,6 +156,8 @@ static Standard_Integer psection(Draw_Interpretor& , Standard_Integer n, const c
   return 0;
 }
 
+Standard_ENABLE_DEPRECATION_WARNINGS
+
 static Standard_Integer halfspace(Draw_Interpretor& di,
 				  Standard_Integer n, const char** a)
 {
@@ -166,7 +170,7 @@ static Standard_Integer halfspace(Draw_Interpretor& di,
   if ( Face.IsNull()) {
     TopoDS_Shape Shell  = DBRep::Get(a[2],TopAbs_SHELL);
     if (Shell.IsNull()) {
-      //cout << a[2] << " must be a face or a shell" << endl;
+      //std::cout << a[2] << " must be a face or a shell" << std::endl;
       di << a[2] << " must be a face or a shell\n";
       return 1;
     }
@@ -176,7 +180,7 @@ static Standard_Integer halfspace(Draw_Interpretor& di,
 	DBRep::Set(a[1],Half.Solid());
       }
       else {
-	//cout << " HalfSpace NotDone" << endl;
+	//std::cout << " HalfSpace NotDone" << std::endl;
 	di << " HalfSpace NotDone\n";
 	return 1;
       }
@@ -188,7 +192,7 @@ static Standard_Integer halfspace(Draw_Interpretor& di,
       DBRep::Set(a[1],Half.Solid());
     }
     else {
-      //cout << " HalfSpace NotDone" << endl;
+      //std::cout << " HalfSpace NotDone" << std::endl;
       di << " HalfSpace NotDone\n";
       return 1;
     }

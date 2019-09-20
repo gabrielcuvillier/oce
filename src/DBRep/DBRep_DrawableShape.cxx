@@ -638,8 +638,8 @@ void  DBRep_DrawableShape::DrawOn(Draw_Display& dis) const
       BRep_Tool::Range(E->Edge(), aCheckU1, aCheckU2);
       if (aCheckU2 < aCheckU1) {
 	// bad orientation
-	cout << "DBRep_DrawableShape : Bad parameters on edge."<<endl;
-	BRepTools::Dump(E->Edge(),cout);
+	std::cout << "DBRep_DrawableShape : Bad parameters on edge."<<std::endl;
+	BRepTools::Dump(E->Edge(),std::cout);
 	ite.Next();
 	continue;
       }
@@ -840,10 +840,11 @@ void DBRep_DrawableShape::DisplayHiddenLines(Draw_Display& dis)
   if (!strcmp(dout.GetType(id),"PERS")) focal = dout.Focal(id);
   Standard_Real Ang,Def;
   HLRBRep::PolyHLRAngleAndDeflection(myAng,Ang,Def);
-  BRepMesh_FastDiscret::Parameters aMeshParams;
-  aMeshParams.Relative = Standard_True;
+  IMeshTools_Parameters aMeshParams;
+  aMeshParams.Relative   = Standard_True;
   aMeshParams.Deflection = Def;
-  aMeshParams.Angle = Ang;
+  aMeshParams.Angle      = Ang;
+
   BRepMesh_IncrementalMesh MESH(myShape, aMeshParams);
   Standard_Boolean recompute = Standard_True;
   // find if the view must be recomputed
@@ -1075,13 +1076,9 @@ void  DBRep_DrawableShape::display(const Handle(Poly_Triangulation)& T,
 
   // allocate the arrays
   TColStd_Array1OfInteger Free (1, Max (1, 2 * nFree));
-  
-  // array is replaced on map because it is impossible
-  // to calculate number of internal edges in advance
-  // due to "internal edges"
-  TColStd_DataMapOfIntegerInteger Internal;
-  
-  Standard_Integer fr = 1, in = 1;
+  NCollection_Vector< NCollection_Vec2<Standard_Integer> > anInternal;
+
+  Standard_Integer fr = 1;
   const Poly_Array1OfTriangle& triangles = T->Triangles();
   Standard_Integer n[3];
   for (i = 1; i <= nbTriangles; i++) {
@@ -1096,16 +1093,14 @@ void  DBRep_DrawableShape::display(const Handle(Poly_Triangulation)& T,
       }
       // internal edge if this triangle has a lower index than the adjacent
       else if (i < t[j]) {
-	Internal.Bind(in, n[j]);
-	Internal.Bind(in+1, n[k]);
-	in += 2;
+        anInternal.Append (NCollection_Vec2<Standard_Integer> (n[j], n[k]));
       }
     }
   }
 
   // Display the edges
   const TColgp_Array1OfPnt& Nodes = T->Nodes();
-//  cout<<"nb nodes = "<<Nodes.Length()<<endl;
+//  std::cout<<"nb nodes = "<<Nodes.Length()<<std::endl;
   
   // free edges
   Standard_Integer nn;
@@ -1119,15 +1114,11 @@ void  DBRep_DrawableShape::display(const Handle(Poly_Triangulation)& T,
   // internal edges
 
   dis.SetColor(Draw_bleu);
-  TColStd_DataMapIteratorOfDataMapOfIntegerInteger aIt(Internal);
-  for (; aIt.More(); aIt.Next()) {
-    Standard_Integer n1 = aIt.Value();
-    //alvays pair is put
-    aIt.Next();
-    Standard_Integer n2 = aIt.Value();
-    dis.Draw(Nodes(n1).Transformed(tr),
-	     Nodes(n2).Transformed(tr));
-
+  for (NCollection_Vector< NCollection_Vec2<Standard_Integer> >::Iterator anInterIter (anInternal); anInterIter.More(); anInterIter.Next())
+  {
+    const Standard_Integer n1 = anInterIter.Value()[0];
+    const Standard_Integer n2 = anInterIter.Value()[1];
+    dis.Draw (Nodes(n1).Transformed(tr), Nodes(n2).Transformed(tr));
   }
 }
 

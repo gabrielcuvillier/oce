@@ -16,11 +16,16 @@ if ["%1"] == [""] (
   echo    HLR
   echo    Animation
   echo    Convert
+  echo    AndroidQt
+  echo    FuncDemo
+  echo    IESample
+  echo    Tutorial
   PAUSE
   exit /B
 )
 
 call "%~dp0env.bat" %2 %3 %4
+if not ["%QTDIR%"] == [""] if exist "%QTDIR%\qml" if ["%QML2_IMPORT_PATH%"] == [""] set "QML2_IMPORT_PATH=%QTDIR%/qml"
 set "EXE_PATH=%CSF_OCCTBinPath%/%1.exe"
 
 if not exist "%EXE_PATH%" (

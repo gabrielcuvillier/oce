@@ -34,7 +34,7 @@
 
 //=======================================================================
 //function : Expand
-//purpose  : Convert Shape(compound) to assambly
+//purpose  : Convert Shape to assembly
 //=======================================================================
 
 Standard_Boolean XCAFDoc_Editor::Expand (const TDF_Label& Doc, const TDF_Label& Shape,
@@ -46,18 +46,21 @@ Standard_Boolean XCAFDoc_Editor::Expand (const TDF_Label& Doc, const TDF_Label& 
   Handle(XCAFDoc_ColorTool) aColorTool = XCAFDoc_DocumentTool::ColorTool(Doc);
   Handle(XCAFDoc_LayerTool) aLayerTool = XCAFDoc_DocumentTool::LayerTool(Doc);
   Handle(XCAFDoc_ShapeTool) aShapeTool = XCAFDoc_DocumentTool::ShapeTool(Doc);
+  Standard_Boolean isAutoNaming = aShapeTool->AutoNaming();
+  aShapeTool->SetAutoNaming(Standard_False);
 
-  TopoDS_Shape aS = aShapeTool->GetShape(Shape);
-  if (!aS.IsNull() && aS.ShapeType() == TopAbs_COMPOUND && !aShapeTool->IsAssembly(Shape))
+  TDF_Label aCompoundPartL = Shape;
+  if (aShapeTool->IsReference(Shape))
+    aShapeTool->GetReferredShape(aCompoundPartL, aCompoundPartL);
+
+  TopoDS_Shape aS = aShapeTool->GetShape(aCompoundPartL);
+  if (aShapeTool->Expand(aCompoundPartL))
   {
-    //convert compound to assembly(without attributes)
-    aShapeTool->Expand(Shape);
-    //move attrributes
-    TDF_ChildIterator anIter(Shape, Standard_True);
+    //move attributes
+    TDF_ChildIterator anIter(aCompoundPartL, Standard_True);
     for(; anIter.More(); anIter.Next())
     {
       TDF_Label aChild = anIter.Value();
-
       TDF_LabelSequence aLayers;
       TDF_LabelSequence aColors;
       Handle(TDataStd_Name) aName;
@@ -72,42 +75,62 @@ Standard_Boolean XCAFDoc_Editor::Expand (const TDF_Label& Doc, const TDF_Label& 
         if(!aShapeTool->GetShape(aPart.Father()).IsNull())
         {
           TopLoc_Location nulloc;
+          aPart.ForgetAttribute(XCAFDoc::ShapeRefGUID());
+          if (aShapeTool->GetShape(aPart.Father()).ShapeType() == TopAbs_COMPOUND)
           {
-            aPart.ForgetAttribute(XCAFDoc::ShapeRefGUID());
-            if(aShapeTool->GetShape(aPart.Father()).ShapeType() == TopAbs_COMPOUND)
-            {
-              aShapeTool->SetShape(aPart, aShape);
-            }
-            aPart.ForgetAttribute(XCAFDoc_ShapeMapTool::GetID());
-            aChild.ForgetAllAttributes(Standard_False);
+            aShapeTool->SetShape(aPart, aShape);
           }
+          aPart.ForgetAttribute(XCAFDoc_ShapeMapTool::GetID());
+          aChild.ForgetAllAttributes(Standard_False);
         }
         aChild.ForgetAttribute(TNaming_NamedShape::GetID());
         aChild.ForgetAttribute(XCAFDoc_ShapeMapTool::GetID());
+      }
+      else
+      {
+        // If new original shape is not created, try to process this child
+        // as subshape of new part
+        TDF_LabelSequence aUsers;
+        if (aShapeTool->GetUsers(aChild, aUsers) > 0)
+        {
+          for (Standard_Integer i = 1; i <= aUsers.Length(); i++)
+          {
+            TDF_Label aSubLabel = aUsers.Value(i);
+            //remove unnecessary links
+            aSubLabel.ForgetAttribute(XCAFDoc::ShapeRefGUID());
+            aSubLabel.ForgetAttribute(XCAFDoc_ShapeMapTool::GetID());
+            setParams(Doc, aSubLabel, aColors, aLayers, aName);
+          }
+          aChild.ForgetAllAttributes(Standard_False);
+        }
       }
     }
     //if assembly contains compound, expand it recursively(if flag recursively is true)
     if(recursively)
     {
-      anIter.Initialize(Shape);
+      anIter.Initialize(aCompoundPartL);
       for(; anIter.More(); anIter.Next())
       {
         TDF_Label aChild = anIter.Value();
         TDF_Label aPart;
         if(aShapeTool->GetReferredShape(aChild, aPart))
         {
-          Expand(Doc, aPart, recursively);
+          TopoDS_Shape aPartShape = aShapeTool->GetShape(aPart);
+          if (!aPartShape.IsNull() && aPartShape.ShapeType() == TopAbs_COMPOUND)
+            Expand(Doc, aPart, recursively);
         }
       }
     }
+    aShapeTool->SetAutoNaming(isAutoNaming);
     return Standard_True;
   }
+  aShapeTool->SetAutoNaming(isAutoNaming);
   return Standard_False;
 }
 
 //=======================================================================
 //function : Expand
-//purpose  : Convert all compounds in Doc to assambly
+//purpose  : Convert all compounds in Doc to assembly
 //=======================================================================
 
 Standard_Boolean XCAFDoc_Editor::Expand (const TDF_Label& Doc, const Standard_Boolean recursively)

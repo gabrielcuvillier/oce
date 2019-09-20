@@ -188,15 +188,17 @@ void IVtkOCC_ViewerSelector::Pick (double**                  thePoly,
 //============================================================================
 void IVtkOCC_ViewerSelector::Activate (const Handle(SelectMgr_Selection)& theSelection)
 {
-  for (theSelection->Init(); theSelection->More(); theSelection->Next())
+  for (NCollection_Vector<Handle(SelectMgr_SensitiveEntity)>::Iterator aSelEntIter (theSelection->Entities()); aSelEntIter.More(); aSelEntIter.Next())
   {
-    theSelection->Sensitive()->SetActiveForSelection();
+    aSelEntIter.Value()->SetActiveForSelection();
   }
 
-  theSelection->SetSelectionState (SelectMgr_SOS_Activated);
-
-  myTolerances.Add (theSelection->Sensitivity());
-  myToUpdateTolerance = Standard_True;
+  if (theSelection->GetSelectionState() != SelectMgr_SOS_Activated)
+  {
+    theSelection->SetSelectionState (SelectMgr_SOS_Activated);
+    myTolerances.Add (theSelection->Sensitivity());
+    myToUpdateTolerance = Standard_True;
+  }
 }
 
 //============================================================================
@@ -205,13 +207,15 @@ void IVtkOCC_ViewerSelector::Activate (const Handle(SelectMgr_Selection)& theSel
 //============================================================================
 void IVtkOCC_ViewerSelector::Deactivate (const Handle(SelectMgr_Selection)& theSelection)
 {
-  for (theSelection->Init(); theSelection->More(); theSelection->Next())
+  for (NCollection_Vector<Handle(SelectMgr_SensitiveEntity)>::Iterator aSelEntIter (theSelection->Entities()); aSelEntIter.More(); aSelEntIter.Next())
   {
-    theSelection->Sensitive()->ResetSelectionActiveStatus();
+    aSelEntIter.Value()->ResetSelectionActiveStatus();
   }
 
-  theSelection->SetSelectionState (SelectMgr_SOS_Deactivated);
-
-  myTolerances.Decrement (theSelection->Sensitivity());
-  myToUpdateTolerance = Standard_True;
+  if (theSelection->GetSelectionState() == SelectMgr_SOS_Activated)
+  {
+    theSelection->SetSelectionState (SelectMgr_SOS_Deactivated);
+    myTolerances.Decrement (theSelection->Sensitivity());
+    myToUpdateTolerance = Standard_True;
+  }
 }

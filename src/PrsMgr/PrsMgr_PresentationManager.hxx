@@ -29,11 +29,13 @@
 #include <Standard_Integer.hxx>
 #include <Standard_Type.hxx>
 
+class Graphic3d_Structure;
+typedef Graphic3d_Structure Prs3d_Presentation;
+
 class Geom_Transformation;
 class Prs3d_Drawer;
-class Prs3d_Presentation;
-class PrsMgr_PresentableObject;
 class PrsMgr_Presentation;
+class PrsMgr_PresentableObject;
 class Standard_NoSuchObject;
 class V3d_Viewer;
 
@@ -83,12 +85,12 @@ public:
   Standard_EXPORT Standard_Integer DisplayPriority (const Handle(PrsMgr_PresentableObject)& thePrsObject, const Standard_Integer theMode) const;
   
   //! Set Z layer ID for all presentations of the object.
-  Standard_EXPORT void SetZLayer (const Handle(PrsMgr_PresentableObject)& thePrsObject, const Standard_Integer theLayerId);
+  Standard_EXPORT void SetZLayer (const Handle(PrsMgr_PresentableObject)& thePrsObject, const Graphic3d_ZLayerId theLayerId);
   
   //! Get Z layer ID assigned to all presentations of the object.
   //! Method returns -1 value if object has no presentations and is
   //! impossible to get layer index.
-  Standard_EXPORT Standard_Integer GetZLayer (const Handle(PrsMgr_PresentableObject)& thePrsObject) const;
+  Standard_EXPORT Graphic3d_ZLayerId GetZLayer (const Handle(PrsMgr_PresentableObject)& thePrsObject) const;
   
   Standard_EXPORT Standard_Boolean IsDisplayed (const Handle(PrsMgr_PresentableObject)& thePrsObject, const Standard_Integer theMode = 0) const;
   

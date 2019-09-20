@@ -34,10 +34,8 @@
 #include <Prs3d_Projector.hxx>
 #include <Quantity_Color.hxx>
 #include <Select3D_SensitiveSegment.hxx>
-#include <SelectBasics_EntityOwner.hxx>
 #include <SelectMgr_EntityOwner.hxx>
 #include <SelectMgr_Selection.hxx>
-#include <Standard_Type.hxx>
 #include <StdPrs_Curve.hxx>
 #include <TColgp_Array1OfPnt.hxx>
 #include <TopoDS.hxx>
@@ -81,7 +79,7 @@ myIsXYZAxis(Standard_True)
   Standard_Real aLength;
   try {
     aLength = UnitsAPI::AnyToLS(100. ,"mm");
-  } catch (Standard_Failure) {
+  } catch (Standard_Failure const&) {
     aLength = 0.1;
   }
   DA->SetAxisLength(aLength,aLength,aLength);
@@ -199,8 +197,7 @@ void AIS_Axis::Compute(const Handle(Prs3d_Projector)& aProjector, const Handle(G
 void AIS_Axis::ComputeSelection(const Handle(SelectMgr_Selection)& aSelection,
 				const Standard_Integer)
 {
-  Handle(SelectMgr_EntityOwner) eown = new SelectMgr_EntityOwner(this);
-  eown -> SelectBasics_EntityOwner::Set(3);
+  Handle(SelectMgr_EntityOwner) eown = new SelectMgr_EntityOwner (this, 3);
   Handle(Select3D_SensitiveSegment) seg = new Select3D_SensitiveSegment(eown,
 									myPfirst,
 									myPlast);
@@ -221,7 +218,7 @@ void AIS_Axis::SetColor(const Quantity_Color &aCol)
   DA->LineAspect(Prs3d_DP_XAxis)->SetColor(aCol);
   DA->LineAspect(Prs3d_DP_YAxis)->SetColor(aCol);
   DA->LineAspect(Prs3d_DP_ZAxis)->SetColor(aCol);
-  
+  SynchronizeAspects();
 }
 
 //=======================================================================
@@ -230,7 +227,6 @@ void AIS_Axis::SetColor(const Quantity_Color &aCol)
 //=======================================================================
 void AIS_Axis::SetWidth(const Standard_Real aValue)
 {
-  
   if(aValue<0.0) return;
   if(aValue==0) UnsetWidth();
   
@@ -240,6 +236,7 @@ void AIS_Axis::SetWidth(const Standard_Real aValue)
   DA->LineAspect(Prs3d_DP_XAxis)->SetWidth(aValue);
   DA->LineAspect(Prs3d_DP_YAxis)->SetWidth(aValue);
   DA->LineAspect(Prs3d_DP_ZAxis)->SetWidth(aValue);
+  SynchronizeAspects();
 }
 
 
@@ -324,14 +321,13 @@ AcceptDisplayMode(const Standard_Integer aMode) const
 //=======================================================================
 void AIS_Axis::UnsetColor()
 {
-  
   myDrawer->LineAspect()->SetColor(Quantity_NOC_RED);
-
-  hasOwnColor=Standard_False;
+  hasOwnColor = Standard_False;
 
   myDrawer->DatumAspect()->LineAspect(Prs3d_DP_XAxis)->SetColor(Quantity_NOC_TURQUOISE);
   myDrawer->DatumAspect()->LineAspect(Prs3d_DP_YAxis)->SetColor(Quantity_NOC_TURQUOISE);
   myDrawer->DatumAspect()->LineAspect(Prs3d_DP_ZAxis)->SetColor(Quantity_NOC_TURQUOISE);
+  SynchronizeAspects();
 }
 //=======================================================================
 //function : UnsetWidth
@@ -340,10 +336,10 @@ void AIS_Axis::UnsetColor()
 
 void AIS_Axis::UnsetWidth()
 {
-  myOwnWidth = 0.0;
+  myOwnWidth = 0.0f;
   myDrawer->LineAspect()->SetWidth(1.);
   myDrawer->DatumAspect()->LineAspect(Prs3d_DP_XAxis)->SetWidth(1.);
   myDrawer->DatumAspect()->LineAspect(Prs3d_DP_YAxis)->SetWidth(1.);
   myDrawer->DatumAspect()->LineAspect(Prs3d_DP_ZAxis)->SetWidth(1.);
+  SynchronizeAspects();
 }
-

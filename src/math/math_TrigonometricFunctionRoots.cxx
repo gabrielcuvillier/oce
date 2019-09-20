@@ -25,66 +25,12 @@
 //#endif
 
 #include <math_TrigonometricFunctionRoots.hxx>
+#include <math_TrigonometricEquationFunction.hxx>
 #include <math_DirectPolynomialRoots.hxx>
 #include <Standard_OutOfRange.hxx>
 #include <math_FunctionWithDerivative.hxx>
 #include <math_NewtonFunctionRoot.hxx>
 #include <Precision.hxx>
-
-
-class MyTrigoFunction: public math_FunctionWithDerivative
-{
-  Standard_Real AA;
-  Standard_Real BB;
-  Standard_Real CC;
-  Standard_Real DD;
-  Standard_Real EE;
-
- public:
-  MyTrigoFunction(const Standard_Real A,
-                  const Standard_Real B,
-                  const Standard_Real C,
-                  const Standard_Real D,
-                  const Standard_Real E)
-  : AA(A), BB(B), CC(C), DD(D), EE(E)
-  {
-  }
-
-  Standard_Boolean Value(const Standard_Real X, Standard_Real& F);
-  Standard_Boolean Derivative(const Standard_Real X, Standard_Real& D);
-  Standard_Boolean Values(const Standard_Real X, Standard_Real& F, Standard_Real& D);
-};
-
- Standard_Boolean MyTrigoFunction::Value(const Standard_Real X, Standard_Real& F) {
-   Standard_Real CN= cos(X), SN = sin(X);
-   //-- F= AA*CN*CN+2*BB*CN*SN+CC*CN+DD*SN+EE;
-   F=CN*(AA*CN + (BB+BB)*SN + CC) + DD*SN + EE;
-   return Standard_True;
- }
-
- Standard_Boolean MyTrigoFunction::Derivative(const Standard_Real X, Standard_Real& D) {
-   Standard_Real CN= Cos(X), SN = Sin(X);
-   //-- D = -2*AA*CN*SN+2*BB*(CN*CN-SN*SN)-CC*SN+DD*CN;
-   D = -AA*CN*SN + BB*(CN*CN-SN*SN);
-   D+=D;
-   D-=CC*SN+DD*CN;
-   return Standard_True;
- }
-
- Standard_Boolean MyTrigoFunction::Values(const Standard_Real X, Standard_Real& F, Standard_Real& D) {
-   Standard_Real CN= Cos(X), SN = Sin(X);
-   //-- F= AA*CN*CN+2*BB*CN*SN+CC*CN+DD*SN+EE;
-   //-- D = -2*AA*CN*SN+2*BB*(CN*CN-SN*SN)-CC*SN+DD*CN;
-   Standard_Real AACN = AA*CN;
-   Standard_Real BBSN = BB*SN;
-
-   F = AACN*CN + BBSN*(CN+CN) + CC*CN + DD*SN + EE;
-   D = -AACN*SN + BB*(CN*CN+SN*SN);
-   D+=D;
-   D+=-CC*SN+DD*CN;
-   return Standard_True;
- }
-
 
 math_TrigonometricFunctionRoots::math_TrigonometricFunctionRoots
                                 (const Standard_Real theD,
@@ -426,14 +372,14 @@ void math_TrigonometricFunctionRoots::Perform(const Standard_Real A,
 	  //-- est ce une racine double ou une erreur numerique ? 
 	  Standard_Real qw=Zer(i+1);
 	  Standard_Real va=ko(4)+qw*(2.0*ko(3)+qw*(3.0*ko(2)+qw*(4.0*ko(1))));
-	  //-- cout<<"   Val Double ("<<qw<<")=("<<va<<")"<<endl;
+	  //-- std::cout<<"   Val Double ("<<qw<<")=("<<va<<")"<<std::endl;
 	  if(Abs(va)>Eps) { 
 	    bko=Standard_True;
 	    nbko++;
 #ifdef OCCT_DEBUG
 	    //if(nbko==1) { 
-	    //  cout<<"Pb ds math_TrigonometricFunctionRoots CC="
-	    //	<<A<<" CS="<<B<<" C="<<C<<" S="<<D<<" Cte="<<E<<endl;
+	    //  std::cout<<"Pb ds math_TrigonometricFunctionRoots CC="
+	    //	<<A<<" CS="<<B<<" C="<<C<<" S="<<D<<" Cte="<<E<<std::endl;
 	    //}
 #endif
 	    break;
@@ -474,7 +420,7 @@ void math_TrigonometricFunctionRoots::Perform(const Standard_Real A,
       // Appel de Newton:
       //OCC541(apo):  Standard_Real TetaNewton=0;  
       Standard_Real TetaNewton = Teta;  
-      MyTrigoFunction MyF(A, B, C, D, E);
+      math_TrigonometricEquationFunction MyF(A, B, C, D, E);
       math_NewtonFunctionRoot Resol(MyF, X, Tol1, Eps, Nit);
       if (Resol.IsDone()) {
 	TetaNewton = Resol.Root();
@@ -482,7 +428,7 @@ void math_TrigonometricFunctionRoots::Perform(const Standard_Real A,
       //-- lbr le 7 mars 97 (newton converge tres tres loin de la solution initilale)
       Standard_Real DeltaNewton = TetaNewton-Teta;
       if((DeltaNewton > SupmInfs100) || (DeltaNewton < -SupmInfs100)) { 
-	//-- cout<<"\n Newton X0="<<Teta<<" -> "<<TetaNewton<<endl;
+	//-- std::cout<<"\n Newton X0="<<Teta<<" -> "<<TetaNewton<<std::endl;
       }
       else { 
 	Teta=TetaNewton;

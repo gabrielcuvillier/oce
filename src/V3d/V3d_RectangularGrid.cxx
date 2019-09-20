@@ -28,32 +28,59 @@
 
 IMPLEMENT_STANDARD_RTTIEXT(V3d_RectangularGrid,Aspect_RectangularGrid)
 
-/*----------------------------------------------------------------------*/
-/*
- * Constant
- */
-#define MYFACTOR 50.
+namespace
+{
+  static const Standard_Real THE_DEFAULT_GRID_STEP = 10.0;
+  #define MYFACTOR 50.
+}
+
+//! Dummy implementation of Graphic3d_Structure overriding ::Compute() method for handling Device Lost.
+class V3d_RectangularGrid::RectangularGridStructure : public Graphic3d_Structure
+{
+public:
+  //! Main constructor.
+  RectangularGridStructure (const Handle(Graphic3d_StructureManager)& theManager, V3d_RectangularGrid* theGrid)
+  : Graphic3d_Structure (theManager), myGrid (theGrid) {}
+
+  //! Override method initiating recomputing in V3d_RectangularGrid.
+  virtual void Compute() Standard_OVERRIDE
+  {
+    GraphicClear (Standard_False);
+    myGrid->myGroup = NewGroup();
+    myGrid->myCurAreDefined = Standard_False;
+    myGrid->UpdateDisplay();
+  }
+
+private:
+  V3d_RectangularGrid* myGrid;
+};
 
 /*----------------------------------------------------------------------*/
 
 V3d_RectangularGrid::V3d_RectangularGrid (const V3d_ViewerPointer& aViewer, const Quantity_Color& aColor, const Quantity_Color& aTenthColor)
 : Aspect_RectangularGrid (1.,1.),
-  myStructure (new Graphic3d_Structure (aViewer->StructureManager())),
-  myGroup (myStructure->NewGroup()),
   myViewer (aViewer),
-  myCurAreDefined (Standard_False)
+  myCurAreDefined (Standard_False),
+  myToComputePrs (Standard_True),
+  myCurDrawMode (Aspect_GDM_Lines),
+  myCurXo (0.0),
+  myCurYo (0.0),
+  myCurAngle (0.0),
+  myCurXStep (0.0),
+  myCurYStep (0.0),
+  myXSize  (0.5 * aViewer->DefaultViewSize()),
+  myYSize  (0.5 * aViewer->DefaultViewSize()),
+  myOffSet (THE_DEFAULT_GRID_STEP / MYFACTOR)
 {
   myColor = aColor;
   myTenthColor = aTenthColor;
 
+  myStructure = new RectangularGridStructure (aViewer->StructureManager(), this);
+  myGroup = myStructure->NewGroup();
   myStructure->SetInfiniteState (Standard_True);
 
-  const Standard_Real step = 10.;
-  const Standard_Real gstep = step/MYFACTOR;
-  const Standard_Real size = 0.5*myViewer->DefaultViewSize();
-  SetGraphicValues (size, size, gstep);
-  SetXStep (step);
-  SetYStep (step);
+  SetXStep (THE_DEFAULT_GRID_STEP);
+  SetYStep (THE_DEFAULT_GRID_STEP);
 }
 
 V3d_RectangularGrid::~V3d_RectangularGrid()
@@ -79,6 +106,7 @@ void V3d_RectangularGrid::Display ()
 {
   myStructure->SetDisplayPriority (1);
   myStructure->Display();
+  UpdateDisplay();
 }
 
 void V3d_RectangularGrid::Erase () const
@@ -176,11 +204,18 @@ void V3d_RectangularGrid::DefineLines ()
                                  || myCurDrawMode != Aspect_GDM_Lines
                                  || aXStep != myCurXStep
                                  || aYStep != myCurYStep;
-  if (!toUpdate)
+  if (!toUpdate
+   && !myToComputePrs)
   {
     return;
   }
+  else if (!myStructure->IsDisplayed())
+  {
+    myToComputePrs = Standard_True;
+    return;
+  }
 
+  myToComputePrs = Standard_False;
   myGroup->Clear();
 
   Standard_Integer nblines;
@@ -235,8 +270,12 @@ void V3d_RectangularGrid::DefineLines ()
     myGroup->AddPrimitiveArray(aPrims, Standard_False);
   }
 
-  myGroup->SetMinMaxValues(-myXSize, -myYSize, 0.0, myXSize, myYSize, 0.0);
+  myGroup->SetMinMaxValues(-myXSize, -myYSize, -myOffSet, myXSize, myYSize, -myOffSet);
   myCurXStep = aXStep, myCurYStep = aYStep;
+
+  // update bounding box
+  myStructure->CalculateBoundBox();
+  myViewer->StructureManager()->Update (myStructure->GetZLayer());
 }
 
 void V3d_RectangularGrid::DefinePoints ()
@@ -247,11 +286,18 @@ void V3d_RectangularGrid::DefinePoints ()
                                   || myCurDrawMode != Aspect_GDM_Points
                                   || aXStep != myCurXStep
                                   || aYStep != myCurYStep;
-  if (!toUpdate)
+  if (!toUpdate
+   && !myToComputePrs)
   {
     return;
   }
+  else if (!myStructure->IsDisplayed())
+  {
+    myToComputePrs = Standard_True;
+    return;
+  }
 
+  myToComputePrs = Standard_False;
   myGroup->Clear();
 
   // horizontals
@@ -284,8 +330,12 @@ void V3d_RectangularGrid::DefinePoints ()
     myGroup->AddPrimitiveArray (Vertical, Standard_False);
   }
 
-  myGroup->SetMinMaxValues(-myXSize, -myYSize, 0.0, myXSize, myYSize, 0.0);
+  myGroup->SetMinMaxValues(-myXSize, -myYSize, -myOffSet, myXSize, myYSize, -myOffSet);
   myCurXStep = aXStep, myCurYStep = aYStep;
+
+  // update bounding box
+  myStructure->CalculateBoundBox();
+  myViewer->StructureManager()->Update (myStructure->GetZLayer());
 }
 
 void V3d_RectangularGrid::GraphicValues (Standard_Real& theXSize, Standard_Real& theYSize, Standard_Real& theOffSet) const

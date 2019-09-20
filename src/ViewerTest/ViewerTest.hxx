@@ -19,19 +19,16 @@
 #include <Aspect_TypeOfLine.hxx>
 #include <Aspect_TypeOfMarker.hxx>
 #include <Draw_Interpretor.hxx>
-#include <Standard_Integer.hxx>
-#include <Standard_CString.hxx>
-#include <Standard_DefineAlloc.hxx>
-#include <Standard_Macro.hxx>
+#include <Graphic3d_TypeOfShadingModel.hxx>
+#include <Graphic3d_ZLayerId.hxx>
+#include <TCollection_AsciiString.hxx>
 #include <TColStd_HArray1OfTransient.hxx>
 #include <TopTools_ListOfShape.hxx>
 #include <TopTools_HArray1OfShape.hxx>
-#include <Quantity_Color.hxx>
+#include <Quantity_ColorRGBA.hxx>
 
 class AIS_InteractiveContext;
 class AIS_InteractiveObject;
-class TCollection_AsciiString;
-class Standard_Transient;
 class Image_PixMap;
 class V3d_View;
 class V3d_Viewer;
@@ -48,14 +45,22 @@ public:
   Standard_EXPORT static void Factory (Draw_Interpretor& theDI);
 
   //! Creates view with default or custom name
-  //! and add this name in map to manage muliple views
-  //! implemented in ViewerTest_ViewerCommands.cxx
+  //! and adds this name in map to manage multiple views.
+  //! Implemented in ViewerTest_ViewerCommands.cxx.
+  //! @param thePxLeft      left position of newly created window
+  //! @param thePxTop       top  position of newly created window
+  //! @param thePxWidth     width of newly created window
+  //! @param thePxHeight    height of newly created window
+  //! @param theViewName    name of newly created View
+  //! @oaram theDisplayName display name
+  //! @param theViewToClone when specified, the new View will copy properties of existing one
   Standard_EXPORT static TCollection_AsciiString ViewerInit (const Standard_Integer thePxLeft   = 0,
                                                              const Standard_Integer thePxTop    = 0,
                                                              const Standard_Integer thePxWidth  = 0,
                                                              const Standard_Integer thePxHeight = 0,
-                                                             const Standard_CString theViewName = "",
-                                                             const Standard_CString theDisplayName = "");
+                                                             const TCollection_AsciiString& theViewName = "",
+                                                             const TCollection_AsciiString& theDisplayName = "",
+                                                             const Handle(V3d_View)& theViewToClone = Handle(V3d_View)());
 
   Standard_EXPORT static void RemoveViewName (const TCollection_AsciiString& theName);
 
@@ -97,22 +102,6 @@ public:
   Standard_EXPORT static Standard_Boolean PickShapes (const TopAbs_ShapeEnum           aType,
                                                       Handle(TopTools_HArray1OfShape)& thepicked,
                                                       const Standard_Integer           MaxPick = 5);
-
-  //! waits until an interactive object of a given Type
-  //! and signature is picked (default values authorize
-  //! selection of any Interactive Object)
-  //! exit if number of unsuccessful picks =  <MaxPick>
-  Standard_EXPORT static Handle(AIS_InteractiveObject) PickObject (const AIS_KindOfInteractive Type      = AIS_KOI_None,
-                                                                   const Standard_Integer      Signature = -1,
-                                                                   const Standard_Integer      MaxPick   = 5);
-
-  //! selection of several interactive objects.
-  //! Number is given by the size of <thepicked>
-  //! exit if number of unsuccesfull picks =  <MaxPick>
-  Standard_EXPORT static Standard_Boolean PickObjects (Handle(TColStd_HArray1OfTransient)& thepicked,
-                                                       const AIS_KindOfInteractive         Type = AIS_KOI_None,
-                                                       const Standard_Integer              Signature = -1,
-                                                       const Standard_Integer              MaxPick = 5);
 
   Standard_EXPORT static void Commands (Draw_Interpretor& theCommands);
 
@@ -158,18 +147,34 @@ public:
 
   Standard_EXPORT static void RemoveSelected();
 
-  Standard_EXPORT static void StandardModeActivation (const Standard_Integer Mode);
-
   Standard_EXPORT static Quantity_NameOfColor GetColorFromName (const Standard_CString name);
 
-  //! Parses color argument(s) specified within theArgVec[0], theArgVec[1] and theArgVec[2].
+  //! Parses RGB(A) color argument(s) specified within theArgVec[0], theArgVec[1], theArgVec[2] and theArgVec[3].
   //! Handles either color specified by name (single argument)
-  //! or by RGB components (3 arguments) in range 0..1.
+  //! or by RGB(A) components (3-4 arguments) in range 0..1.
   //! The result is stored in theColor on success.
+  //! Returns number of handled arguments (1, 2, 3 or 4) or 0 on syntax error.
+  static Standard_Integer ParseColor (const Standard_Integer   theArgNb,
+                                      const char* const* const theArgVec,
+                                      Quantity_ColorRGBA&      theColor)
+  {
+    return parseColor (theArgNb, theArgVec, theColor, true);
+  }
+
+  //! Parses RGB color argument(s).
   //! Returns number of handled arguments (1 or 3) or 0 on syntax error.
-  Standard_EXPORT static Standard_Integer ParseColor (Standard_Integer theArgNb,
-                                                      const char**     theArgVec,
-                                                      Quantity_Color&  theColor);
+  static Standard_Integer ParseColor (const Standard_Integer   theArgNb,
+                                      const char* const* const theArgVec,
+                                      Quantity_Color&          theColor)
+  {
+    Quantity_ColorRGBA anRgba;
+    const Standard_Integer aNbParsed = parseColor (theArgNb, theArgVec, anRgba, false);
+    if (aNbParsed != 0)
+    {
+      theColor = anRgba.GetRGB();
+    }
+    return aNbParsed;
+  }
 
   //! redraws all defined views.
   Standard_EXPORT static void RedrawAllViews();
@@ -200,7 +205,51 @@ public:
                                                            Aspect_TypeOfMarker& theType,
                                                            Handle(Image_PixMap)& theImage);
 
+  //! Parses shading model argument.
+  //! Handles either enumeration (integer) value or string constant.
+  Standard_EXPORT static Standard_Boolean ParseShadingModel (Standard_CString              theArg,
+                                                             Graphic3d_TypeOfShadingModel& theModel);
+
+  //! Parses ZLayer name.
+  //! @param theArg [in] layer name or enumeration alias
+  //! @param theLayer [out] layer index
+  //! @return TRUE if layer has been identified, note that Graphic3d_ZLayerId_UNKNOWN is also valid value
+  static Standard_Boolean ParseZLayerName (Standard_CString theArg,
+                                           Graphic3d_ZLayerId& theLayer)
+  {
+    return parseZLayer (theArg, false, theLayer);
+  }
+
+  //! Parses ZLayer name.
+  //! @param theArg [in] layer name, enumeration alias or index (of existing Layer)
+  //! @param theLayer [out] layer index
+  //! @return TRUE if layer has been identified, note that Graphic3d_ZLayerId_UNKNOWN is also valid value
+  static Standard_Boolean ParseZLayer (Standard_CString theArg,
+                                       Graphic3d_ZLayerId& theLayer)
+  {
+    return parseZLayer (theArg, true, theLayer);
+  }
+
 private:
+
+  //! Parses RGB(A) color argument(s) specified within theArgVec[0], theArgVec[1], theArgVec[2] and theArgVec[3].
+  //! Handles either color specified by name (single argument)
+  //! or by RGB(A) components (3-4 arguments) in range 0..1.
+  //! The result is stored in theColor on success.
+  //! Returns number of handled arguments (1, 2, 3 or 4) or 0 on syntax error.
+  Standard_EXPORT static Standard_Integer parseColor (Standard_Integer    theArgNb,
+                                                      const char* const*  theArgVec,
+                                                      Quantity_ColorRGBA& theColor,
+                                                      bool                theToParseAlpha);
+
+  //! Parses ZLayer name.
+  //! @param theArg [in] layer name, enumeration alias or index (of existing Layer)
+  //! @param theToAllowInteger [in] when TRUE, the argument will be checked for existing layer index
+  //! @param theLayer [out] layer index
+  //! @return TRUE if layer has been identified, note that Graphic3d_ZLayerId_UNKNOWN is also valid value
+  Standard_EXPORT static Standard_Boolean parseZLayer (Standard_CString theArg,
+                                                       Standard_Boolean theToAllowInteger,
+                                                       Graphic3d_ZLayerId& theLayer);
 
   //! Returns a window class that implements standard behavior of
   //! all windows of the ViewerTest. This includes usual Open CASCADE

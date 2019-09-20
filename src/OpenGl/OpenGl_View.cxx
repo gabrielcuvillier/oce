@@ -38,10 +38,6 @@
 
 IMPLEMENT_STANDARD_RTTIEXT(OpenGl_View,Graphic3d_CView)
 
-#ifdef HAVE_GL2PS
-#include <gl2ps.h>
-#endif
-
 // =======================================================================
 // function : Constructor
 // purpose  :
@@ -54,20 +50,14 @@ OpenGl_View::OpenGl_View (const Handle(Graphic3d_StructureManager)& theMgr,
   myDriver         (theDriver.operator->()),
   myCaps           (theCaps),
   myWasRedrawnGL   (Standard_False),
-  myCulling        (Standard_True),
-  myShadingModel   (Graphic3d_TOSM_FACET),
   myBackfacing     (Graphic3d_TOBM_AUTOMATIC),
-  myBgColor        (Quantity_NOC_BLACK),
-  myCamera         (new Graphic3d_Camera()),
   myToShowGradTrihedron  (false),
   myZLayers        (Structure_MAX_PRIORITY - Structure_MIN_PRIORITY + 1),
   myStateCounter         (theCounter),
+  myCurrLightSourceState (theCounter->Increment()),
+  myLightsRevision       (0),
   myLastLightSourceState (0, 0),
-#if !defined(GL_ES_VERSION_2_0)
   myFboColorFormat       (GL_RGBA8),
-#else
-  myFboColorFormat       (GL_RGBA),
-#endif
   myFboDepthFormat       (GL_DEPTH24_STENCIL8),
   myToFlipOutput         (Standard_False),
   myFrameCounter         (0),
@@ -78,9 +68,9 @@ OpenGl_View::OpenGl_View (const Handle(Graphic3d_StructureManager)& theMgr,
   myTransientDrawToFront (Standard_True),
   myBackBufferRestored   (Standard_False),
   myIsImmediateDrawn     (Standard_False),
-  myTextureParams   (new OpenGl_AspectFace()),
-  myBgGradientArray (new OpenGl_BackgroundArray (Graphic3d_TOB_GRADIENT)),
-  myBgTextureArray  (new OpenGl_BackgroundArray (Graphic3d_TOB_TEXTURE)),
+  myTextureParams   (new OpenGl_Aspects()),
+  myCubeMapParams   (new OpenGl_Aspects()),
+  myBackgroundType  (Graphic3d_TOB_NONE),
   // ray-tracing fields initialization
   myRaytraceInitStatus     (OpenGl_RT_NONE),
   myIsRaytraceDataValid    (Standard_False),
@@ -96,17 +86,19 @@ OpenGl_View::OpenGl_View (const Handle(Graphic3d_StructureManager)& theMgr,
   myPrevCameraApertureRadius(0.f),
   myPrevCameraFocalPlaneDist(0.f)
 {
+  for (int i = 0; i < Graphic3d_TypeOfBackground_NB; ++i)
+  {
+    myBackgrounds[i] = new OpenGl_BackgroundArray(Graphic3d_TypeOfBackground(i));
+  }
+
   myWorkspace = new OpenGl_Workspace (this, NULL);
 
-  OpenGl_Light       aLight;
-  aLight.Type        = Graphic3d_TOLS_AMBIENT;
-  aLight.IsHeadlight = Standard_False;
-  aLight.Color.r()   = 1.;
-  aLight.Color.g()   = 1.;
-  aLight.Color.b()   = 1.;
-  myNoShadingLight.Append (aLight);
+  Handle(Graphic3d_CLight) aLight = new Graphic3d_CLight (Graphic3d_TOLS_AMBIENT);
+  aLight->SetHeadlight (false);
+  aLight->SetColor (Quantity_NOC_WHITE);
+  myNoShadingLight = new Graphic3d_LightSet();
+  myNoShadingLight->Add (aLight);
 
-  myCurrLightSourceState     = myStateCounter->Increment();
   myMainSceneFbos[0]         = new OpenGl_FrameBuffer();
   myMainSceneFbos[1]         = new OpenGl_FrameBuffer();
   myMainSceneFbosOit[0]      = new OpenGl_FrameBuffer();
@@ -130,9 +122,13 @@ OpenGl_View::OpenGl_View (const Handle(Graphic3d_StructureManager)& theMgr,
 OpenGl_View::~OpenGl_View()
 {
   ReleaseGlResources (NULL); // ensure ReleaseGlResources() was called within valid context
-  OpenGl_Element::Destroy (NULL, myBgGradientArray);
-  OpenGl_Element::Destroy (NULL, myBgTextureArray);
+  for (int i = 0; i < Graphic3d_TypeOfBackground_NB; ++i)
+  {
+    OpenGl_Element::Destroy(NULL, myBackgrounds[i]);
+  }
+
   OpenGl_Element::Destroy (NULL, myTextureParams);
+  OpenGl_Element::Destroy (NULL, myCubeMapParams);
 }
 
 // =======================================================================
@@ -141,43 +137,52 @@ OpenGl_View::~OpenGl_View()
 // =======================================================================
 void OpenGl_View::ReleaseGlResources (const Handle(OpenGl_Context)& theCtx)
 {
-  myGraduatedTrihedron.Release (theCtx.operator->());
+  myGraduatedTrihedron.Release (theCtx.get());
+  myFrameStatsPrs.Release (theCtx.get());
 
   if (!myTextureEnv.IsNull())
   {
-    for (OpenGl_TextureSet::Iterator aTextureIter (myTextureEnv); aTextureIter.More(); aTextureIter.Next())
+    if (!theCtx.IsNull())
     {
-      theCtx->DelayedRelease (aTextureIter.ChangeValue());
-      aTextureIter.ChangeValue().Nullify();
+      for (OpenGl_TextureSet::Iterator aTextureIter (myTextureEnv); aTextureIter.More(); aTextureIter.Next())
+      {
+        theCtx->DelayedRelease (aTextureIter.ChangeValue());
+        aTextureIter.ChangeValue().Nullify();
+      }
     }
     myTextureEnv.Nullify();
   }
 
   if (myTextureParams != NULL)
   {
-    myTextureParams->Release (theCtx.operator->());
-  }
-  if (myBgGradientArray != NULL)
-  {
-    myBgGradientArray->Release (theCtx.operator->());
-  }
-  if (myBgTextureArray != NULL)
-  {
-    myBgTextureArray->Release (theCtx.operator->());
+    myTextureParams->Release (theCtx.get());
   }
 
-  myMainSceneFbos[0]        ->Release (theCtx.operator->());
-  myMainSceneFbos[1]        ->Release (theCtx.operator->());
-  myMainSceneFbosOit[0]     ->Release (theCtx.operator->());
-  myMainSceneFbosOit[1]     ->Release (theCtx.operator->());
-  myImmediateSceneFbos[0]   ->Release (theCtx.operator->());
-  myImmediateSceneFbos[1]   ->Release (theCtx.operator->());
-  myImmediateSceneFbosOit[0]->Release (theCtx.operator->());
-  myImmediateSceneFbosOit[1]->Release (theCtx.operator->());
-  myOpenGlFBO               ->Release (theCtx.operator->());
-  myOpenGlFBO2              ->Release (theCtx.operator->());
-  myFullScreenQuad           .Release (theCtx.operator->());
-  myFullScreenQuadFlip       .Release (theCtx.operator->());
+  if (myCubeMapParams != NULL)
+  {
+    myCubeMapParams->Release (theCtx.get());
+  }
+
+  for (int i = 0; i < Graphic3d_TypeOfBackground_NB; ++i)
+  {
+    if (myBackgrounds[i] != NULL)
+    {
+      myBackgrounds[i]->Release (theCtx.get());
+    }
+  }
+
+  myMainSceneFbos[0]        ->Release (theCtx.get());
+  myMainSceneFbos[1]        ->Release (theCtx.get());
+  myMainSceneFbosOit[0]     ->Release (theCtx.get());
+  myMainSceneFbosOit[1]     ->Release (theCtx.get());
+  myImmediateSceneFbos[0]   ->Release (theCtx.get());
+  myImmediateSceneFbos[1]   ->Release (theCtx.get());
+  myImmediateSceneFbosOit[0]->Release (theCtx.get());
+  myImmediateSceneFbosOit[1]->Release (theCtx.get());
+  myOpenGlFBO               ->Release (theCtx.get());
+  myOpenGlFBO2              ->Release (theCtx.get());
+  myFullScreenQuad           .Release (theCtx.get());
+  myFullScreenQuadFlip       .Release (theCtx.get());
 
   releaseRaytraceResources (theCtx);
 }
@@ -197,15 +202,6 @@ void OpenGl_View::Remove()
   myWindow.Nullify();
 
   Graphic3d_CView::Remove();
-}
-
-// =======================================================================
-// function : SetTextureEnv
-// purpose  :
-// =======================================================================
-void OpenGl_View::SetCamera(const Handle(Graphic3d_Camera)& theCamera)
-{
-  myCamera = theCamera;
 }
 
 // =======================================================================
@@ -428,37 +424,19 @@ Standard_Boolean OpenGl_View::BufferDump (Image_PixMap& theImage, const Graphic3
 }
 
 // =======================================================================
-// function : Background
-// purpose  :
-// =======================================================================
-Aspect_Background OpenGl_View::Background() const
-{
-  return Aspect_Background (myBgColor.GetRGB());
-}
-
-// =======================================================================
-// function : SetBackground
-// purpose  :
-// =======================================================================
-void OpenGl_View::SetBackground (const Aspect_Background& theBackground)
-{
-  myBgColor.SetRGB (theBackground.Color());
-}
-
-// =======================================================================
 // function : GradientBackground
 // purpose  :
 // =======================================================================
 Aspect_GradientBackground OpenGl_View::GradientBackground() const
 {
   Quantity_Color aColor1, aColor2;
-  aColor1.SetValues (myBgGradientArray->GradientColor (0).r(),
-                     myBgGradientArray->GradientColor (0).g(),
-                     myBgGradientArray->GradientColor (0).b(), Quantity_TOC_RGB);
-  aColor2.SetValues (myBgGradientArray->GradientColor (1).r(),
-                     myBgGradientArray->GradientColor (1).g(),
-                     myBgGradientArray->GradientColor (1).b(), Quantity_TOC_RGB);
-  return Aspect_GradientBackground (aColor1, aColor2, myBgGradientArray->GradientFillMethod());
+  aColor1.SetValues (myBackgrounds[Graphic3d_TOB_GRADIENT]->GradientColor (0).r(),
+                     myBackgrounds[Graphic3d_TOB_GRADIENT]->GradientColor (0).g(),
+                     myBackgrounds[Graphic3d_TOB_GRADIENT]->GradientColor (0).b(), Quantity_TOC_RGB);
+  aColor2.SetValues (myBackgrounds[Graphic3d_TOB_GRADIENT]->GradientColor (1).r(),
+                     myBackgrounds[Graphic3d_TOB_GRADIENT]->GradientColor (1).g(),
+                     myBackgrounds[Graphic3d_TOB_GRADIENT]->GradientColor (1).b(), Quantity_TOC_RGB);
+  return Aspect_GradientBackground (aColor1, aColor2, myBackgrounds[Graphic3d_TOB_GRADIENT]->GradientFillMethod());
 }
 
 // =======================================================================
@@ -469,7 +447,9 @@ void OpenGl_View::SetGradientBackground (const Aspect_GradientBackground& theBac
 {
   Quantity_Color aColor1, aColor2;
   theBackground.Colors (aColor1, aColor2);
-  myBgGradientArray->SetGradientParameters (aColor1, aColor2, theBackground.BgGradientFillMethod());
+  myBackgrounds[Graphic3d_TOB_GRADIENT]->SetGradientParameters (aColor1, aColor2, theBackground.BgGradientFillMethod());
+
+  myBackgroundType = Graphic3d_TOB_GRADIENT;
 }
 
 // =======================================================================
@@ -503,6 +483,8 @@ void OpenGl_View::SetBackgroundImage (const TCollection_AsciiString& theFilePath
 
   // Set texture parameters
   myTextureParams->SetAspect (anAspect);
+
+  myBackgroundType = Graphic3d_TOB_TEXTURE;
 }
 
 // =======================================================================
@@ -511,7 +493,7 @@ void OpenGl_View::SetBackgroundImage (const TCollection_AsciiString& theFilePath
 // =======================================================================
 Aspect_FillMethod OpenGl_View::BackgroundImageStyle() const
 {
-  return myBgTextureArray->TextureFillMethod();
+  return myBackgrounds[Graphic3d_TOB_TEXTURE]->TextureFillMethod();
 }
 
 // =======================================================================
@@ -520,16 +502,76 @@ Aspect_FillMethod OpenGl_View::BackgroundImageStyle() const
 // =======================================================================
 void OpenGl_View::SetBackgroundImageStyle (const Aspect_FillMethod theFillStyle)
 {
-  myBgTextureArray->SetTextureFillMethod (theFillStyle);
+  myBackgrounds[Graphic3d_TOB_TEXTURE]->SetTextureFillMethod (theFillStyle);
+}
+
+// =======================================================================
+// function : BackgroundCubeMap
+// purpose  :
+// =======================================================================
+Handle(Graphic3d_CubeMap) OpenGl_View::BackgroundCubeMap() const
+{
+  return myBackgroundCubeMap;
+}
+ 
+// =======================================================================
+// function : SetBackgroundCubeMap
+// purpose  :
+// =======================================================================
+void OpenGl_View::SetBackgroundCubeMap (const Handle(Graphic3d_CubeMap)& theCubeMap)
+{
+  myBackgroundCubeMap = theCubeMap;
+  Handle(Graphic3d_AspectFillArea3d) anAspect = new Graphic3d_AspectFillArea3d;
+  Handle(Graphic3d_TextureSet) aTextureSet = new Graphic3d_TextureSet (myBackgroundCubeMap);
+
+  anAspect->SetInteriorStyle(Aspect_IS_SOLID);
+  anAspect->SetSuppressBackFaces(false);
+  anAspect->SetTextureSet(aTextureSet);
+
+  const Handle(OpenGl_Context)& aCtx = myWorkspace->GetGlContext();
+  if (!aCtx.IsNull())
+  {
+    anAspect->SetShaderProgram (aCtx->ShaderManager()->GetBgCubeMapProgram());
+  }
+
+  if (theCubeMap->IsDone())
+  {
+    anAspect->SetTextureMapOn();
+  }
+  else
+  {
+    anAspect->SetTextureMapOff();
+  }
+
+  myCubeMapParams->SetAspect(anAspect);
+  const OpenGl_Aspects* anAspectsBackup = myWorkspace->SetAspects (myCubeMapParams);
+  myWorkspace->ApplyAspects();
+  myWorkspace->SetAspects (anAspectsBackup);
+  myWorkspace->ApplyAspects();
+
+  myBackgroundType = Graphic3d_TOB_CUBEMAP;
 }
 
 //=======================================================================
-//function : AddZLayer
+//function : InsertLayerBefore
 //purpose  :
 //=======================================================================
-void OpenGl_View::AddZLayer (const Graphic3d_ZLayerId theLayerId)
+void OpenGl_View::InsertLayerBefore (const Graphic3d_ZLayerId theLayerId,
+  const Graphic3d_ZLayerSettings& theSettings,
+  const Graphic3d_ZLayerId theLayerAfter)
 {
-  myZLayers.AddLayer (theLayerId);
+  myZLayers.InsertLayerBefore (theLayerId, theSettings, theLayerAfter);
+}
+
+//=======================================================================
+//function : InsertLayerAfter
+//purpose  :
+//=======================================================================
+void OpenGl_View::InsertLayerAfter (const Graphic3d_ZLayerId theLayerId,
+  const Graphic3d_ZLayerSettings& theSettings,
+  const Graphic3d_ZLayerId theLayerBefore)
+{
+  myZLayers.InsertLayerAfter (theLayerId, theSettings, theLayerBefore);
 }
 
 //=======================================================================
@@ -558,109 +600,80 @@ void OpenGl_View::SetZLayerSettings (const Graphic3d_ZLayerId        theLayerId,
 Standard_Integer OpenGl_View::ZLayerMax() const
 {
   Standard_Integer aLayerMax = Graphic3d_ZLayerId_Default;
-  for (OpenGl_LayerSeqIds::Iterator aMapIt(myZLayers.LayerIDs()); aMapIt.More(); aMapIt.Next())
+  for (NCollection_List<Handle(Graphic3d_Layer)>::Iterator aLayerIter (myZLayers.Layers()); aLayerIter.More(); aLayerIter.Next())
   {
-    aLayerMax = Max (aLayerMax, aMapIt.Value());
+    aLayerMax = Max (aLayerMax, aLayerIter.Value()->LayerId());
   }
-
   return aLayerMax;
 }
 
 //=======================================================================
-//function : InvalidateZLayerBoundingBox
+//function : Layers
 //purpose  :
 //=======================================================================
-void OpenGl_View::InvalidateZLayerBoundingBox (const Graphic3d_ZLayerId theLayerId) const
+const NCollection_List<Handle(Graphic3d_Layer)>& OpenGl_View::Layers() const
 {
-  if (myZLayers.LayerIDs().IsBound (theLayerId))
-  {
-    myZLayers.Layer (theLayerId).InvalidateBoundingBox();
-  }
-  else
-  {
-    const Standard_Integer aLayerMax = ZLayerMax();
-    for (Standard_Integer aLayerId = Graphic3d_ZLayerId_Default; aLayerId < aLayerMax; ++aLayerId)
-    {
-      if (myZLayers.LayerIDs().IsBound (aLayerId))
-      {
-        const OpenGl_Layer& aLayer = myZLayers.Layer (aLayerId);
-        if (aLayer.NbOfTransformPersistenceObjects() > 0)
-        {
-          aLayer.InvalidateBoundingBox();
-        }
-      }
-    }
-  }
+  return myZLayers.Layers();
 }
 
 //=======================================================================
-//function : ZLayerBoundingBox
+//function : Layer
 //purpose  :
 //=======================================================================
-Bnd_Box OpenGl_View::ZLayerBoundingBox (const Graphic3d_ZLayerId        theLayerId,
-                                        const Handle(Graphic3d_Camera)& theCamera,
-                                        const Standard_Integer          theWindowWidth,
-                                        const Standard_Integer          theWindowHeight,
-                                        const Standard_Boolean          theToIncludeAuxiliary) const
+Handle(Graphic3d_Layer) OpenGl_View::Layer (const Graphic3d_ZLayerId theLayerId) const
 {
-  Bnd_Box aBox;
-  if (myZLayers.LayerIDs().IsBound (theLayerId))
+  Handle(Graphic3d_Layer) aLayer;
+  if (theLayerId != Graphic3d_ZLayerId_UNKNOWN)
   {
-    aBox = myZLayers.Layer (theLayerId).BoundingBox (Identification(),
-                                                     theCamera,
-                                                     theWindowWidth,
-                                                     theWindowHeight,
-                                                     theToIncludeAuxiliary);
+    myZLayers.LayerIDs().Find (theLayerId, aLayer);
   }
+  return aLayer;
+}
+
+//=======================================================================
+//function : MinMaxValues
+//purpose  :
+//=======================================================================
+Bnd_Box OpenGl_View::MinMaxValues (const Standard_Boolean theToIncludeAuxiliary) const
+{
+  if (!IsDefined())
+  {
+    return Bnd_Box();
+  }
+
+  Bnd_Box aBox = base_type::MinMaxValues (theToIncludeAuxiliary);
 
   // add bounding box of gradient/texture background for proper Z-fit
   if (theToIncludeAuxiliary
-   && theLayerId == Graphic3d_ZLayerId_BotOSD
-   && (myBgTextureArray->IsDefined()
-    || myBgGradientArray->IsDefined()))
+    && (myBackgrounds[Graphic3d_TOB_TEXTURE]->IsDefined()
+     || myBackgrounds[Graphic3d_TOB_GRADIENT]->IsDefined()))
   {
+    const Handle(Graphic3d_Camera)& aCamera = Camera();
+    Graphic3d_Vec2i aWinSize;
+    Window()->Size (aWinSize.x(), aWinSize.y());
+
     // Background is drawn using 2D transformation persistence
     // (e.g. it is actually placed in 3D coordinates within active camera position).
     // We add here full-screen plane with 2D transformation persistence
     // for simplicity (myBgTextureArray might define a little bit different options
     // but it is updated within ::Render())
-    const Graphic3d_Mat4d& aProjectionMat = theCamera->ProjectionMatrix();
-    const Graphic3d_Mat4d& aWorldViewMat  = theCamera->OrientationMatrix();
+    const Graphic3d_Mat4d& aProjectionMat = aCamera->ProjectionMatrix();
+    const Graphic3d_Mat4d& aWorldViewMat  = aCamera->OrientationMatrix();
     Graphic3d_BndBox3d aBox2d (Graphic3d_Vec3d (0.0, 0.0, 0.0),
-                               Graphic3d_Vec3d (double(theWindowWidth), double(theWindowHeight), 0.0));
+                               Graphic3d_Vec3d (double(aWinSize.x()), double(aWinSize.y()), 0.0));
 
     Graphic3d_TransformPers aTrsfPers (Graphic3d_TMF_2d, Aspect_TOTP_LEFT_LOWER);
-    aTrsfPers.Apply (theCamera,
+    aTrsfPers.Apply (aCamera,
                      aProjectionMat,
                      aWorldViewMat,
-                     theWindowWidth,
-                     theWindowHeight,
+                     aWinSize.x(),
+                     aWinSize.y(),
                      aBox2d);
     aBox.Add (gp_Pnt (aBox2d.CornerMin().x(), aBox2d.CornerMin().y(), aBox2d.CornerMin().z()));
     aBox.Add (gp_Pnt (aBox2d.CornerMax().x(), aBox2d.CornerMax().y(), aBox2d.CornerMax().z()));
   }
 
   return aBox;
-}
-
-//=======================================================================
-//function : considerZoomPersistenceObjects
-//purpose  :
-//=======================================================================
-Standard_Real OpenGl_View::considerZoomPersistenceObjects (const Graphic3d_ZLayerId        theLayerId,
-                                                           const Handle(Graphic3d_Camera)& theCamera,
-                                                           const Standard_Integer          theWindowWidth,
-                                                           const Standard_Integer          theWindowHeight) const
-{
-  if (myZLayers.LayerIDs().IsBound (theLayerId))
-  {
-    return myZLayers.Layer (theLayerId).considerZoomPersistenceObjects (Identification(),
-                                                                        theCamera,
-                                                                        theWindowWidth,
-                                                                        theWindowHeight);
-  }
-
-  return 1.0;
 }
 
 //=======================================================================
@@ -746,112 +759,6 @@ void OpenGl_View::FBOChangeViewport (const Handle(Standard_Transient)& theFbo,
   aFrameBuffer->ChangeViewport (theWidth, theHeight);
 }
 
-// =======================================================================
-// function : Export
-// purpose  :
-// =======================================================================
-#ifdef HAVE_GL2PS
-Standard_Boolean OpenGl_View::Export (const Standard_CString theFileName,
-                                      const Graphic3d_ExportFormat theFormat,
-                                      const Graphic3d_SortType theSortType)
-{
-  // gl2psBeginPage() will call OpenGL functions
-  // so we should activate correct GL context before redraw scene call
-  if (!myWorkspace->Activate())
-  {
-    return Standard_False;
-  }
-
-  Standard_Integer aFormat = -1;
-  Standard_Integer aSortType = Graphic3d_ST_BSP_Tree;
-  switch (theFormat)
-  {
-    case Graphic3d_EF_PostScript:
-      aFormat = GL2PS_PS;
-      break;
-    case Graphic3d_EF_EnhPostScript:
-      aFormat = GL2PS_EPS;
-      break;
-    case Graphic3d_EF_TEX:
-      aFormat = GL2PS_TEX;
-      break;
-    case Graphic3d_EF_PDF:
-      aFormat = GL2PS_PDF;
-      break;
-    case Graphic3d_EF_SVG:
-      aFormat = GL2PS_SVG;
-      break;
-    case Graphic3d_EF_PGF:
-      aFormat = GL2PS_PGF;
-      break;
-    case Graphic3d_EF_EMF:
-      //aFormat = GL2PS_EMF;
-      aFormat = GL2PS_PGF + 1; // 6
-      break;
-    default:
-      // unsupported format
-      return Standard_False;
-  }
-
-  switch (theSortType)
-  {
-    case Graphic3d_ST_Simple:
-      aSortType = GL2PS_SIMPLE_SORT;
-      break;
-    case Graphic3d_ST_BSP_Tree:
-      aSortType = GL2PS_BSP_SORT;
-      break;
-  }
-
-  GLint aViewport[4];
-  aViewport[0] = 0;
-  aViewport[1] = 0;
-  aViewport[2] = myWindow->Width();
-  aViewport[3] = myWindow->Height();
-
-  GLint aBufferSize = 1024 * 1024;
-  GLint anErrCode = GL2PS_SUCCESS;
-
-  // gl2ps uses standard write functions and do not check locale
-  Standard_CLocaleSentry aLocaleSentry;
-
-  while (aBufferSize > 0)
-  {
-    // current patch for EMF support in gl2ps uses WinAPI functions to create file
-    FILE* aFileH = (theFormat != Graphic3d_EF_EMF) ? fopen (theFileName, "wb") : NULL;
-    anErrCode = gl2psBeginPage ("", "", aViewport, aFormat, aSortType,
-                    GL2PS_DRAW_BACKGROUND | GL2PS_OCCLUSION_CULL | GL2PS_BEST_ROOT/* | GL2PS_SIMPLE_LINE_OFFSET*/,
-                    GL_RGBA, 0, NULL,
-                    0, 0, 0, aBufferSize, aFileH, theFileName);
-    if (anErrCode != GL2PS_SUCCESS)
-    {
-      // initialization failed
-      if (aFileH != NULL)
-        fclose (aFileH);
-      break;
-    }
-    Redraw();
-
-    anErrCode = gl2psEndPage();
-    if (aFileH != NULL)
-      fclose (aFileH);
-
-    if (anErrCode == GL2PS_OVERFLOW)
-      aBufferSize *= 2;
-    else
-      break;
-  }
-  return anErrCode == GL2PS_SUCCESS;
-}
-#else
-Standard_Boolean OpenGl_View::Export (const Standard_CString /*theFileName*/,
-                                      const Graphic3d_ExportFormat /*theFormat*/,
-                                      const Graphic3d_SortType /*theSortType*/)
-{
-    return Standard_False;
-}
-#endif
-
 //=======================================================================
 //function : displayStructure
 //purpose  :
@@ -920,4 +827,33 @@ void OpenGl_View::DiagnosticInformation (TColStd_IndexedDataMapOfStringString& t
     TCollection_AsciiString aResRatio (myRenderParams.ResolutionRatio());
     theDict.ChangeFromIndex (theDict.Add ("ResolutionRatio", aResRatio)) = aResRatio;
   }
+}
+
+//=======================================================================
+//function : StatisticInformation
+//purpose  :
+//=======================================================================
+void OpenGl_View::StatisticInformation (TColStd_IndexedDataMapOfStringString& theDict) const
+{
+  if (const Handle(OpenGl_Context)& aCtx = myWorkspace->GetGlContext())
+  {
+    const Handle(OpenGl_FrameStats)& aStats = aCtx->FrameStats();
+    const Graphic3d_RenderingParams& aRendParams = myWorkspace->View()->RenderingParams();
+    aStats->FormatStats (theDict, aRendParams.CollectedStats);
+  }
+}
+
+//=======================================================================
+//function : StatisticInformation
+//purpose  :
+//=======================================================================
+TCollection_AsciiString OpenGl_View::StatisticInformation() const
+{
+  if (const Handle(OpenGl_Context)& aCtx = myWorkspace->GetGlContext())
+  {
+    const Handle(OpenGl_FrameStats)& aStats = aCtx->FrameStats();
+    const Graphic3d_RenderingParams& aRendParams = myWorkspace->View()->RenderingParams();
+    return aStats->FormatStats (aRendParams.CollectedStats);
+  }
+  return TCollection_AsciiString();
 }

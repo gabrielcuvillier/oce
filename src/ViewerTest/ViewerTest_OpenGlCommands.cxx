@@ -22,10 +22,8 @@
 #include <Graphic3d_Group.hxx>
 #include <Graphic3d_ShaderObject.hxx>
 #include <Graphic3d_ShaderProgram.hxx>
-#include <OpenGl_AspectFace.hxx>
-#include <OpenGl_AspectLine.hxx>
-#include <OpenGl_AspectMarker.hxx>
-#include <OpenGl_AspectText.hxx>
+#include <Image_AlienPixMap.hxx>
+#include <OpenGl_Aspects.hxx>
 #include <OpenGl_Context.hxx>
 #include <OpenGl_Element.hxx>
 #include <OpenGl_GlCore20.hxx>
@@ -48,6 +46,7 @@
 #include <ViewerTest_DoubleMapOfInteractiveAndName.hxx>
 #include <ViewerTest_DoubleMapIteratorOfDoubleMapOfInteractiveAndName.hxx>
 #include <OpenGl_Group.hxx>
+#include <OSD_OpenFile.hxx>
 
 extern Standard_Boolean VDisplayAISObject (const TCollection_AsciiString& theName,
                                            const Handle(AIS_InteractiveObject)& theAISObj,
@@ -155,31 +154,33 @@ void VUserDrawObj::ComputeSelection (const Handle(SelectMgr_Selection)& theSelec
 
 void VUserDrawObj::Render(const Handle(OpenGl_Workspace)& theWorkspace) const
 {
-  // this sample does not use GLSL programs - make sure it is disabled
-  Handle(OpenGl_Context) aCtx = theWorkspace->GetGlContext();
-  aCtx->BindProgram (Handle(OpenGl_ShaderProgram)());
-  aCtx->ShaderManager()->PushState (Handle(OpenGl_ShaderProgram)());
+  const Handle(OpenGl_Context)& aCtx = theWorkspace->GetGlContext();
 
   // To test linking against OpenGl_Workspace and all aspect classes
-  const OpenGl_AspectMarker* aMA = theWorkspace->AspectMarker();
-  aMA->Aspect()->Type();
-  const OpenGl_AspectText* aTA = theWorkspace->AspectText();
-  aTA->Aspect()->Font();
-  OpenGl_Vec4 aColor = theWorkspace->LineColor();
+  const OpenGl_Aspects* aMA = theWorkspace->Aspects();
+  aMA->Aspect()->MarkerType();
+  OpenGl_Vec4 aColor = theWorkspace->InteriorColor();
 
-#if !defined(GL_ES_VERSION_2_0)
+  aCtx->ShaderManager()->BindLineProgram (Handle(OpenGl_TextureSet)(), Aspect_TOL_SOLID,
+                                          Graphic3d_TOSM_UNLIT, Graphic3d_AlphaMode_Opaque, false,
+                                          Handle(OpenGl_ShaderProgram)());
+  aCtx->SetColor4fv (aColor);
+
+  const OpenGl_Vec3 aVertArray[4] =
+  {
+    OpenGl_Vec3(myCoords[0], myCoords[1], myCoords[2]),
+    OpenGl_Vec3(myCoords[3], myCoords[4], myCoords[2]),
+    OpenGl_Vec3(myCoords[3], myCoords[4], myCoords[5]),
+    OpenGl_Vec3(myCoords[0], myCoords[1], myCoords[5]),
+  };
+  Handle(OpenGl_VertexBuffer) aVertBuffer = new OpenGl_VertexBuffer();
+  aVertBuffer->Init (aCtx, 3, 4, aVertArray[0].GetData());
+
   // Finally draw something to make sure UserDraw really works
-  glPushAttrib(GL_ENABLE_BIT);
-  glDisable(GL_LIGHTING);
-  glColor4fv(aColor.GetData());
-  glBegin(GL_LINE_LOOP);
-  glVertex3f(myCoords[0], myCoords[1], myCoords[2]);
-  glVertex3f(myCoords[3], myCoords[4], myCoords[2]);
-  glVertex3f(myCoords[3], myCoords[4], myCoords[5]);
-  glVertex3f(myCoords[0], myCoords[1], myCoords[5]);
-  glEnd();
-  glPopAttrib();
-#endif
+  aVertBuffer->BindAttribute  (aCtx, Graphic3d_TOA_POS);
+  glDrawArrays(GL_LINE_LOOP, 0, aVertBuffer->GetElemsNb());
+  aVertBuffer->UnbindAttribute(aCtx, Graphic3d_TOA_POS);
+  aVertBuffer->Release (aCtx.get());
 }
 
 } // end of anonymous namespace
@@ -532,167 +533,805 @@ static int VGlInfo (Draw_Interpretor& theDI,
   return 0;
 }
 
+//! Parse shader type argument.
+static bool parseShaderTypeArg (Graphic3d_TypeOfShaderObject& theType,
+                                const TCollection_AsciiString& theArg)
+{
+  if (theArg == "-vertex"
+   || theArg == "-vert")
+  {
+    theType = Graphic3d_TOS_VERTEX;
+  }
+  else if (theArg == "-tessevaluation"
+        || theArg == "-tesseval"
+        || theArg == "-evaluation"
+        || theArg == "-eval")
+  {
+    theType = Graphic3d_TOS_TESS_EVALUATION;
+  }
+  else if (theArg == "-tesscontrol"
+        || theArg == "-tessctrl"
+        || theArg == "-control"
+        || theArg == "-ctrl")
+  {
+    theType = Graphic3d_TOS_TESS_CONTROL;
+  }
+  else if (theArg == "-geometry"
+        || theArg == "-geom")
+  {
+    theType = Graphic3d_TOS_GEOMETRY;
+  }
+  else if (theArg == "-fragment"
+        || theArg == "-frag")
+  {
+    theType = Graphic3d_TOS_FRAGMENT;
+  }
+  else if (theArg == "-compute"
+        || theArg == "-comp")
+  {
+    theType = Graphic3d_TOS_COMPUTE;
+  }
+  else
+  {
+    return false;
+  }
+  return true;
+}
 
 //==============================================================================
 //function : VShaderProg
 //purpose  : Sets the pair of vertex and fragment shaders for the object
 //==============================================================================
-static Standard_Integer VShaderProg (Draw_Interpretor& /*theDI*/,
+static Standard_Integer VShaderProg (Draw_Interpretor& theDI,
                                      Standard_Integer  theArgNb,
                                      const char**      theArgVec)
 {
   Handle(AIS_InteractiveContext) aCtx = ViewerTest::GetAISContext();
   if (aCtx.IsNull())
   {
-    std::cerr << "Use 'vinit' command before " << theArgVec[0] << "\n";
+    std::cout << "Error: no active view.\n";
     return 1;
   }
   else if (theArgNb < 2)
   {
-    std::cerr << theArgVec[0] << " syntax error: lack of arguments\n";
+    std::cout << "Syntax error: lack of arguments\n";
     return 1;
   }
 
-  TCollection_AsciiString aLastArg (theArgVec[theArgNb - 1]);
-  aLastArg.LowerCase();
-  const Standard_Boolean toTurnOff = aLastArg == "off";
-  Standard_Integer       anArgsNb  = theArgNb - 1;
-  Handle(Graphic3d_ShaderProgram) aProgram;
-  if (!toTurnOff
-   && aLastArg == "phong")
+  bool isExplicitShaderType = false;
+  Handle(Graphic3d_ShaderProgram) aProgram = new Graphic3d_ShaderProgram();
+  NCollection_Sequence<Handle(AIS_InteractiveObject)> aPrsList;
+  Graphic3d_GroupAspect aGroupAspect = Graphic3d_ASPECT_FILL_AREA;
+  bool isSetGroupAspect = false;
+  for (Standard_Integer anArgIter = 1; anArgIter < theArgNb; ++anArgIter)
   {
-    const TCollection_AsciiString& aShadersRoot = Graphic3d_ShaderProgram::ShadersFolder();
-    if (aShadersRoot.IsEmpty())
+    TCollection_AsciiString anArg (theArgVec[anArgIter]);
+    anArg.LowerCase();
+    Graphic3d_TypeOfShaderObject aShaderTypeArg = Graphic3d_TypeOfShaderObject(-1);
+    if (!aProgram.IsNull()
+      && anArg == "-uniform"
+      && anArgIter + 2 < theArgNb)
     {
-      std::cerr << "Both environment variables CSF_ShadersDirectory and CASROOT are undefined!\n"
-                << "At least one should be defined to load Phong program.\n";
+      TCollection_AsciiString aName = theArgVec[++anArgIter];
+      aProgram->PushVariableFloat (aName, float (Draw::Atof (theArgVec[++anArgIter])));
+    }
+    else if (anArg == "-list"
+          || ((anArg == "-update"
+            || anArg == "-dump"
+            || anArg == "-debug"
+            || anArg == "-reload"
+            || anArg == "-load")
+           && anArgIter + 1 < theArgNb))
+    {
+      Handle(OpenGl_Context) aGlCtx;
+      if (Handle(OpenGl_GraphicDriver) aDriver = Handle(OpenGl_GraphicDriver)::DownCast (aCtx->CurrentViewer()->Driver()))
+      {
+        aGlCtx = aDriver->GetSharedContext();
+      }
+      if (aGlCtx.IsNull())
+      {
+        std::cout << "Error: no OpenGl_Context\n";
+        return 1;
+      }
+
+      if (anArg == "-list")
+      {
+        for (OpenGl_Context::OpenGl_ResourcesMap::Iterator aResIter (aGlCtx->SharedResources()); aResIter.More(); aResIter.Next())
+        {
+          if (Handle(OpenGl_ShaderProgram) aResProg = Handle(OpenGl_ShaderProgram)::DownCast (aResIter.Value()))
+          {
+            theDI << aResProg->ResourceId() << " ";
+          }
+        }
+      }
+      else
+      {
+        TCollection_AsciiString aShaderName = theArgVec[++anArgIter];
+        Handle(OpenGl_ShaderProgram) aResProg;
+        if (!aGlCtx->GetResource (aShaderName, aResProg))
+        {
+          std::cout << "Syntax error: shader resource '" << aShaderName << "' is not found\n";
+          return 1;
+        }
+        if (aResProg->UpdateDebugDump (aGlCtx, "", false, anArg == "-dump"))
+        {
+          aCtx->UpdateCurrentViewer();
+        }
+      }
+      if (anArgIter + 1 < theArgNb)
+      {
+        std::cout << "Syntax error: wrong number of arguments\n";
+        return 1;
+      }
+      return 0;
+    }
+    else if (!aProgram.IsNull()
+          &&  aProgram->ShaderObjects().IsEmpty()
+          && (anArg == "-off"
+           || anArg ==  "off"))
+    {
+      aProgram.Nullify();
+    }
+    else if (!aProgram.IsNull()
+          &&  aProgram->ShaderObjects().IsEmpty()
+          && (anArg == "-phong"
+           || anArg ==  "phong"))
+    {
+      const TCollection_AsciiString& aShadersRoot = Graphic3d_ShaderProgram::ShadersFolder();
+      if (aShadersRoot.IsEmpty())
+      {
+        std::cout << "Error: both environment variables CSF_ShadersDirectory and CASROOT are undefined!\n"
+                     "At least one should be defined to load Phong program.\n";
+        return 1;
+      }
+
+      const TCollection_AsciiString aSrcVert = aShadersRoot + "/PhongShading.vs";
+      const TCollection_AsciiString aSrcFrag = aShadersRoot + "/PhongShading.fs";
+      if (!aSrcVert.IsEmpty()
+       && !OSD_File (aSrcVert).Exists())
+      {
+        std::cout << "Error: PhongShading.vs is not found\n";
+        return 1;
+      }
+      if (!aSrcFrag.IsEmpty()
+       && !OSD_File (aSrcFrag).Exists())
+      {
+        std::cout << "Error: PhongShading.fs is not found\n";
+        return 1;
+      }
+
+      aProgram->AttachShader (Graphic3d_ShaderObject::CreateFromFile (Graphic3d_TOS_VERTEX,   aSrcVert));
+      aProgram->AttachShader (Graphic3d_ShaderObject::CreateFromFile (Graphic3d_TOS_FRAGMENT, aSrcFrag));
+    }
+    else if (aPrsList.IsEmpty()
+          && anArg == "*")
+    {
+      //
+    }
+    else if (!isSetGroupAspect
+          &&  anArgIter + 1 < theArgNb
+          && (anArg == "-primtype"
+           || anArg == "-primitivetype"
+           || anArg == "-groupaspect"
+           || anArg == "-aspecttype"
+           || anArg == "-aspect"))
+    {
+      isSetGroupAspect = true;
+      TCollection_AsciiString aPrimTypeStr (theArgVec[++anArgIter]);
+      aPrimTypeStr.LowerCase();
+      if (aPrimTypeStr == "line")
+      {
+        aGroupAspect = Graphic3d_ASPECT_LINE;
+      }
+      else if (aPrimTypeStr == "tris"
+            || aPrimTypeStr == "triangles"
+            || aPrimTypeStr == "fill"
+            || aPrimTypeStr == "fillarea"
+            || aPrimTypeStr == "shading"
+            || aPrimTypeStr == "shade")
+      {
+        aGroupAspect = Graphic3d_ASPECT_FILL_AREA;
+      }
+      else if (aPrimTypeStr == "text")
+      {
+        aGroupAspect = Graphic3d_ASPECT_TEXT;
+      }
+      else if (aPrimTypeStr == "marker"
+            || aPrimTypeStr == "point"
+            || aPrimTypeStr == "pnt")
+      {
+        aGroupAspect = Graphic3d_ASPECT_MARKER;
+      }
+      else
+      {
+        std::cerr << "Syntax error at '" << aPrimTypeStr << "'\n";
+        return 1;
+      }
+    }
+    else if (anArgIter + 1 < theArgNb
+         && !aProgram.IsNull()
+         &&  aProgram->Header().IsEmpty()
+         &&  (anArg == "-version"
+           || anArg == "-glslversion"
+           || anArg == "-header"
+           || anArg == "-glslheader"))
+    {
+      TCollection_AsciiString aHeader (theArgVec[++anArgIter]);
+      if (aHeader.IsIntegerValue())
+      {
+        aHeader = TCollection_AsciiString ("#version ") + aHeader;
+      }
+      aProgram->SetHeader (aHeader);
+    }
+    else if (!anArg.StartsWith ("-")
+          && GetMapOfAIS().IsBound2 (theArgVec[anArgIter]))
+    {
+      Handle(AIS_InteractiveObject) anIO = GetMapOfAIS().Find2 (theArgVec[anArgIter]);
+      if (anIO.IsNull())
+      {
+        std::cerr << "Syntax error: " << theArgVec[anArgIter] << " is not an AIS object\n";
+        return 1;
+      }
+      aPrsList.Append (anIO);
+    }
+    else if (!aProgram.IsNull()
+           && ((anArgIter + 1 < theArgNb && parseShaderTypeArg (aShaderTypeArg, anArg))
+            || (!isExplicitShaderType && aProgram->ShaderObjects().Size() < 2)))
+    {
+      TCollection_AsciiString aShaderPath (theArgVec[anArgIter]);
+      if (aShaderTypeArg != Graphic3d_TypeOfShaderObject(-1))
+      {
+        aShaderPath = (theArgVec[++anArgIter]);
+        isExplicitShaderType = true;
+      }
+
+      const bool isSrcFile = OSD_File (aShaderPath).Exists();
+      Handle(Graphic3d_ShaderObject) aShader = isSrcFile
+                                             ? Graphic3d_ShaderObject::CreateFromFile  (Graphic3d_TOS_VERTEX, aShaderPath)
+                                             : Graphic3d_ShaderObject::CreateFromSource(Graphic3d_TOS_VERTEX, aShaderPath);
+      const TCollection_AsciiString& aShaderSrc = aShader->Source();
+
+      const bool hasVertPos   = aShaderSrc.Search ("gl_Position")  != -1;
+      const bool hasFragColor = aShaderSrc.Search ("occSetFragColor") != -1
+                             || aShaderSrc.Search ("occFragColor") != -1
+                             || aShaderSrc.Search ("gl_FragColor") != -1
+                             || aShaderSrc.Search ("gl_FragData")  != -1;
+      Graphic3d_TypeOfShaderObject aShaderType = aShaderTypeArg;
+      if (aShaderType == Graphic3d_TypeOfShaderObject(-1))
+      {
+        if (hasVertPos
+        && !hasFragColor)
+        {
+          aShaderType = Graphic3d_TOS_VERTEX;
+        }
+        if (hasFragColor
+        && !hasVertPos)
+        {
+          aShaderType = Graphic3d_TOS_FRAGMENT;
+        }
+      }
+      if (aShaderType == Graphic3d_TypeOfShaderObject(-1))
+      {
+        std::cerr << "Error: non-existing or invalid shader source\n";
+        return 1;
+      }
+
+      aProgram->AttachShader (Graphic3d_ShaderObject::CreateFromSource (aShaderType, aShaderSrc));
+    }
+    else
+    {
+      std::cerr << "Syntax error at '" << anArg << "'\n";
       return 1;
     }
-
-    const TCollection_AsciiString aSrcVert = aShadersRoot + "/PhongShading.vs";
-    const TCollection_AsciiString aSrcFrag = aShadersRoot + "/PhongShading.fs";
-
-    if (!aSrcVert.IsEmpty()
-     && !OSD_File (aSrcVert).Exists())
-    {
-      std::cerr << "Error: PhongShading.vs is not found\n";
-      return 1;
-    }
-    if (!aSrcFrag.IsEmpty()
-      && !OSD_File (aSrcFrag).Exists())
-    {
-      std::cerr << "Error: PhongShading.fs is not found\n";
-      return 1;
-    }
-
-    aProgram = new Graphic3d_ShaderProgram();
-    aProgram->AttachShader (Graphic3d_ShaderObject::CreateFromFile (Graphic3d_TOS_VERTEX,   aSrcVert));
-    aProgram->AttachShader (Graphic3d_ShaderObject::CreateFromFile (Graphic3d_TOS_FRAGMENT, aSrcFrag));
   }
-  if (!toTurnOff
-   && aProgram.IsNull())
+
+  if (!aProgram.IsNull()
+    && ViewerTest::CurrentView()->RenderingParams().TransparencyMethod == Graphic3d_RTM_BLEND_OIT)
   {
-    if (theArgNb < 3)
-    {
-      std::cout << "Syntax error: lack of arguments\n";
-      return 1;
-    }
-
-    const TCollection_AsciiString aSrcVert = theArgVec[theArgNb - 2];
-    const TCollection_AsciiString aSrcFrag = theArgVec[theArgNb - 1];
-    if (aSrcVert.IsEmpty() || aSrcFrag.IsEmpty())
-    {
-      std::cout << "Syntax error: lack of arguments\n";
-      return 1;
-    }
-
-    const bool isVertFile = OSD_File (aSrcVert).Exists();
-    const bool isFragFile = OSD_File (aSrcFrag).Exists();
-    if (!isVertFile
-     && aSrcVert.Search ("gl_Position") == -1)
-    {
-      std::cerr << "Error: non-existing or invalid vertex shader source\n";
-      return 1;
-    }
-    if (!isFragFile
-      && aSrcFrag.Search ("occFragColor") == -1)
-    {
-      std::cerr << "Error: non-existing or invalid fragment shader source\n";
-      return 1;
-    }
-
-    aProgram = new Graphic3d_ShaderProgram();
-    aProgram->AttachShader (isVertFile
-                          ? Graphic3d_ShaderObject::CreateFromFile  (Graphic3d_TOS_VERTEX,   aSrcVert)
-                          : Graphic3d_ShaderObject::CreateFromSource(Graphic3d_TOS_VERTEX,   aSrcVert));
-    aProgram->AttachShader (isFragFile
-                          ? Graphic3d_ShaderObject::CreateFromFile  (Graphic3d_TOS_FRAGMENT, aSrcFrag)
-                          : Graphic3d_ShaderObject::CreateFromSource(Graphic3d_TOS_FRAGMENT, aSrcFrag));
-    anArgsNb = theArgNb - 2;
+    aProgram->SetNbFragmentOutputs (2);
+    aProgram->SetWeightOitOutput (true);
   }
 
-  Handle(AIS_InteractiveObject) anIO;
-  if (anArgsNb <= 1
-   || *theArgVec[1] == '*')
+  ViewerTest_DoubleMapIteratorOfDoubleMapOfInteractiveAndName aGlobalPrsIter (GetMapOfAIS());
+  NCollection_Sequence<Handle(AIS_InteractiveObject)>::Iterator aPrsIter (aPrsList);
+  const bool isGlobalList = aPrsList.IsEmpty();
+  for (;;)
   {
-    for (ViewerTest_DoubleMapIteratorOfDoubleMapOfInteractiveAndName anIter (GetMapOfAIS());
-          anIter.More(); anIter.Next())
+    Handle(AIS_InteractiveObject) anIO;
+    if (isGlobalList)
     {
-      anIO = Handle(AIS_InteractiveObject)::DownCast (anIter.Key1());
+      if (!aGlobalPrsIter.More())
+      {
+        break;
+      }
+      anIO = aGlobalPrsIter.Key1();
+      aGlobalPrsIter.Next();
       if (anIO.IsNull())
       {
         continue;
       }
-
-      if (!anIO->Attributes()->HasOwnShadingAspect())
+    }
+    else
+    {
+      if (!aPrsIter.More())
       {
-        Handle(Prs3d_ShadingAspect) aNewAspect = new Prs3d_ShadingAspect();
-        *aNewAspect->Aspect() = *anIO->Attributes()->ShadingAspect()->Aspect();
-        aNewAspect->Aspect()->SetShaderProgram (aProgram);
-        anIO->Attributes()->SetShadingAspect (aNewAspect);
-        aCtx->Redisplay (anIO, Standard_False);
+        break;
       }
-      else
-      {
-        anIO->Attributes()->SetShaderProgram (aProgram, Graphic3d_ASPECT_FILL_AREA);
-        anIO->SynchronizeAspects();
-      }
-    }
-    aCtx->UpdateCurrentViewer();
-    return 0;
-  }
-
-  for (Standard_Integer anArgIter = 1; anArgIter < anArgsNb; ++anArgIter)
-  {
-    const TCollection_AsciiString aName (theArgVec[anArgIter]);
-    if (!GetMapOfAIS().IsBound2 (aName))
-    {
-      std::cerr << "Warning: " << aName.ToCString() << " is not displayed\n";
-      continue;
-    }
-    anIO = Handle(AIS_InteractiveObject)::DownCast (GetMapOfAIS().Find2 (aName));
-    if (anIO.IsNull())
-    {
-      std::cerr << "Warning: " << aName.ToCString() << " is not an AIS object\n";
-      continue;
+      anIO = aPrsIter.Value();
+      aPrsIter.Next();
     }
 
-    if (!anIO->Attributes()->HasOwnShadingAspect())
+    if (anIO->Attributes()->SetShaderProgram (aProgram, aGroupAspect, true))
     {
-      Handle(Prs3d_ShadingAspect) aNewAspect = new Prs3d_ShadingAspect();
-      *aNewAspect->Aspect() = *anIO->Attributes()->ShadingAspect()->Aspect();
-      aNewAspect->Aspect()->SetShaderProgram (aProgram);
-      anIO->Attributes()->SetShadingAspect (aNewAspect);
       aCtx->Redisplay (anIO, Standard_False);
     }
     else
     {
-      anIO->Attributes()->SetShaderProgram (aProgram, Graphic3d_ASPECT_FILL_AREA);
       anIO->SynchronizeAspects();
     }
   }
 
   aCtx->UpdateCurrentViewer();
+  return 0;
+}
+
+//! Print triplet of values.
+template<class S, class T> static S& operator<< (S& theStream, const NCollection_Vec3<T>& theVec)
+{
+  theStream << theVec[0] << " " << theVec[1] << " " << theVec[2];
+  return theStream;
+}
+
+//! Print 4 values.
+template<class S, class T> static S& operator<< (S& theStream, const NCollection_Vec4<T>& theVec)
+{
+  theStream << theVec[0] << " " << theVec[1] << " " << theVec[2] << " " << theVec[3];
+  return theStream;
+}
+
+//! Print fresnel model.
+static const char* fresnelModelString (const Graphic3d_FresnelModel theModel)
+{
+  switch (theModel)
+  {
+    case Graphic3d_FM_SCHLICK:    return "SCHLICK";
+    case Graphic3d_FM_CONSTANT:   return "CONSTANT";
+    case Graphic3d_FM_CONDUCTOR:  return "CONDUCTOR";
+    case Graphic3d_FM_DIELECTRIC: return "DIELECTRIC";
+  }
+  return "N/A";
+}
+
+//! Create a colored rectangle SVG element.
+static TCollection_AsciiString formatSvgColoredRect (const Quantity_Color& theColor)
+{
+  return TCollection_AsciiString()
+       + "<svg width='20px' height='20px'><rect width='20px' height='20px' fill='" + Quantity_Color::ColorToHex (theColor) + "' /></svg>";
+}
+
+//==============================================================================
+//function : VListMaterials
+//purpose  :
+//==============================================================================
+static Standard_Integer VListMaterials (Draw_Interpretor& theDI,
+                                        Standard_Integer  theArgNb,
+                                        const char**      theArgVec)
+{
+  TCollection_AsciiString aDumpFile;
+  NCollection_Sequence<Graphic3d_NameOfMaterial> aMatList;
+  for (Standard_Integer anArgIter = 1; anArgIter < theArgNb; ++anArgIter)
+  {
+    TCollection_AsciiString anArg (theArgVec[anArgIter]);
+    anArg.LowerCase();
+    Graphic3d_NameOfMaterial aMat = Graphic3d_MaterialAspect::MaterialFromName (theArgVec[anArgIter]);
+    if (aMat != Graphic3d_NOM_DEFAULT)
+    {
+      aMatList.Append (aMat);
+    }
+    else if (anArg == "*")
+    {
+      for (Standard_Integer aMatIter = 0; aMatIter < (Standard_Integer )Graphic3d_NOM_DEFAULT; ++aMatIter)
+      {
+        aMatList.Append ((Graphic3d_NameOfMaterial )aMatIter);
+      }
+    }
+    else if (aDumpFile.IsEmpty()
+          && (anArg.EndsWith (".obj")
+           || anArg.EndsWith (".mtl")
+           || anArg.EndsWith (".htm")
+           || anArg.EndsWith (".html")))
+    {
+      aDumpFile = theArgVec[anArgIter];
+    }
+    else
+    {
+      std::cout << "Syntax error: unknown argument '" << theArgVec[anArgIter] << "'\n";
+      return 1;
+    }
+  }
+  if (aMatList.IsEmpty())
+  {
+    if (aDumpFile.IsEmpty())
+    {
+      for (Standard_Integer aMatIter = 1; aMatIter <= Graphic3d_MaterialAspect::NumberOfMaterials(); ++aMatIter)
+      {
+        theDI << Graphic3d_MaterialAspect::MaterialName (aMatIter) << " ";
+      }
+      return 0;
+    }
+
+    for (Standard_Integer aMatIter = 0; aMatIter < (Standard_Integer )Graphic3d_NOM_DEFAULT; ++aMatIter)
+    {
+      aMatList.Append ((Graphic3d_NameOfMaterial )aMatIter);
+    }
+  }
+
+  // geometry for dumping
+  const Graphic3d_Vec3 aBoxVerts[8] =
+  {
+    Graphic3d_Vec3( 1, -1, -1),
+    Graphic3d_Vec3( 1, -1,  1),
+    Graphic3d_Vec3(-1, -1,  1),
+    Graphic3d_Vec3(-1, -1, -1),
+    Graphic3d_Vec3( 1,  1, -1),
+    Graphic3d_Vec3( 1,  1,  1),
+    Graphic3d_Vec3(-1,  1,  1),
+    Graphic3d_Vec3(-1,  1, -1)
+  };
+
+  const Graphic3d_Vec4i aBoxQuads[6] =
+  {
+    Graphic3d_Vec4i (1, 2, 3, 4),
+    Graphic3d_Vec4i (5, 8, 7, 6),
+    Graphic3d_Vec4i (1, 5, 6, 2),
+    Graphic3d_Vec4i (2, 6, 7, 3),
+    Graphic3d_Vec4i (3, 7, 8, 4),
+    Graphic3d_Vec4i (5, 1, 4, 8)
+  };
+
+  std::ofstream aMatFile, anObjFile, anHtmlFile;
+  if (aDumpFile.EndsWith (".obj")
+   || aDumpFile.EndsWith (".mtl"))
+  {
+    const TCollection_AsciiString aMatFilePath  = aDumpFile.SubString (1, aDumpFile.Length() - 3) + "mtl";
+    const TCollection_AsciiString anObjFilePath = aDumpFile.SubString (1, aDumpFile.Length() - 3) + "obj";
+
+    OSD_OpenStream (aMatFile,  aMatFilePath.ToCString(),  std::ios::out | std::ios::binary);
+    if (!aMatFile.is_open())
+    {
+      std::cout << "Error: unable creating material file\n";
+      return 0;
+    }
+    if (!aDumpFile.EndsWith (".mtl"))
+    {
+      OSD_OpenStream (anObjFile, anObjFilePath.ToCString(), std::ios::out | std::ios::binary);
+      if (!anObjFile.is_open())
+      {
+        std::cout << "Error: unable creating OBJ file\n";
+        return 0;
+      }
+
+      TCollection_AsciiString anMtlName, aFolder;
+      OSD_Path::FolderAndFileFromPath (aMatFilePath, aFolder, anMtlName);
+      anObjFile << "mtllib " << anMtlName << "\n";
+    }
+  }
+  else if (aDumpFile.EndsWith (".htm")
+        || aDumpFile.EndsWith (".html"))
+  {
+    OSD_OpenStream (anHtmlFile, aDumpFile.ToCString(), std::ios::out | std::ios::binary);
+    if (!anHtmlFile.is_open())
+    {
+      std::cout << "Error: unable creating HTML file\n";
+      return 0;
+    }
+    anHtmlFile << "<html>\n"
+                  "<head><title>OCCT Material table</title></head>\n"
+                  "<body>\n"
+                  "<table border='1'><tbody>\n"
+                  "<tr>\n"
+                  "<th rowspan='2'><div title='Material name.\n"
+                                              "See also Graphic3d_NameOfMaterial enumeration'>"
+                                   "Name</div></th>\n"
+                  "<th rowspan='2'><div title='Material type: PHYSIC or ASPECT.\n"
+                                              "ASPECT material does not define final colors, it is taken from Internal Color instead.\n"
+                                              "See also Graphic3d_TypeOfMaterial enumeration'>"
+                                   "Type</div></th>\n"
+                  "<th colspan='5'><div title='Common material definition for Phong shading model'>"
+                                   "Common</div></th>\n"
+                  "<th rowspan='2'>Transparency</th>\n"
+                  "<th rowspan='2'>Refraction Index</th>\n"
+                  "<th colspan='9'><div title='BSDF (Bidirectional Scattering Distribution Function).\n"
+                                              "Used for physically-based rendering (in path tracing engine).\n"
+                                              "BSDF is represented as weighted mixture of basic BRDFs/BTDFs (Bidirectional Reflectance (Transmittance) Distribution Functions).\n"
+                                              "See also Graphic3d_BSDF structure.'>"
+                                   "BSDF</div></th>\n"
+                  "</tr>\n"
+                  "<tr>\n"
+                  "<th>Ambient</th>\n"
+                  "<th>Diffuse</th>\n"
+                  "<th>Specular</th>\n"
+                  "<th>Emissive</th>\n"
+                  "<th>Shiness</th>\n"
+                  "<th><div title='Weight of coat specular/glossy BRDF'>"
+                       "Kc</div></th>\n"
+                  "<th><div title='Weight of base diffuse BRDF'>"
+                       "Kd</div></th>\n"
+                  "<th><div title='Weight of base specular/glossy BRDF'>"
+                       "Ks</div></th>\n"
+                  "<th><div title='Weight of base specular/glossy BTDF'>"
+                       "Kt</div></th>\n"
+                  "<th><div title='Radiance emitted by the surface'>"
+                       "Le</div></th>\n"
+                  "<th><div title='Volume scattering color/density'>"
+                       "Absorption</div></th>\n"
+                  "<th><div title='Parameters of Fresnel reflectance of coat layer'>"
+                       "FresnelCoat</div></th>\n"
+                  "<th><div title='Parameters of Fresnel reflectance of base layer'>"
+                       "FresnelBase</div></th>\n"
+                  "</tr>\n";
+  }
+  else if (!aDumpFile.IsEmpty())
+  {
+    std::cout << "Syntax error: unknown output file format\n";
+    return 1;
+  }
+
+  Standard_Integer aMatIndex = 0, anX = 0, anY = 0;
+  for (NCollection_Sequence<Graphic3d_NameOfMaterial>::Iterator aMatIter (aMatList); aMatIter.More(); aMatIter.Next(), ++aMatIndex)
+  {
+    Graphic3d_MaterialAspect aMat (aMatIter.Value());
+    const TCollection_AsciiString aMatName = aMat.StringName();
+    const Graphic3d_Vec3 anAmbient  = (Graphic3d_Vec3 )aMat.AmbientColor();
+    const Graphic3d_Vec3 aDiffuse   = (Graphic3d_Vec3 )aMat.DiffuseColor();
+    const Graphic3d_Vec3 aSpecular  = (Graphic3d_Vec3 )aMat.SpecularColor();
+    const Graphic3d_Vec3 anEmission = (Graphic3d_Vec3 )aMat.EmissiveColor();
+    const Standard_Real  aShiness  = aMat.Shininess() * 1000.0;
+    if (aMatFile.is_open())
+    {
+      aMatFile << "newmtl " << aMatName << "\n";
+      aMatFile << "Ka " << anAmbient << "\n";
+      aMatFile << "Kd " << aDiffuse  << "\n";
+      aMatFile << "Ks " << aSpecular << "\n";
+      aMatFile << "Ns " << aShiness  << "\n";
+      if (aMat.Transparency() >= 0.0001)
+      {
+        aMatFile << "Tr " << aMat.Transparency() << "\n";
+      }
+      aMatFile << "\n";
+    }
+    else if (anHtmlFile.is_open())
+    {
+      anHtmlFile << "<tr>\n";
+      anHtmlFile << "<td>" << aMat.StringName() << "</td>\n";
+      anHtmlFile << "<td>" << (aMat.MaterialType() == Graphic3d_MATERIAL_PHYSIC ? "PHYSIC" : "ASPECT")  << "</td>\n";
+      anHtmlFile << "<td>" << formatSvgColoredRect (Quantity_Color (anAmbient))  << anAmbient  << "</td>\n";
+      anHtmlFile << "<td>" << formatSvgColoredRect (Quantity_Color (aDiffuse))   << aDiffuse   << "</td>\n";
+      anHtmlFile << "<td>" << formatSvgColoredRect (Quantity_Color (aSpecular))  << aSpecular  << "</td>\n";
+      anHtmlFile << "<td>" << formatSvgColoredRect (Quantity_Color (anEmission)) << anEmission << "</td>\n";
+      anHtmlFile << "<td>" << aMat.Shininess() << "</td>\n";
+      anHtmlFile << "<td>" << aMat.Transparency() << "</td>\n";
+      anHtmlFile << "<td>" << aMat.RefractionIndex() << "</td>\n";
+      anHtmlFile << "<td>" << aMat.BSDF().Kc << "</td>\n";
+      anHtmlFile << "<td>" << aMat.BSDF().Kd << "</td>\n";
+      anHtmlFile << "<td>" << aMat.BSDF().Ks << "</td>\n";
+      anHtmlFile << "<td>" << aMat.BSDF().Kt << "</td>\n";
+      anHtmlFile << "<td>" << aMat.BSDF().Le << "</td>\n";
+      anHtmlFile << "<td>" << aMat.BSDF().Absorption << "</td>\n";
+      anHtmlFile << "<td>" << fresnelModelString (aMat.BSDF().FresnelCoat.FresnelType()) << "</td>\n";
+      anHtmlFile << "<td>" << fresnelModelString (aMat.BSDF().FresnelBase.FresnelType()) << "</td>\n";
+      anHtmlFile << "</tr>\n";
+    }
+    else
+    {
+      theDI << aMat.StringName() << "\n";
+      theDI << "  Common.Ambient:         " << anAmbient << "\n";
+      theDI << "  Common.Diffuse:         " << aDiffuse  << "\n";
+      theDI << "  Common.Specular:        " << aSpecular << "\n";
+      theDI << "  Common.Emissive:        " << anEmission << "\n";
+      theDI << "  Common.Shiness:         " << aMat.Shininess() << "\n";
+      theDI << "  Common.Transparency:    " << aMat.Transparency() << "\n";
+      theDI << "  RefractionIndex:        " << aMat.RefractionIndex() << "\n";
+      theDI << "  BSDF.Kc:                " << aMat.BSDF().Kc << "\n";
+      theDI << "  BSDF.Kd:                " << aMat.BSDF().Kd << "\n";
+      theDI << "  BSDF.Ks:                " << aMat.BSDF().Ks << "\n";
+      theDI << "  BSDF.Kt:                " << aMat.BSDF().Kt << "\n";
+      theDI << "  BSDF.Le:                " << aMat.BSDF().Le << "\n";
+      theDI << "  BSDF.Absorption:        " << aMat.BSDF().Absorption << "\n";
+      theDI << "  BSDF.FresnelCoat:       " << fresnelModelString (aMat.BSDF().FresnelCoat.FresnelType()) << "\n";
+      theDI << "  BSDF.FresnelBase:       " << fresnelModelString (aMat.BSDF().FresnelBase.FresnelType()) << "\n";
+    }
+
+    if (anObjFile.is_open())
+    {
+      anObjFile << "g " << aMatName << "\n";
+      anObjFile << "usemtl " << aMatName << "\n";
+      for (Standard_Integer aVertIter = 0; aVertIter < 8; ++aVertIter)
+      {
+        anObjFile << "v " << (aBoxVerts[aVertIter] + Graphic3d_Vec3 (3.0f * anX, -3.0f * anY, 0.0f)) << "\n";
+      }
+      anObjFile << "s off\n";
+      for (Standard_Integer aFaceIter = 0; aFaceIter < 6; ++aFaceIter)
+      {
+        anObjFile << "f " << (aBoxQuads[aFaceIter] + Graphic3d_Vec4i (8 * aMatIndex)) << "\n";
+      }
+      anObjFile << "\n";
+      if (++anX > 5)
+      {
+        anX = 0;
+        ++anY;
+      }
+    }
+  }
+
+  if (anHtmlFile.is_open())
+  {
+    anHtmlFile << "</tbody></table>\n</body>\n</html>\n";
+  }
+  return 0;
+}
+
+//==============================================================================
+//function : VListColors
+//purpose  :
+//==============================================================================
+static Standard_Integer VListColors (Draw_Interpretor& theDI,
+                                     Standard_Integer  theArgNb,
+                                     const char**      theArgVec)
+{
+  TCollection_AsciiString aDumpFile;
+  NCollection_Sequence<Quantity_NameOfColor> aColList;
+  for (Standard_Integer anArgIter = 1; anArgIter < theArgNb; ++anArgIter)
+  {
+    TCollection_AsciiString anArg (theArgVec[anArgIter]);
+    anArg.LowerCase();
+    Quantity_NameOfColor aName;
+    if (Quantity_Color::ColorFromName (theArgVec[anArgIter], aName))
+    {
+      aColList.Append (aName);
+    }
+    else if (anArg == "*")
+    {
+      for (Standard_Integer aColIter = 0; aColIter <= (Standard_Integer )Quantity_NOC_WHITE; ++aColIter)
+      {
+        aColList.Append ((Quantity_NameOfColor )aColIter);
+      }
+    }
+    else if (aDumpFile.IsEmpty()
+          && (anArg.EndsWith (".htm")
+           || anArg.EndsWith (".html")))
+    {
+      aDumpFile = theArgVec[anArgIter];
+    }
+    else
+    {
+      std::cout << "Syntax error: unknown argument '" << theArgVec[anArgIter] << "'\n";
+      return 1;
+    }
+  }
+  if (aColList.IsEmpty())
+  {
+    if (aDumpFile.IsEmpty())
+    {
+      for (Standard_Integer aColIter = 0; aColIter <= (Standard_Integer )Quantity_NOC_WHITE; ++aColIter)
+      {
+        theDI << Quantity_Color::StringName (Quantity_NameOfColor (aColIter)) << " ";
+      }
+      return 0;
+    }
+
+    for (Standard_Integer aColIter = 0; aColIter <= (Standard_Integer )Quantity_NOC_WHITE; ++aColIter)
+    {
+      aColList.Append ((Quantity_NameOfColor )aColIter);
+    }
+  }
+
+  std::ofstream anHtmlFile;
+  TCollection_AsciiString aFileNameBase, aFolder;
+  if (aDumpFile.EndsWith (".htm")
+   || aDumpFile.EndsWith (".html"))
+  {
+    OSD_Path::FolderAndFileFromPath (aDumpFile, aFolder, aFileNameBase);
+    aFileNameBase = aFileNameBase.SubString (1, aFileNameBase.Length() -  (aDumpFile.EndsWith (".htm") ? 4 : 5));
+  }
+  else if (!aDumpFile.IsEmpty())
+  {
+    std::cout << "Syntax error: unknown output file format\n";
+    return 1;
+  }
+
+  Standard_Integer aMaxNameLen = 1;
+  for (NCollection_Sequence<Quantity_NameOfColor>::Iterator aColIter (aColList); aColIter.More(); aColIter.Next())
+  {
+    aMaxNameLen = Max (aMaxNameLen, TCollection_AsciiString (Quantity_Color::StringName (aColIter.Value())).Length());
+  }
+
+  V3d_ImageDumpOptions anImgParams;
+  anImgParams.Width  = 60;
+  anImgParams.Height = 30;
+  anImgParams.BufferType = Graphic3d_BT_RGB;
+  anImgParams.StereoOptions  = V3d_SDO_MONO;
+  anImgParams.ToAdjustAspect = Standard_True;
+  Handle(V3d_View) aView;
+  if (!aDumpFile.IsEmpty())
+  {
+    ViewerTest::ViewerInit (0, 0, anImgParams.Width, anImgParams.Height, "TmpDriver/TmpViewer/TmpView");
+    aView = ViewerTest::CurrentView();
+    aView->SetImmediateUpdate (false);
+    aView->SetBgGradientStyle (Aspect_GFM_NONE, false);
+  }
+
+  if (!aDumpFile.IsEmpty())
+  {
+    OSD_OpenStream (anHtmlFile, aDumpFile.ToCString(), std::ios::out | std::ios::binary);
+    if (!anHtmlFile.is_open())
+    {
+      std::cout << "Error: unable creating HTML file\n";
+      return 0;
+    }
+    anHtmlFile << "<html>\n"
+               << "<head><title>OCCT Color table</title></head>\n"
+               << "<body>\n"
+               << "<table border='1'><tbody>\n"
+               << "<tr>\n"
+               << "<th>HTML</th>\n"
+               << "<th>OCCT</th>\n"
+               << "<th>Color name</th>\n"
+               << "<th>sRGB hex</th>\n"
+               << "<th>sRGB dec</th>\n"
+               << "<th>RGB linear</th>\n"
+               << "</tr>\n";
+  }
+
+  Image_AlienPixMap anImg;
+  Standard_Integer aColIndex = 0;
+  for (NCollection_Sequence<Quantity_NameOfColor>::Iterator aColIter (aColList); aColIter.More(); aColIter.Next(), ++aColIndex)
+  {
+    Quantity_Color aCol (aColIter.Value());
+    const TCollection_AsciiString aColName  = Quantity_Color::StringName (aColIter.Value());
+    const TCollection_AsciiString anSRgbHex = Quantity_Color::ColorToHex (aCol);
+    const Graphic3d_Vec3i anSRgbInt ((Graphic3d_Vec3 )aCol * 255.0f);
+    if (anHtmlFile.is_open())
+    {
+      const TCollection_AsciiString anImgPath = aFileNameBase + "_" + aColName + ".png";
+      if (!aView.IsNull())
+      {
+        aView->SetImmediateUpdate (false);
+        aView->SetBackgroundColor (aCol);
+        if (!aView->ToPixMap (anImg, anImgParams)
+         || !anImg.Save (aFolder + anImgPath))
+        {
+          theDI << "Error: image dump failed\n";
+          return 0;
+        }
+      }
+
+      anHtmlFile << "<tr>\n";
+      anHtmlFile << "<td style='background-color:" << anSRgbHex << "'><pre>       </pre></td>\n";
+      anHtmlFile << "<td><img src='" << (!aView.IsNull() ? anImgPath : "") << "'></img></td>\n";
+      anHtmlFile << "<td style='text-align:left'>" << aColName << "</td>\n";
+      anHtmlFile << "<td style='text-align:left'><pre>" << anSRgbHex << "</pre></td>\n";
+      anHtmlFile << "<td style='text-align:left'>(" << anSRgbInt.r() << " " << anSRgbInt.g() << " " << anSRgbInt.b() << ")</td>\n";
+      anHtmlFile << "<td style='text-align:left'>(" << aCol.Red() << " " << aCol.Green() << " " << aCol.Blue() << ")</td>\n";
+      anHtmlFile << "</tr>\n";
+    }
+    else
+    {
+      TCollection_AsciiString aColNameLong (aColName);
+      aColNameLong.RightJustify (aMaxNameLen, ' ');
+      theDI << aColNameLong << " [" << anSRgbHex << "]: " << aCol.Red() << " " << aCol.Green() << " " << aCol.Blue() << "\n";
+    }
+  }
+
+  if (!aView.IsNull())
+  {
+    ViewerTest::RemoveView (aView);
+  }
+
+  if (anHtmlFile.is_open())
+  {
+    anHtmlFile << "</tbody></table>\n</body>\n</html>\n";
+  }
   return 0;
 }
 
@@ -720,10 +1359,31 @@ void ViewerTest::OpenGlCommands(Draw_Interpretor& theCommands)
         "\n\t\t:         [GL_SHADING_LANGUAGE_VERSION] [GL_EXTENSIONS]"
         "\n\t\t: print OpenGL info",
     __FILE__, VGlInfo, aGroup);
-  theCommands.Add("vshaderprog",
-            "   'vshaderprog [name] pathToVertexShader pathToFragmentShader'"
-    "\n\t\t: or 'vshaderprog [name] off'   to disable GLSL program"
-    "\n\t\t: or 'vshaderprog [name] phong' to enable per-pixel lighting calculations"
-    "\n\t\t: * might be used to specify all displayed objects",
+  theCommands.Add("vshader",
+                  "vshader name -vert VertexShader -frag FragmentShader [-geom GeometryShader]"
+                  "\n\t\t:   [-off] [-phong] [-aspect {shading|line|point|text}=shading]"
+                  "\n\t\t:   [-header VersionHeader]"
+                  "\n\t\t:   [-tessControl TessControlShader -tesseval TessEvaluationShader]"
+                  "\n\t\t:   [-uniform Name FloatValue]"
+                  "\n\t\t: Assign custom GLSL program to presentation aspects."
+                  "\nvshader [-list] [-dump] [-reload] ShaderId"
+                  "\n\t\t:  -list   prints the list of registered GLSL programs"
+                  "\n\t\t:  -dump   dumps specified GLSL program (for debugging)"
+                  "\n\t\t:  -reload restores dump of specified GLSL program",
     __FILE__, VShaderProg, aGroup);
+  theCommands.Add("vshaderprog", "Alias for vshader", __FILE__, VShaderProg, aGroup);
+  theCommands.Add("vlistmaterials",
+                  "vlistmaterials [*] [MaterialName1 [MaterialName2 [...]]] [dump.obj|dump.html]"
+                  "\n\t\t: Without arguments, command prints the list of standard materials."
+                  "\n\t\t: Otherwise, properties of specified materials will be printed"
+                  "\n\t\t: or dumped into specified file."
+                  "\n\t\t: * can be used to refer to complete list of standard materials.",
+                  __FILE__, VListMaterials, aGroup);
+  theCommands.Add("vlistcolors",
+                  "vlistcolors [*] [ColorName1 [ColorName2 [...]]] [dump.html]"
+                  "\n\t\t: Without arguments, command prints the list of standard colors."
+                  "\n\t\t: Otherwise, properties of specified colors will be printed"
+                  "\n\t\t: or dumped into specified file."
+                  "\n\t\t: * can be used to refer to complete list of standard colors.",
+                  __FILE__, VListColors, aGroup);
 }

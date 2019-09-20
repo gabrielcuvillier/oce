@@ -42,6 +42,9 @@ public:
 
   Standard_EXPORT virtual GLenum GetTarget() const;
 
+  //! Return TRUE if this is a virtual (for backward compatibility) VBO object.
+  virtual bool IsVirtual() const { return false; }
+
   //! @return true if current object was initialized
   inline bool IsValid() const
   {
@@ -54,11 +57,15 @@ public:
     return myComponentsNb;
   }
 
-  //! @return number of vertex attributes / number of vertices.
+  //! @return number of vertex attributes / number of vertices specified within ::Init()
   inline GLsizei GetElemsNb() const
   {
     return myElemsNb;
   }
+
+  //! Overrides the number of vertex attributes / number of vertexes.
+  //! It is up to user specifying this number correct (e.g. below initial value)!
+  void SetElemsNb (GLsizei theNbElems) { myElemsNb = theNbElems; }
 
   //! @return data type of each component in the array.
   inline GLenum GetDataType() const
@@ -224,6 +231,14 @@ public:
   }
 
 public: //! @name advanced methods
+
+  //! Returns estimated GPU memory usage for holding data without considering overheads and allocation alignment rules.
+  virtual Standard_Size EstimatedDataSize() const Standard_OVERRIDE
+  {
+    return IsValid()
+         ? sizeOfGlType (myDataType) * myComponentsNb * myElemsNb
+         : 0;
+  }
 
   //! @return size of specified GL type
   static size_t sizeOfGlType (const GLenum theType)

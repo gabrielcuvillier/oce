@@ -68,7 +68,8 @@ static Handle(TDataStd_RealArray) SetAttr(const TDF_Label&       label,
 //purpose  : Empty Constructor
 //=======================================================================
 
-TDataStd_RealArray::TDataStd_RealArray() : myIsDelta(Standard_False)
+TDataStd_RealArray::TDataStd_RealArray() : myIsDelta(Standard_False),
+  myID(GetID())
 {}
 
 //=======================================================================
@@ -190,18 +191,20 @@ void TDataStd_RealArray::ChangeArray(const Handle(TColStd_HArray1OfReal)& newArr
   Standard_Boolean aDimEqual = Standard_False;
   Standard_Integer i;
 
-  if (Lower() == aLower && Upper() == anUpper ) {
-    aDimEqual = Standard_True;
-    Standard_Boolean isEqual = Standard_True;
-    if(isCheckItems) {
-      for(i = aLower; i <= anUpper; i++) {
-        if(myValue->Value(i) != newArray->Value(i)) {
-          isEqual = Standard_False;
-          break;
+  if (!myValue.IsNull()) {
+    if (Lower() == aLower && Upper() == anUpper ) {
+      aDimEqual = Standard_True;
+      Standard_Boolean isEqual = Standard_True;
+      if(isCheckItems) {
+        for(i = aLower; i <= anUpper; i++) {
+          if(myValue->Value(i) != newArray->Value(i)) {
+            isEqual = Standard_False;
+            break;
+          }
         }
+        if(isEqual)
+          return;
       }
-      if(isEqual)
-        return;
     }
   }
 
@@ -313,7 +316,7 @@ Standard_OStream& TDataStd_RealArray::Dump (Standard_OStream& anOS) const
   Standard_Character sguid[Standard_GUID_SIZE_ALLOC];
   myID.ToCString(sguid);
   anOS << sguid;
-  anOS << endl;
+  anOS << std::endl;
   return anOS;
 }
 

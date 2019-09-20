@@ -20,6 +20,7 @@
 #include <Draw.hxx>
 #include <gp_Trsf.hxx>
 #include <TCollection_AsciiString.hxx>
+#include <TDataStd_NamedData.hxx>
 #include <TDF_AttributeSequence.hxx>
 #include <TDF_Label.hxx>
 #include <TDF_LabelSequence.hxx>
@@ -48,8 +49,13 @@ static Standard_Integer addShape (Draw_Interpretor& di, Standard_Integer argc, c
   DDocStd::GetDocument(argv[1], Doc);
   if ( Doc.IsNull() ) { di << argv[1] << " is not a document\n"; return 1; }
 
-  TopoDS_Shape aShape;
-  aShape = DBRep::Get(argv[2]);
+  TopoDS_Shape aShape = DBRep::Get(argv[2]);
+  if (aShape.IsNull())
+  {
+    std::cout << "Syntax error: shape '" << argv[2] << "' is undefined\n";
+    return 1;
+  }
+
   Handle(XCAFDoc_ShapeTool) myAssembly = XCAFDoc_DocumentTool::ShapeTool(Doc->Main());
   Standard_Boolean makeAssembly = Standard_True;
   if ( argc==4 && Draw::Atoi(argv[3]) == 0 ) makeAssembly = Standard_False;
@@ -158,8 +164,8 @@ static Standard_Integer removeShape (Draw_Interpretor& di, Standard_Integer argc
 
 static Standard_Integer findShape (Draw_Interpretor& di, Standard_Integer argc, const char** argv)
 {
-  if (argc!=3) {
-    di<<"Use: "<<argv[0]<<" DocName Shape\n";
+  if (argc < 3) {
+    di << "Use: " << argv[0] << " DocName Shape [0/1]\n";
     return 1;
   }
   Handle(TDocStd_Document) Doc;   
@@ -172,11 +178,93 @@ static Standard_Integer findShape (Draw_Interpretor& di, Standard_Integer argc, 
 //  XCAFDoc_ShapeTool myAssembly;
 //  myAssembly.Init(Doc);
   Handle(XCAFDoc_ShapeTool) myAssembly = XCAFDoc_DocumentTool::ShapeTool(Doc->Main());
-  aLabel = myAssembly->FindShape(aShape);
+  Standard_Boolean findInstance = ((argc == 4) && argv[3][0] == '1');
+  aLabel = myAssembly->FindShape(aShape, findInstance);
   TCollection_AsciiString Entry;
   TDF_Tool::Entry(aLabel, Entry);
   di << Entry.ToCString();
   //di<<"Label with Shape is "<<Entry<<"\n";
+  return 0;
+}
+
+static Standard_Integer findSubShape(Draw_Interpretor& di, Standard_Integer argc, const char** argv)
+{
+  if (argc != 4) {
+    di << "Use: " << argv[0] << " DocName Shape ParentLabel\n";
+    return 1;
+  }
+  Handle(TDocStd_Document) aDoc;
+  DDocStd::GetDocument(argv[1], aDoc);
+  if (aDoc.IsNull()) {
+    di << argv[1] << " is not a document\n";
+    return 1;
+  }
+
+  TopoDS_Shape aShape;
+  aShape = DBRep::Get(argv[2]);
+
+  TDF_Label aParentLabel;
+  TDF_Tool::Label(aDoc->GetData(), argv[3], aParentLabel);
+
+  TDF_Label aLabel;
+  Handle(XCAFDoc_ShapeTool) aShapeTool = XCAFDoc_DocumentTool::ShapeTool(aDoc->Main());
+  aShapeTool->FindSubShape(aParentLabel, aShape, aLabel);
+
+  TCollection_AsciiString anEntry;
+  TDF_Tool::Entry(aLabel, anEntry);
+  di << anEntry.ToCString();
+  return 0;
+}
+
+static Standard_Integer findMainShape(Draw_Interpretor& di, Standard_Integer argc, const char** argv)
+{
+  if (argc != 3) {
+    di << "Use: " << argv[0] << " DocName SubShape\n";
+    return 1;
+  }
+  Handle(TDocStd_Document) aDoc;
+  DDocStd::GetDocument(argv[1], aDoc);
+  if (aDoc.IsNull()) {
+    di << argv[1] << " is not a document\n";
+    return 1;
+  }
+
+  TopoDS_Shape aShape;
+  aShape = DBRep::Get(argv[2]);
+
+  Handle(XCAFDoc_ShapeTool) aShapeTool = XCAFDoc_DocumentTool::ShapeTool(aDoc->Main());
+  TDF_Label aLabel = aShapeTool->FindMainShape(aShape);
+
+  TCollection_AsciiString anEntry;
+  TDF_Tool::Entry(aLabel, anEntry);
+  di << anEntry.ToCString();
+  return 0;
+}
+
+
+static Standard_Integer addSubShape(Draw_Interpretor& di, Standard_Integer argc, const char** argv)
+{
+  if (argc != 4) {
+    di << "Use: " << argv[0] << " DocName Shape ParentLabel\n";
+    return 1;
+  }
+  Handle(TDocStd_Document) aDoc;
+  DDocStd::GetDocument(argv[1], aDoc);
+  if (aDoc.IsNull()) { di << argv[1] << " is not a document\n"; return 1; }
+
+  TopoDS_Shape aShape;
+  aShape = DBRep::Get(argv[2]);
+
+  TDF_Label aParentLabel;
+  TDF_Tool::Label(aDoc->GetData(), argv[3], aParentLabel);
+
+  TDF_Label aLabel;
+  Handle(XCAFDoc_ShapeTool) aShapeTool = XCAFDoc_DocumentTool::ShapeTool(aDoc->Main());
+  aLabel = aShapeTool->AddSubShape(aParentLabel, aShape);
+
+  TCollection_AsciiString anEntry;
+  TDF_Tool::Entry(aLabel, anEntry);
+  di << anEntry.ToCString();
   return 0;
 }
 
@@ -840,6 +928,64 @@ static Standard_Integer updateAssemblies(Draw_Interpretor& di, Standard_Integer 
   return 0;
 }
 
+static Standard_Integer XGetProperties(Draw_Interpretor& di, Standard_Integer argc, const char** argv)
+{
+  if (argc != 3)
+  {
+    std::cout << "Syntax error: wrong number of arguments\nUse: " << argv[0] << " Doc Label\n";
+    return 1;
+  }
+
+  Handle(TDocStd_Document) aDoc;
+  DDocStd::GetDocument(argv[1], aDoc);
+  if (aDoc.IsNull())
+  {
+    std::cout << "Syntax error: " << argv[1] << " is not a document\n";
+    return 1;
+  }
+
+  TDF_Label aLabel;
+  TDF_Tool::Label(aDoc->GetData(), argv[2], aLabel);
+
+  // Get XDE shape tool
+  Handle(XCAFDoc_ShapeTool) aShapeTool = XCAFDoc_DocumentTool::ShapeTool(aDoc->Main());
+
+  Handle(TDataStd_NamedData) aNamedData = aShapeTool->GetNamedProperties(aLabel);
+
+  if (aNamedData.IsNull())
+  {
+    di << argv[2] << " has no properties\n";
+    return 0;
+  }
+
+  if (aNamedData->HasIntegers())
+  {
+    TColStd_DataMapOfStringInteger anIntProperties = aNamedData->GetIntegersContainer();
+    for (TColStd_DataMapIteratorOfDataMapOfStringInteger anIter(anIntProperties); anIter.More(); anIter.Next())
+    {
+      di << anIter.Key() << " : " << anIter.Value() << "\n";
+    }
+  }
+  if (aNamedData->HasReals())
+  {
+    TDataStd_DataMapOfStringReal aRealProperties = aNamedData->GetRealsContainer();
+    for (TDataStd_DataMapIteratorOfDataMapOfStringReal anIter(aRealProperties); anIter.More(); anIter.Next())
+    {
+      di << anIter.Key() << " : " << anIter.Value() << "\n";
+    }
+  }
+  if (aNamedData->HasStrings())
+  {
+    TDataStd_DataMapOfStringString aStringProperties = aNamedData->GetStringsContainer();
+    for (TDataStd_DataMapIteratorOfDataMapOfStringString anIter(aStringProperties); anIter.More(); anIter.Next())
+    {
+      di << anIter.Key() << " : " << anIter.Value() << "\n";
+    }
+  }
+
+  return 0;
+}
+
 //=======================================================================
 //function : InitCommands
 //purpose  : 
@@ -875,8 +1021,17 @@ void XDEDRAW_Shapes::InitCommands(Draw_Interpretor& di)
   di.Add ("XRemoveShape","Doc Label \t: Remove shape from document",
                    __FILE__, removeShape, g);
 
-  di.Add ("XFindShape","Doc Shape \t: Find and print label with indicated top-level shape",
+  di.Add ("XFindShape","Doc Shape [findInstance (0/1), 0 by default]\t: Find and print label with indicated top-level shape",
                    __FILE__, findShape, g);
+
+  di.Add("XFindSubShape", "Doc Shape ParentLabel \t: Find subshape under given parent shape label",
+    __FILE__, findSubShape, g);
+
+  di.Add("XFindMainShape", "Doc SubShape \t: Find main shape for given subshape",
+    __FILE__, findMainShape, g);
+
+  di.Add("XAddSubShape", "Doc Shape ParentLabel \t: Add subshape under given parent shape label",
+    __FILE__, addSubShape, g);
 
   di.Add ("XLabelInfo","Doc Label \t: Print information about object at following label",
                    __FILE__, labelInfo, g);
@@ -943,4 +1098,7 @@ void XDEDRAW_Shapes::InitCommands(Draw_Interpretor& di)
   
   di.Add ("XUpdateAssemblies","Doc \t: updates assembly compounds",
                    __FILE__, updateAssemblies, g);
+
+  di.Add("XGetProperties", "Doc Label \t: prints named properties assigned to the Label",
+         __FILE__, XGetProperties, g);
 }

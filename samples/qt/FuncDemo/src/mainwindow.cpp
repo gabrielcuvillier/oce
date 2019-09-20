@@ -1,29 +1,42 @@
 /****************************************************************************
 **
-** Copyright (C) 2004-2007 Trolltech ASA. All rights reserved.
+** Copyright (C) 2014 Digia Plc and/or its subsidiary(-ies).
+** Contact: http://www.qt-project.org/legal
 **
-** This file is part of the example classes of the Qt Toolkit.
+** This file is part of the examples of the Qt Toolkit.
 **
-** Licensees holding a valid Qt License Agreement may use this file in
-** accordance with the rights, responsibilities and obligations
-** contained therein.  Please consult your licensing agreement or
-** contact sales@trolltech.com if any conditions of this licensing
-** agreement are not clear to you.
+** $QT_BEGIN_LICENSE:BSD$
+** You may use this file under the terms of the BSD license as follows:
 **
-** Further information about Qt licensing is available at:
-** http://www.trolltech.com/products/qt/licensing.html or by
-** contacting info@trolltech.com.
+** "Redistribution and use in source and binary forms, with or without
+** modification, are permitted provided that the following conditions are
+** met:
+**   * Redistributions of source code must retain the above copyright
+**     notice, this list of conditions and the following disclaimer.
+**   * Redistributions in binary form must reproduce the above copyright
+**     notice, this list of conditions and the following disclaimer in
+**     the documentation and/or other materials provided with the
+**     distribution.
+**   * Neither the name of Digia Plc and its Subsidiary(-ies) nor the names
+**     of its contributors may be used to endorse or promote products derived
+**     from this software without specific prior written permission.
 **
-** This file is provided AS IS with NO WARRANTY OF ANY KIND, INCLUDING THE
-** WARRANTY OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+**
+** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+** "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+** LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+** A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+** OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+** SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+** LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+** OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
+**
+** $QT_END_LICENSE$
 **
 ****************************************************************************/
-
-#include <QtGui>
-#include <QtGlobal>
-#if QT_VERSION > QT_VERSION_CHECK(5, 0, 0)
-#include <QtWidgets>
-#endif
 
 #include "mainwindow.h"
 #include "graphwidget.h"
@@ -58,8 +71,22 @@
 #include <TDataStd_Name.hxx>
 #include <TDataStd_Real.hxx>
 #include <TDataStd_RealArray.hxx>
+
+#include <Standard_WarningsDisable.hxx>
+#include <QtGui>
+#include <QtGlobal>
+#if QT_VERSION > QT_VERSION_CHECK(5, 0, 0)
+#include <QtWidgets>
+#endif
+#include <Standard_WarningsRestore.hxx>
+
 #ifdef __GNUC__
 #include <unistd.h>
+#endif
+
+#ifdef HAVE_Inspector
+#include <inspector/TInspector_Communicator.hxx>
+static TInspector_Communicator* MyTCommunicator;
 #endif
 
 MainWindow::MainWindow()
@@ -187,7 +214,7 @@ void MainWindow::compute()
     }
 
     aTimer.Show(seconds, minutes, hours, CPUTime);
-    cout << "Execution of "<<graph->getNbThreads()<< " threads took          " << hours << " hours, " << minutes << " minutes, " << seconds << " seconds" << endl;
+    std::cout << "Execution of "<<graph->getNbThreads()<< " threads took          " << hours << " hours, " << minutes << " minutes, " << seconds << " seconds" << std::endl;
 
     // Redraw the nodes (change their colour).            
     redrawGraph();
@@ -201,6 +228,30 @@ void MainWindow::nbThreads()
     if (ok)
         graph->setNbThreads(nb);
 }
+
+#ifdef HAVE_Inspector
+void MainWindow::startDFBrowser()
+{
+  Handle(AppStd_Application) anApplication = getApplication();
+  if (!anApplication.IsNull())
+  {
+    if (!MyTCommunicator)
+    {
+      MyTCommunicator = new TInspector_Communicator();
+
+      NCollection_List<Handle(Standard_Transient)> aParameters;
+      aParameters.Append(anApplication);
+
+      MyTCommunicator->RegisterPlugin("TKDFBrowser");
+
+      MyTCommunicator->Init(aParameters);
+      MyTCommunicator->Activate("TKDFBrowser");
+
+    }
+    MyTCommunicator->SetVisible(true);
+  }
+}
+#endif
 
 void MainWindow::about()
 {
@@ -228,6 +279,12 @@ void MainWindow::createActions()
     nbThreadsAct->setStatusTip(tr("Number of threads"));
     connect(nbThreadsAct, SIGNAL(triggered()), this, SLOT(nbThreads()));
 
+#ifdef HAVE_Inspector
+    dfBrowserAct = new QAction(tr("DFBrowser"), this);
+    dfBrowserAct->setStatusTip(tr("OCAF structure presentation"));
+    connect(dfBrowserAct, SIGNAL(triggered()), this, SLOT(startDFBrowser()));
+#endif
+
     exitAct = new QAction(tr("E&xit"), this);
     exitAct->setShortcut(tr("Ctrl+Q"));
     exitAct->setStatusTip(tr("Exit the application"));
@@ -247,6 +304,10 @@ void MainWindow::createMenus()
     computeMenu->addAction(computeAct);
     computeMenu->addAction(nbThreadsAct);
     computeMenu->addSeparator();
+#ifdef HAVE_Inspector
+    computeMenu->addAction(dfBrowserAct);
+    computeMenu->addSeparator();
+#endif
     computeMenu->addAction(exitAct);
 
     menuBar()->addSeparator();

@@ -971,14 +971,27 @@ void GeomLib::SameRange(const Standard_Real         Tolerance,
 
     if(aCCheck->IsPeriodic())
     {
-      TC = new Geom2d_TrimmedCurve( CurvePtr, FirstOnCurve, LastOnCurve );
+      if(Abs(LastOnCurve - FirstOnCurve) > Precision::PConfusion())
+      {
+        TC = new Geom2d_TrimmedCurve( CurvePtr, FirstOnCurve, LastOnCurve );
+      }
+      else
+      {
+        TC = new Geom2d_TrimmedCurve( CurvePtr, CurvePtr->FirstParameter(), CurvePtr->LastParameter() );
+      }
     }
     else
     {
       const Standard_Real Udeb = Max(CurvePtr->FirstParameter(), FirstOnCurve);
       const Standard_Real Ufin = Min(CurvePtr->LastParameter(), LastOnCurve);
-
-      TC = new Geom2d_TrimmedCurve( CurvePtr, Udeb, Ufin );
+      if(Abs(Ufin - Udeb) > Precision::PConfusion())
+      {
+        TC = new Geom2d_TrimmedCurve( CurvePtr, Udeb, Ufin );
+      }
+      else
+      {
+        TC = new Geom2d_TrimmedCurve( CurvePtr, CurvePtr->FirstParameter(), CurvePtr->LastParameter());
+      }
     }
 
     //
@@ -1771,7 +1784,7 @@ void GeomLib::ExtendSurfByLength(Handle(Geom_BoundedSurface)& Surface,
 
     if (NullWeight) {
 #ifdef OCCT_DEBUG
-      cout << "Echec de l'Extension rationnelle" << endl;    
+      std::cout << "Echec de l'Extension rationnelle" << std::endl;    
 #endif
       lambmin /= 3.;
       NullWeight = Standard_False;
@@ -1871,8 +1884,8 @@ void GeomLib::Inertia(const TColgp_Array1OfPnt& Points,
   math_Jacobi J(M);
   if (!J.IsDone()) {
 #ifdef OCCT_DEBUG
-    cout << "Erreur dans Jacobbi" << endl;
-    M.Dump(cout);
+    std::cout << "Erreur dans Jacobbi" << std::endl;
+    M.Dump(std::cout);
 #endif
   }
 
@@ -2495,6 +2508,7 @@ void GeomLib::IsClosed (const Handle(Geom_Surface)& S,
         return;
       }
     }
+    Standard_FALLTHROUGH
     case GeomAbs_Cylinder:
     {
       if(Precision::IsInfinite(v1))

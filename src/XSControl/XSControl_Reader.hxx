@@ -86,7 +86,9 @@ public:
   //! Controller already set
   //! Virtual destructor
   Standard_EXPORT XSControl_Reader(const Handle(XSControl_WorkSession)& WS, const Standard_Boolean scratch = Standard_True);
-Standard_EXPORT virtual ~XSControl_Reader() {}
+
+  //! Empty virtual destructor
+  virtual ~XSControl_Reader() {}
   
   //! Sets a specific norm to <me>
   //! Returns True if done, False if <norm> is not available
@@ -195,7 +197,7 @@ Standard_EXPORT virtual ~XSControl_Reader() {}
   Standard_EXPORT TopoDS_Shape OneShape() const;
   
   //! Prints the check list attached to loaded data, on the Standard
-  //! Trace File (starts at cout)
+  //! Trace File (starts at std::cout)
   //! All messages or fails only, according to <failsonly>
   //! mode = 0 : per entity, prints messages
   //! mode = 1 : per message, just gives count of entities per check

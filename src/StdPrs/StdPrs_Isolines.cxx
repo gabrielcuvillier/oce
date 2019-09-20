@@ -387,12 +387,7 @@ void StdPrs_Isolines::addOnSurface (const Handle(BRepAdaptor_HSurface)& theSurfa
     for (anEdgeTool.Init(); anEdgeTool.More(); anEdgeTool.Next())
     {
       TopAbs_Orientation anOrientation = anEdgeTool.Orientation();
-      if (anOrientation != TopAbs_FORWARD && anOrientation != TopAbs_REVERSED)
-      {
-        continue;
-      }
-
-      Adaptor2d_Curve2dPtr anEdgeCurve = anEdgeTool.Value();
+      const Adaptor2d_Curve2d* anEdgeCurve = &anEdgeTool.Value();
       if (anEdgeCurve->GetType() != GeomAbs_Line)
       {
         GCPnts_QuasiUniformDeflection aSampler (*anEdgeCurve, aSamplerDeflection);
@@ -565,7 +560,7 @@ void StdPrs_Isolines::addOnSurface (const Handle(BRepAdaptor_HSurface)& theSurfa
       }
     }
   }
-  catch (Standard_Failure)
+  catch (Standard_Failure const&)
   {
     // ...
   }
@@ -589,10 +584,14 @@ void StdPrs_Isolines::UVIsoParameters (const TopoDS_Face&      theFace,
 
   BRepTools::UVBounds (theFace, aUmin, aUmax, aVmin, aVmax);
 
-  aUmin = Max (aUmin, -theUVLimit);
-  aUmax = Min (aUmax,  theUVLimit);
-  aVmin = Max (aVmin, -theUVLimit);
-  aVmax = Min (aVmax,  theUVLimit);
+  if (Precision::IsInfinite (aUmin))
+    aUmin = -theUVLimit;
+  if (Precision::IsInfinite (aUmax))
+    aUmax = theUVLimit;
+  if (Precision::IsInfinite (aVmin))
+    aVmin = -theUVLimit;
+  if (Precision::IsInfinite (aVmax))
+    aVmax = theUVLimit;
 
   TopLoc_Location aLocation;
   const Handle(Geom_Surface)& aSurface = BRep_Tool::Surface (theFace, aLocation);

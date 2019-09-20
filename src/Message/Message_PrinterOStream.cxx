@@ -39,7 +39,7 @@ Message_PrinterOStream::Message_PrinterOStream (const Message_Gravity theTraceLe
 
 //=======================================================================
 //function : Constructor
-//purpose  : Opening a file as an ostream
+//purpose  : Opening a file as an std::ostream
 //           for specific file names standard streams are created
 //=======================================================================
 Message_PrinterOStream::Message_PrinterOStream (const Standard_CString theFileName,
@@ -49,12 +49,12 @@ Message_PrinterOStream::Message_PrinterOStream (const Standard_CString theFileNa
   myIsFile (Standard_False)
 {
   myTraceLevel = theTraceLevel;
-  if (strcasecmp(theFileName, "cout") == 0)
+  if (strcasecmp(theFileName, "cerr") == 0)
   {
     myStream = &std::cerr;
     return;
   }
-  else if (strcasecmp(theFileName, "cerr") == 0)
+  else if (strcasecmp(theFileName, "cout") == 0)
   {
     myStream = &std::cout;
     return;
@@ -115,7 +115,7 @@ void Message_PrinterOStream::Send (const Standard_CString theString,
   if ( theGravity < myTraceLevel || ! myStream ) return;
   Standard_OStream* ostr = (Standard_OStream*)myStream;
   (*ostr) << theString;
-  if ( putEndl ) (*ostr) << endl;
+  if ( putEndl ) (*ostr) << std::endl;
 }
 
 //=======================================================================

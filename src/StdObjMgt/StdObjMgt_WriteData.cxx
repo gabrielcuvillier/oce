@@ -35,7 +35,7 @@ void StdObjMgt_WriteData::WritePersistentObject (const Handle(StdObjMgt_Persiste
 
 StdObjMgt_WriteData& StdObjMgt_WriteData::operator << (const Handle(StdObjMgt_Persistent)& thePersistent)
 {
-  *myDriver << (thePersistent ? thePersistent->RefNum() : 0);
+  myDriver->PutReference(thePersistent ? thePersistent->RefNum() : 0);
   return *this;
 }
 
@@ -44,8 +44,10 @@ StdObjMgt_WriteData& StdObjMgt_WriteData::operator << (const Handle(StdObjMgt_Pe
 //purpose  : Read persistent data from a file
 //=======================================================================
 StdObjMgt_WriteData& operator <<
-  (StdObjMgt_WriteData::Object theWriteData, const Standard_GUID& theGUID)
+  (StdObjMgt_WriteData& theWriteData, const Standard_GUID& theGUID)
 {
+  StdObjMgt_WriteData::ObjectSentry aSentry (theWriteData);
+
   const Standard_UUID anUUID = theGUID.ToUUID();
 
   Standard_Integer      a32b;

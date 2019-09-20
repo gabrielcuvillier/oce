@@ -19,7 +19,7 @@ IMPLEMENT_STANDARD_RTTIEXT(Select3D_SensitivePoly,Select3D_SensitiveSet)
 // Function: Select3D_SensitivePoly
 // Purpose :
 //==================================================
-Select3D_SensitivePoly::Select3D_SensitivePoly (const Handle(SelectBasics_EntityOwner)& theOwnerId,
+Select3D_SensitivePoly::Select3D_SensitivePoly (const Handle(SelectMgr_EntityOwner)& theOwnerId,
                                                 const TColgp_Array1OfPnt& thePoints,
                                                 const Standard_Boolean theIsBVHEnabled)
 : Select3D_SensitiveSet (theOwnerId),
@@ -60,7 +60,7 @@ Select3D_SensitivePoly::Select3D_SensitivePoly (const Handle(SelectBasics_Entity
 // Function: Select3D_SensitivePoly
 // Purpose :
 //==================================================
-Select3D_SensitivePoly::Select3D_SensitivePoly (const Handle(SelectBasics_EntityOwner)& theOwnerId,
+Select3D_SensitivePoly::Select3D_SensitivePoly (const Handle(SelectMgr_EntityOwner)& theOwnerId,
                                                 const Handle(TColgp_HArray1OfPnt)& thePoints,
                                                 const Standard_Boolean theIsBVHEnabled)
 : Select3D_SensitiveSet (theOwnerId),
@@ -101,7 +101,7 @@ Select3D_SensitivePoly::Select3D_SensitivePoly (const Handle(SelectBasics_Entity
 // Function: Creation
 // Purpose :
 //==================================================
-Select3D_SensitivePoly::Select3D_SensitivePoly (const Handle(SelectBasics_EntityOwner)& theOwnerId,
+Select3D_SensitivePoly::Select3D_SensitivePoly (const Handle(SelectMgr_EntityOwner)& theOwnerId,
                                                 const Standard_Boolean theIsBVHEnabled,
                                                 const Standard_Integer theNbPnts)
 : Select3D_SensitiveSet (theOwnerId),
@@ -220,18 +220,24 @@ void Select3D_SensitivePoly::Swap (const Standard_Integer theIdx1,
 //           theIdx overlaps the current selecting
 //           volume
 //==================================================
-Standard_Boolean Select3D_SensitivePoly::overlapsElement (SelectBasics_SelectingVolumeManager& theMgr,
+Standard_Boolean Select3D_SensitivePoly::overlapsElement (SelectBasics_PickResult& thePickResult,
+                                                          SelectBasics_SelectingVolumeManager& theMgr,
                                                           Standard_Integer theElemIdx,
-                                                          Standard_Real& theMatchDepth)
+                                                          Standard_Boolean theIsFullInside)
 {
   if (mySegmentIndexes.IsNull())
+  {
     return Standard_False;
+  }
+  else if (theIsFullInside)
+  {
+    return Standard_True;
+  }
 
   const Standard_Integer aSegmentIdx = mySegmentIndexes->Value (theElemIdx);
   gp_Pnt aPnt1 = myPolyg.Pnt3d (aSegmentIdx);
   gp_Pnt aPnt2 = myPolyg.Pnt3d (aSegmentIdx + 1);
-
-  return theMgr.Overlaps (aPnt1, aPnt2, theMatchDepth);
+  return theMgr.Overlaps (aPnt1, aPnt2, thePickResult);
 }
 
 //==================================================
@@ -239,10 +245,15 @@ Standard_Boolean Select3D_SensitivePoly::overlapsElement (SelectBasics_Selecting
 // Purpose  :
 //==================================================
 Standard_Boolean Select3D_SensitivePoly::elementIsInside (SelectBasics_SelectingVolumeManager& theMgr,
-                                                          const Standard_Integer               theElemIdx)
+                                                          Standard_Integer theElemIdx,
+                                                          Standard_Boolean theIsFullInside)
 {
-  const Standard_Integer aSegmentIdx = mySegmentIndexes->Value (theElemIdx);
+  if (theIsFullInside)
+  {
+    return Standard_True;
+  }
 
+  const Standard_Integer aSegmentIdx = mySegmentIndexes->Value (theElemIdx);
   return theMgr.Overlaps (myPolyg.Pnt3d (aSegmentIdx + 0))
       && theMgr.Overlaps (myPolyg.Pnt3d (aSegmentIdx + 1));
 }

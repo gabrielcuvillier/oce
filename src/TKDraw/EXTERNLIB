@@ -6,6 +6,7 @@ TKMath
 TKBRep
 TKGeomAlgo
 TKTopAlgo
+TKShHealing
 TKMesh
 TKService
 TKHLR
@@ -15,6 +16,7 @@ CSF_XwLibs
 CSF_gdi32
 CSF_advapi32
 CSF_user32
+CSF_shell32
 CSF_TBB
 CSF_objc
 CSF_Appkit

@@ -17,6 +17,7 @@
 #define _BRepTools_History_HeaderFile
 
 #include <NCollection_Handle.hxx>
+#include <TopExp.hxx>
 #include <TopTools_DataMapOfShapeListOfShape.hxx>
 #include <TopTools_MapOfShape.hxx>
 
@@ -34,8 +35,13 @@ DEFINE_STANDARD_HANDLE(BRepTools_History, Standard_Transient)
 //!
 //! The last relation means that:
 //! 1) shape Si is not an output shape and
-//! 2) no any shape is generated or modified (produced) from shape Si:
-//! R(Si) == 1 ==> Si != Tj, G(Si) == 0, M(Si) == 0.
+//! 2) no any shape is modified (produced) from shape Si:
+//! R(Si) == 1 ==> Si != Tj, M(Si) == 0.
+//!
+//! It means that the input shape cannot be removed and modified
+//! simultaneously. However, the shapes may be generated from the
+//! removed shape. For instance, in Fillet operation the edges
+//! generate faces and then are removed.
 //!
 //! No any shape could be generated and modified from the same shape
 //! simultaneously: sets G(Si) and M(Si) are not intersected
@@ -55,7 +61,7 @@ DEFINE_STANDARD_HANDLE(BRepTools_History, Standard_Transient)
 //! 3) a shape is generated from input shapes of the same dimension if it is
 //!   produced by joining shapes generated from these shapes;
 //! 4) a shape is modified from an input shape if it replaces the input shape by
-//!   changes of the location, the tolerance, the bounds of the parametrical
+//!   changes of the location, the tolerance, the bounds of the parametric
 //!   space (the faces for a solid), the parametrization and/or by applying of
 //!   an approximation;
 //! 5) a shape is modified from input shapes of the same dimension if it is
@@ -82,6 +88,51 @@ DEFINE_STANDARD_HANDLE(BRepTools_History, Standard_Transient)
 //!   Tj <= M12(Si), Qk <= M23(Tj) ==> Qk <= M13(Si);
 class BRepTools_History: public Standard_Transient
 {
+public: //! @name Constructors for History creation
+
+  //! Empty constructor
+  BRepTools_History() {}
+
+  //! Template constructor for History creation from the algorithm having
+  //! standard history methods such as IsDeleted(), Modified() and Generated().
+  //! @param theArguments [in] Arguments of the algorithm;
+  //! @param theAlgo [in] The algorithm.
+  template <class TheAlgo>
+  BRepTools_History(const TopTools_ListOfShape& theArguments,
+                    TheAlgo& theAlgo)
+  {
+    // Map all argument shapes to save them in history
+    TopTools_IndexedMapOfShape anArgsMap;
+    TopTools_ListIteratorOfListOfShape aIt(theArguments);
+    for (; aIt.More(); aIt.Next())
+    {
+      if (!aIt.Value().IsNull())
+        TopExp::MapShapes(aIt.Value(), anArgsMap);
+    }
+
+    // Copy the history for all supported shapes from the algorithm
+    Standard_Integer i, aNb = anArgsMap.Extent();
+    for (i = 1; i <= aNb; ++i)
+    {
+      const TopoDS_Shape& aS = anArgsMap(i);
+      if (!IsSupportedType(aS))
+        continue;
+
+      if (theAlgo.IsDeleted(aS))
+        Remove(aS);
+
+      // Check Modified
+      const TopTools_ListOfShape& aModified = theAlgo.Modified(aS);
+      for (aIt.Initialize(aModified); aIt.More(); aIt.Next())
+        AddModified(aS, aIt.Value());
+
+      // Check Generated
+      const TopTools_ListOfShape& aGenerated = theAlgo.Generated(aS);
+      for (aIt.Initialize(aGenerated); aIt.More(); aIt.Next())
+        AddGenerated(aS, aIt.Value());
+    }
+  }
+
 public:
 
   //! The types of the historical relations.
@@ -145,10 +196,46 @@ public: //! Methods to read the history.
   Standard_EXPORT
   Standard_Boolean IsRemoved(const TopoDS_Shape& theInitial) const;
 
+  //! Returns 'true' if there any shapes with Generated elements present
+  Standard_Boolean HasGenerated() const { return !myShapeToGenerated.IsEmpty(); }
+
+  //! Returns 'true' if there any Modified shapes present
+  Standard_Boolean HasModified() const { return !myShapeToModified.IsEmpty(); }
+
+  //! Returns 'true' if there any removed shapes present
+  Standard_Boolean HasRemoved() const { return !myRemoved.IsEmpty(); }
+
 public: //! A method to merge a next history to this history.
 
   //! Merges the next history to this history.
   Standard_EXPORT void Merge(const Handle(BRepTools_History)& theHistory23);
+
+  //! Merges the next history to this history.
+  Standard_EXPORT void Merge(const BRepTools_History& theHistory23);
+
+  //! Template method for merging history of the algorithm having standard
+  //! history methods such as IsDeleted(), Modified() and Generated()
+  //! into current history object.
+  //! @param theArguments [in] Arguments of the algorithm;
+  //! @param theAlgo [in] The algorithm.
+  template<class TheAlgo>
+  void Merge(const TopTools_ListOfShape& theArguments,
+             TheAlgo& theAlgo)
+  {
+    // Create new history object from the given algorithm and merge it into this.
+    Merge(BRepTools_History(theArguments, theAlgo));
+  }
+
+public: //! A method to dump a history
+
+  //! Prints the brief description of the history into a stream
+  void Dump(Standard_OStream& theS)
+  {
+    theS << "History contains:\n";
+    theS << " - " << myRemoved.Extent() << " Deleted shapes;\n";
+    theS << " - " << myShapeToModified.Extent() << " Modified shapes;\n";
+    theS << " - " << myShapeToGenerated.Extent() << " Generated shapes.\n";
+  }
 
 public:
 

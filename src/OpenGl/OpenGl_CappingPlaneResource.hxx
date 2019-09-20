@@ -18,7 +18,7 @@
 
 #include <OpenGl_PrimitiveArray.hxx>
 #include <OpenGl_Resource.hxx>
-#include <OpenGl_AspectFace.hxx>
+#include <OpenGl_Aspects.hxx>
 #include <OpenGl_Matrix.hxx>
 #include <Graphic3d_ClipPlane.hxx>
 
@@ -48,17 +48,20 @@ public:
   //! @param theContext   [in] the context
   //! @param theObjAspect [in] object aspect
   Standard_EXPORT void Update (const Handle(OpenGl_Context)& theContext,
-                               const Handle(Graphic3d_AspectFillArea3d)& theObjAspect);
+                               const Handle(Graphic3d_Aspects)& theObjAspect);
 
   //! Release associated OpenGl resources.
   //! @param theContext [in] the resource context.
   Standard_EXPORT virtual void Release (OpenGl_Context* theContext) Standard_OVERRIDE;
 
+  //! Returns estimated GPU memory usage - not implemented.
+  virtual Standard_Size EstimatedDataSize() const Standard_OVERRIDE { return 0; }
+
   //! Return parent clipping plane structure.
   const Handle(Graphic3d_ClipPlane)& Plane() const { return myPlaneRoot; }
 
   //! @return aspect face for rendering capping surface.
-  inline const OpenGl_AspectFace* AspectFace() const { return myAspect; }
+  inline const OpenGl_Aspects* AspectFace() const { return myAspect; }
 
   //! @return evaluated orientation matrix to transform infinite plane.
   inline const OpenGl_Matrix* Orientation() const { return &myOrientation; }
@@ -69,18 +72,19 @@ public:
 private:
 
   //! Update precomputed plane orientation matrix.
-  void updateTransform();
+  void updateTransform (const Handle(OpenGl_Context)& theCtx);
 
   //! Update resources.
-  void updateAspect (const Handle(Graphic3d_AspectFillArea3d)& theObjAspect);
+  void updateAspect (const Handle(Graphic3d_Aspects)& theObjAspect);
 
 private:
 
   OpenGl_PrimitiveArray       myPrimitives;    //!< vertices and texture coordinates for rendering
   OpenGl_Matrix               myOrientation;   //!< plane transformation matrix.
-  OpenGl_AspectFace*          myAspect;        //!< capping face aspect.
+  OpenGl_Aspects*             myAspect;        //!< capping face aspect.
   Handle(Graphic3d_ClipPlane) myPlaneRoot;     //!< parent clipping plane structure.
-  Handle(Graphic3d_AspectFillArea3d) myFillAreaAspect; //!< own capping aspect
+  Handle(Graphic3d_Aspects)   myFillAreaAspect;//!< own capping aspect
+  gp_XYZ                      myLocalOrigin;   //!< layer origin
   unsigned int                myEquationMod;   //!< modification counter for plane equation.
   unsigned int                myAspectMod;     //!< modification counter for aspect.
 

@@ -16,7 +16,9 @@
 
 #include <gp_XYZ.hxx>
 #include <Geom_Transformation.hxx>
+#include <Graphic3d_LightSet.hxx>
 #include <Graphic3d_PolygonOffset.hxx>
+#include <Precision.hxx>
 #include <TCollection_AsciiString.hxx>
 
 enum Graphic3d_ZLayerSetting
@@ -33,17 +35,28 @@ struct Graphic3d_ZLayerSettings
 
   //! Default settings.
   Graphic3d_ZLayerSettings()
-  : myIsImmediate       (Standard_False),
+  : myCullingDistance (Precision::Infinite()),
+    myCullingSize     (Precision::Infinite()),
+    myIsImmediate       (Standard_False),
+    myToRaytrace        (Standard_True),
     myUseEnvironmentTexture (Standard_True),
     myToEnableDepthTest (Standard_True),
     myToEnableDepthWrite(Standard_True),
-    myToClearDepth      (Standard_True) {}
+    myToClearDepth      (Standard_True),
+    myToRenderInDepthPrepass (Standard_True) {}
 
   //! Return user-provided name.
   const TCollection_AsciiString& Name() const { return myName; }
 
   //! Set custom name.
   void SetName (const TCollection_AsciiString& theName) { myName = theName; }
+
+  //! Return lights list to be used for rendering presentations within this Z-Layer; NULL by default.
+  //! NULL list (but not empty list!) means that default lights assigned to the View should be used instead of per-layer lights.
+  const Handle(Graphic3d_LightSet)& Lights() const { return myLights; }
+
+  //! Assign lights list to be used.
+  void SetLights (const Handle(Graphic3d_LightSet)& theLights) { myLights = theLights; }
 
   //! Return the origin of all objects within the layer.
   const gp_XYZ& Origin() const { return myOrigin; }
@@ -59,14 +72,46 @@ struct Graphic3d_ZLayerSettings
     if (!theOrigin.IsEqual (gp_XYZ(0.0, 0.0, 0.0), gp::Resolution()))
     {
       myOriginTrsf = new Geom_Transformation();
+      myOriginTrsf->SetTranslation (theOrigin);
     }
   }
+
+  //! Return TRUE, if culling of distant objects (distance culling) should be performed; FALSE by default.
+  //! @sa CullingDistance()
+  Standard_Boolean HasCullingDistance() const { return !Precision::IsInfinite (myCullingDistance) && myCullingDistance > 0.0; }
+
+  //! Return the distance to discard drawing of distant objects (distance from camera Eye point); by default it is Infinite (distance culling is disabled).
+  //! Since camera eye definition has no strong meaning within orthographic projection, option is considered only within perspective projection.
+  //! Note also that this option has effect only when frustum culling is enabled.
+  Standard_Real CullingDistance() const { return myCullingDistance; }
+
+  //! Set the distance to discard drawing objects.
+  void SetCullingDistance (Standard_Real theDistance) { myCullingDistance = theDistance; }
+
+  //! Return TRUE, if culling of small objects (size culling) should be performed; FALSE by default.
+  //! @sa CullingSize()
+  Standard_Boolean HasCullingSize() const { return !Precision::IsInfinite (myCullingSize) && myCullingSize > 0.0; }
+
+  //! Return the size to discard drawing of small objects; by default it is Infinite (size culling is disabled).
+  //! Current implementation checks the length of projected diagonal of bounding box in pixels for discarding.
+  //! Note that this option has effect only when frustum culling is enabled.
+  Standard_Real CullingSize() const { return myCullingSize; }
+
+  //! Set the distance to discard drawing objects.
+  void SetCullingSize (Standard_Real theSize) { myCullingSize = theSize; }
 
   //! Return true if this layer should be drawn after all normal (non-immediate) layers.
   Standard_Boolean IsImmediate() const { return myIsImmediate; }
 
   //! Set the flag indicating the immediate layer, which should be drawn after all normal (non-immediate) layers.
   void SetImmediate (const Standard_Boolean theValue) { myIsImmediate = theValue; }
+
+  //! Returns TRUE if layer should be processed by ray-tracing renderer; TRUE by default.
+  //! Note that this flag is IGNORED for layers with IsImmediate() flag.
+  Standard_Boolean IsRaytracable() const { return myToRaytrace; }
+
+  //! Sets if layer should be processed by ray-tracing renderer.
+  void SetRaytracable (Standard_Boolean theToRaytrace) { myToRaytrace = theToRaytrace; }
 
   //! Return flag to allow/prevent environment texture mapping usage for specific layer.
   Standard_Boolean UseEnvironmentTexture() const { return myUseEnvironmentTexture; }
@@ -91,6 +136,12 @@ struct Graphic3d_ZLayerSettings
 
   //! Set if depth values should be cleared before drawing the layer.
   void SetClearDepth (const Standard_Boolean theValue) { myToClearDepth = theValue; }
+
+  //! Return TRUE if layer should be rendered within depth pre-pass; TRUE by default.
+  Standard_Boolean ToRenderInDepthPrepass() const { return myToRenderInDepthPrepass; }
+
+  //! Set if layer should be rendered within depth pre-pass.
+  void SetRenderInDepthPrepass (Standard_Boolean theToRender) { myToRenderInDepthPrepass = theToRender; }
 
   //! Return glPolygonOffset() arguments.
   const Graphic3d_PolygonOffset& PolygonOffset() const { return myPolygonOffset; }
@@ -160,14 +211,19 @@ struct Graphic3d_ZLayerSettings
 protected:
 
   TCollection_AsciiString     myName;                  //!< user-provided name
+  Handle(Graphic3d_LightSet)  myLights;                //!< lights list
   Handle(Geom_Transformation) myOriginTrsf;            //!< transformation to the origin
   gp_XYZ                      myOrigin;                //!< the origin of all objects within the layer
+  Standard_Real               myCullingDistance;       //!< distance to discard objects
+  Standard_Real               myCullingSize;           //!< size to discard objects
   Graphic3d_PolygonOffset     myPolygonOffset;         //!< glPolygonOffset() arguments
   Standard_Boolean            myIsImmediate;           //!< immediate layer will be drawn after all normal layers
+  Standard_Boolean            myToRaytrace;            //!< option to render layer within ray-tracing engine
   Standard_Boolean            myUseEnvironmentTexture; //!< flag to allow/prevent environment texture mapping usage for specific layer
   Standard_Boolean            myToEnableDepthTest;     //!< option to enable depth test
   Standard_Boolean            myToEnableDepthWrite;    //!< option to enable write depth values
   Standard_Boolean            myToClearDepth;          //!< option to clear depth values before drawing the layer
+  Standard_Boolean            myToRenderInDepthPrepass;//!< option to render layer within depth pre-pass
 
 };
 

@@ -14,28 +14,49 @@
 // commercial license or contractual agreement.
 
 #include <TColStd_PackedMapOfInteger.hxx>
-#include <TColStd_MapIteratorOfPackedMapOfInteger.hxx>
+
 #include <TCollection_MapNode.hxx>
 #include <Standard_Type.hxx>
 
 // 5 lower bits
-#define MASK_LOW  0x001f
+#define MASK_LOW  0x001F
 // 27 upper bits
 #define MASK_HIGH (~MASK_LOW)
 
-/**
- * Class implementing a block of 32 consecutive integer values as a node of
- * a Map collection. The data are stored in 64 bits as:
- * - bits  0 - 4 : (number of integers stored in the block) - 1;
- * - bits  5 - 31: base address of the block of integers (low bits assumed 0)
- * - bits 32 - 63: 32-bit field where each bit indicates the presence of the
- *                 corresponding integer in the block. Number of non-zero bits
- *                 must be equal to the number expressed in bits 0-4.
- */
-class TColStd_intMapNode : public TCollection_MapNode
+namespace
+{
+  //! Returns the key with applied mask to it
+  //! @param theKey the given key
+  //! @return the key with the applied mask to it
+  unsigned int maskedKey (const unsigned int theKey)
+  {
+    return theKey & MASK_HIGH;
+  }
+
+  //! Computes a hash code for the given key (using only masked bits) in the range [1, theUpperBound]
+  //! @param theKey the given key
+  //! @param theUpperBound the upper bound of the range a computing hash code must be within
+  //! @return a computed hash code, in the range [1, theUpperBound]
+  Standard_Integer hashCodeForKey (const unsigned int theKey, const Standard_Integer theUpperBound)
+  {
+    return HashCode (theKey >> 5, theUpperBound);
+  }
+
+  //! Computes a hash code for the given key (using only masked bits) in the range [1, theUpperBound]
+  //! @param theKey the given key
+  //! @param theUpperBound the upper bound of the range a computing hash code must be within
+  //! @return a computed hash code, in the range [1, theUpperBound]
+  Standard_Integer hashCodeForKey (const Standard_Integer theKey, const Standard_Integer theUpperBound)
+  {
+    return hashCodeForKey (static_cast<unsigned int> (theKey), theUpperBound);
+  }
+} // namespace
+
+//! Class implementing a block of 32 consecutive integer values as a node of a Map collection.
+class TColStd_PackedMapOfInteger::TColStd_intMapNode : public TCollection_MapNode
 {
 public:
-  inline TColStd_intMapNode (TCollection_MapNode * ptr = 0L)
+  explicit inline TColStd_intMapNode (TCollection_MapNode * ptr = 0L)
     : TCollection_MapNode       (ptr),
       myMask                    (0),
       myData                    (0) {}
@@ -65,8 +86,10 @@ public:
   inline unsigned int&          ChangeData  ()
   { return myData; }
 
-  inline Standard_Integer       Key         () const
-  { return Standard_Integer (myMask & MASK_HIGH); }
+  inline Standard_Integer Key() const
+  {
+    return static_cast<Standard_Integer> (maskedKey());
+  }
 
   inline size_t                 NbValues    () const
   { return size_t(myMask & MASK_LOW) + 1; }
@@ -87,33 +110,44 @@ public:
    */
   Standard_Integer              FindNext (unsigned int& theMask) const;
 
-  /**
-   * Support of Map interface.
-   */
-  inline Standard_Integer       HashCode (const Standard_Integer theUpper) const
+  //! Computes a hash code for this map in the range [1, theUpperBound]
+  //! @param theUpperBound the upper bound of the range a computing hash code must be within
+  //! @return a computed hash code, in the range [1, theUpperBound]
+  inline Standard_Integer       HashCode (const Standard_Integer theUpperBound) const
   {
-    return ::HashCode (Standard_Integer(myMask >> 5), theUpper);
+    return hashCodeForKey (myMask, theUpperBound);
   }
 
-  /**
-   * Support of Map interface.
-   */
-  inline Standard_Boolean       IsEqual  (const Standard_Integer theOther) const
+  //! Checks this node's key on equality with some other key
+  //! @param theOtherKey the given unmasked key
+  //! @return true if this node's masked key is equal to the given key with applied mask, or false otherwise
+  inline Standard_Boolean       IsEqual  (const Standard_Integer theOtherKey) const
   {
-    return ((myMask >> 5) == (unsigned)theOther);
+    return isEqual (::maskedKey (static_cast<unsigned int> (theOtherKey)));
   }
 
-  /**
-   * Local friend function, used in TColStd_MapIteratorOfPackedMapOfInteger.
-   */
-  friend Standard_Integer TColStd_intMapNode_findNext(const TColStd_intMapNode*,
-                                                      unsigned int& );
+  //! Checks this node's key on equality with some other node's key
+  //! @param theOtherMapNode the given other map node
+  //! @return true if this node's masked key is equal to the given other map node's masked key, or false otherwise
+  bool IsEqual (const TColStd_intMapNode& theOtherMapNode) const
+  {
+    return isEqual (theOtherMapNode.maskedKey());
+  }
 
-  /**
-   * Local friend function.
-   */
-  friend Standard_Integer TColStd_intMapNode_findPrev(const TColStd_intMapNode*,
-                                                      unsigned int& );
+private:
+  //! Returns the key of this map node with the mask applied to it
+  unsigned int maskedKey() const
+  {
+    return ::maskedKey (myMask);
+  }
+
+  //! Checks this node's key on equality with some other masked key
+  //! @param theOtherMaskedKey the given masked key
+  //! @return true if this node's masked key is equal to the given masked key, or false otherwise
+  bool isEqual (const unsigned int theOtherMaskedKey) const
+  {
+    return maskedKey() == theOtherMaskedKey;
+  }
 
 private:
   unsigned int      myMask;
@@ -126,7 +160,7 @@ private:
 //purpose  : 
 //=======================================================================
 
-Standard_Boolean TColStd_intMapNode::AddValue (const Standard_Integer theValue)
+Standard_Boolean TColStd_PackedMapOfInteger::TColStd_intMapNode::AddValue (const Standard_Integer theValue)
 {
   Standard_Boolean aResult (Standard_False);
   const Standard_Integer aValInt = (1 << (theValue & MASK_LOW));
@@ -143,7 +177,7 @@ Standard_Boolean TColStd_intMapNode::AddValue (const Standard_Integer theValue)
 //purpose  : 
 //=======================================================================
 
-Standard_Boolean TColStd_intMapNode::DelValue (const Standard_Integer theValue)
+Standard_Boolean TColStd_PackedMapOfInteger::TColStd_intMapNode::DelValue (const Standard_Integer theValue)
 {
   Standard_Boolean aResult (Standard_False);
   const Standard_Integer aValInt = (1 << (theValue & MASK_LOW));
@@ -177,14 +211,13 @@ inline size_t TColStd_Population (unsigned int&      theMask,
 
 //=======================================================================
 //function : TColStd_intMapNode_findNext
-//purpose  : Find the smallest non-zero bit under the given mask. Outputs
-//           the new mask that does not contain the detected bit.
+//purpose  :
 //=======================================================================
-
-Standard_Integer TColStd_intMapNode_findNext (const TColStd_intMapNode* theNode,
-                                              unsigned int&             theMask)
+Standard_Integer TColStd_PackedMapOfInteger::TColStd_intMapNode_findNext (const Standard_Address theNode,
+                                                                          unsigned int&          theMask)
 {
-  unsigned int val = theNode->myData & theMask;
+  const TColStd_intMapNode* aNode = reinterpret_cast<const TColStd_intMapNode*> (theNode);
+  unsigned int val = aNode->Data() & theMask;
   int nZeros (0);
   if (val == 0)
     theMask = ~0U;   // void, nothing to do
@@ -216,19 +249,18 @@ Standard_Integer TColStd_intMapNode_findNext (const TColStd_intMapNode* theNode,
     }
     theMask = (aMask << 1);
   }
-  return nZeros + theNode->Key();
+  return nZeros + aNode->Key();
 }
 
 //=======================================================================
 //function : TColStd_intMapNode_findPrev
-//purpose  : Find the highest non-zero bit under the given mask. Outputs
-//           the new mask that does not contain the detected bit.
+//purpose  :
 //=======================================================================
-
-Standard_Integer TColStd_intMapNode_findPrev (const TColStd_intMapNode* theNode,
-                                              unsigned int&             theMask)
+Standard_Integer TColStd_PackedMapOfInteger::TColStd_intMapNode_findPrev (const Standard_Address theNode,
+                                                                          unsigned int&          theMask)
 {
-  unsigned int val = theNode->myData & theMask;
+  const TColStd_intMapNode* aNode = reinterpret_cast<const TColStd_intMapNode*> (theNode);
+  unsigned int val = aNode->Data() & theMask;
   int nZeros (0);
   if (val == 0)
     theMask = ~0U;   // void, nothing to do
@@ -260,7 +292,7 @@ Standard_Integer TColStd_intMapNode_findPrev (const TColStd_intMapNode* theNode,
     }
     theMask = (aMask >> 1);
   }
-  return (31 - nZeros) + theNode->Key();
+  return (31 - nZeros) + aNode->Key();
 }
 
 //=======================================================================
@@ -373,12 +405,11 @@ Standard_Boolean TColStd_PackedMapOfInteger::Add (const Standard_Integer aKey)
   Standard_Boolean aResult (Standard_False);
   TColStd_intMapNode  ** data =
     reinterpret_cast <TColStd_intMapNode**> (myData1);
-  const Standard_Integer aKeyInt = (unsigned)aKey >> 5;
-  const Standard_Integer aHashCode = HashCode (aKeyInt, NbBuckets());
+  const Standard_Integer aHashCode = hashCodeForKey (aKey, NbBuckets());
   TCollection_MapNodePtr aBucketHead = data[aHashCode];
   TColStd_intMapNode   * p = static_cast<TColStd_intMapNode*> (aBucketHead);
   while (p) {
-    if (p->IsEqual(aKeyInt)) {
+    if (p->IsEqual(aKey)) {
       aResult = p->AddValue (aKey);
 //       break;
       goto finish;  // goto saves us 4 CPU clocks or 4% performance
@@ -407,10 +438,9 @@ Standard_Boolean TColStd_PackedMapOfInteger::Contains
   Standard_Boolean aResult (Standard_False);
   if (!IsEmpty()) {
     TColStd_intMapNode** data = (TColStd_intMapNode**) myData1;
-    const Standard_Integer aKeyInt = (unsigned)aKey >> 5;
-    TColStd_intMapNode * p = data[HashCode (aKeyInt, NbBuckets())];
+    TColStd_intMapNode * p = data[hashCodeForKey (aKey, NbBuckets())];
     while (p) {
-      if (p->IsEqual(aKeyInt)) {
+      if (p->IsEqual(aKey)) {
         aResult = (p->HasValue (aKey) != 0);
         break;
       }
@@ -431,12 +461,11 @@ Standard_Boolean TColStd_PackedMapOfInteger::Remove(const Standard_Integer aKey)
   if (!IsEmpty()) {
     TColStd_intMapNode**   data =
       reinterpret_cast <TColStd_intMapNode**> (myData1);
-    const Standard_Integer aKeyInt = (unsigned)aKey >> 5;
-    TColStd_intMapNode*&   aBucketHead = data[HashCode(aKeyInt, NbBuckets())];
+    TColStd_intMapNode*&   aBucketHead = data[hashCodeForKey(aKey, NbBuckets())];
     TColStd_intMapNode*    p = aBucketHead;
     TColStd_intMapNode*    q = 0L;
     while (p) {
-      if (p->IsEqual(aKeyInt)) {
+      if (p->IsEqual(aKey)) {
         aResult = p->DelValue (aKey);
         if (aResult) {
           myExtent--;
@@ -479,7 +508,7 @@ Standard_Integer TColStd_PackedMapOfInteger::GetMinimalMapped () const
     }
     if (pFoundNode) {
       unsigned int aFullMask (0xffffffff);
-      aResult = TColStd_intMapNode_findNext (pFoundNode, aFullMask);
+      aResult = TColStd_intMapNode_findNext ((Standard_Address )pFoundNode, aFullMask);
     }
   }
   return aResult;
@@ -508,7 +537,7 @@ Standard_Integer TColStd_PackedMapOfInteger::GetMaximalMapped () const
     }
     if (pFoundNode) {
       unsigned int aFullMask (0xffffffff);
-      aResult = TColStd_intMapNode_findPrev (pFoundNode, aFullMask);
+      aResult = TColStd_intMapNode_findPrev ((Standard_Address )pFoundNode, aFullMask);
     }
   }
   return aResult;
@@ -544,17 +573,14 @@ void TColStd_PackedMapOfInteger::Union (const TColStd_PackedMapOfInteger& theMap
     for (i = 0; i <= nBuckets1; i++) {
       const TColStd_intMapNode * p1 = aData1[i];
       while (p1 != 0L) {
-        // Find aKey - the base address of currently iterated block
-        const Standard_Integer aKey = p1->Key();
-        const Standard_Integer aKeyInt = (unsigned)aKey >> 5;
         unsigned int aNewMask = p1->Mask();
         unsigned int aNewData = p1->Data();
         size_t       nValues (p1->NbValues());
         // Find the corresponding block in the 2nd map
         const TColStd_intMapNode * p2 =
-          aData2 [HashCode (aKeyInt, nBuckets2)];
+          aData2 [p1->HashCode(nBuckets2)];
         while (p2) {
-          if (p2->IsEqual(aKeyInt)) {
+          if (p2->IsEqual(*p1)) {
             aNewData |= p2->Data();
             nValues = TColStd_Population (aNewMask, aNewData);
             break;
@@ -566,7 +592,7 @@ void TColStd_PackedMapOfInteger::Union (const TColStd_PackedMapOfInteger& theMap
           ReSize(InternalExtent());
           aData = (TColStd_intMapNode**) myData1;
         }
-        const Standard_Integer aHashCode = HashCode (aKeyInt, NbBuckets());
+        const Standard_Integer aHashCode = p1->HashCode (NbBuckets());
         aData[aHashCode] = new TColStd_intMapNode (aNewMask, aNewData,
                                                    aData[aHashCode]);
         Increment();
@@ -578,14 +604,11 @@ void TColStd_PackedMapOfInteger::Union (const TColStd_PackedMapOfInteger& theMap
     for (i = 0; i <= nBuckets2; i++) {
       const TColStd_intMapNode * p2 = aData2[i];
       while (p2 != 0L) {
-        // Find aKey - the base address of currently iterated block
-        const Standard_Integer aKey = p2->Key();
-        const Standard_Integer aKeyInt = (unsigned)aKey >> 5;
         // Find the corresponding block in the 1st map
         const TColStd_intMapNode * p1 =
-          aData1 [HashCode (aKeyInt, nBuckets1)];
+          aData1 [p2->HashCode (nBuckets1)];
         while (p1) {
-          if (p1->IsEqual(aKeyInt))
+          if (p1->IsEqual(*p2))
             break;
           p1 = reinterpret_cast <const TColStd_intMapNode*> (p1->Next());
         }
@@ -596,7 +619,7 @@ void TColStd_PackedMapOfInteger::Union (const TColStd_PackedMapOfInteger& theMap
             ReSize(InternalExtent());
             aData = (TColStd_intMapNode**) myData1;
           }
-          const Standard_Integer aHashCode = HashCode (aKeyInt, NbBuckets());
+          const Standard_Integer aHashCode = p2->HashCode (NbBuckets());
           aData[aHashCode]= new TColStd_intMapNode (p2->Mask(), p2->Data(),
                                                     aData[aHashCode]);
           Increment();
@@ -632,14 +655,11 @@ Standard_Boolean TColStd_PackedMapOfInteger::Unite(const TColStd_PackedMapOfInte
     for (Standard_Integer i = 0; i <= nBuckets2; i++) {
       const TColStd_intMapNode * p2 = aData2[i];
       while (p2 != 0L) {
-        // Find aKey - the base address of currently iterated block of integers
-        const Standard_Integer aKey = p2->Key();
-        const Standard_Integer aKeyInt = (unsigned)aKey >> 5;
         // Find the corresponding block in the 1st (this) map
-        Standard_Integer aHashCode = HashCode (aKeyInt, NbBuckets());
+        Standard_Integer aHashCode = p2->HashCode (NbBuckets());
         TColStd_intMapNode * p1 = aData[aHashCode];
         while (p1) {
-          if (p1->IsEqual(aKeyInt)) {
+          if (p1->IsEqual(*p2)) {
             const size_t anOldPop = p1->NbValues();
             unsigned int newData = p1->Data() | p2->Data();
             if ( newData != p1->Data() ) {
@@ -656,7 +676,7 @@ Standard_Boolean TColStd_PackedMapOfInteger::Unite(const TColStd_PackedMapOfInte
           if (Resizable()) {
             ReSize(InternalExtent());
             aData = (TColStd_intMapNode**) myData1;
-            aHashCode = HashCode (aKeyInt, NbBuckets());
+            aHashCode = p2->HashCode (NbBuckets());
           }
           aData[aHashCode] = new TColStd_intMapNode (p2->Mask(), p2->Data(),
                                                      aData[aHashCode]);
@@ -708,14 +728,11 @@ void TColStd_PackedMapOfInteger::Intersection
     for (Standard_Integer i = 0; i <= nBuckets1; i++) {
       const TColStd_intMapNode * p1 = aData1[i];
       while (p1 != 0L) {
-        // Find aKey - the base address of currently iterated block
-        const Standard_Integer aKey = p1->Key();
-        const Standard_Integer aKeyInt = (unsigned)aKey >> 5;
         // Find the corresponding block in the 2nd map
         const TColStd_intMapNode * p2 =
-          aData2 [HashCode (aKeyInt, nBuckets2)];
+          aData2 [p1->HashCode (nBuckets2)];
         while (p2) {
-          if (p2->IsEqual(aKeyInt)) {
+          if (p2->IsEqual(*p1)) {
             const unsigned int aNewData = p1->Data() & p2->Data();
             // Store the block - result of operation
             if (aNewData) {
@@ -723,8 +740,7 @@ void TColStd_PackedMapOfInteger::Intersection
                 ReSize(InternalExtent());
                 aData = (TColStd_intMapNode**) myData1;
               }
-              const Standard_Integer aHashCode = HashCode (aKeyInt,
-                                                           NbBuckets());
+              const Standard_Integer aHashCode = p1->HashCode (NbBuckets());
               unsigned int aNewMask = p1->Mask();
               myExtent += TColStd_Population (aNewMask, aNewData);
               aData[aHashCode]= new TColStd_intMapNode(aNewMask, aNewData,
@@ -769,14 +785,11 @@ Standard_Boolean TColStd_PackedMapOfInteger::Intersect
       TColStd_intMapNode * q  = 0L;
       TColStd_intMapNode * p1 = aData[i];
       while (p1 != 0L) {
-        // Find aKey - the base address of currently iterated block of integers
-        const Standard_Integer aKey = p1->Key();
-        const Standard_Integer aKeyInt = (unsigned)aKey >> 5;
         // Find the corresponding block in the 2nd map
         const TColStd_intMapNode * p2 =
-          aData2 [HashCode (aKeyInt, nBuckets2)];
+          aData2 [p1->HashCode (nBuckets2)];
         while (p2) {
-          if (p2->IsEqual(aKeyInt)) {
+          if (p2->IsEqual(*p1)) {
             const unsigned int aNewData = p1->Data() & p2->Data();
             // Store the block - result of operation
             if (aNewData == 0)
@@ -845,17 +858,14 @@ void TColStd_PackedMapOfInteger::Subtraction
     for (Standard_Integer i = 0; i <= nBuckets1; i++) {
       const TColStd_intMapNode * p1 = aData1[i];
       while (p1 != 0L) {
-        // Find aKey - the base address of currently iterated block of integers
-        const Standard_Integer aKey = p1->Key();
-        const Standard_Integer aKeyInt = (unsigned)aKey >> 5;
         unsigned int aNewMask = p1->Mask();
         unsigned int aNewData = p1->Data();
         size_t       nValues (p1->NbValues());
         // Find the corresponding block in the 2nd map
         const TColStd_intMapNode * p2 =
-          aData2 [HashCode (aKeyInt, nBuckets2)];
+          aData2 [p1->HashCode (nBuckets2)];
         while (p2) {
-          if (p2->IsEqual(aKeyInt)) {
+          if (p2->IsEqual(*p1)) {
             aNewData &= ~p2->Data();
             nValues = TColStd_Population (aNewMask, aNewData);
             break;
@@ -868,7 +878,7 @@ void TColStd_PackedMapOfInteger::Subtraction
             ReSize(InternalExtent());
             aData = (TColStd_intMapNode**) myData1;
           }
-          const Standard_Integer aHashCode = HashCode (aKeyInt, NbBuckets());
+          const Standard_Integer aHashCode = p1->HashCode (NbBuckets());
           aData[aHashCode]= new TColStd_intMapNode (aNewMask, aNewData,
                                                     aData[aHashCode]);
           Increment();
@@ -905,16 +915,13 @@ Standard_Boolean TColStd_PackedMapOfInteger::Subtract
       TColStd_intMapNode * q  = 0L;
       TColStd_intMapNode * p1 = aData[i];
       while (p1 != 0L) {
-        // Find aKey - the base address of currently iterated block of integers
-        const Standard_Integer aKey = p1->Key();
-        const Standard_Integer aKeyInt = (unsigned)aKey >> 5;
         TColStd_intMapNode* pNext =
           reinterpret_cast <TColStd_intMapNode*> (p1->Next());
         // Find the corresponding block in the 2nd map
         const TColStd_intMapNode * p2 =
-          aData2 [HashCode (aKeyInt, nBuckets2)];
+          aData2 [p1->HashCode (nBuckets2)];
         while (p2) {
-          if (p2->IsEqual(aKeyInt)) {
+          if (p2->IsEqual(*p1)) {
             const unsigned int aNewData = p1->Data() & ~p2->Data();
             // Store the block - result of operation
             if (aNewData == 0) {
@@ -981,17 +988,14 @@ void TColStd_PackedMapOfInteger::Difference  (const TColStd_PackedMapOfInteger& 
     for (i = 0; i <= nBuckets1; i++) {
       const TColStd_intMapNode * p1 = aData1[i];
       while (p1 != 0L) {
-        // Find aKey - the base address of currently iterated block of integers
-        const Standard_Integer aKey = p1->Key();
-        const Standard_Integer aKeyInt = (unsigned)aKey >> 5;
         unsigned int aNewMask = p1->Mask();
         unsigned int aNewData = p1->Data();
         size_t       nValues (p1->NbValues());
         // Find the corresponding block in the 2nd map
         const TColStd_intMapNode * p2 =
-          aData2 [HashCode (aKeyInt, nBuckets2)];
+          aData2 [p1->HashCode (nBuckets2)];
         while (p2) {
-          if (p2->IsEqual(aKeyInt)) {
+          if (p2->IsEqual(*p1)) {
             aNewData ^= p2->Data();
             nValues = TColStd_Population (aNewMask, aNewData);
             break;
@@ -1004,7 +1008,7 @@ void TColStd_PackedMapOfInteger::Difference  (const TColStd_PackedMapOfInteger& 
             ReSize(InternalExtent());
             aData = (TColStd_intMapNode**) myData1;
           }
-          const Standard_Integer aHashCode = HashCode (aKeyInt, NbBuckets());
+          const Standard_Integer aHashCode = p1->HashCode (NbBuckets());
           aData[aHashCode]= new TColStd_intMapNode (aNewMask, aNewData,
                                                     aData[aHashCode]);
           Increment();
@@ -1018,14 +1022,11 @@ void TColStd_PackedMapOfInteger::Difference  (const TColStd_PackedMapOfInteger& 
     for (i = 0; i <= nBuckets2; i++) {
       const TColStd_intMapNode * p2 = aData2[i];
       while (p2 != 0L) {
-        // Find aKey - the base address of currently iterated block
-        const Standard_Integer aKey = p2->Key();
-        const Standard_Integer aKeyInt = (unsigned)aKey >> 5;
         // Find the corresponding block in the 1st map
         const TColStd_intMapNode * p1 =
-          aData1 [HashCode (aKeyInt, nBuckets1)];
+          aData1 [p2->HashCode (nBuckets1)];
         while (p1) {
-          if (p1->IsEqual(aKeyInt))
+          if (p1->IsEqual(*p2))
             break;
           p1 = reinterpret_cast <const TColStd_intMapNode*> (p1->Next());
         }
@@ -1036,7 +1037,7 @@ void TColStd_PackedMapOfInteger::Difference  (const TColStd_PackedMapOfInteger& 
             ReSize(InternalExtent());
             aData = (TColStd_intMapNode**) myData1;
           }
-          const Standard_Integer aHashCode = HashCode (aKeyInt, NbBuckets());
+          const Standard_Integer aHashCode = p2->HashCode (NbBuckets());
           aData[aHashCode]= new TColStd_intMapNode (p2->Mask(), p2->Data(),
                                                     aData[aHashCode]);
           Increment();
@@ -1077,19 +1078,15 @@ Standard_Boolean TColStd_PackedMapOfInteger::Differ(const TColStd_PackedMapOfInt
     for ( ; i <= nBuckets2; i++) {
        TColStd_intMapNode * q  = 0L;
       const TColStd_intMapNode * p2 = aData2[i];
-      while (p2 != 0L) {
-        // Find aKey - the base address of currently iterated block
-        const Standard_Integer aKey = p2->Key();
-        const Standard_Integer aKeyInt = (unsigned)aKey >> 5;
-        
+      while (p2 != 0L) {        
         // Find the corresponding block in the 1st map
         TColStd_intMapNode * p1 =
-          aData1[HashCode (aKeyInt, NbBuckets())];
+          aData1[p2->HashCode (NbBuckets())];
         TColStd_intMapNode* pNext =
           reinterpret_cast <TColStd_intMapNode*> (p1->Next());
         
         while (p1) {
-          if (p1->IsEqual(aKeyInt)) {
+          if (p1->IsEqual(*p2)) {
             const unsigned int aNewData = p1->Data() ^ p2->Data();
             // Store the block - result of operation
             if (aNewData == 0) {
@@ -1117,7 +1114,7 @@ Standard_Boolean TColStd_PackedMapOfInteger::Differ(const TColStd_PackedMapOfInt
             ReSize(InternalExtent());
             aData = (TColStd_intMapNode**) myData1;
           }
-          const Standard_Integer aHashCode = HashCode (aKeyInt, NbBuckets());
+          const Standard_Integer aHashCode = p2->HashCode (NbBuckets());
           aData[aHashCode]= new TColStd_intMapNode (p2->Mask(), p2->Data(),
                                                     aData[aHashCode]);
           Increment();
@@ -1155,16 +1152,13 @@ Standard_Boolean TColStd_PackedMapOfInteger::IsEqual(const TColStd_PackedMapOfIn
     for (; i <= NbBuckets(); i++) {
       const TColStd_intMapNode * p1 = aData1[i];
       while (p1 != 0L) {
-        // Find aKey - the base address of currently iterated block of integers
-        const Standard_Integer aKey = p1->Key();
-        const Standard_Integer aKeyInt = (unsigned)aKey >> 5;
         TColStd_intMapNode* pNext =
           reinterpret_cast <TColStd_intMapNode*> (p1->Next());
         // Find the corresponding block in the 2nd map
         const TColStd_intMapNode * p2 =
-          aData2 [HashCode (aKeyInt, nBuckets2)];
+          aData2 [p1->HashCode (nBuckets2)];
         while (p2) {
-          if ( p2->IsEqual(aKeyInt) ) {
+          if ( p2->IsEqual(*p1) ) {
             if ( p1->Data() != p2->Data() )
               return Standard_False;
             break;
@@ -1207,18 +1201,15 @@ Standard_Boolean TColStd_PackedMapOfInteger::IsSubset (const TColStd_PackedMapOf
     for (; i <= NbBuckets(); i++) {
       const TColStd_intMapNode * p1 = aData1[i];
       while (p1 != 0L) {
-        // Find aKey - the base address of currently iterated block of integers
-        const Standard_Integer aKey = p1->Key();
-        const Standard_Integer aKeyInt = (unsigned)aKey >> 5;
         TColStd_intMapNode* pNext =
           reinterpret_cast <TColStd_intMapNode*> (p1->Next());
         // Find the corresponding block in the 2nd map
         const TColStd_intMapNode * p2 =
-          aData2 [HashCode (aKeyInt, nBuckets2)];
+          aData2 [p1->HashCode (nBuckets2)];
         if (!p2)
           return Standard_False;
         while (p2) {
-          if ( p2->IsEqual(aKeyInt) ) {
+          if ( p2->IsEqual(*p1) ) {
             if ( p1->Data() & ~p2->Data() ) // at least one bit set in p1 is not set in p2
               return Standard_False;
             break;
@@ -1253,16 +1244,13 @@ Standard_Boolean TColStd_PackedMapOfInteger::HasIntersection (const TColStd_Pack
     for (; i <= NbBuckets(); i++) {
       const TColStd_intMapNode * p1 = aData1[i];
       while (p1 != 0L) {
-        // Find aKey - the base address of currently iterated block of integers
-        const Standard_Integer aKey = p1->Key();
-        const Standard_Integer aKeyInt = (unsigned)aKey >> 5;
         TColStd_intMapNode* pNext =
           reinterpret_cast <TColStd_intMapNode*> (p1->Next());
         // Find the corresponding block in the 2nd map
         const TColStd_intMapNode * p2 =
-          aData2 [HashCode (aKeyInt, nBuckets2)];
+          aData2 [p1->HashCode (nBuckets2)];
         while (p2) {
-          if (p2->IsEqual(aKeyInt)) {
+          if (p2->IsEqual(*p1)) {
             if ( p1->Data() & p2->Data() )
               return Standard_True;
             break;

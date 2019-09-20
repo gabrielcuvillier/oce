@@ -74,7 +74,7 @@ public:
   
   //! Associates a name <theName> with this delta
     void SetName (const TCollection_ExtendedString& theName);
-  
+
   Standard_EXPORT void Dump (Standard_OStream& OS) const;
 
 
@@ -95,14 +95,14 @@ protected:
   //! TDF_Data.
   Standard_EXPORT void AddAttributeDelta (const Handle(TDF_AttributeDelta)& anAttributeDelta);
 
-
-
 private:
 
+  //! Replaces Attribute Delta List
+  void ReplaceDeltaList(const TDF_AttributeDeltaList& theList);
+
+  void BeforeOrAfterApply (const Standard_Boolean before) const;
   
-  Standard_EXPORT void BeforeOrAfterApply (const Standard_Boolean before) const;
-  
-  Standard_EXPORT void Apply();
+  void Apply();
 
   Standard_Integer myBeginTime;
   Standard_Integer myEndTime;

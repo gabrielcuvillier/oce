@@ -26,6 +26,7 @@
 
 #include <gp_Ax3.hxx>
 #include <Graphic3d_StructureManager.hxx>
+#include <Graphic3d_TypeOfShadingModel.hxx>
 #include <Graphic3d_Vertex.hxx>
 #include <Graphic3d_ZLayerSettings.hxx>
 
@@ -46,7 +47,6 @@
 #include <V3d_ListOfLight.hxx>
 #include <V3d_ListOfView.hxx>
 #include <V3d_TypeOfOrientation.hxx>
-#include <V3d_TypeOfShadingModel.hxx>
 #include <V3d_TypeOfView.hxx>
 #include <V3d_TypeOfVisualization.hxx>
 
@@ -59,7 +59,6 @@ class Graphic3d_Group;
 class Graphic3d_Structure;
 class V3d_BadValue;
 class V3d_CircularGrid;
-class V3d_Light;
 class V3d_RectangularGrid;
 class V3d_View;
 class Quantity_Color;
@@ -71,7 +70,6 @@ class Quantity_Color;
 class V3d_Viewer : public Standard_Transient
 {
   friend class V3d_View;
-  friend class V3d_Light;
   DEFINE_STANDARD_RTTIEXT(V3d_Viewer, Standard_Transient)
 public:
 
@@ -169,11 +167,15 @@ public:
   void SetDefaultVisualization (const V3d_TypeOfVisualization theType) { myVisualization = theType; }
 
   //! Returns the default type of Shading
-  V3d_TypeOfShadingModel DefaultShadingModel() const { return myShadingModel; }
+  Graphic3d_TypeOfShadingModel DefaultShadingModel() const { return myShadingModel; }
 
   //! Gives the default type of SHADING.
-  void SetDefaultShadingModel (const V3d_TypeOfShadingModel theType) { myShadingModel = theType; }
+  void SetDefaultShadingModel (const Graphic3d_TypeOfShadingModel theType) { myShadingModel = theType; }
 
+  //! Returns the default type of View (orthographic or perspective projection) to be returned by CreateView() method.
+  V3d_TypeOfView DefaultTypeOfView() const { return myDefaultTypeOfView; }
+
+  //! Set the default type of View (orthographic or perspective projection) to be returned by CreateView() method.
   void SetDefaultTypeOfView (const V3d_TypeOfView theType) { myDefaultTypeOfView = theType; }
 
   //! Returns the default background colour object.
@@ -188,20 +190,50 @@ public:
 
   //! Add a new top-level Z layer to all managed views and get its ID as <theLayerId> value.
   //! The Z layers are controlled entirely by viewer, it is not possible to add a layer to a particular view.
-  //! The method returns Standard_False if the layer can not be created.
-  //! The layer mechanism allows to display structures in higher layers in overlay of structures in lower layers.
-  Standard_EXPORT Standard_Boolean AddZLayer (Standard_Integer& theLayerId);
+  //! Custom layers will be inserted before Graphic3d_ZLayerId_Top (e.g. between Graphic3d_ZLayerId_Default and before Graphic3d_ZLayerId_Top).
+  //! @param theLayerId [out] id of created layer
+  //! @param theSettings [in] new layer settings
+  //! @return FALSE if the layer can not be created
+  Standard_Boolean AddZLayer (Graphic3d_ZLayerId& theLayerId,
+                              const Graphic3d_ZLayerSettings& theSettings = Graphic3d_ZLayerSettings())
+  {
+    return InsertLayerBefore (theLayerId, theSettings, Graphic3d_ZLayerId_Top);
+  }
+
+  //! Add a new top-level Z layer to all managed views and get its ID as <theLayerId> value.
+  //! The Z layers are controlled entirely by viewer, it is not possible to add a layer to a particular view.
+  //! Layer rendering order is defined by its position in list (altered by theLayerAfter)
+  //! and IsImmediate() flag (all layers with IsImmediate() flag are drawn afterwards);
+  //! @param theNewLayerId [out] id of created layer; layer id is arbitrary and does not depend on layer position in the list
+  //! @param theSettings    [in] new layer settings
+  //! @param theLayerAfter  [in] id of layer to append new layer before
+  //! @return FALSE if the layer can not be created
+  Standard_EXPORT Standard_Boolean InsertLayerBefore (Graphic3d_ZLayerId& theNewLayerId,
+                                                      const Graphic3d_ZLayerSettings& theSettings,
+                                                      const Graphic3d_ZLayerId theLayerAfter);
+
+  //! Add a new top-level Z layer to all managed views and get its ID as <theLayerId> value.
+  //! The Z layers are controlled entirely by viewer, it is not possible to add a layer to a particular view.
+  //! Layer rendering order is defined by its position in list (altered by theLayerAfter)
+  //! and IsImmediate() flag (all layers with IsImmediate() flag are drawn afterwards);
+  //! @param theNewLayerId [out] id of created layer; layer id is arbitrary and does not depend on layer position in the list
+  //! @param theSettings    [in] new layer settings
+  //! @param theLayerBefore [in] id of layer to append new layer after
+  //! @return FALSE if the layer can not be created
+  Standard_EXPORT Standard_Boolean InsertLayerAfter (Graphic3d_ZLayerId& theNewLayerId,
+                                                     const Graphic3d_ZLayerSettings& theSettings,
+                                                     const Graphic3d_ZLayerId theLayerBefore);
 
   //! Remove Z layer with ID <theLayerId>.
   //! Method returns Standard_False if the layer can not be removed or doesn't exists.
   //! By default, there are always default bottom-level layer that can't be removed.
-  Standard_EXPORT Standard_Boolean RemoveZLayer (const Standard_Integer theLayerId);
+  Standard_EXPORT Standard_Boolean RemoveZLayer (const Graphic3d_ZLayerId theLayerId);
 
   //! Returns the settings of a single Z layer.
-  Standard_EXPORT Graphic3d_ZLayerSettings ZLayerSettings (const Standard_Integer theLayerId);
+  Standard_EXPORT const Graphic3d_ZLayerSettings& ZLayerSettings (const Graphic3d_ZLayerId theLayerId) const;
 
   //! Sets the settings for a single Z layer.
-  Standard_EXPORT void SetZLayerSettings (const Standard_Integer theLayerId, const Graphic3d_ZLayerSettings& theSettings);
+  Standard_EXPORT void SetZLayerSettings (const Graphic3d_ZLayerId theLayerId, const Graphic3d_ZLayerSettings& theSettings);
 
 public:
 
@@ -258,7 +290,10 @@ public: //! @name lights management
   
   //! Deactivate all the Lights defined in this viewer.
   Standard_EXPORT void SetLightOff();
-  
+
+  //! Adds Light in Sequence Of Lights.
+  Standard_EXPORT void AddLight (const Handle(V3d_Light)& theLight);
+
   //! Delete Light in Sequence Of Lights.
   Standard_EXPORT void DelLight (const Handle(V3d_Light)& theLight);
   
@@ -321,7 +356,7 @@ public:
 
 public: //! @name privileged plane management
 
-  Standard_EXPORT gp_Ax3 PrivilegedPlane() const;
+  const gp_Ax3& PrivilegedPlane() const { return myPrivilegedPlane; }
 
   Standard_EXPORT void SetPrivilegedPlane (const gp_Ax3& thePlane);
 
@@ -347,18 +382,17 @@ public: //! @name grid management
   //! marker size : 3.0
   Standard_EXPORT void SetGridEcho (const Handle(Graphic3d_AspectMarker3d)& aMarker);
   
-  //! Returns TRUE when grid echo must be displayed
-  //! at hit point.
-  Standard_EXPORT Standard_Boolean GridEcho() const;
+  //! Returns TRUE when grid echo must be displayed at hit point.
+  Standard_Boolean GridEcho() const { return myGridEcho; }
   
   //! Returns Standard_True if a grid is activated in <me>.
   Standard_EXPORT Standard_Boolean IsActive() const;
   
   //! Returns the defined grid in <me>.
   Standard_EXPORT Handle(Aspect_Grid) Grid() const;
-  
+
   //! Returns the current grid type defined in <me>.
-  Standard_EXPORT Aspect_GridType GridType() const;
+  Aspect_GridType GridType() const { return myGridType; }
   
   //! Returns the current grid draw mode defined in <me>.
   Standard_EXPORT Aspect_GridDrawMode GridDrawMode() const;
@@ -417,7 +451,7 @@ public: //! @name deprecated methods
                               const V3d_TypeOfOrientation theViewProj = V3d_XposYnegZpos,
                               const Quantity_Color& theViewBackground = Quantity_NOC_GRAY30,
                               const V3d_TypeOfVisualization theVisualization = V3d_ZBUFFER,
-                              const V3d_TypeOfShadingModel theShadingModel = V3d_GOURAUD,
+                              const Graphic3d_TypeOfShadingModel theShadingModel = Graphic3d_TOSM_VERTEX,
                               const Standard_Boolean theComputedMode = Standard_True,
                               const Standard_Boolean theDefaultComputedMode = Standard_True);
 
@@ -457,9 +491,6 @@ private:
   //! Delete View in Sequence Of Views.
   Standard_EXPORT void DelView (const Handle(V3d_View)& theView);
   
-  //! Adds Light in Sequence Of Lights.
-  Standard_EXPORT void AddLight (const Handle(V3d_Light)& theLight);
-  
 private:
 
   Handle(Graphic3d_GraphicDriver) myDriver;
@@ -477,7 +508,7 @@ private:
   Standard_Real myViewSize;
   V3d_TypeOfOrientation myViewProj;
   V3d_TypeOfVisualization myVisualization;
-  V3d_TypeOfShadingModel myShadingModel;
+  Graphic3d_TypeOfShadingModel myShadingModel;
   V3d_TypeOfView myDefaultTypeOfView;
   Graphic3d_RenderingParams myDefaultRenderingParams;
 

@@ -14,23 +14,22 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
+#include <TopoDS_Shape.hxx>
 
 #include <Standard_DomainError.hxx>
 #include <Standard_NullObject.hxx>
 #include <Standard_TypeMismatch.hxx>
 #include <TopLoc_Location.hxx>
-#include <TopoDS_Shape.hxx>
 #include <TopoDS_TShape.hxx>
 
 //=======================================================================
-//function : HashCode
-//purpose  : 
+// function : HashCode
+// purpose  :
 //=======================================================================
-Standard_Integer TopoDS_Shape::HashCode(const Standard_Integer Upper) const
+Standard_Integer TopoDS_Shape::HashCode (const Standard_Integer theUpperBound) const
 {
-  //PKV
-  const Standard_Integer aI = (Standard_Integer) ptrdiff_t(myTShape.operator->());
-  const Standard_Integer aHS = ::HashCode(aI,Upper);
-  const Standard_Integer aHL = myLocation.HashCode(Upper);
-  return (aHS^aHL)%Upper;
-} 
+  // PKV
+  const Standard_Integer aHS = ::HashCode (myTShape.get(), theUpperBound);
+  const Standard_Integer aHL = myLocation.HashCode (theUpperBound);
+  return ::HashCode (aHS ^ aHL, theUpperBound);
+}

@@ -27,7 +27,6 @@
 #include <Graphic3d_MapOfStructure.hxx>
 #include <Graphic3d_Structure.hxx>
 #include <Graphic3d_TextureEnv.hxx>
-#include <Graphic3d_Vector.hxx>
 #include <Image_AlienPixMap.hxx>
 #include <Message.hxx>
 #include <Message_Messenger.hxx>
@@ -65,7 +64,8 @@ namespace
 //purpose  :
 //=============================================================================
 V3d_View::V3d_View (const Handle(V3d_Viewer)& theViewer, const V3d_TypeOfView theType)
-: MyViewer (theViewer.operator->()),
+: myIsInvalidatedImmediate (Standard_True),
+  MyViewer (theViewer.operator->()),
   SwitchSetFront (Standard_False),
   myZRotation (Standard_False),
   myTrihedron (new V3d_Trihedron()),
@@ -115,7 +115,8 @@ V3d_View::V3d_View (const Handle(V3d_Viewer)& theViewer, const V3d_TypeOfView th
 //purpose  :
 //=============================================================================
 V3d_View::V3d_View (const Handle(V3d_Viewer)& theViewer, const Handle(V3d_View)& theView)
-: MyViewer (theViewer.operator->()),
+: myIsInvalidatedImmediate (Standard_True),
+  MyViewer (theViewer.operator->()),
   SwitchSetFront(Standard_False),
   myZRotation (Standard_False),
   MyTrsf (1, 4, 1, 4)
@@ -123,14 +124,13 @@ V3d_View::V3d_View (const Handle(V3d_Viewer)& theViewer, const Handle(V3d_View)&
   myView = theViewer->Driver()->CreateView (theViewer->StructureManager());
 
   myView->CopySettings (theView->View());
+  myDefaultViewPoint = theView->myDefaultViewPoint;
+  myDefaultViewAxis  = theView->myDefaultViewAxis;
 
-  myDefaultCamera = new Graphic3d_Camera();
+  myDefaultCamera = new Graphic3d_Camera (theView->DefaultCamera());
 
   myImmediateUpdate = Standard_False;
   SetAutoZFitMode (theView->AutoZFitMode(), theView->AutoZFitScaleFactor());
-  SetAxis (0.0, 0.0, 0.0, 1.0, 1.0, 1.0);
-  SetViewMappingDefault();
-  SetViewOrientationDefault();
   theViewer->AddView (this);
   Init();
   myImmediateUpdate = Standard_True;
@@ -191,7 +191,10 @@ void V3d_View::SetWindow (const Handle(Aspect_Window)&  theWindow,
   myView->SetWindow (theWindow, theContext);
   MyViewer->SetViewOn (this);
   SetRatio();
-  Redraw();
+  if (myImmediateUpdate)
+  {
+    Redraw();
+  }
 }
 
 //=============================================================================
@@ -227,6 +230,7 @@ void V3d_View::Update() const
     return;
   }
 
+  myIsInvalidatedImmediate = Standard_False;
   myView->Update();
   myView->Compute();
   myView->Redraw();
@@ -244,6 +248,7 @@ void V3d_View::Redraw() const
     return;
   }
 
+  myIsInvalidatedImmediate = Standard_False;
   Handle(Graphic3d_StructureManager) aStructureMgr  = MyViewer->StructureManager();
   for (Standard_Integer aRetryIter = 0; aRetryIter < 2; ++aRetryIter)
   {
@@ -275,6 +280,7 @@ void V3d_View::RedrawImmediate() const
     return;
   }
 
+  myIsInvalidatedImmediate = Standard_False;
   myView->RedrawImmediate();
 }
 
@@ -312,24 +318,6 @@ void V3d_View::SetAutoZFitMode (const Standard_Boolean theIsOn,
   Standard_ASSERT_RAISE (theScaleFactor > 0.0, "Zero or negative scale factor is not allowed.");
   myAutoZFitScaleFactor = theScaleFactor;
   myAutoZFitIsOn = theIsOn;
-}
-
-// ========================================================================
-// function : AutoZFitMode
-// purpose  :
-// ========================================================================
-Standard_Boolean V3d_View::AutoZFitMode() const
-{
-  return myAutoZFitIsOn;
-}
-
-// ========================================================================
-// function : AutoZFitScaleFactor
-// purpose  :
-// ========================================================================
-Standard_Real V3d_View::AutoZFitScaleFactor() const
-{
-  return myAutoZFitScaleFactor;
 }
 
 //=============================================================================
@@ -378,13 +366,12 @@ Standard_Boolean V3d_View::IsEmpty() const
 //=============================================================================
 void V3d_View::UpdateLights() const
 {
-  Graphic3d_ListOfCLight aLights;
+  Handle(Graphic3d_LightSet) aLights = new Graphic3d_LightSet();
   for (V3d_ListOfLight::Iterator anActiveLightIter (myActiveLights); anActiveLightIter.More(); anActiveLightIter.Next())
   {
-    aLights.Append (anActiveLightIter.Value()->Light());
+    aLights->Add (anActiveLightIter.Value());
   }
   myView->SetLights (aLights);
-  Update();
 }
 
 //=============================================================================
@@ -415,8 +402,10 @@ void V3d_View::MustBeResized()
   myView->Resized();
 
   SetRatio();
-
-  Redraw();
+  if (myImmediateUpdate)
+  {
+    Redraw();
+  }
 }
 
 //=============================================================================
@@ -513,27 +502,38 @@ void V3d_View::SetBgImageStyle (const Aspect_FillMethod theFillStyle, const Stan
 }
 
 //=============================================================================
+//function : SetBackgroundCubeMap
+//purpose  :
+//=============================================================================
+void V3d_View::SetBackgroundCubeMap (const Handle(Graphic3d_CubeMap)& theCubeMap,
+                                     Standard_Boolean                 theToUpdate)
+{
+  myView->SetBackgroundCubeMap (theCubeMap);
+
+  if (myImmediateUpdate || theToUpdate)
+  {
+    Redraw();
+  }
+}
+
+//=============================================================================
 //function : SetAxis
 //purpose  :
 //=============================================================================
-void V3d_View::SetAxis(const Standard_Real X, const Standard_Real Y, const Standard_Real Z, const Standard_Real Vx, const Standard_Real Vy, const Standard_Real Vz)
+void V3d_View::SetAxis (const Standard_Real theX,  const Standard_Real theY,  const Standard_Real theZ,
+                        const Standard_Real theVx, const Standard_Real theVy, const Standard_Real theVz)
 {
-  Standard_Real D,Nx = Vx,Ny = Vy,Nz = Vz ;
-
-  D = Sqrt( Vx*Vx + Vy*Vy + Vz*Vz ) ;
-  V3d_BadValue_Raise_if ( D <= 0. , "V3d_View::SetAxis, bad axis");
-  Nx /= D ; Ny /= D ; Nz /= D ;
-  MyDefaultViewPoint.SetCoord(X,Y,Z) ;
-  MyDefaultViewAxis.SetCoord(Nx,Ny,Nz) ;
+  myDefaultViewPoint.SetCoord (theX, theY, theZ);
+  myDefaultViewAxis.SetCoord (theVx, theVy, theVz);
 }
 
 //=============================================================================
 //function : SetShadingModel
 //purpose  :
 //=============================================================================
-void V3d_View::SetShadingModel (const V3d_TypeOfShadingModel theShadingModel)
+void V3d_View::SetShadingModel (const Graphic3d_TypeOfShadingModel theShadingModel)
 {
-  myView->SetShadingModel (static_cast<Graphic3d_TypeOfShadingModel> (theShadingModel));
+  myView->SetShadingModel (theShadingModel);
 }
 
 //=============================================================================
@@ -624,16 +624,17 @@ void V3d_View::Rotate (const Standard_Real ax,
   if (Start)
   {
     myCamStartOpUp     = aCamera->Up();
+    myCamStartOpDir    = aCamera->Direction();
     myCamStartOpEye    = aCamera->Eye();
     myCamStartOpCenter = aCamera->Center();
   }
 
-  aCamera->SetUp     (myCamStartOpUp);
-  aCamera->SetEye    (myCamStartOpEye);
-  aCamera->SetCenter (myCamStartOpCenter);
+  aCamera->SetUp (myCamStartOpUp);
+  aCamera->SetEyeAndCenter (myCamStartOpEye, myCamStartOpCenter);
+  aCamera->SetDirectionFromEye (myCamStartOpDir);
 
   // rotate camera around 3 initial axes
-  gp_Dir aBackDir (gp_Vec (myCamStartOpCenter, myCamStartOpEye));
+  gp_Dir aBackDir = -myCamStartOpDir;
   gp_Dir aXAxis (myCamStartOpUp.Crossed (aBackDir));
   gp_Dir aYAxis (aBackDir.Crossed (aXAxis));
   gp_Dir aZAxis (aXAxis.Crossed (aYAxis));
@@ -678,15 +679,16 @@ void V3d_View::Rotate(const Standard_Real ax, const Standard_Real ay, const Stan
   {
     myGravityReferencePoint.SetCoord (X, Y, Z);
     myCamStartOpUp     = aCamera->Up();
+    myCamStartOpDir    = aCamera->Direction();
     myCamStartOpEye    = aCamera->Eye();
     myCamStartOpCenter = aCamera->Center();
   }
 
   const Graphic3d_Vertex& aVref = myGravityReferencePoint;
 
-  aCamera->SetUp     (myCamStartOpUp);
-  aCamera->SetEye    (myCamStartOpEye);
-  aCamera->SetCenter (myCamStartOpCenter);
+  aCamera->SetUp (myCamStartOpUp);
+  aCamera->SetEyeAndCenter (myCamStartOpEye, myCamStartOpCenter);
+  aCamera->SetDirectionFromEye (myCamStartOpDir);
 
   // rotate camera around 3 initial axes
   gp_Pnt aRCenter (aVref.X(), aVref.Y(), aVref.Z());
@@ -733,54 +735,45 @@ void V3d_View::Rotate(const V3d_TypeOfAxe Axe, const Standard_Real angle, const 
 //function : Rotate
 //purpose  :
 //=============================================================================
-void V3d_View::Rotate(const V3d_TypeOfAxe Axe, const Standard_Real angle,
-                      const Standard_Real X, const Standard_Real Y, const Standard_Real Z, const Standard_Boolean Start)
+void V3d_View::Rotate (const V3d_TypeOfAxe theAxe, const Standard_Real theAngle,
+                       const Standard_Real theX, const Standard_Real theY, const Standard_Real theZ, const Standard_Boolean theStart)
 {
-  Standard_Real Angle = angle ;
+  Standard_Real anAngle = theAngle;
 
-  if( Angle > 0. ) while ( Angle > DEUXPI ) Angle -= DEUXPI ;
-  else if( Angle < 0. ) while ( Angle < -DEUXPI ) Angle += DEUXPI ;
+  if (anAngle > 0.0) while (anAngle > DEUXPI) anAngle -= DEUXPI;
+  else if (anAngle < 0.0) while (anAngle < -DEUXPI) anAngle += DEUXPI;
 
   Handle(Graphic3d_Camera) aCamera = Camera();
 
-  if (Start)
+  if (theStart)
   {
-    myGravityReferencePoint.SetCoord (X, Y, Z);
+    myGravityReferencePoint.SetCoord (theX, theY, theZ);
     myCamStartOpUp     = aCamera->Up();
+    myCamStartOpDir    = aCamera->Direction();
     myCamStartOpEye    = aCamera->Eye();
     myCamStartOpCenter = aCamera->Center();
-
-    switch (Axe) {
-    case V3d_X :
-      myViewAxis.SetCoord(1.,0.,0.) ;
-      break ;
-    case V3d_Y :
-      myViewAxis.SetCoord(0.,1.,0.) ;
-      break ;
-    case V3d_Z :
-      myViewAxis.SetCoord(0.,0.,1.) ;
-      break ;
+    switch (theAxe)
+    {
+      case V3d_X: myViewAxis = gp::DX(); break;
+      case V3d_Y: myViewAxis = gp::DY(); break;
+      case V3d_Z: myViewAxis = gp::DZ(); break;
     }
-
-    myCamStartOpUp     = aCamera->Up();
-    myCamStartOpEye    = aCamera->Eye();
-    myCamStartOpCenter = aCamera->Center();
   }
 
   const Graphic3d_Vertex& aVref = myGravityReferencePoint;
 
-  aCamera->SetUp     (myCamStartOpUp);
-  aCamera->SetEye    (myCamStartOpEye);
-  aCamera->SetCenter (myCamStartOpCenter);
+  aCamera->SetUp (myCamStartOpUp);
+  aCamera->SetEyeAndCenter (myCamStartOpEye, myCamStartOpCenter);
+  aCamera->SetDirectionFromEye (myCamStartOpDir);
 
   // rotate camera around passed axis
   gp_Trsf aRotation;
   gp_Pnt aRCenter (aVref.X(), aVref.Y(), aVref.Z());
-  gp_Dir aRAxis ((Axe == V3d_X) ? 1.0 : 0.0,
-                  (Axe == V3d_Y) ? 1.0 : 0.0,
-                  (Axe == V3d_Z) ? 1.0 : 0.0);
+  gp_Dir aRAxis ((theAxe == V3d_X) ? 1.0 : 0.0,
+                 (theAxe == V3d_Y) ? 1.0 : 0.0,
+                 (theAxe == V3d_Z) ? 1.0 : 0.0);
 
-  aRotation.SetRotation (gp_Ax1 (aRCenter, aRAxis), Angle);
+  aRotation.SetRotation (gp_Ax1 (aRCenter, aRAxis), anAngle);
 
   aCamera->Transform (aRotation);
 
@@ -802,22 +795,21 @@ void V3d_View::Rotate(const Standard_Real angle, const Standard_Boolean Start)
 
   Handle(Graphic3d_Camera) aCamera = Camera();
 
-  if( Start ) {
+  if (Start)
+  {
     myCamStartOpUp     = aCamera->Up();
+    myCamStartOpDir    = aCamera->Direction();
     myCamStartOpEye    = aCamera->Eye();
     myCamStartOpCenter = aCamera->Center();
   }
 
-  const Graphic3d_Vertex& aPnt = MyDefaultViewPoint;
-  const Graphic3d_Vector& anAxis = MyDefaultViewAxis;
-
-  aCamera->SetUp     (myCamStartOpUp);
-  aCamera->SetEye    (myCamStartOpEye);
-  aCamera->SetCenter (myCamStartOpCenter);
+  aCamera->SetUp (myCamStartOpUp);
+  aCamera->SetEyeAndCenter (myCamStartOpEye, myCamStartOpCenter);
+  aCamera->SetDirectionFromEye (myCamStartOpDir);
 
   gp_Trsf aRotation;
-  gp_Pnt aRCenter (aPnt.X(), aPnt.Y(), aPnt.Z());
-  gp_Dir aRAxis (anAxis.X(), anAxis.Y(), anAxis.Z());
+  gp_Pnt aRCenter (myDefaultViewPoint);
+  gp_Dir aRAxis (myDefaultViewAxis);
   aRotation.SetRotation (gp_Ax1 (aRCenter, aRAxis), Angle);
 
   aCamera->Transform (aRotation);
@@ -846,15 +838,17 @@ void V3d_View::Turn(const Standard_Real ax, const Standard_Real ay, const Standa
 
   Handle(Graphic3d_Camera) aCamera = Camera();
 
-  if( Start ) {
+  if (Start)
+  {
     myCamStartOpUp     = aCamera->Up();
+    myCamStartOpDir    = aCamera->Direction();
     myCamStartOpEye    = aCamera->Eye();
     myCamStartOpCenter = aCamera->Center();
   }
 
-  aCamera->SetUp     (myCamStartOpUp);
-  aCamera->SetEye    (myCamStartOpEye);
-  aCamera->SetCenter (myCamStartOpCenter);
+  aCamera->SetUp (myCamStartOpUp);
+  aCamera->SetEyeAndCenter (myCamStartOpEye, myCamStartOpCenter);
+  aCamera->SetDirectionFromEye (myCamStartOpDir);
 
   // rotate camera around 3 initial axes
   gp_Pnt aRCenter = aCamera->Eye();
@@ -909,21 +903,21 @@ void V3d_View::Turn(const Standard_Real angle, const Standard_Boolean Start)
 
   Handle(Graphic3d_Camera) aCamera = Camera();
 
-  if( Start ) {
+  if (Start)
+  {
     myCamStartOpUp     = aCamera->Up();
+    myCamStartOpDir    = aCamera->Direction();
     myCamStartOpEye    = aCamera->Eye();
     myCamStartOpCenter = aCamera->Center();
   }
 
-  aCamera->SetUp     (myCamStartOpUp);
-  aCamera->SetEye    (myCamStartOpEye);
-  aCamera->SetCenter (myCamStartOpCenter);
-
-  const Graphic3d_Vector& anAxis = MyDefaultViewAxis;
+  aCamera->SetUp (myCamStartOpUp);
+  aCamera->SetEyeAndCenter (myCamStartOpEye, myCamStartOpCenter);
+  aCamera->SetDirectionFromEye (myCamStartOpDir);
 
   gp_Trsf aRotation;
   gp_Pnt aRCenter = aCamera->Eye();
-  gp_Dir aRAxis (anAxis.X(), anAxis.Y(), anAxis.Z());
+  gp_Dir aRAxis (myDefaultViewAxis);
   aRotation.SetRotation (gp_Ax1 (aRCenter, aRAxis), Angle);
 
   aCamera->Transform (aRotation);
@@ -940,32 +934,19 @@ void V3d_View::Turn(const Standard_Real angle, const Standard_Boolean Start)
 void V3d_View::SetTwist(const Standard_Real angle)
 {
   Standard_Real Angle = angle ;
-  Standard_Boolean TheStatus;
 
   if( Angle > 0. ) while ( Angle > DEUXPI ) Angle -= DEUXPI ;
   else if( Angle < 0. ) while ( Angle < -DEUXPI ) Angle += DEUXPI ;
 
   Handle(Graphic3d_Camera) aCamera = Camera();
 
-  gp_Dir aReferencePlane (aCamera->Direction().Reversed());
-  gp_Dir anUp;
-
-  anUp = gp_Dir (0.0, 0.0, 1.0);
-
-  TheStatus = ScreenAxis(aReferencePlane, anUp,
-    myXscreenAxis,myYscreenAxis,myZscreenAxis) ;
-  if( !TheStatus ) {
-    anUp = gp_Dir (0.0, 1.0, 0.0);
-    TheStatus = ScreenAxis(aReferencePlane, anUp,
-      myXscreenAxis,myYscreenAxis,myZscreenAxis) ;
+  const gp_Dir aReferencePlane (aCamera->Direction().Reversed());
+  if (!screenAxis (aReferencePlane, gp::DZ(), myXscreenAxis, myYscreenAxis, myZscreenAxis)
+   && !screenAxis (aReferencePlane, gp::DY(), myXscreenAxis, myYscreenAxis, myZscreenAxis)
+   && !screenAxis (aReferencePlane, gp::DZ(), myXscreenAxis, myYscreenAxis, myZscreenAxis))
+  {
+    throw V3d_BadValue ("V3d_ViewSetTwist, alignment of Eye,At,Up,");
   }
-  if( !TheStatus ) {
-    anUp = gp_Dir (1.0, 0.0, 0.0);
-    TheStatus = ScreenAxis(aReferencePlane, anUp,
-      myXscreenAxis,myYscreenAxis,myZscreenAxis) ;
-  }
-
-  V3d_BadValue_Raise_if( !TheStatus,"V3d_ViewSetTwist, alignment of Eye,At,Up,");
   
   gp_Pnt aRCenter = aCamera->Center();
   gp_Dir aZAxis (aCamera->Direction().Reversed());
@@ -973,10 +954,7 @@ void V3d_View::SetTwist(const Standard_Real angle)
   gp_Trsf aTrsf;
   aTrsf.SetRotation (gp_Ax1 (aRCenter, aZAxis), Angle);
 
-  Standard_Real myYscreenAxisX, myYscreenAxisY, myYscreenAxisZ;
-  myYscreenAxis.Coord (myYscreenAxisX, myYscreenAxisY, myYscreenAxisZ);
-
-  aCamera->SetUp (gp_Dir (myYscreenAxisX, myYscreenAxisY, myYscreenAxisZ));
+  aCamera->SetUp (gp_Dir (myYscreenAxis));
   aCamera->Transform (aTrsf);
 
   AutoZFit();
@@ -1065,38 +1043,44 @@ void V3d_View::SetProj( const Standard_Real Vx,const Standard_Real Vy, const Sta
 //function : SetProj
 //purpose  :
 //=============================================================================
-void V3d_View::SetProj( const V3d_TypeOfOrientation Orientation )
+void V3d_View::SetProj (const V3d_TypeOfOrientation theOrientation,
+                        const Standard_Boolean theIsYup)
 {
-  Standard_Real Xpn=0;
-  Standard_Real Ypn=0;
-  Standard_Real Zpn=0;
-
-  switch (Orientation) {
-  case V3d_Zpos :
-    Ypn = 1.;
-    break;
-  case V3d_Zneg :
-    Ypn = -1.;
-    break;
-  default:
-    Zpn = 1.;
+  Graphic3d_Vec3d anUp = theIsYup ? Graphic3d_Vec3d (0.0, 1.0, 0.0) : Graphic3d_Vec3d (0.0, 0.0, 1.0);
+  if (theIsYup)
+  {
+    if (theOrientation == V3d_Ypos
+     || theOrientation == V3d_Yneg)
+    {
+      anUp.SetValues (0.0, 0.0, -1.0);
+    }
+  }
+  else
+  {
+    if (theOrientation == V3d_Zpos)
+    {
+      anUp.SetValues (0.0, 1.0, 0.0);
+    }
+    else if (theOrientation == V3d_Zneg)
+    {
+      anUp.SetValues (0.0, -1.0, 0.0);
+    }
   }
 
-  const Graphic3d_Vector& aBck = V3d::GetProjAxis (Orientation);
+  const gp_Dir aBck = V3d::GetProjAxis (theOrientation);
 
   // retain camera panning from origin when switching projection
-  Handle(Graphic3d_Camera) aCamera = Camera();
+  const Handle(Graphic3d_Camera)& aCamera = Camera();
+  const gp_Pnt anOriginVCS = aCamera->ConvertWorld2View (gp::Origin());
 
-  gp_Pnt anOriginVCS  = aCamera->ConvertWorld2View (gp::Origin());
-  Standard_Real aPanX = anOriginVCS.X();
-  Standard_Real aPanY = anOriginVCS.Y();
-
-  aCamera->SetCenter (gp_Pnt (0, 0, 0));
-  aCamera->SetDirection (gp_Dir (aBck.X(), aBck.Y(), aBck.Z()).Reversed());
-  aCamera->SetUp (gp_Dir (Xpn, Ypn, Zpn));
+  const Standard_Real aNewDist = aCamera->Eye().Distance (gp_Pnt (0, 0, 0));
+  aCamera->SetEyeAndCenter (gp_XYZ (0, 0, 0) + aBck.XYZ() * aNewDist,
+                            gp_XYZ (0, 0, 0));
+  aCamera->SetDirectionFromEye (-aBck);
+  aCamera->SetUp (gp_Dir (anUp.x(), anUp.y(), anUp.z()));
   aCamera->OrthogonalizeUp();
 
-  Panning (aPanX, aPanY);
+  Panning (anOriginVCS.X(), anOriginVCS.Y());
 
   AutoZFit();
 
@@ -1128,40 +1112,21 @@ void V3d_View::SetAt(const Standard_Real X,const Standard_Real Y,const Standard_
 //function : SetUp
 //purpose  :
 //=============================================================================
-void V3d_View::SetUp(const Standard_Real Vx,const Standard_Real Vy,const Standard_Real Vz)
+void V3d_View::SetUp (const Standard_Real theVx, const Standard_Real theVy, const Standard_Real theVz)
 {
-  Standard_Boolean TheStatus ;
-  V3d_BadValue_Raise_if( Sqrt(Vx*Vx + Vy*Vy + Vz*Vz) <= 0. ,
-    "V3d_View::SetUp, nullUp vector");
-
   Handle(Graphic3d_Camera) aCamera = Camera();
 
-  gp_Dir aReferencePlane (aCamera->Direction().Reversed());
-  gp_Dir anUp (Vx, Vy, Vz);
-
-  TheStatus = ScreenAxis(aReferencePlane,anUp,
-    myXscreenAxis,myYscreenAxis,myZscreenAxis) ;
-  if( !TheStatus ) {
-    anUp = gp_Dir (0.0, 0.0, 1.0);
-    TheStatus = ScreenAxis(aReferencePlane,anUp,
-      myXscreenAxis,myYscreenAxis,myZscreenAxis) ;
+  const gp_Dir aReferencePlane (aCamera->Direction().Reversed());
+  const gp_Dir anUp (theVx, theVy, theVz);
+  if (!screenAxis (aReferencePlane, anUp,     myXscreenAxis, myYscreenAxis, myZscreenAxis)
+   && !screenAxis (aReferencePlane, gp::DZ(), myXscreenAxis, myYscreenAxis, myZscreenAxis)
+   && !screenAxis (aReferencePlane, gp::DY(), myXscreenAxis, myYscreenAxis, myZscreenAxis)
+   && !screenAxis (aReferencePlane, gp::DX(), myXscreenAxis, myYscreenAxis, myZscreenAxis))
+  {
+    throw V3d_BadValue ("V3d_View::Setup, alignment of Eye,At,Up");
   }
-  if( !TheStatus ) {
-    anUp = gp_Dir (0.0, 1.0, 0.0);
-    TheStatus = ScreenAxis(aReferencePlane,anUp,
-      myXscreenAxis,myYscreenAxis,myZscreenAxis) ;
-  }
-  if( !TheStatus ) {
-    anUp = gp_Dir (1.0, 0.0, 0.0);
-    TheStatus = ScreenAxis(aReferencePlane,anUp,
-      myXscreenAxis,myYscreenAxis,myZscreenAxis) ;
-  }
-  V3d_BadValue_Raise_if( !TheStatus,"V3d_View::Setup, alignment of Eye,At,Up");
 
-  Standard_Real myYscreenAxisX, myYscreenAxisY, myYscreenAxisZ;
-  myYscreenAxis.Coord (myYscreenAxisX, myYscreenAxisY, myYscreenAxisZ);
-
-  aCamera->SetUp (gp_Dir (myYscreenAxisX, myYscreenAxisY, myYscreenAxisZ));
+  aCamera->SetUp (gp_Dir (myYscreenAxis));
 
   AutoZFit();
 
@@ -1172,41 +1137,21 @@ void V3d_View::SetUp(const Standard_Real Vx,const Standard_Real Vy,const Standar
 //function : SetUp
 //purpose  :
 //=============================================================================
-void V3d_View::SetUp( const V3d_TypeOfOrientation Orientation )
+void V3d_View::SetUp (const V3d_TypeOfOrientation theOrientation)
 {
-  Standard_Boolean TheStatus ;
-
   Handle(Graphic3d_Camera) aCamera = Camera();
 
-  gp_Dir aReferencePlane (aCamera->Direction().Reversed());
-  gp_Dir anUp;
-
-  const Graphic3d_Vector& aViewReferenceUp = V3d::GetProjAxis(Orientation) ;
-  anUp = gp_Dir (aViewReferenceUp.X(), aViewReferenceUp.Y(), aViewReferenceUp.Z());
-
-  TheStatus = ScreenAxis(aReferencePlane,anUp,
-    myXscreenAxis,myYscreenAxis,myZscreenAxis) ;
-  if( !TheStatus ) {
-    anUp = gp_Dir (0.,0.,1.);
-    TheStatus = ScreenAxis(aReferencePlane,anUp,
-      myXscreenAxis,myYscreenAxis,myZscreenAxis) ;
+  const gp_Dir aReferencePlane (aCamera->Direction().Reversed());
+  const gp_Dir anUp = V3d::GetProjAxis (theOrientation);
+  if (!screenAxis (aReferencePlane, anUp,     myXscreenAxis, myYscreenAxis, myZscreenAxis)
+   && !screenAxis (aReferencePlane, gp::DZ(), myXscreenAxis, myYscreenAxis, myZscreenAxis)
+   && !screenAxis (aReferencePlane, gp::DY(), myXscreenAxis, myYscreenAxis, myZscreenAxis)
+   && !screenAxis (aReferencePlane, gp::DX(), myXscreenAxis, myYscreenAxis, myZscreenAxis))
+  {
+    throw V3d_BadValue ("V3d_View::SetUp, alignment of Eye,At,Up");
   }
-  if( !TheStatus ) {
-    anUp = gp_Dir (0.,1.,0.);
-    TheStatus = ScreenAxis(aReferencePlane,anUp,
-      myXscreenAxis,myYscreenAxis,myZscreenAxis) ;
-  }
-  if( !TheStatus ) {
-    anUp = gp_Dir (1.,0.,0.);
-    TheStatus = ScreenAxis(aReferencePlane,anUp,
-      myXscreenAxis,myYscreenAxis,myZscreenAxis) ;
-  }
-  V3d_BadValue_Raise_if( !TheStatus, "V3d_View::SetUp, alignment of Eye,At,Up");
 
-  Standard_Real myYscreenAxisX, myYscreenAxisY, myYscreenAxisZ;
-  myYscreenAxis.Coord (myYscreenAxisX, myYscreenAxisY, myYscreenAxisZ);
-
-  aCamera->SetUp (gp_Dir (myYscreenAxisX, myYscreenAxisY, myYscreenAxisZ));
+  aCamera->SetUp (gp_Dir (myYscreenAxis));
 
   AutoZFit();
 
@@ -1571,18 +1516,6 @@ void V3d_View::DepthFitAll(const Standard_Real Aspect,
     ImmediateUpdate();
 }
 
-//=============================================================================
-//function : WindowFitAll
-//purpose  :
-//=============================================================================
-void V3d_View::WindowFitAll(const Standard_Integer Xmin,
-                            const Standard_Integer Ymin,
-                            const Standard_Integer Xmax,
-                            const Standard_Integer Ymax)
-{
-  WindowFit(Xmin,Ymin,Xmax,Ymax);
-}
-
 //=======================================================================
 //function : WindowFit
 //purpose  :
@@ -1795,45 +1728,38 @@ void V3d_View::Convert(const Standard_Integer Xp,
 //function : ConvertWithProj
 //purpose  :
 //=======================================================================
-void V3d_View::ConvertWithProj(const Standard_Integer Xp,
-                               const Standard_Integer Yp,
-                               Standard_Real& X,
-                               Standard_Real& Y,
-                               Standard_Real& Z,
-                               Standard_Real& Dx,
-                               Standard_Real& Dy,
-                               Standard_Real& Dz) const
+void V3d_View::ConvertWithProj(const Standard_Integer theXp,
+                               const Standard_Integer theYp,
+                               Standard_Real& theX,
+                               Standard_Real& theY,
+                               Standard_Real& theZ,
+                               Standard_Real& theDx,
+                               Standard_Real& theDy,
+                               Standard_Real& theDz) const
 {
   V3d_UnMapped_Raise_if (!myView->IsDefined(), "view has no window");
-  Standard_Integer aHeight, aWidth;
+  Standard_Integer aHeight = 0, aWidth = 0;
   MyWindow->Size (aWidth, aHeight);
 
-  Standard_Real anX = 2.0 * Xp / aWidth - 1.0;
-  Standard_Real anY = 2.0 * (aHeight - 1 - Yp) / aHeight - 1.0;
-  Standard_Real  aZ = 2.0 * 0.0 - 1.0;
+  const Standard_Real anX = 2.0 * theXp / aWidth - 1.0;
+  const Standard_Real anY = 2.0 * (aHeight - 1 - theYp) / aHeight - 1.0;
+  const Standard_Real  aZ = 2.0 * 0.0 - 1.0;
 
-  Handle(Graphic3d_Camera) aCamera = Camera();
+  const Handle(Graphic3d_Camera)& aCamera = Camera();
+  const gp_Pnt aResult1 = aCamera->UnProject (gp_Pnt (anX, anY, aZ));
+  const gp_Pnt aResult2 = aCamera->UnProject (gp_Pnt (anX, anY, aZ - 10.0));
 
-  gp_Pnt aResult = aCamera->UnProject (gp_Pnt (anX, anY, aZ));
-
-  X = aResult.X();
-  Y = aResult.Y();
-  Z = aResult.Z();
-
-  Graphic3d_Vertex aVrp;
-  aVrp.SetCoord (X, Y, Z);
-
-  aResult = aCamera->UnProject (gp_Pnt (anX, anY, aZ - 10.0));
-
-  Graphic3d_Vec3d aNormDir;
-  aNormDir.x() = X - aResult.X();
-  aNormDir.y() = Y - aResult.Y();
-  aNormDir.z() = Z - aResult.Z();
+  theX = aResult1.X();
+  theY = aResult1.Y();
+  theZ = aResult1.Z();
+  Graphic3d_Vec3d aNormDir (theX - aResult2.X(),
+                            theY - aResult2.Y(),
+                            theZ - aResult2.Z());
   aNormDir.Normalize();
 
-  Dx = aNormDir.x();
-  Dy = aNormDir.y();
-  Dz = aNormDir.z();
+  theDx = aNormDir.x();
+  theDy = aNormDir.y();
+  theDz = aNormDir.z();
 }
 
 //=======================================================================
@@ -2050,12 +1976,10 @@ Standard_Integer V3d_View::MinMax(Standard_Real& Xmin,
 }
 
 //=======================================================================
-//function : Gravity
+//function : GravityPoint
 //purpose  :
 //=======================================================================
-void V3d_View::Gravity (Standard_Real& theX,
-                        Standard_Real& theY,
-                        Standard_Real& theZ) const
+gp_Pnt V3d_View::GravityPoint() const
 {
   Graphic3d_MapOfStructure aSetOfStructures;
   myView->DisplayedStructures (aSetOfStructures);
@@ -2155,9 +2079,8 @@ void V3d_View::Gravity (Standard_Real& theX,
   {
     aResult /= aNbPoints;
   }
-  theX = aResult.X();
-  theY = aResult.Y();
-  theZ = aResult.Z();
+
+  return aResult;
 }
 
 //=======================================================================
@@ -2170,15 +2093,6 @@ void V3d_View::Eye(Standard_Real& X, Standard_Real& Y, Standard_Real& Z) const
   X = aCameraEye.X();
   Y = aCameraEye.Y();
   Z = aCameraEye.Z();
-}
-
-//=============================================================================
-//function : FocalReferencePoint
-//purpose  :
-//=============================================================================
-void V3d_View::FocalReferencePoint(Standard_Real& X, Standard_Real& Y,Standard_Real& Z) const
-{
-  Eye (X,Y,Z);
 }
 
 //=============================================================================
@@ -2261,54 +2175,44 @@ void V3d_View::Up(Standard_Real& Vx, Standard_Real& Vy, Standard_Real& Vz) const
 //=============================================================================
 Standard_Real V3d_View::Twist() const
 {
-  Standard_Real Xup,Yup,Zup,Xpn,Ypn,Zpn,X0,Y0,Z0 ;
-  Standard_Real pvx,pvy,pvz,pvn,sca,angle ;
-  Graphic3d_Vector Xaxis,Yaxis,Zaxis ;
-  Standard_Boolean TheStatus ;
-
-  gp_Dir aReferencePlane (Camera()->Direction().Reversed());
-  gp_Dir anUp;
-
-  Proj(Xpn,Ypn,Zpn);
-  anUp = gp_Dir (0.,0.,1.) ;
-  TheStatus = ScreenAxis (aReferencePlane, anUp,Xaxis,Yaxis,Zaxis) ;
-  if( !TheStatus ) {
-    anUp = gp_Dir (0.,1.,0.) ;
-    TheStatus = ScreenAxis (aReferencePlane, anUp,Xaxis,Yaxis,Zaxis) ;
+  gp_Vec Xaxis, Yaxis, Zaxis;
+  const gp_Dir aReferencePlane (Camera()->Direction().Reversed());
+  if (!screenAxis (aReferencePlane, gp::DZ(), Xaxis, Yaxis, Zaxis)
+   && !screenAxis (aReferencePlane, gp::DY(), Xaxis, Yaxis, Zaxis)
+   && !screenAxis (aReferencePlane, gp::DX(), Xaxis, Yaxis, Zaxis))
+  {
+    //
   }
-  if( !TheStatus ) {
-    anUp = gp_Dir (1.,0.,0.) ;
-    TheStatus = ScreenAxis (aReferencePlane, anUp,Xaxis,Yaxis,Zaxis) ;
-  }
-  Yaxis.Coord(X0,Y0,Z0) ;
 
-  Up(Xup,Yup,Zup) ;
-  /* Compute Cross Vector From Up & Origin */
-  pvx = Y0*Zup - Z0*Yup ;
-  pvy = Z0*Xup - X0*Zup ;
-  pvz = X0*Yup - Y0*Xup ;
-  pvn = pvx*pvx + pvy*pvy + pvz*pvz ;
-  sca = X0*Xup + Y0*Yup + Z0*Zup ;
-  /* Compute Angle */
-  angle = Sqrt(pvn) ;
-  if( angle > 1. ) angle = 1. ;
-  else if( angle < -1. ) angle = -1. ;
-  angle = asin(angle) ;
-  if( sca < 0. ) angle = M_PI - angle ;
-  if( angle > 0. && angle < M_PI ) {
-    sca = pvx*Xpn + pvy*Ypn + pvz*Zpn ;
-    if( sca < 0. ) angle = DEUXPI - angle ;
+  // Compute Cross Vector From Up & Origin
+  const gp_Dir aCameraUp = Camera()->Up();
+  const gp_XYZ aP = Yaxis.XYZ().Crossed (aCameraUp.XYZ());
+
+  // compute Angle
+  Standard_Real anAngle = ASin (Max (Min (aP.Modulus(), 1.0), -1.0));
+  if (Yaxis.Dot (aCameraUp.XYZ()) < 0.0)
+  {
+    anAngle = M_PI - anAngle;
   }
-  return angle ;
+  if (anAngle > 0.0
+   && anAngle < M_PI)
+  {
+    const gp_Dir aProjDir = Camera()->Direction().Reversed();
+    if (aP.Dot (aProjDir.XYZ()) < 0.0)
+    {
+      anAngle = DEUXPI - anAngle;
+    }
+  }
+  return anAngle;
 }
 
 //=============================================================================
 //function : ShadingModel
 //purpose  :
 //=============================================================================
-V3d_TypeOfShadingModel V3d_View::ShadingModel() const
+Graphic3d_TypeOfShadingModel V3d_View::ShadingModel() const
 {
-  return static_cast<V3d_TypeOfShadingModel> (myView->ShadingModel());
+  return myView->ShadingModel();
 }
 
 //=============================================================================
@@ -2330,30 +2234,12 @@ V3d_TypeOfVisualization V3d_View::Visualization() const
 }
 
 //=============================================================================
-//function : Viewer
-//purpose  :
-//=============================================================================
-Handle(V3d_Viewer) V3d_View::Viewer() const
-{
-  return MyViewer;
-}
-
-//=============================================================================
 //function : IfWindow
 //purpose  :
 //=============================================================================
 Standard_Boolean V3d_View::IfWindow() const
 {
   return myView->IsDefined();
-}
-
-//=============================================================================
-//function : Window
-//purpose  :
-//=============================================================================
-Handle(Aspect_Window) V3d_View::Window() const
-{
-  return MyWindow;
 }
 
 //=============================================================================
@@ -2402,41 +2288,28 @@ Standard_Real V3d_View::Focale() const
 }
 
 //=============================================================================
-//function : View
+//function : screenAxis
 //purpose  :
 //=============================================================================
-Handle(Graphic3d_CView) V3d_View::View() const
+Standard_Boolean V3d_View::screenAxis (const gp_Dir& theVpn, const gp_Dir& theVup,
+                                       gp_Vec& theXaxe, gp_Vec& theYaxe, gp_Vec& theZaxe)
 {
-  return myView;
-}
+  theXaxe = theVup.XYZ().Crossed (theVpn.XYZ());
+  if (theXaxe.Magnitude() <= gp::Resolution())
+  {
+    return Standard_False;
+  }
+  theXaxe.Normalize();
 
-//=============================================================================
-//function : ScreenAxis
-//purpose  :
-//=============================================================================
-Standard_Boolean V3d_View::ScreenAxis( const gp_Dir &Vpn, const gp_Dir &Vup, Graphic3d_Vector &Xaxe, Graphic3d_Vector &Yaxe, Graphic3d_Vector &Zaxe)
-{
-  Standard_Real Xpn, Ypn, Zpn, Xup, Yup, Zup;
-  Standard_Real dx1, dy1, dz1, xx, yy, zz;
+  theYaxe = theVpn.XYZ().Crossed (theXaxe.XYZ());
+  if (theYaxe.Magnitude() <= gp::Resolution())
+  {
+    return Standard_False;
+  }
+  theYaxe.Normalize();
 
-  Xpn = Vpn.X(); Ypn = Vpn.Y(); Zpn = Vpn.Z();
-  Xup = Vup.X(); Yup = Vup.Y(); Zup = Vup.Z();
-  xx = Yup*Zpn - Zup*Ypn;
-  yy = Zup*Xpn - Xup*Zpn;
-  zz = Xup*Ypn - Yup*Xpn;
-  Xaxe.SetCoord (xx, yy, zz);
-  if (Xaxe.LengthZero()) return Standard_False;
-  Xaxe.Normalize(); 
-  Xaxe.Coord(dx1, dy1, dz1);
-  xx = Ypn*dz1 - Zpn*dy1;
-  yy = Zpn*dx1 - Xpn*dz1;
-  zz = Xpn*dy1 - Ypn*dx1;
-  Yaxe.SetCoord (xx, yy, zz) ;
-  if (Yaxe.LengthZero()) return Standard_False;
-  Yaxe.Normalize(); 
-
-  Zaxe.SetCoord (Xpn, Ypn, Zpn);
-  Zaxe.Normalize();
+  theZaxe = theVpn.XYZ();
+  theZaxe.Normalize();
   return Standard_True;
 }
 
@@ -2491,6 +2364,7 @@ void V3d_View::Panning (const Standard_Real theDXv,
 
   if (theToStart)
   {
+    myCamStartOpDir    = aCamera->Direction();
     myCamStartOpEye    = aCamera->Eye();
     myCamStartOpCenter = aCamera->Center();
   }
@@ -2499,8 +2373,8 @@ void V3d_View::Panning (const Standard_Real theDXv,
 
   gp_Pnt aViewDims = aCamera->ViewDimensions();
 
-  aCamera->SetEye (myCamStartOpEye);
-  aCamera->SetCenter (myCamStartOpCenter);
+  aCamera->SetEyeAndCenter (myCamStartOpEye, myCamStartOpCenter);
+  aCamera->SetDirectionFromEye (myCamStartOpDir);
   Translate (aCamera, -theDXv, -theDYv);
   Scale (aCamera, aViewDims.X() / theZoomFactor, aViewDims.Y() / theZoomFactor);
 
@@ -2663,8 +2537,10 @@ void V3d_View::StartRotation(const Standard_Integer X,
   Size(x,y);
   rx = Standard_Real(Convert(x));
   ry = Standard_Real(Convert(y));
-  Gravity(gx,gy,gz);
-  Rotate(0.,0.,0.,gx,gy,gz,Standard_True);
+  myRotateGravity = GravityPoint();
+  Rotate (0.0, 0.0, 0.0,
+          myRotateGravity.X(), myRotateGravity.Y(), myRotateGravity.Z(),
+          Standard_True);
   myZRotation = Standard_False;
   if( zRotationThreshold > 0. ) {
     Standard_Real dx = Abs(sx - rx/2.);
@@ -2696,7 +2572,9 @@ void V3d_View::Rotation(const Standard_Integer X,
     dy = (sy - Standard_Real(Y)) * M_PI / ry;
   }
 
-  Rotate(dx, dy, dz, gx, gy, gz, Standard_False);
+  Rotate (dx, dy, dz,
+          myRotateGravity.X(), myRotateGravity.Y(), myRotateGravity.Z(),
+          Standard_False);
 }
 
 //=============================================================================
@@ -2757,17 +2635,6 @@ void V3d_View::Init()
   {
     SetComputedMode (Standard_False);
   }
-}
-
-//=============================================================================
-//function : Export
-//purpose  :
-//=============================================================================
-Standard_Boolean V3d_View::Export (const Standard_CString theFileName,
-                                   const Graphic3d_ExportFormat theFormat,
-                                   const Graphic3d_SortType theSortType)
-{
-  return myView->Export (theFileName, theFormat, theSortType);
 }
 
 //=============================================================================
@@ -2857,19 +2724,27 @@ Standard_Boolean V3d_View::ToPixMap (Image_PixMap&               theImage,
 
   if (aFBOPtr.IsNull())
   {
-    Standard_Integer aMaxTexSize = MyViewer->Driver()->InquireLimit (Graphic3d_TypeOfLimit_MaxTextureSize);
-    if (theParams.TileSize > aMaxTexSize)
+    Standard_Integer aMaxTexSizeX = MyViewer->Driver()->InquireLimit (Graphic3d_TypeOfLimit_MaxViewDumpSizeX);
+    Standard_Integer aMaxTexSizeY = MyViewer->Driver()->InquireLimit (Graphic3d_TypeOfLimit_MaxViewDumpSizeY);
+    if (theParams.TileSize > aMaxTexSizeX
+     || theParams.TileSize > aMaxTexSizeY)
     {
       Message::DefaultMessenger()->Send (TCollection_AsciiString ("Image dump can not be performed - specified tile size (")
-                                                                 + theParams.TileSize + ") exceeds hardware limits (" + aMaxTexSize + ")", Message_Fail);
+                                                                 + theParams.TileSize + ") exceeds hardware limits (" + aMaxTexSizeX + "x" + aMaxTexSizeY + ")", Message_Fail);
       return Standard_False;
     }
 
-    if (aFBOVPSize.x() > aMaxTexSize
-     || aFBOVPSize.y() > aMaxTexSize)
+    if (aFBOVPSize.x() > aMaxTexSizeX
+     || aFBOVPSize.y() > aMaxTexSizeY)
     {
-      aFBOVPSize.x() = Min (aFBOVPSize.x(), aMaxTexSize);
-      aFBOVPSize.y() = Min (aFBOVPSize.y(), aMaxTexSize);
+      if (MyViewer->Driver()->InquireLimit (Graphic3d_TypeOfLimit_IsWorkaroundFBO))
+      {
+        Message::DefaultMessenger ()->Send (TCollection_AsciiString ("Warning, workaround for Intel driver problem with empty FBO for images with big width is applyed."), Message_Warning);
+      }
+      Message::DefaultMessenger()->Send (TCollection_AsciiString ("Info, tiling image dump is used, image size (")
+                                                                 + aFBOVPSize.x() + "x" + aFBOVPSize.y() + ") exceeds hardware limits (" + aMaxTexSizeX + "x" + aMaxTexSizeY + ")", Message_Info);
+      aFBOVPSize.x() = Min (aFBOVPSize.x(), aMaxTexSizeX);
+      aFBOVPSize.y() = Min (aFBOVPSize.y(), aMaxTexSizeY);
       isTiling = true;
     }
 
@@ -2952,16 +2827,11 @@ Standard_Boolean V3d_View::ToPixMap (Image_PixMap&               theImage,
       anOffset.x() = 0;
       for (; anOffset.x() < aTargetSize.x(); anOffset.x() += aFBOVPSize.x())
       {
-        Graphic3d_CameraTile aTile;
-        aTile.Offset    = anOffset;
-        aTile.TotalSize = aTargetSize;
-        aTile.TileSize  = aFBOVPSize;
-        if (!aFBOPtr.IsNull())
-        {
-          // crop corners in case of FBO
-          // (no API to resize viewport of on-screen buffer - keep uncropped in this case)
-          aTile = aTile.Cropped();
-        }
+        Graphic3d_CameraTile aTileUncropped;
+        aTileUncropped.Offset    = anOffset;
+        aTileUncropped.TotalSize = aTargetSize;
+        aTileUncropped.TileSize  = aFBOVPSize;
+        const Graphic3d_CameraTile aTile = aTileUncropped.Cropped();
         if (aTile.TileSize.x() < 1
          || aTile.TileSize.y() < 1)
         {
@@ -2980,10 +2850,15 @@ Standard_Boolean V3d_View::ToPixMap (Image_PixMap&               theImage,
                                  aTile.TileSize.x(), aTile.TileSize.y(),
                                  theImage.SizeRowBytes());
 
-        aCamera->SetTile (aTile);
         if (!aFBOPtr.IsNull())
         {
+          aCamera->SetTile (aTile);
           myView->FBOChangeViewport (aFBOPtr, aTile.TileSize.x(), aTile.TileSize.y());
+        }
+        else
+        {
+          // no API to resize viewport of on-screen buffer - render uncropped
+          aCamera->SetTile (aTileUncropped);
         }
         Redraw();
         isSuccess = isSuccess && myView->BufferDump (aTilePixMap, theParams.BufferType);
@@ -3265,24 +3140,6 @@ void V3d_View::Translate (const Handle(Graphic3d_Camera)& theCamera,
 }
 
 // =======================================================================
-// function : IsCullingEnabled
-// purpose  :
-// =======================================================================
-Standard_Boolean V3d_View::IsCullingEnabled() const
-{
-  return myView->IsCullingEnabled();
-}
-
-// =======================================================================
-// function : SetFrustumCulling
-// purpose  :
-// =======================================================================
-void V3d_View::SetFrustumCulling (const Standard_Boolean theToClip)
-{
-  myView->SetCullingEnabled (theToClip);
-}
-
-// =======================================================================
 // function : DiagnosticInformation
 // purpose  :
 // =======================================================================
@@ -3290,6 +3147,24 @@ void V3d_View::DiagnosticInformation (TColStd_IndexedDataMapOfStringString& theD
                                       Graphic3d_DiagnosticInfo theFlags) const
 {
   myView->DiagnosticInformation (theDict, theFlags);
+}
+
+//=======================================================================
+//function : StatisticInformation
+//purpose  :
+//=======================================================================
+void V3d_View::StatisticInformation (TColStd_IndexedDataMapOfStringString& theDict) const
+{
+  myView->StatisticInformation (theDict);
+}
+
+// =======================================================================
+// function : StatisticInformation
+// purpose  :
+// =======================================================================
+TCollection_AsciiString V3d_View::StatisticInformation() const
+{
+  return myView->StatisticInformation();
 }
 
 //=============================================================================

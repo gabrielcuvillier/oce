@@ -83,35 +83,35 @@ CAnimationDoc::CAnimationDoc()
   std::filebuf aFileBuf;
   std::istream aStream (&aFileBuf);
   CString aPathCrankArm = aDataDirPath + "\\CrankArm.rle";
-  if (aFileBuf.open (aPathCrankArm, ios::in))
+  if (aFileBuf.open (aPathCrankArm, std::ios::in))
   {
     BRepTools::Read (CrankArm, aStream, B);
     aFileBuf.close();
   }
 
   CString aPathCylinderHead = aDataDirPath + "\\CylinderHead.rle";
-  if (aFileBuf.open (aPathCylinderHead, ios::in))
+  if (aFileBuf.open (aPathCylinderHead, std::ios::in))
   {
     BRepTools::Read (CylinderHead, aStream, B);
     aFileBuf.close();
   }
 
   CString aPathPropeller = aDataDirPath + "\\Propeller.rle";
-  if (aFileBuf.open (aPathPropeller, ios::in))
+  if (aFileBuf.open (aPathPropeller, std::ios::in))
   {
     BRepTools::Read (Propeller, aStream, B);
     aFileBuf.close();
   }
 
   CString aPathPiston = aDataDirPath + "\\Piston.rle";
-  if (aFileBuf.open (aPathPiston, ios::in))
+  if (aFileBuf.open (aPathPiston, std::ios::in))
   {
     BRepTools::Read (Piston, aStream, B);
     aFileBuf.close();
   }
 
   CString aPathEngineBlock = aDataDirPath + "\\EngineBlock.rle";
-  if (aFileBuf.open (aPathEngineBlock, ios::in))
+  if (aFileBuf.open (aPathEngineBlock, std::ios::in))
   {
     BRepTools::Read (EngineBlock, aStream, B);
     aFileBuf.close();
@@ -133,8 +133,8 @@ CAnimationDoc::CAnimationDoc()
 	myAISContext->SetColor(myAisEngineBlock,   Quantity_NOC_WHITE, Standard_False);
 	myAISContext->SetMaterial(myAisEngineBlock,Graphic3d_NOM_PLASTIC, Standard_False);
 
-	myAISContext->Display(myAisCylinderHead ,1,-1,Standard_False,Standard_False);
-	myAISContext->Display(myAisEngineBlock  ,1,-1,Standard_False,Standard_False);
+	myAISContext->Display(myAisCylinderHead ,1,-1,Standard_False);
+	myAISContext->Display(myAisEngineBlock  ,1,-1,Standard_False);
 
 	myAisCrankArm     = new AIS_Shape (CrankArm);
 	myAISContext->SetColor   (myAisCrankArm, Quantity_NOC_HOTPINK, Standard_False);
@@ -146,9 +146,9 @@ CAnimationDoc::CAnimationDoc()
 	myAISContext->SetColor   (myAisPropeller, Quantity_NOC_RED, Standard_False);
 	myAISContext->SetMaterial(myAisPropeller, Graphic3d_NOM_PLASTIC, Standard_False);
 
-	myAISContext->Display(myAisCrankArm     ,1,-1,Standard_False,Standard_False);
-	myAISContext->Display(myAisPropeller    ,1,-1,Standard_False,Standard_False);
-	myAISContext->Display(myAisPiston       ,1,-1,Standard_True,Standard_False);
+	myAISContext->Display(myAisCrankArm,  1,-1,Standard_False);
+	myAISContext->Display(myAisPropeller, 1,-1,Standard_False);
+	myAISContext->Display(myAisPiston,    1,-1,Standard_True);
 
 	m_Xmin = -300. ;
 	m_Ymin = -300. ;

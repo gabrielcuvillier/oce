@@ -29,6 +29,8 @@
 #include <OSD_Exception_CTRL_BREAK.hxx>
 #include <OSD_MAllocHook.hxx>
 #include <OSD_MemInfo.hxx>
+#include <OSD_Parallel.hxx>
+#include <OSD_ThreadPool.hxx>
 #include <Standard_Macro.hxx>
 #include <Standard_SStream.hxx>
 #include <Standard_Stream.hxx>
@@ -235,7 +237,7 @@ static Standard_Integer ifbatch(Draw_Interpretor& DI, Standard_Integer , const c
 //=======================================================================
 
 extern Standard_Boolean Draw_Spying;
-extern filebuf Draw_Spyfile;
+extern std::filebuf Draw_Spyfile;
 
 static Standard_Integer spy(Draw_Interpretor& di, Standard_Integer n, const char** a)
 {
@@ -243,7 +245,7 @@ static Standard_Integer spy(Draw_Interpretor& di, Standard_Integer n, const char
     Draw_Spyfile.close();
   Draw_Spying = Standard_False;
   if (n > 1) {
-    if (!Draw_Spyfile.open(a[1],ios::out)) {
+    if (!Draw_Spyfile.open(a[1],std::ios::out)) {
       di << "Cannot open "<<a[1]<<" for writing\n";
       return 1;
     }
@@ -256,16 +258,16 @@ static Standard_Integer dlog(Draw_Interpretor& di, Standard_Integer n, const cha
 {
   if (n != 2 && n != 3)
   {
-    cout << "Enable or disable logging: " << a[0] << " {on|off}" << endl;
-    cout << "Reset log: " << a[0] << " reset" << endl;
-    cout << "Get log content: " << a[0] << " get" << endl;
+    std::cout << "Enable or disable logging: " << a[0] << " {on|off}" << std::endl;
+    std::cout << "Reset log: " << a[0] << " reset" << std::endl;
+    std::cout << "Get log content: " << a[0] << " get" << std::endl;
     return 1;
   }
 
   if (! strcmp (a[1], "on") && n == 2)
   {
     di.SetDoLog (Standard_True);
-//    di.Log() << "dlog on" << endl; // for symmetry
+//    di.Log() << "dlog on" << std::endl; // for symmetry
   }
   else if (! strcmp (a[1], "off") && n == 2)
   {
@@ -273,18 +275,23 @@ static Standard_Integer dlog(Draw_Interpretor& di, Standard_Integer n, const cha
   }
   else if (! strcmp (a[1], "reset") && n == 2)
   {
-    di.Log().str("");
+    di.ResetLog();
   }
   else if (! strcmp (a[1], "get") && n == 2)
   {
-    di << di.Log().str().c_str();
+    di << di.GetLog();
   }
   else if (! strcmp (a[1], "add") && n == 3)
   {
-    di.Log() << a[2] << "\n";
+    di.AddLog (a[2]);
+    di.AddLog ("\n");
+  }
+  else if (! strcmp (a[1], "status") && n == 2)
+  {
+    di << (di.GetDoLog() ? "on" : "off");
   }
   else {
-    cout << "Unrecognized option(s): " << a[1] << endl;
+    std::cout << "Unrecognized option(s): " << a[1] << std::endl;
     return 1;
   }
   return 0;
@@ -294,7 +301,7 @@ static Standard_Integer decho(Draw_Interpretor& di, Standard_Integer n, const ch
 {
   if (n != 2)
   {
-    cout << "Enable or disable echoing: " << a[0] << " {on|off}" << endl;
+    std::cout << "Enable or disable echoing: " << a[0] << " {on|off}" << std::endl;
     return 1;
   }
 
@@ -307,7 +314,7 @@ static Standard_Integer decho(Draw_Interpretor& di, Standard_Integer n, const ch
     di.SetDoEcho (Standard_False);
   }
   else {
-    cout << "Unrecognized option: " << a[1] << endl;
+    std::cout << "Unrecognized option: " << a[1] << std::endl;
     return 1;
   }
   return 0;
@@ -318,7 +325,7 @@ static Standard_Integer dbreak(Draw_Interpretor& di, Standard_Integer, const cha
   try {
     OSD::ControlBreak();
   }
-  catch (OSD_Exception_CTRL_BREAK) {
+  catch (OSD_Exception_CTRL_BREAK const&) {
     di << "User pressed Control-Break";
     return 1; // Tcl exception
   }
@@ -340,11 +347,6 @@ static Standard_Integer dversion(Draw_Interpretor& di, Standard_Integer, const c
 #else 
   di << "TBB disabled\n";
 #endif
-#ifdef HAVE_GL2PS
-  di << "GL2PS enabled (HAVE_GL2PS)\n";
-#else
-  di << "GL2PS disabled\n";
-#endif
 #ifdef HAVE_FREEIMAGE
   di << "FreeImage enabled (HAVE_FREEIMAGE)\n";
 #else
@@ -359,6 +361,11 @@ static Standard_Integer dversion(Draw_Interpretor& di, Standard_Integer, const c
   di << "OpenGL: ES2\n";
 #else
   di << "OpenGL: desktop\n";
+#endif
+#ifdef HAVE_RAPIDJSON
+  di << "RapidJSON enabled (HAVE_RAPIDJSON)\n";
+#else
+  di << "RapidJSON disabled\n";
 #endif
 #ifdef HAVE_VTK
   di << "VTK enabled (HAVE_VTK)\n";
@@ -480,22 +487,38 @@ static unsigned int __stdcall CpuFunc (void * /*param*/)
     
     if (CPU_LIMIT > 0 && (aCurrent - CPU_CURRENT) >= CPU_LIMIT)
     {
-      cout << "Process killed by CPU limit (" << CPU_LIMIT << " sec)" << endl;
       aTimer.Stop();
-      ExitProcess (2);
+      if (IsDebuggerPresent())
+      {
+        std::cout << "ERROR: CPU limit (" << CPU_LIMIT << " sec) has been reached but ignored because of attached Debugger" << std::endl;
+        return 0;
+      }
+      else
+      {
+        std::cout << "ERROR: Process killed by CPU limit (" << CPU_LIMIT << " sec)" << std::endl;
+        ExitProcess (2);
+      }
     }
     if (CPU_LIMIT > 0 && anElapCurrent >= CPU_LIMIT)
     {
-      cout << "Process killed by elapsed limit (" << CPU_LIMIT << " sec)" << endl;
       aTimer.Stop();
-      ExitProcess (2);
+      if (IsDebuggerPresent())
+      {
+        std::cout << "ERROR: Elapsed limit (" << CPU_LIMIT << " sec) has been reached but ignored because of attached Debugger" << std::endl;
+        return 0;
+      }
+      else
+      {
+        std::cout << "ERROR: Process killed by elapsed limit (" << CPU_LIMIT << " sec)" << std::endl;
+        ExitProcess (2);
+      }
     }
   }
 }
 #else
 static void cpulimitSignalHandler (int)
 {
-  cout << "Process killed by CPU limit  (" << CPU_LIMIT << " sec)" << endl;
+  std::cout << "Process killed by CPU limit  (" << CPU_LIMIT << " sec)" << std::endl;
   exit(2);
 }
 static void *CpuFunc(void* /*threadarg*/)
@@ -506,7 +529,7 @@ static void *CpuFunc(void* /*threadarg*/)
     sleep (5);
     anElapCurrent = clock_t(aTimer.ElapsedTime());
     if (CPU_LIMIT >0 && (anElapCurrent) >= CPU_LIMIT) {
-      cout << "Process killed by elapsed limit  (" << CPU_LIMIT << " sec)" << endl;
+      std::cout << "Process killed by elapsed limit  (" << CPU_LIMIT << " sec)" << std::endl;
       exit(2);
     }
   }
@@ -722,7 +745,7 @@ static int dlocale (Draw_Interpretor& di, Standard_Integer n, const char** argv)
     else if ( ! strcmp (cat, "LC_TIME") ) category = LC_TIME;
     else 
     {
-      cout << "Error: cannot recognize argument " << cat << " as one of LC_ macros" << endl;
+      std::cout << "Error: cannot recognize argument " << cat << " as one of LC_ macros" << std::endl;
       return 1;
     }
   }
@@ -731,7 +754,7 @@ static int dlocale (Draw_Interpretor& di, Standard_Integer n, const char** argv)
   if (result)
     di << result;
   else 
-    cout << "Error: unsupported locale specification: " << locale << endl;
+    std::cout << "Error: unsupported locale specification: " << locale << std::endl;
   return 0;
 }
 
@@ -793,6 +816,82 @@ static int dmeminfo (Draw_Interpretor& theDI,
 }
 
 //==============================================================================
+//function : dparallel
+//purpose  :
+//==============================================================================
+static int dparallel (Draw_Interpretor& theDI,
+                      Standard_Integer  theArgNb,
+                      const char**      theArgVec)
+{
+  const Handle(OSD_ThreadPool)& aDefPool = OSD_ThreadPool::DefaultPool();
+  if (theArgNb <= 1)
+  {
+    theDI << "NbLogicalProcessors: " << OSD_Parallel::NbLogicalProcessors() << "\n"
+          << "NbThreads:           " << aDefPool->NbThreads() << "\n"
+          << "NbDefThreads:        " << aDefPool->NbDefaultThreadsToLaunch() << "\n"
+          << "UseOcct:             " << (OSD_Parallel::ToUseOcctThreads() ? 1 : 0);
+    return 0;
+  }
+
+  for (Standard_Integer anIter = 1; anIter < theArgNb; ++anIter)
+  {
+    TCollection_AsciiString anArg (theArgVec[anIter]);
+    anArg.LowerCase();
+    if (anIter + 1 < theArgNb
+     && (anArg == "-nbthreads"
+      || anArg == "-threads"))
+    {
+      const Standard_Integer aVal = Draw::Atoi (theArgVec[++anIter]);
+      aDefPool->Init (aVal);
+    }
+    else if (anIter + 1 < theArgNb
+          && (anArg == "-nbdefthreads"
+           || anArg == "-defthreads"
+           || anArg == "-nbmaxdefthreads"
+           || anArg == "-maxdefthreads"))
+    {
+      const Standard_Integer aVal = Draw::Atoi (theArgVec[++anIter]);
+      if (aVal <= 0 || aVal > aDefPool->NbThreads())
+      {
+        std::cout << "Syntax error: maximum number of threads to use should be <= of threads in the pool\n";
+        return 1;
+      }
+      aDefPool->SetNbDefaultThreadsToLaunch (aVal);
+    }
+    else if (anIter + 1 < theArgNb
+          && (anArg == "-useocct"
+           || anArg == "-touseocct"
+           || anArg == "-occt"))
+    {
+      const Standard_Integer aVal = Draw::Atoi (theArgVec[++anIter]);
+      OSD_Parallel::SetUseOcctThreads (aVal == 1);
+      if (OSD_Parallel::ToUseOcctThreads() != (aVal == 1))
+      {
+        std::cout << "Warning: unable to switch threads library - no options available\n";
+      }
+    }
+    else if (anIter + 1 < theArgNb
+          && (anArg == "-usetbb"
+           || anArg == "-tousetbb"
+           || anArg == "-tbb"))
+    {
+      const Standard_Integer aVal = Draw::Atoi (theArgVec[++anIter]);
+      OSD_Parallel::SetUseOcctThreads (aVal == 0);
+      if (OSD_Parallel::ToUseOcctThreads() != (aVal == 0))
+      {
+        std::cout << "Warning: unable to switch threads library - no options available\n";
+      }
+    }
+    else
+    {
+      std::cout << "Syntax error: unknown argument '" << anArg << "'\n";
+      return 1;
+    }
+  }
+  return 0;
+}
+
+//==============================================================================
 //function : dperf
 //purpose  :
 //==============================================================================
@@ -814,21 +913,70 @@ static int dperf (Draw_Interpretor& theDI, Standard_Integer theArgNb, const char
 
 static int dsetsignal (Draw_Interpretor& theDI, Standard_Integer theArgNb, const char** theArgVec)
 {
-  // arm FPE handler if argument is provided and its first symbol is not '0'
-  // or if environment variable CSF_FPE is set and its first symbol is not '0'
-  bool setFPE = false;
-  if (theArgNb > 1)
+  OSD_SignalMode aMode = OSD_SignalMode_Set;
+  Standard_Boolean aSetFPE = OSD::ToCatchFloatingSignals();
+
+  // default for FPE signal is defined by CSF_FPE variable, if set
+  OSD_Environment aEnv("CSF_FPE");
+  TCollection_AsciiString aEnvStr = aEnv.Value();
+  if (!aEnvStr.IsEmpty())
   {
-    setFPE = (theArgVec[1][0] == '1' || theArgVec[1][0] == 't');
+    aSetFPE = (aEnvStr.Value(1) != '0');
   }
-  else
+
+  // parse arguments
+  for (Standard_Integer anArgIter = 1; anArgIter < theArgNb; ++anArgIter)
   {
-    OSD_Environment aEnv ("CSF_FPE");
-    TCollection_AsciiString aEnvStr = aEnv.Value();
-    setFPE = (! aEnvStr.IsEmpty() && aEnvStr.Value(1) != '0');
+    TCollection_AsciiString anArg(theArgVec[anArgIter]);
+    anArg.LowerCase();
+    if (anArg == "asis")
+    {
+      aMode = OSD_SignalMode_AsIs;
+    }
+    else if (anArg == "set")
+    {
+      aMode = OSD_SignalMode_Set;
+    }
+    else if (anArg == "unhandled")
+    {
+      aMode = OSD_SignalMode_SetUnhandled;
+    }
+    else if (anArg == "unset")
+    {
+      aMode = OSD_SignalMode_Unset;
+    }
+    else if (anArg == "1" || anArg == "on")
+    {
+      aSetFPE = Standard_True;
+    }
+    else if (anArg == "0" || anArg == "off")
+    {
+      aSetFPE = Standard_False;
+    }
+    else if (anArg == "default")
+    {
+    }
+    else
+    {
+      std::cout << "Syntax error: unknown argument '" << anArg << "'\n";
+      return 1;
+    }
   }
-  OSD::SetSignal (setFPE);
-  theDI << "Signal handlers are set, with FPE " << (setFPE ? "armed" : "disarmed"); 
+
+  OSD::SetSignal(aMode, aSetFPE);
+
+  // report actual status in the end
+  const char* aModeStr = 0;
+  switch (OSD::SignalMode())
+  {
+  default:
+  case OSD_SignalMode_AsIs:         aModeStr = "asis";      break;
+  case OSD_SignalMode_Set:          aModeStr = "set";       break;
+  case OSD_SignalMode_SetUnhandled: aModeStr = "unhandled"; break;
+  case OSD_SignalMode_Unset:        aModeStr = "unset";     break;
+  }
+  theDI << "Signal mode: " << aModeStr << "\n"
+        << "Catch FPE: " << (OSD::ToCatchFloatingSignals() ? "1" : "0") << "\n";
   return 0;
 }
 
@@ -931,7 +1079,7 @@ void Draw::BasicCommands(Draw_Interpretor& theCommands)
   if (Done) return;
   Done = Standard_True;
 
-  ios::sync_with_stdio();
+  std::ios::sync_with_stdio();
 
   const char* g = "DRAW General Commands";
 
@@ -958,8 +1106,18 @@ void Draw::BasicCommands(Draw_Interpretor& theCommands)
 	  __FILE__, dmeminfo, g);
   theCommands.Add("dperf","dperf [reset] -- show performance counters, reset if argument is provided",
 		  __FILE__,dperf,g);
-  theCommands.Add("dsetsignal","dsetsignal [fpe=0] -- set OSD signal handler, with FPE option if argument is given",
+  theCommands.Add("dsetsignal","dsetsignal [{asis|set|unhandled|unset}=set] [{0|1|default=$CSF_FPE}]\n -- set OSD signal handler, with FPE option if argument is given",
 		  __FILE__,dsetsignal,g);
+
+  theCommands.Add("dparallel",
+    "dparallel [-occt {0|1}] [-nbThreads Count] [-nbDefThreads Count]"
+    "\n\t\t: Manages global parallelization parameters:"
+    "\n\t\t:   -occt         use OCCT implementation or external library (if available)"
+    "\n\t\t:   -nbThreads    specify the number of threads in default thread pool"
+    "\n\t\t:   -nbDefThreads specify the upper limit of threads to be used for default thread pool"
+    "\n\t\t:                 within single parallelization call (should be <= of overall number of threads),"
+    "\n\t\t:                 so that nested algorithm can also use this pool",
+      __FILE__,dparallel,g);
 
   // Logging commands; note that their names are hard-coded in the code
   // of Draw_Interpretor, thus should not be changed without update of that code!

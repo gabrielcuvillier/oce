@@ -162,7 +162,7 @@ PCDM_ReaderStatus CDF_Application::CanRetrieve(const TCollection_ExtendedString&
         if (aReader.IsNull())
           return PCDM_RS_NoDriver;
       }
-      catch (Standard_Failure)
+      catch (Standard_Failure const&)
       {
         // no need to report error, this was just check for availability
       }
@@ -220,12 +220,12 @@ Handle(CDM_Document) CDF_Application::Retrieve(const Handle(CDM_MetaData)& aMeta
     Standard_SStream aMsg;
     switch (CanRetrieve(aMetaData)) {
     case PCDM_RS_UnknownDocument: 
-      aMsg << "could not find the referenced document: " << aMetaData->Path() << "; not found."  <<(char)0 << endl;
+      aMsg << "could not find the referenced document: " << aMetaData->Path() << "; not found."  <<(char)0 << std::endl;
       myRetrievableStatus = PCDM_RS_UnknownDocument;
       throw Standard_Failure(aMsg.str().c_str());
       break;
     case PCDM_RS_PermissionDenied:      
-      aMsg << "Could not find the referenced document: " << aMetaData->Path() << "; permission denied. " <<(char)0 << endl;
+      aMsg << "Could not find the referenced document: " << aMetaData->Path() << "; permission denied. " <<(char)0 << std::endl;
       myRetrievableStatus = PCDM_RS_PermissionDenied;
       throw Standard_Failure(aMsg.str().c_str());
       break;
@@ -271,7 +271,7 @@ Handle(CDM_Document) CDF_Application::Retrieve(const Handle(CDM_MetaData)& aMeta
       myRetrievableStatus = theReader->GetStatus();
       if(myRetrievableStatus  > PCDM_RS_AlreadyRetrieved){
 	Standard_SStream aMsg;
-	aMsg << anException << endl;
+	aMsg << anException << std::endl;
 	throw Standard_Failure(aMsg.str().c_str());
       }	
     }
@@ -338,7 +338,7 @@ Handle(CDM_Document) CDF_Application::Read (Standard_IStream& theIStream)
     myRetrievableStatus = PCDM_RS_FormatFailure;
     
     Standard_SStream aMsg;
-    aMsg << anException << endl;
+    aMsg << anException << std::endl;
     throw Standard_Failure(aMsg.str().c_str());
   }
 
@@ -367,7 +367,7 @@ Handle(CDM_Document) CDF_Application::Read (Standard_IStream& theIStream)
     if (myRetrievableStatus  > PCDM_RS_AlreadyRetrieved)
     {
       Standard_SStream aMsg;
-      aMsg << anException << endl;
+      aMsg << anException << std::endl;
       throw Standard_Failure(aMsg.str().c_str());
     }	
   }
@@ -393,7 +393,6 @@ Handle(PCDM_Reader) CDF_Application::ReaderFromFormat(const TCollection_Extended
   aResourceName += ".RetrievalPlugin";
   if (!UTL::Find(Resources(), aResourceName))
   {
-    myReaders.Add(theFormat, aReader);
     Standard_SStream aMsg; 
     aMsg << "Could not found the item:" << aResourceName <<(char)0;
     myRetrievableStatus = PCDM_RS_WrongResource;
@@ -416,7 +415,6 @@ Handle(PCDM_Reader) CDF_Application::ReaderFromFormat(const TCollection_Extended
   } 
   catch (Standard_Failure const& anException)
   {
-    myReaders.Add(theFormat, aReader);
     myRetrievableStatus = PCDM_RS_WrongResource;
     throw anException;
   }	

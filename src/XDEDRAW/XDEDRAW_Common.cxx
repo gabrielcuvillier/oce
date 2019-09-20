@@ -39,6 +39,7 @@
 #include <XSDRAW_Vars.hxx>
 #include <XSDRAWIGES.hxx>
 #include <XSDRAWSTEP.hxx>
+#include <VrmlAPI_Writer.hxx>
 #include <DDF.hxx>
 
 #include <DBRep.hxx>
@@ -47,8 +48,11 @@
 #include <XCAFDoc_Editor.hxx>
 #include <TDF_Tool.hxx>
 #include <TopoDS_Shape.hxx>
+#include <Interface_Static.hxx>
+#include <UnitsMethods.hxx>
 
 #include <stdio.h>
+
 //============================================================
 // Support for several models in DRAW
 //============================================================
@@ -191,8 +195,16 @@ static Standard_Integer ReadIges (Draw_Interpretor& di, Standard_Integer argc, c
   
   DeclareAndCast(IGESControl_Controller,ctl,XSDRAW::Controller());
   if (ctl.IsNull()) XSDRAW::SetNorm("IGES");
+ 
+  TCollection_AsciiString fnom, rnom;
+  Standard_Boolean modfic = XSDRAW::FileAndVar(argv[2], argv[1], "IGES", fnom, rnom);
+  if (modfic) di << " File IGES to read : " << fnom.ToCString() << "\n";
+  else        di << " Model taken from the session : " << fnom.ToCString() << "\n";
+  //  di<<" -- Names of variables BREP-DRAW prefixed by : "<<rnom<<"\n";
 
-  IGESCAFControl_Reader reader ( XSDRAW::Session(),Standard_True);
+  IGESCAFControl_Reader reader ( XSDRAW::Session(),modfic);
+  Standard_Integer onlyvisible = Interface_Static::IVal("read.iges.onlyvisible");
+  reader.SetReadVisible(onlyvisible == 1);
   
   if (argc == 4) {
     Standard_Boolean mode = Standard_True;
@@ -205,11 +217,6 @@ static Standard_Integer ReadIges (Draw_Interpretor& di, Standard_Integer argc, c
       case 'l' : reader.SetLayerMode (mode); break;
       }
   }
-  TCollection_AsciiString fnom,rnom;
-  Standard_Boolean modfic = XSDRAW::FileAndVar (argv[2],argv[1],"IGES",fnom,rnom);
-  if (modfic) di<<" File IGES to read : "<<fnom.ToCString()<<"\n";
-  else        di<<" Model taken from the session : "<<fnom.ToCString()<<"\n";
-//  di<<" -- Names of variables BREP-DRAW prefixed by : "<<rnom<<"\n";
   IFSelect_ReturnStatus readstat = IFSelect_RetVoid;
   if (modfic) readstat = reader.ReadFile (fnom.ToCString());
   else  if (XSDRAW::Session()->NbStartingEntities() > 0) readstat = IFSelect_RetDone;
@@ -278,10 +285,18 @@ static Standard_Integer WriteIges (Draw_Interpretor& di, Standard_Integer argc, 
   }
   writer.Transfer ( Doc );
 
-  di << "Writig IGES model to file " << argv[2] << "\n";
-  if ( writer.Write ( argv[2] ) ) di<<" Write OK\n";
-  else di<<" Write failed\n";
-
+  TCollection_AsciiString fnom, rnom;
+  Standard_Boolean modfic = XSDRAW::FileAndVar(argv[2], argv[1], "IGES", fnom, rnom);
+  if (modfic)
+  {
+    di << "Writig IGES model to file " << argv[2] << "\n";
+    if ( writer.Write ( argv[2] ) ) di<<" Write OK\n";
+    else di<<" Write failed\n";
+  }
+  else
+  {
+    di << "Document has been translated into the session";
+  }
   return 0;
 }
 
@@ -292,34 +307,63 @@ static Standard_Integer WriteIges (Draw_Interpretor& di, Standard_Integer argc, 
 
 static Standard_Integer ReadStep (Draw_Interpretor& di, Standard_Integer argc, const char** argv)
 {
-  if ( argc <3 ) {
-    di << "Use: " << argv[0] << " Doc filename [mode]: read STEP file to a document\n";
-    return 0;
-  }
-  
   DeclareAndCast(STEPControl_Controller,ctl,XSDRAW::Controller());
   if (ctl.IsNull()) XSDRAW::SetNorm("STEP");
 
-  STEPCAFControl_Reader reader ( XSDRAW::Session(),Standard_True);
-  
-  if (argc == 4) {
+  Standard_CString aDocName = NULL;
+  TCollection_AsciiString aFilePath, aModeStr;
+  for (Standard_Integer anArgIter = 1; anArgIter < argc; ++anArgIter)
+  {
+    TCollection_AsciiString anArgCase (argv[anArgIter]);
+    anArgCase.LowerCase();
+    if (aDocName == NULL)
+    {
+      aDocName = argv[anArgIter];
+    }
+    else if (aFilePath.IsEmpty())
+    {
+      aFilePath = argv[anArgIter];
+    }
+    else if (aModeStr.IsEmpty())
+    {
+      aModeStr = argv[anArgIter];
+    }
+    else
+    {
+      std::cout << "Syntax error at '" << argv[anArgIter] << "'\n";
+      return 1;
+    }
+  }
+
+  TCollection_AsciiString fnom, rnom;
+  Standard_Boolean modfic = XSDRAW::FileAndVar (aFilePath.ToCString(), aDocName, "STEP", fnom, rnom);
+  if (modfic) di << " File STEP to read : " << fnom.ToCString() << "\n";
+  else        di << " Model taken from the session : " << fnom.ToCString() << "\n";
+  //  di<<" -- Names of variables BREP-DRAW prefixed by : "<<rnom<<"\n";
+
+  STEPCAFControl_Reader reader ( XSDRAW::Session(),modfic);
+  if (!aModeStr.IsEmpty())
+  {
     Standard_Boolean mode = Standard_True;
-    for ( Standard_Integer i = 0; argv[3][i] ; i++ ) 
-      switch (argv[3][i]) {
-      case '-' : mode = Standard_False; break;
-      case '+' : mode = Standard_True; break;
-      case 'c' : reader.SetColorMode (mode); break;
-      case 'n' : reader.SetNameMode (mode); break;
-      case 'l' : reader.SetLayerMode (mode); break;
-      case 'v' : reader.SetPropsMode (mode); break;
+    for (Standard_Integer i = 1; aModeStr.Value (i); ++i)
+    {
+      switch (aModeStr.Value (i))
+      {
+        case '-' : mode = Standard_False; break;
+        case '+' : mode = Standard_True; break;
+        case 'c' : reader.SetColorMode (mode); break;
+        case 'n' : reader.SetNameMode (mode); break;
+        case 'l' : reader.SetLayerMode (mode); break;
+        case 'v' : reader.SetPropsMode (mode); break;
+        default:
+        {
+          std::cout << "Syntax error at '" << aModeStr << "'\n";
+          return 1;
+        }
       }
+    }
   }
   
-  TCollection_AsciiString fnom,rnom;
-  Standard_Boolean modfic = XSDRAW::FileAndVar (argv[2],argv[1],"STEP",fnom,rnom);
-  if (modfic) di<<" File STEP to read : "<<fnom.ToCString()<<"\n";
-  else        di<<" Model taken from the session : "<<fnom.ToCString()<<"\n";
-//  di<<" -- Names of variables BREP-DRAW prefixed by : "<<rnom<<"\n";
   IFSelect_ReturnStatus readstat = IFSelect_RetVoid;
   if (modfic) readstat = reader.ReadFile (fnom.ToCString());
   else  if (XSDRAW::Session()->NbStartingEntities() > 0) readstat = IFSelect_RetDone;
@@ -330,27 +374,28 @@ static Standard_Integer ReadStep (Draw_Interpretor& di, Standard_Integer argc, c
   }
 
   Handle(TDocStd_Document) doc;
-  if (!DDocStd::GetDocument(argv[1],doc,Standard_False)) {  
+  if (!DDocStd::GetDocument (aDocName, doc, Standard_False))
+  {
     Handle(TDocStd_Application) A = DDocStd::GetApplication();
-    A->NewDocument("BinXCAF",doc);  
-    TDataStd_Name::Set(doc->GetData()->Root(),argv[1]);  
-    Handle(DDocStd_DrawDocument) DD = new DDocStd_DrawDocument(doc);  
-    Draw::Set(argv[1],DD);       
-//     di << "Document saved with name " << argv[1];
+    A->NewDocument("BinXCAF",doc);
+    TDataStd_Name::Set(doc->GetData()->Root(), aDocName);
+    Handle(DDocStd_DrawDocument) DD = new DDocStd_DrawDocument(doc);
+    Draw::Set (aDocName, DD);
+//     di << "Document saved with name " << aDocName;
   }
   if ( ! reader.Transfer ( doc ) ) {
     di << "Cannot read any relevant data from the STEP file\n";
     return 1;
   }
   
-  Handle(DDocStd_DrawDocument) DD = new DDocStd_DrawDocument(doc);  
-  Draw::Set(argv[1],DD);       
-  di << "Document saved with name " << argv[1];
+  Handle(DDocStd_DrawDocument) DD = new DDocStd_DrawDocument(doc);
+  Draw::Set (aDocName, DD);
+  di << "Document saved with name " << aDocName;
 
   NCollection_DataMap<TCollection_AsciiString, Handle(STEPCAFControl_ExternFile)> DicFile = reader.ExternFiles();
   FillDicWS( DicFile );
   AddWS ( fnom , XSDRAW::Session() );
-  
+
   return 0;
 }
 
@@ -448,20 +493,28 @@ static Standard_Integer WriteStep (Draw_Interpretor& di, Standard_Integer argc, 
     }
   }
   
+  TCollection_AsciiString fnom, rnom;
+  Standard_Boolean modfic = XSDRAW::FileAndVar(argv[2], argv[1], "STEP", fnom, rnom);
+  if (modfic)
+  {
+    di << "Writing STEP file " << argv[2] << "\n";
+    IFSelect_ReturnStatus stat = writer.Write(argv[2]);
+    switch (stat) {
+      case IFSelect_RetVoid : di<<"No file written\n"; break;
+      case IFSelect_RetDone : {
+        di<<"File "<<argv[2]<<" written\n";
 
-  di << "Writing STEP file " << argv[2] << "\n";
-  IFSelect_ReturnStatus stat = writer.Write(argv[2]);
-  switch (stat) {
-    case IFSelect_RetVoid : di<<"No file written\n"; break;
-    case IFSelect_RetDone : {
-      di<<"File "<<argv[2]<<" written\n";
-
-      NCollection_DataMap<TCollection_AsciiString, Handle(STEPCAFControl_ExternFile)> DicFile = writer.ExternFiles();
-      FillDicWS( DicFile );
-      AddWS( argv[2], XSDRAW::Session() );
-      break;
+        NCollection_DataMap<TCollection_AsciiString, Handle(STEPCAFControl_ExternFile)> DicFile = writer.ExternFiles();
+        FillDicWS( DicFile );
+        AddWS( argv[2], XSDRAW::Session() );
+        break;
+      }
+      default : di<<"Error on writing file\n"; break;
     }
-    default : di<<"Error on writing file\n"; break;
+  }
+  else
+  {
+    di << "Document has been translated into the session";
   }
   return 0;
 }
@@ -484,7 +537,7 @@ static Standard_Integer Expand (Draw_Interpretor& di, Standard_Integer argc, con
   if (argc == 3)
   {
     if(!XCAFDoc_Editor::Expand(Doc->Main(), recurs)){
-      di << "The shape is assembly or not compaund\n";
+      di << "No suitable labels to expand\n";
       return 1;
     }
   }
@@ -502,7 +555,7 @@ static Standard_Integer Expand (Draw_Interpretor& di, Standard_Integer argc, con
 
       if (!aLabel.IsNull()){
         if(!XCAFDoc_Editor::Expand(Doc->Main(), aLabel, recurs)){
-          di << "The shape is assembly or not compaund\n";
+          di << "The shape is assembly or not compound\n";
           return 1;
         }
       }
@@ -512,6 +565,43 @@ static Standard_Integer Expand (Draw_Interpretor& di, Standard_Integer argc, con
   }
   return 0;
 }
+
+
+//=======================================================================
+//function : WriteVrml
+//purpose  : Write DECAF document to Vrml
+//=======================================================================
+
+static Standard_Integer WriteVrml(Draw_Interpretor& di, Standard_Integer argc, const char** argv)
+{
+  if (argc <3) {
+    di << "Use: " << argv[0] << " Doc filename: write document to Vrml file\n";
+    return 0;
+  }
+
+  Handle(TDocStd_Document) aDoc;
+  DDocStd::GetDocument(argv[1], aDoc);
+  if (aDoc.IsNull()) {
+    di << argv[1] << " is not a document\n";
+    return 1;
+  }
+
+  if (argc < 3 || argc > 5)
+  {
+    di << "wrong number of parameters\n";
+    return 0;
+  }
+
+  VrmlAPI_Writer writer;
+  writer.SetRepresentation(VrmlAPI_ShadedRepresentation);
+  Standard_Real anOCCLengthUnit =
+      UnitsMethods::GetLengthFactorValue(Interface_Static::IVal("xstep.cascade.unit"));
+  Standard_Real aScale = 0.001*anOCCLengthUnit;
+  writer.WriteDoc(aDoc, argv[2], aScale);
+
+  return 0;
+}
+
 
 void XDEDRAW_Common::InitCommands(Draw_Interpretor& di)
 {
@@ -526,7 +616,10 @@ void XDEDRAW_Common::InitCommands(Draw_Interpretor& di)
 
   di.Add("ReadIges" , "Doc filename: Read IGES file to DECAF document" ,__FILE__, ReadIges, g);
   di.Add("WriteIges" , "Doc filename: Write DECAF document to IGES file" ,__FILE__, WriteIges, g);
-  di.Add("ReadStep" , "Doc filename: Read STEP file to DECAF document" ,__FILE__, ReadStep, g);
+  di.Add("ReadStep" ,
+         "Doc filename [mode]"
+         "\n\t\t: Read STEP file to a document.",
+         __FILE__, ReadStep, g);
   di.Add("WriteStep" , "Doc filename [mode=a [multifile_prefix] [label]]: Write DECAF document to STEP file" ,__FILE__, WriteStep, g);  
   
   di.Add("XFileList","Print list of files that was transfered by the last transfer" ,__FILE__, GetDicWSList , g);
@@ -534,7 +627,9 @@ void XDEDRAW_Common::InitCommands(Draw_Interpretor& di)
   di.Add("XFileSet", "filename: Set the specified file to be the current one",__FILE__, SetCurWS, g);
   di.Add("XFromShape", "shape: do fromshape command for all the files",__FILE__, FromShape, g);
 
-  di.Add("XExpand", "XExpand Doc recursively(0/1) or XExpand Doc recursively(0/1) label1 abel2 ..."  
+  di.Add("XExpand", "XExpand Doc recursively(0/1) or XExpand Doc recursively(0/1) label1 label2 ..."  
           "or XExpand Doc recursively(0/1) shape1 shape2 ...",__FILE__, Expand, g);
+
+  di.Add("WriteVrml", "Doc filename [version VRML#1.0/VRML#2.0 (1/2): 2 by default] [representation shaded/wireframe/both (0/1/2): 0 by default]", __FILE__, WriteVrml, g);
 
 }

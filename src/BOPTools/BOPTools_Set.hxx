@@ -19,12 +19,12 @@
 #include <Standard_DefineAlloc.hxx>
 #include <Standard_Handle.hxx>
 
-#include <BOPCol_BaseAllocator.hxx>
-#include <BOPCol_ListOfShape.hxx>
+#include <NCollection_BaseAllocator.hxx>
 #include <TopoDS_Shape.hxx>
 #include <Standard_Integer.hxx>
 #include <TopAbs_ShapeEnum.hxx>
 #include <Standard_Boolean.hxx>
+#include <TopTools_ListOfShape.hxx>
 class TopoDS_Shape;
 
 
@@ -39,7 +39,7 @@ public:
   Standard_EXPORT BOPTools_Set();
 Standard_EXPORT virtual ~BOPTools_Set();
   
-  Standard_EXPORT BOPTools_Set(const BOPCol_BaseAllocator& theAllocator);
+  Standard_EXPORT BOPTools_Set(const Handle(NCollection_BaseAllocator)& theAllocator);
   
   Standard_EXPORT BOPTools_Set& Assign (const BOPTools_Set& Other);
 BOPTools_Set& operator = (const BOPTools_Set& Other)
@@ -54,10 +54,11 @@ BOPTools_Set& operator = (const BOPTools_Set& Other)
   Standard_EXPORT Standard_Integer NbShapes() const;
   
   Standard_EXPORT Standard_Boolean IsEqual (const BOPTools_Set& aOther) const;
-  
-  Standard_EXPORT Standard_Integer HashCode (const Standard_Integer Upper) const;
 
-
+  //! Computes a hash code for this set, in the range [1, theUpperBound]
+  //! @param theUpperBound the upper bound of the range a computing hash code must be within
+  //! @return a computed hash code, in the range [1, theUpperBound]
+  Standard_EXPORT Standard_Integer HashCode (Standard_Integer theUpperBound) const;
 
 
 protected:
@@ -66,8 +67,8 @@ protected:
   Standard_EXPORT void Clear();
 
 
-  BOPCol_BaseAllocator myAllocator;
-  BOPCol_ListOfShape myShapes;
+  Handle(NCollection_BaseAllocator) myAllocator;
+  TopTools_ListOfShape myShapes;
   TopoDS_Shape myShape;
   Standard_Integer myNbShapes;
   Standard_Integer mySum;

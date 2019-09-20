@@ -14,6 +14,18 @@
 
 #include <Graphic3d_ArrayOfPrimitives.hxx>
 
+#include <Graphic3d_ArrayOfPoints.hxx>
+#include <Graphic3d_ArrayOfSegments.hxx>
+#include <Graphic3d_ArrayOfPolylines.hxx>
+#include <Graphic3d_ArrayOfTriangles.hxx>
+#include <Graphic3d_ArrayOfTriangleStrips.hxx>
+#include <Graphic3d_ArrayOfTriangleFans.hxx>
+#include <Graphic3d_ArrayOfQuadrangles.hxx>
+#include <Graphic3d_ArrayOfQuadrangleStrips.hxx>
+#include <Graphic3d_ArrayOfPolygons.hxx>
+#include <Graphic3d_AttribBuffer.hxx>
+#include <Graphic3d_MutableIndexBuffer.hxx>
+
 #include <NCollection_AlignedAllocator.hxx>
 #include <TCollection_AsciiString.hxx>
 
@@ -22,28 +34,88 @@
 
 IMPLEMENT_STANDARD_RTTIEXT(Graphic3d_ArrayOfPrimitives, Standard_Transient)
 
+IMPLEMENT_STANDARD_RTTIEXT(Graphic3d_ArrayOfPoints,           Graphic3d_ArrayOfPrimitives)
+IMPLEMENT_STANDARD_RTTIEXT(Graphic3d_ArrayOfSegments,         Graphic3d_ArrayOfPrimitives)
+IMPLEMENT_STANDARD_RTTIEXT(Graphic3d_ArrayOfPolylines,        Graphic3d_ArrayOfPrimitives)
+IMPLEMENT_STANDARD_RTTIEXT(Graphic3d_ArrayOfTriangles,        Graphic3d_ArrayOfPrimitives)
+IMPLEMENT_STANDARD_RTTIEXT(Graphic3d_ArrayOfTriangleStrips,   Graphic3d_ArrayOfPrimitives)
+IMPLEMENT_STANDARD_RTTIEXT(Graphic3d_ArrayOfTriangleFans,     Graphic3d_ArrayOfPrimitives)
+IMPLEMENT_STANDARD_RTTIEXT(Graphic3d_ArrayOfQuadrangles,      Graphic3d_ArrayOfPrimitives)
+IMPLEMENT_STANDARD_RTTIEXT(Graphic3d_ArrayOfQuadrangleStrips, Graphic3d_ArrayOfPrimitives)
+IMPLEMENT_STANDARD_RTTIEXT(Graphic3d_ArrayOfPolygons,         Graphic3d_ArrayOfPrimitives)
+
 // =======================================================================
-// function : Graphic3d_ArrayOfPrimitives
+// function : CreateArray
 // purpose  :
 // =======================================================================
-Graphic3d_ArrayOfPrimitives::Graphic3d_ArrayOfPrimitives (const Graphic3d_TypeOfPrimitiveArray theType,
-                                                          const Standard_Integer               theMaxVertexs,
-                                                          const Standard_Integer               theMaxBounds,
-                                                          const Standard_Integer               theMaxEdges,
-                                                          const Standard_Boolean               theHasVNormals,
-                                                          const Standard_Boolean               theHasVColors,
-                                                          const Standard_Boolean               theHasFColors,
-                                                          const Standard_Boolean               theHasVTexels)
-: myType       (theType),
-  myMaxBounds  (0),
-  myMaxVertexs (0),
-  myMaxEdges   (0),
-  myVNor       (0),
-  myVTex       (0),
-  myVCol       (0)
+Handle(Graphic3d_ArrayOfPrimitives) Graphic3d_ArrayOfPrimitives::CreateArray (Graphic3d_TypeOfPrimitiveArray theType,
+                                                                              Standard_Integer theMaxVertexs,
+                                                                              Standard_Integer theMaxBounds,
+                                                                              Standard_Integer theMaxEdges,
+                                                                              Graphic3d_ArrayFlags theArrayFlags)
 {
+  switch (theType)
+  {
+    case Graphic3d_TOPA_UNDEFINED:
+      return Handle(Graphic3d_ArrayOfPrimitives)();
+    case Graphic3d_TOPA_POINTS:
+      return new Graphic3d_ArrayOfPoints (theMaxVertexs, theArrayFlags);
+    case Graphic3d_TOPA_SEGMENTS:
+      return new Graphic3d_ArrayOfSegments (theMaxVertexs, theMaxEdges, theArrayFlags);
+    case Graphic3d_TOPA_POLYLINES:
+      return new Graphic3d_ArrayOfPolylines (theMaxVertexs, theMaxBounds, theMaxEdges, theArrayFlags);
+    case Graphic3d_TOPA_TRIANGLES:
+      return new Graphic3d_ArrayOfTriangles (theMaxVertexs, theMaxEdges, theArrayFlags);
+    case Graphic3d_TOPA_TRIANGLESTRIPS:
+      return new Graphic3d_ArrayOfTriangleStrips (theMaxVertexs, theMaxBounds, theArrayFlags);
+    case Graphic3d_TOPA_TRIANGLEFANS:
+      return new Graphic3d_ArrayOfTriangleFans (theMaxVertexs, theMaxBounds, theArrayFlags);
+    case Graphic3d_TOPA_LINES_ADJACENCY:
+    case Graphic3d_TOPA_LINE_STRIP_ADJACENCY:
+    case Graphic3d_TOPA_TRIANGLES_ADJACENCY:
+    case Graphic3d_TOPA_TRIANGLE_STRIP_ADJACENCY:
+      return new Graphic3d_ArrayOfPrimitives (theType, theMaxVertexs, theMaxBounds, theMaxEdges, theArrayFlags);
+    case Graphic3d_TOPA_QUADRANGLES:
+      return new Graphic3d_ArrayOfQuadrangles (theMaxVertexs, theMaxEdges, theArrayFlags);
+    case Graphic3d_TOPA_QUADRANGLESTRIPS:
+      return new Graphic3d_ArrayOfQuadrangleStrips (theMaxVertexs, theMaxBounds, theArrayFlags);
+    case Graphic3d_TOPA_POLYGONS:
+      return new Graphic3d_ArrayOfPolygons (theMaxVertexs, theMaxBounds, theMaxEdges, theArrayFlags);
+  }
+  return Handle(Graphic3d_ArrayOfPrimitives)();
+}
+
+// =======================================================================
+// function : init
+// purpose  :
+// =======================================================================
+void Graphic3d_ArrayOfPrimitives::init (Graphic3d_TypeOfPrimitiveArray theType,
+                                        Standard_Integer theMaxVertexs,
+                                        Standard_Integer theMaxBounds,
+                                        Standard_Integer theMaxEdges,
+                                        Graphic3d_ArrayFlags theArrayOptions)
+{
+  myType = theType;
+  myNormData = NULL;
+  myTexData  = NULL;
+  myColData  = NULL;
+  myAttribs.Nullify();
+  myIndices.Nullify();
+  myBounds.Nullify();
+
   Handle(NCollection_AlignedAllocator) anAlloc = new NCollection_AlignedAllocator (16);
-  myAttribs = new Graphic3d_Buffer (anAlloc);
+  if ((theArrayOptions & Graphic3d_ArrayFlags_AttribsMutable) != 0
+   || (theArrayOptions & Graphic3d_ArrayFlags_AttribsDeinterleaved) != 0)
+  {
+    Graphic3d_AttribBuffer* anAttribs = new Graphic3d_AttribBuffer (anAlloc);
+    anAttribs->SetMutable     ((theArrayOptions & Graphic3d_ArrayFlags_AttribsMutable) != 0);
+    anAttribs->SetInterleaved ((theArrayOptions & Graphic3d_ArrayFlags_AttribsDeinterleaved) == 0);
+    myAttribs = anAttribs;
+  }
+  else
+  {
+    myAttribs = new Graphic3d_Buffer (anAlloc);
+  }
   if (theMaxVertexs < 1)
   {
     return;
@@ -51,7 +123,14 @@ Graphic3d_ArrayOfPrimitives::Graphic3d_ArrayOfPrimitives (const Graphic3d_TypeOf
 
   if (theMaxEdges > 0)
   {
-    myIndices = new Graphic3d_IndexBuffer (anAlloc);
+    if ((theArrayOptions & Graphic3d_ArrayFlags_IndexesMutable) != 0)
+    {
+      myIndices = new Graphic3d_MutableIndexBuffer (anAlloc);
+    }
+    else
+    {
+      myIndices = new Graphic3d_IndexBuffer (anAlloc);
+    }
     if (theMaxVertexs < Standard_Integer(USHRT_MAX))
     {
       if (!myIndices->Init<unsigned short> (theMaxEdges))
@@ -76,19 +155,19 @@ Graphic3d_ArrayOfPrimitives::Graphic3d_ArrayOfPrimitives (const Graphic3d_TypeOf
   anAttribs[aNbAttribs].Id       = Graphic3d_TOA_POS;
   anAttribs[aNbAttribs].DataType = Graphic3d_TOD_VEC3;
   ++aNbAttribs;
-  if (theHasVNormals)
+  if ((theArrayOptions & Graphic3d_ArrayFlags_VertexNormal) != 0)
   {
     anAttribs[aNbAttribs].Id       = Graphic3d_TOA_NORM;
     anAttribs[aNbAttribs].DataType = Graphic3d_TOD_VEC3;
     ++aNbAttribs;
   }
-  if (theHasVTexels)
+  if ((theArrayOptions & Graphic3d_ArrayFlags_VertexTexel) != 0)
   {
     anAttribs[aNbAttribs].Id       = Graphic3d_TOA_UV;
     anAttribs[aNbAttribs].DataType = Graphic3d_TOD_VEC2;
     ++aNbAttribs;
   }
-  if (theHasVColors)
+  if ((theArrayOptions & Graphic3d_ArrayFlags_VertexColor) != 0)
   {
     anAttribs[aNbAttribs].Id       = Graphic3d_TOA_COLOR;
     anAttribs[aNbAttribs].DataType = Graphic3d_TOD_VEC4UB;
@@ -101,12 +180,24 @@ Graphic3d_ArrayOfPrimitives::Graphic3d_ArrayOfPrimitives (const Graphic3d_TypeOf
     myIndices.Nullify();
     return;
   }
-  memset (myAttribs->ChangeData (0), 0, size_t(myAttribs->Stride) * size_t(myAttribs->NbElements));
+
+  Standard_Integer anAttribDummy = 0;
+  myAttribs->ChangeAttributeData (Graphic3d_TOA_POS, anAttribDummy, myPosStride);
+  myNormData = myAttribs->ChangeAttributeData (Graphic3d_TOA_NORM,  anAttribDummy, myNormStride);
+  myTexData  = myAttribs->ChangeAttributeData (Graphic3d_TOA_UV,    anAttribDummy, myTexStride);
+  myColData  = myAttribs->ChangeAttributeData (Graphic3d_TOA_COLOR, anAttribDummy, myColStride);
+
+  memset (myAttribs->ChangeData(), 0, size_t(myAttribs->Stride) * size_t(myAttribs->NbMaxElements()));
+  if ((theArrayOptions & Graphic3d_ArrayFlags_AttribsMutable) == 0
+   && (theArrayOptions & Graphic3d_ArrayFlags_AttribsDeinterleaved) == 0)
+  {
+    myAttribs->NbElements = 0;
+  }
 
   if (theMaxBounds > 0)
   {
     myBounds = new Graphic3d_BoundBuffer (anAlloc);
-    if (!myBounds->Init (theMaxBounds, theHasFColors))
+    if (!myBounds->Init (theMaxBounds, (theArrayOptions & Graphic3d_ArrayFlags_BoundColor) != 0))
     {
       myAttribs.Nullify();
       myIndices.Nullify();
@@ -115,37 +206,6 @@ Graphic3d_ArrayOfPrimitives::Graphic3d_ArrayOfPrimitives (const Graphic3d_TypeOf
     }
     myBounds->NbBounds = 0;
   }
-
-  for (Standard_Integer anAttribIter = 0; anAttribIter < aNbAttribs; ++anAttribIter)
-  {
-    const Graphic3d_Attribute& anAttrib = anAttribs[anAttribIter];
-    switch (anAttrib.Id)
-    {
-      case Graphic3d_TOA_POS:
-      case Graphic3d_TOA_CUSTOM:
-        break;
-      case Graphic3d_TOA_NORM:
-      {
-        myVNor = static_cast<Standard_Byte>(myAttribs->AttributeOffset (anAttribIter));
-        break;
-      }
-      case Graphic3d_TOA_UV:
-      {
-        myVTex = static_cast<Standard_Byte>(myAttribs->AttributeOffset (anAttribIter));
-        break;
-      }
-      case Graphic3d_TOA_COLOR:
-      {
-        myVCol = static_cast<Standard_Byte>(myAttribs->AttributeOffset (anAttribIter));
-        break;
-      }
-    }
-  }
-
-  myAttribs->NbElements = 0;
-  myMaxVertexs = theMaxVertexs;
-  myMaxBounds  = theMaxBounds;
-  myMaxEdges   = theMaxEdges;
 }
 
 // =======================================================================
@@ -154,9 +214,6 @@ Graphic3d_ArrayOfPrimitives::Graphic3d_ArrayOfPrimitives (const Graphic3d_TypeOf
 // =======================================================================
 Graphic3d_ArrayOfPrimitives::~Graphic3d_ArrayOfPrimitives()
 {
-  myVNor = 0;
-  myVTex = 0;
-  myVCol = 0;
   myIndices.Nullify();
   myAttribs.Nullify();
   myBounds .Nullify();
@@ -168,19 +225,9 @@ Graphic3d_ArrayOfPrimitives::~Graphic3d_ArrayOfPrimitives()
 // =======================================================================
 Standard_Integer Graphic3d_ArrayOfPrimitives::AddBound (const Standard_Integer theEdgeNumber)
 {
-  if (myBounds.IsNull())
-  {
-    return 0;
-  }
-  Standard_Integer anIndex = myBounds->NbBounds;
-  if (anIndex >= myMaxBounds)
-  {
-    throw Standard_OutOfRange("TOO many BOUNDS");
-  }
-
-  myBounds->Bounds[anIndex] = theEdgeNumber;
-  myBounds->NbBounds        = ++anIndex;
-  return anIndex;
+  Standard_OutOfRange_Raise_if (myBounds.IsNull() || myBounds->NbBounds >= myBounds->NbMaxBounds, "TOO many BOUND");
+  myBounds->Bounds[myBounds->NbBounds] = theEdgeNumber;
+  return ++myBounds->NbBounds;
 }
 
 // =======================================================================
@@ -192,20 +239,11 @@ Standard_Integer Graphic3d_ArrayOfPrimitives::AddBound (const Standard_Integer t
                                                         const Standard_Real    theG,
                                                         const Standard_Real    theB)
 {
-  if (myBounds.IsNull())
-  {
-    return 0;
-  }
-  Standard_Integer anIndex = myBounds->NbBounds;
-  if (anIndex >= myMaxBounds)
-  {
-    throw Standard_OutOfRange("TOO many BOUND");
-  }
-
-  myBounds->Bounds[anIndex] = theEdgeNumber;
-  myBounds->NbBounds        = ++anIndex;
-  SetBoundColor (anIndex, theR, theG, theB);
-  return anIndex;
+  Standard_OutOfRange_Raise_if (myBounds.IsNull() || myBounds->NbBounds >= myBounds->NbMaxBounds, "TOO many BOUND");
+  myBounds->Bounds[myBounds->NbBounds] = theEdgeNumber;
+  ++myBounds->NbBounds;
+  SetBoundColor (myBounds->NbBounds, theR, theG, theB);
+  return myBounds->NbBounds;
 }
 
 // =======================================================================
@@ -214,27 +252,84 @@ Standard_Integer Graphic3d_ArrayOfPrimitives::AddBound (const Standard_Integer t
 // =======================================================================
 Standard_Integer Graphic3d_ArrayOfPrimitives::AddEdge (const Standard_Integer theVertexIndex)
 {
-  if (myIndices.IsNull())
+  Standard_OutOfRange_Raise_if (myIndices.IsNull() || myIndices->NbElements >= myIndices->NbMaxElements(), "TOO many EDGE");
+  Standard_OutOfRange_Raise_if (theVertexIndex < 1 || theVertexIndex > myAttribs->NbElements, "BAD VERTEX index");
+  const Standard_Integer aVertIndex = theVertexIndex - 1;
+  myIndices->SetIndex (myIndices->NbElements, aVertIndex);
+  return ++myIndices->NbElements;
+}
+
+// =======================================================================
+// function : AddTriangleStripEdges
+// purpose  :
+// =======================================================================
+void Graphic3d_ArrayOfPrimitives::AddTriangleStripEdges (Standard_Integer theVertexLower,
+                                                         Standard_Integer theVertexUpper)
+{
+  if (myType != Graphic3d_TOPA_TRIANGLES)
   {
-    return 0;
+    throw Standard_TypeMismatch ("Not array of triangles");
   }
 
-  Standard_Integer anIndex = myIndices->NbElements;
-  if (anIndex >= myMaxEdges)
+  Standard_Boolean isOdd = Standard_True;
+  for (Standard_Integer aNodeIter = theVertexLower + 2; aNodeIter <= theVertexUpper; ++aNodeIter)
   {
-    throw Standard_OutOfRange("TOO many EDGE");
+    if (isOdd)
+    {
+      AddTriangleEdges (aNodeIter - 2, aNodeIter - 1, aNodeIter);
+    }
+    else
+    {
+      AddTriangleEdges (aNodeIter - 1, aNodeIter - 2, aNodeIter);
+    }
+    isOdd = !isOdd;
+  }
+}
+
+// =======================================================================
+// function : AddTriangleFanEdges
+// purpose  :
+// =======================================================================
+void Graphic3d_ArrayOfPrimitives::AddTriangleFanEdges (Standard_Integer theVertexLower,
+                                                       Standard_Integer theVertexUpper,
+                                                       Standard_Boolean theToClose)
+{
+  if (myType != Graphic3d_TOPA_TRIANGLES)
+  {
+    throw Standard_TypeMismatch ("Not array of triangles");
   }
 
-  Standard_Integer aVertIndex = theVertexIndex - 1;
-  if (theVertexIndex <= 0
-   || aVertIndex >= myMaxVertexs)
+  for (Standard_Integer aNodeIter = theVertexLower + 1; aNodeIter <= theVertexUpper; ++aNodeIter)
   {
-    throw Standard_OutOfRange("BAD EDGE vertex index");
+    AddTriangleEdges (theVertexLower, aNodeIter - 1, aNodeIter);
+  }
+  if (theToClose)
+  {
+    AddTriangleEdges (theVertexLower, theVertexUpper, theVertexLower + 1);
+  }
+}
+
+// =======================================================================
+// function : AddPolylineEdges
+// purpose  :
+// =======================================================================
+void Graphic3d_ArrayOfPrimitives::AddPolylineEdges (Standard_Integer theVertexLower,
+                                                    Standard_Integer theVertexUpper,
+                                                    Standard_Boolean theToClose)
+{
+  if (myType != Graphic3d_TOPA_SEGMENTS)
+  {
+    throw Standard_TypeMismatch ("Not array of segments");
   }
 
-  myIndices->SetIndex (anIndex, aVertIndex);
-  myIndices->NbElements = ++anIndex;
-  return anIndex;
+  for (Standard_Integer aNodeIter = theVertexLower; aNodeIter < theVertexUpper; ++aNodeIter)
+  {
+    AddSegmentEdges (aNodeIter, aNodeIter + 1);
+  }
+  if (theToClose)
+  {
+    AddSegmentEdges (theVertexUpper, theVertexLower);
+  }
 }
 
 // =======================================================================
@@ -246,14 +341,18 @@ Standard_CString Graphic3d_ArrayOfPrimitives::StringType() const
   switch (myType)
   {
     case Graphic3d_TOPA_POINTS:           return "ArrayOfPoints";
-    case Graphic3d_TOPA_POLYLINES:        return "ArrayOfPolylines";
     case Graphic3d_TOPA_SEGMENTS:         return "ArrayOfSegments";
-    case Graphic3d_TOPA_POLYGONS:         return "ArrayOfPolygons";
+    case Graphic3d_TOPA_POLYLINES:        return "ArrayOfPolylines";
     case Graphic3d_TOPA_TRIANGLES:        return "ArrayOfTriangles";
-    case Graphic3d_TOPA_QUADRANGLES:      return "ArrayOfQuadrangles";
     case Graphic3d_TOPA_TRIANGLESTRIPS:   return "ArrayOfTriangleStrips";
-    case Graphic3d_TOPA_QUADRANGLESTRIPS: return "ArrayOfQuadrangleStrips";
     case Graphic3d_TOPA_TRIANGLEFANS:     return "ArrayOfTriangleFans";
+    case Graphic3d_TOPA_LINES_ADJACENCY:          return "ArrayOfLinesAdjacency";
+    case Graphic3d_TOPA_LINE_STRIP_ADJACENCY:     return "ArrayOfLineStripAdjacency";
+    case Graphic3d_TOPA_TRIANGLES_ADJACENCY:      return "ArrayOfTrianglesAdjacency";
+    case Graphic3d_TOPA_TRIANGLE_STRIP_ADJACENCY: return "ArrayOfTriangleStripAdjacency";
+    case Graphic3d_TOPA_QUADRANGLES:      return "ArrayOfQuadrangles";
+    case Graphic3d_TOPA_QUADRANGLESTRIPS: return "ArrayOfQuadrangleStrips";
+    case Graphic3d_TOPA_POLYGONS:         return "ArrayOfPolygons";
     case Graphic3d_TOPA_UNDEFINED:        return "UndefinedArray";
   }
   return "UndefinedArray";
@@ -293,6 +392,18 @@ Standard_Integer Graphic3d_ArrayOfPrimitives::ItemNumber() const
     case Graphic3d_TOPA_TRIANGLEFANS:     return !myBounds.IsNull()
                                                ? myAttribs->NbElements - 2 * myBounds->NbBounds
                                                : myAttribs->NbElements - 2;
+    case Graphic3d_TOPA_LINES_ADJACENCY:  return myIndices.IsNull() || myIndices->NbElements < 1
+                                               ? myAttribs->NbElements / 4
+                                               : myIndices->NbElements / 4;
+    case Graphic3d_TOPA_LINE_STRIP_ADJACENCY: return !myBounds.IsNull()
+                                                    ? myAttribs->NbElements - 4 * myBounds->NbBounds
+                                                    : myAttribs->NbElements - 4;
+    case Graphic3d_TOPA_TRIANGLES_ADJACENCY: return myIndices.IsNull() || myIndices->NbElements < 1
+                                                  ? myAttribs->NbElements / 6
+                                                  : myIndices->NbElements / 6;
+    case Graphic3d_TOPA_TRIANGLE_STRIP_ADJACENCY: return !myBounds.IsNull()
+                                                ? myAttribs->NbElements - 4 * myBounds->NbBounds
+                                                : myAttribs->NbElements - 4;
     case Graphic3d_TOPA_UNDEFINED:        return -1;
   }
   return -1;
@@ -403,6 +514,20 @@ Standard_Boolean Graphic3d_ArrayOfPrimitives::IsValid()
       break;
     case Graphic3d_TOPA_QUADRANGLESTRIPS:
       if (nvertexs < 4)
+      {
+        return Standard_False;
+      }
+      break;
+    case Graphic3d_TOPA_LINES_ADJACENCY:
+    case Graphic3d_TOPA_LINE_STRIP_ADJACENCY:
+      if (nvertexs < 4)
+      {
+        return Standard_False;
+      }
+      break;
+    case Graphic3d_TOPA_TRIANGLES_ADJACENCY:
+    case Graphic3d_TOPA_TRIANGLE_STRIP_ADJACENCY:
+      if (nvertexs < 6)
       {
         return Standard_False;
       }

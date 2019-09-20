@@ -41,16 +41,25 @@ Standard_IMPORT Draw_Viewer dout;
 Standard_Integer props(Draw_Interpretor& di, Standard_Integer n, const char** a)
 {
   if (n < 2) {
-    di << "Use: " << a[0] << " shape [epsilon] [c[losed]] [x y z] [-skip] [-full]\n";
-    di << "Compute properties of the shape\n";
+    di << "Use: " << a[0] << " shape [epsilon] [c[losed]] [x y z] [-skip] [-full] [-tri]\n";
+    di << "Compute properties of the shape, exact geometry (curves, surfaces) or\n";
+    di << "some discrete data (polygons, triangulations) can be used for calculations\n";
     di << "The epsilon, if given, defines relative precision of computation\n";
     di << "The \"closed\" flag, if present, do computation only closed shells of the shape\n";
     di << "The centroid coordinates will be put to DRAW variables x y z (if given)\n";
     di << "Shared entities will be take in account only one time in the skip mode\n";
-    di << "All values are outputted with the full precision in the full mode.\n\n";
+    di << "All values are outputted with the full precision in the full mode.\n";
+    di << "Preferable source of geometry data are triangulations in case if it exists, if the -tri key is used.\n";
+    di << "If epsilon is given, exact geometry (curves, surfaces) are used for calculations independently of using key -tri\n\n";
     return 1;
   }
 
+  Standard_Boolean UseTriangulation = Standard_False;
+  if (n >= 2 && strcmp(a[n - 1], "-tri") == 0)
+  {
+    UseTriangulation = Standard_True;
+    --n;
+  }
   Standard_Boolean isFullMode = Standard_False;
   if (n >= 2 && strcmp(a[n-1], "-full") == 0)
   {
@@ -86,11 +95,11 @@ Standard_Integer props(Draw_Interpretor& di, Standard_Integer n, const char** a)
   }
   else {
     if (*a[0] == 'l')
-      BRepGProp::LinearProperties(S,G,SkipShared);
+      BRepGProp::LinearProperties(S, G, SkipShared, UseTriangulation);
     else if (*a[0] == 's')
-      BRepGProp::SurfaceProperties(S,G,SkipShared);
+      BRepGProp::SurfaceProperties(S, G, SkipShared, UseTriangulation);
     else 
-      BRepGProp::VolumeProperties(S,G,onlyClosed,SkipShared);
+      BRepGProp::VolumeProperties(S,G,onlyClosed,SkipShared, UseTriangulation);
   }
   
   gp_Pnt P = G.CentreOfMass();
@@ -111,36 +120,36 @@ Standard_Integer props(Draw_Interpretor& di, Standard_Integer n, const char** a)
   {
     Standard_SStream aSStream1;
     aSStream1 << "\n\n";
-    aSStream1 << "Mass : " << setw(15) << G.Mass() << "\n\n";
-    if(witheps && *a[0] != 'l') aSStream1 << "Relative error of mass computation : " <<  setw(15) << eps <<  "\n\n";
+    aSStream1 << "Mass : " << std::setw(15) << G.Mass() << "\n\n";
+    if(witheps && *a[0] != 'l') aSStream1 << "Relative error of mass computation : " <<  std::setw(15) << eps <<  "\n\n";
   
     aSStream1 << "Center of gravity : \n";
-    aSStream1 << "X = " << setw(15) << P.X() << "\n";
-    aSStream1 << "Y = " << setw(15) << P.Y() << "\n";
-    aSStream1 << "Z = " << setw(15) << P.Z() << "\n";
+    aSStream1 << "X = " << std::setw(15) << P.X() << "\n";
+    aSStream1 << "Y = " << std::setw(15) << P.Y() << "\n";
+    aSStream1 << "Z = " << std::setw(15) << P.Z() << "\n";
     aSStream1 << "\n";
   
     aSStream1 << "Matrix of Inertia : \n";
-    aSStream1 << setw(15) << I(1,1);
-    aSStream1 << " " << setw(15) << I(1,2);
-    aSStream1 << " " << setw(15) << I(1,3) << "\n";
-    aSStream1 << setw(15) << I(2,1);
-    aSStream1 << " " << setw(15) << I(2,2);
-    aSStream1 << " " << setw(15) << I(2,3) << "\n";
-    aSStream1 << setw(15) << I(3,1);
-    aSStream1 << " " << setw(15) << I(3,2);
-    aSStream1 << " " << setw(15) << I(3,3) << "\n";
+    aSStream1 << std::setw(15) << I(1,1);
+    aSStream1 << " " << std::setw(15) << I(1,2);
+    aSStream1 << " " << std::setw(15) << I(1,3) << "\n";
+    aSStream1 << std::setw(15) << I(2,1);
+    aSStream1 << " " << std::setw(15) << I(2,2);
+    aSStream1 << " " << std::setw(15) << I(2,3) << "\n";
+    aSStream1 << std::setw(15) << I(3,1);
+    aSStream1 << " " << std::setw(15) << I(3,2);
+    aSStream1 << " " << std::setw(15) << I(3,3) << "\n";
     aSStream1 << "\n";
-    aSStream1 << ends;
+    aSStream1 << std::ends;
     di << aSStream1;
 
     Standard_SStream aSStream2;
     aSStream2 << "Moments : \n";
-    aSStream2 << "IX = " << setw(15) << Ix << "\n";
-    aSStream2 << "IY = " << setw(15) << Iy << "\n";
-    aSStream2 << "IZ = " << setw(15) << Iz << "\n";
+    aSStream2 << "IX = " << std::setw(15) << Ix << "\n";
+    aSStream2 << "IY = " << std::setw(15) << Iy << "\n";
+    aSStream2 << "IZ = " << std::setw(15) << Iz << "\n";
     aSStream2 << "\n";
-    aSStream2 << ends;
+    aSStream2 << std::ends;
     di << aSStream2;
   }
   else
@@ -240,9 +249,9 @@ Standard_Integer vpropsgk(Draw_Interpretor& di, Standard_Integer n, const char**
 
   aSStream0.precision(15);
   aSStream0 << "\n\n";
-  aSStream0 << "Mass : " << setw(anOutWidth) << G.Mass() << "\n\n";
-  aSStream0 << "Relative error of mass computation : " <<  setw(anOutWidth) << eps <<  "\n\n";
-  aSStream0 << ends;
+  aSStream0 << "Mass : " << std::setw(anOutWidth) << G.Mass() << "\n\n";
+  aSStream0 << "Relative error of mass computation : " <<  std::setw(anOutWidth) << eps <<  "\n\n";
+  aSStream0 << std::ends;
   di << aSStream0;
 
   if(CGFlag || IFlag) {
@@ -260,27 +269,27 @@ Standard_Integer vpropsgk(Draw_Interpretor& di, Standard_Integer n, const char**
   
     aSStream1.precision(15);
     aSStream1 << "Center of gravity : \n";
-    aSStream1 << "X = " << setw(anOutWidth) << P.X() << "\n";
-    aSStream1 << "Y = " << setw(anOutWidth) << P.Y() << "\n";
-    aSStream1 << "Z = " << setw(anOutWidth) << P.Z() << "\n";
+    aSStream1 << "X = " << std::setw(anOutWidth) << P.X() << "\n";
+    aSStream1 << "Y = " << std::setw(anOutWidth) << P.Y() << "\n";
+    aSStream1 << "Z = " << std::setw(anOutWidth) << P.Z() << "\n";
     aSStream1 << "\n";
  
     if(IFlag) {
       gp_Mat I = G.MatrixOfInertia();
 
       aSStream1 << "Matrix of Inertia : \n";
-      aSStream1 << setw(anOutWidth) << I(1,1);
-      aSStream1 << " " << setw(anOutWidth) << I(1,2);
-      aSStream1 << " " << setw(anOutWidth) << I(1,3) << "\n";
-      aSStream1 << setw(anOutWidth) << I(2,1);
-      aSStream1 << " " << setw(anOutWidth) << I(2,2);
-      aSStream1 << " " << setw(anOutWidth) << I(2,3) << "\n";
-      aSStream1 << setw(anOutWidth) << I(3,1);
-      aSStream1 << " " << setw(anOutWidth) << I(3,2);
-      aSStream1 << " " << setw(anOutWidth) << I(3,3) << "\n";
+      aSStream1 << std::setw(anOutWidth) << I(1,1);
+      aSStream1 << " " << std::setw(anOutWidth) << I(1,2);
+      aSStream1 << " " << std::setw(anOutWidth) << I(1,3) << "\n";
+      aSStream1 << std::setw(anOutWidth) << I(2,1);
+      aSStream1 << " " << std::setw(anOutWidth) << I(2,2);
+      aSStream1 << " " << std::setw(anOutWidth) << I(2,3) << "\n";
+      aSStream1 << std::setw(anOutWidth) << I(3,1);
+      aSStream1 << " " << std::setw(anOutWidth) << I(3,2);
+      aSStream1 << " " << std::setw(anOutWidth) << I(3,3) << "\n";
       aSStream1 << "\n";
     }
-    aSStream1 << ends;
+    aSStream1 << std::ends;
     di << aSStream1;
   }
 
@@ -296,12 +305,12 @@ Standard_Integer vpropsgk(Draw_Interpretor& di, Standard_Integer n, const char**
 
     aSStream2.precision(15);
     aSStream2 << "Moments : \n";
-    aSStream2 << "IX = " << setw(anOutWidth) << Ix << "\n";
-    aSStream2 << "IY = " << setw(anOutWidth) << Iy << "\n";
-    aSStream2 << "IZ = " << setw(anOutWidth) << Iz << "\n";
+    aSStream2 << "IX = " << std::setw(anOutWidth) << Ix << "\n";
+    aSStream2 << "IY = " << std::setw(anOutWidth) << Iy << "\n";
+    aSStream2 << "IZ = " << std::setw(anOutWidth) << Iz << "\n";
     aSStream2 << "\n";
     aSStream2 << "\n";
-    aSStream2 << ends;
+    aSStream2 << std::ends;
     di << aSStream2;
 
     gp_Ax2 axes(P,Pr.ThirdAxisOfInertia(),Pr.FirstAxisOfInertia());
@@ -311,6 +320,7 @@ Standard_Integer vpropsgk(Draw_Interpretor& di, Standard_Integer n, const char**
   }
   return 0;
 }
+
 
 
 //=======================================================================
@@ -328,11 +338,11 @@ void  BRepTest::GPropCommands(Draw_Interpretor& theCommands)
 
   const char* g = "Global properties";
   theCommands.Add("lprops",
-    "lprops name [x y z] [-skip] [-full] : compute linear properties",
+    "lprops name [x y z] [-skip] [-full] [-tri]: compute linear properties",
     __FILE__, props, g);
-  theCommands.Add("sprops", "sprops name [epsilon] [x y z] [-skip] [-full] :\n"
+  theCommands.Add("sprops", "sprops name [epsilon] [x y z] [-skip] [-full] [-tri]:\n"
 "  compute surfacic properties", __FILE__, props, g);
-  theCommands.Add("vprops", "vprops name [epsilon] [c[losed]] [x y z] [-skip] [-full] :\n"
+  theCommands.Add("vprops", "vprops name [epsilon] [c[losed]] [x y z] [-skip] [-full] [-tri]:\n"
 "  compute volumic properties", __FILE__, props, g);
 
   theCommands.Add("vpropsgk",

@@ -55,10 +55,10 @@ public:
   Standard_EXPORT void Add (const gp_XY& thePnt);
   
   //! Update the box by a point.
-  Standard_EXPORT void Add (const gp_Pnt2d& thePnt);
+  void Add (const gp_Pnt2d& thePnt);
   
   //! Update the box by another box.
-    void Add (const Bnd_B2f& theBox);
+  void Add (const Bnd_B2f& theBox);
   
   //! Query a box corner: (Center - HSize). You must make sure that
   //! the box is NOT VOID (see IsVoid()), otherwise the method returns
@@ -84,7 +84,7 @@ public:
   
   //! Transform the bounding box with the given transformation.
   //! The resulting box will be larger if theTrsf contains rotation.
-  Standard_EXPORT Bnd_B2f Transformed (const gp_Trsf2d& theTrsf) const;
+  Standard_EXPORT Standard_NODISCARD Bnd_B2f Transformed (const gp_Trsf2d& theTrsf) const;
   
   //! Check the given point for the inclusion in the Box.
   //! Returns True if the point is outside.

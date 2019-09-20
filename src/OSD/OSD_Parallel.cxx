@@ -21,6 +21,7 @@
   #include <process.h>
 #else
   #include <sys/types.h>
+  #include <unistd.h>
 
   #ifdef __sun
     #include <sys/processor.h>
@@ -170,6 +171,34 @@ namespace {
   }
 #endif
 
+  static Standard_Boolean OSD_Parallel_ToUseOcctThreads =
+  #ifdef HAVE_TBB
+    Standard_False;
+  #else
+    Standard_True;
+  #endif
+}
+
+//=======================================================================
+//function : ToUseOcctThreads
+//purpose  :
+//=======================================================================
+Standard_Boolean OSD_Parallel::ToUseOcctThreads()
+{
+  return OSD_Parallel_ToUseOcctThreads;
+}
+
+//=======================================================================
+//function : SetUseOcctThreads
+//purpose  :
+//=======================================================================
+void OSD_Parallel::SetUseOcctThreads (Standard_Boolean theToUseOcct)
+{
+#ifdef HAVE_TBB
+  OSD_Parallel_ToUseOcctThreads = theToUseOcct;
+#else
+  (void )theToUseOcct;
+#endif
 }
 
 //=======================================================================

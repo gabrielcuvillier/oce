@@ -50,11 +50,66 @@ IMPLEMENT_STANDARD_RTTIEXT(OpenGl_GraphicDriver,Graphic3d_GraphicDriver)
 
 #if defined(HAVE_EGL) || defined(HAVE_GLES2) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__)
   #include <EGL/egl.h>
+  #ifndef EGL_OPENGL_ES3_BIT
+    #define EGL_OPENGL_ES3_BIT 0x00000040
+  #endif
 #endif
 
 namespace
 {
   static const Handle(OpenGl_Context) TheNullGlCtx;
+
+#if defined(HAVE_EGL) || defined(HAVE_GLES2) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__)
+  //! Wrapper over eglChooseConfig() called with preferred defaults.
+  static EGLConfig chooseEglSurfConfig (EGLDisplay theDisplay)
+  {
+    EGLint aConfigAttribs[] =
+    {
+      EGL_RED_SIZE,     8,
+      EGL_GREEN_SIZE,   8,
+      EGL_BLUE_SIZE,    8,
+      EGL_ALPHA_SIZE,   0,
+      EGL_DEPTH_SIZE,   24,
+      EGL_STENCIL_SIZE, 8,
+    #if defined(GL_ES_VERSION_2_0)
+      EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+    #else
+      EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
+    #endif
+      EGL_NONE
+    };
+
+    EGLConfig aCfg = NULL;
+    EGLint aNbConfigs = 0;
+    for (Standard_Integer aGlesVer = 3; aGlesVer >= 2; --aGlesVer)
+    {
+    #if defined(GL_ES_VERSION_2_0)
+      aConfigAttribs[6 * 2 + 1] = aGlesVer == 3 ? EGL_OPENGL_ES3_BIT : EGL_OPENGL_ES2_BIT;
+    #else
+      if (aGlesVer == 2)
+      {
+        break;
+      }
+    #endif
+
+      if (eglChooseConfig (theDisplay, aConfigAttribs, &aCfg, 1, &aNbConfigs) == EGL_TRUE
+       && aCfg != NULL)
+      {
+        return aCfg;
+      }
+      eglGetError();
+
+      aConfigAttribs[4 * 2 + 1] = 16; // try config with smaller depth buffer
+      if (eglChooseConfig (theDisplay, aConfigAttribs, &aCfg, 1, &aNbConfigs) == EGL_TRUE
+       && aCfg != NULL)
+      {
+        return aCfg;
+      }
+      eglGetError();
+    }
+    return aCfg;
+  }
+#endif
 }
 
 // =======================================================================
@@ -99,72 +154,6 @@ OpenGl_GraphicDriver::OpenGl_GraphicDriver (const Handle(Aspect_DisplayConnectio
   && !InitContext())
   {
     throw Aspect_GraphicDeviceDefinitionError("OpenGl_GraphicDriver: default context can not be initialized!");
-  }
-
-  // default layers are always presented in display layer sequence it can not be removed
-  {
-    Graphic3d_ZLayerSettings aSettings;
-    aSettings.SetImmediate          (Standard_False);
-    aSettings.SetEnvironmentTexture (Standard_False);
-    aSettings.SetEnableDepthTest    (Standard_False);
-    aSettings.SetEnableDepthWrite   (Standard_False);
-    aSettings.SetClearDepth         (Standard_False);
-    aSettings.SetPolygonOffset (Graphic3d_PolygonOffset());
-    myLayerIds.Add             (Graphic3d_ZLayerId_BotOSD);
-    myLayerSeq.Append          (Graphic3d_ZLayerId_BotOSD);
-    myMapOfZLayerSettings.Bind (Graphic3d_ZLayerId_BotOSD, aSettings);
-  }
-
-  {
-    Graphic3d_ZLayerSettings aSettings;
-    aSettings.SetImmediate          (Standard_False);
-    aSettings.SetEnvironmentTexture (Standard_True);
-    aSettings.SetEnableDepthTest    (Standard_True);
-    aSettings.SetEnableDepthWrite   (Standard_True);
-    aSettings.SetClearDepth         (Standard_False);
-    aSettings.SetPolygonOffset (Graphic3d_PolygonOffset());
-    myLayerIds.Add             (Graphic3d_ZLayerId_Default);
-    myLayerSeq.Append          (Graphic3d_ZLayerId_Default);
-    myMapOfZLayerSettings.Bind (Graphic3d_ZLayerId_Default, aSettings);
-  }
-
-  {
-    Graphic3d_ZLayerSettings aSettings;
-    aSettings.SetImmediate          (Standard_True);
-    aSettings.SetEnvironmentTexture (Standard_True);
-    aSettings.SetEnableDepthTest    (Standard_True);
-    aSettings.SetEnableDepthWrite   (Standard_True);
-    aSettings.SetClearDepth         (Standard_False);
-    aSettings.SetPolygonOffset (Graphic3d_PolygonOffset());
-    myLayerIds.Add             (Graphic3d_ZLayerId_Top);
-    myLayerSeq.Append          (Graphic3d_ZLayerId_Top);
-    myMapOfZLayerSettings.Bind (Graphic3d_ZLayerId_Top, aSettings);
-  }
-
-  {
-    Graphic3d_ZLayerSettings aSettings;
-    aSettings.SetImmediate          (Standard_True);
-    aSettings.SetEnvironmentTexture (Standard_True);
-    aSettings.SetEnableDepthTest    (Standard_True);
-    aSettings.SetEnableDepthWrite   (Standard_True);
-    aSettings.SetClearDepth         (Standard_True);
-    aSettings.SetPolygonOffset (Graphic3d_PolygonOffset());
-    myLayerIds.Add             (Graphic3d_ZLayerId_Topmost);
-    myLayerSeq.Append          (Graphic3d_ZLayerId_Topmost);
-    myMapOfZLayerSettings.Bind (Graphic3d_ZLayerId_Topmost, aSettings);
-  }
-
-  {
-    Graphic3d_ZLayerSettings aSettings;
-    aSettings.SetImmediate          (Standard_True);
-    aSettings.SetEnvironmentTexture (Standard_False);
-    aSettings.SetEnableDepthTest    (Standard_False);
-    aSettings.SetEnableDepthWrite   (Standard_False);
-    aSettings.SetClearDepth         (Standard_False);
-    aSettings.SetPolygonOffset (Graphic3d_PolygonOffset());
-    myLayerIds.Add             (Graphic3d_ZLayerId_TopOSD);
-    myLayerSeq.Append          (Graphic3d_ZLayerId_TopOSD);
-    myMapOfZLayerSettings.Bind (Graphic3d_ZLayerId_TopOSD, aSettings);
   }
 }
 
@@ -299,46 +288,28 @@ Standard_Boolean OpenGl_GraphicDriver::InitContext()
     return Standard_False;
   }
 
-  EGLint aConfigAttribs[] =
+  myEglConfig = chooseEglSurfConfig ((EGLDisplay )myEglDisplay);
+  if (myEglConfig == NULL)
   {
-    EGL_RED_SIZE,     8,
-    EGL_GREEN_SIZE,   8,
-    EGL_BLUE_SIZE,    8,
-    EGL_ALPHA_SIZE,   0,
-    EGL_DEPTH_SIZE,   24,
-    EGL_STENCIL_SIZE, 8,
-  #if defined(GL_ES_VERSION_2_0)
-    EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-  #else
-    EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
-  #endif
-    EGL_NONE
-  };
-
-  EGLint aNbConfigs = 0;
-  if (eglChooseConfig ((EGLDisplay )myEglDisplay, aConfigAttribs, &myEglConfig, 1, &aNbConfigs) != EGL_TRUE
-   || myEglConfig == NULL)
-  {
-    eglGetError();
-    aConfigAttribs[4 * 2 + 1] = 16; // try config with smaller depth buffer
-    if (eglChooseConfig ((EGLDisplay )myEglDisplay, aConfigAttribs, &myEglConfig, 1, &aNbConfigs) != EGL_TRUE
-     || myEglConfig == NULL)
-    {
-      ::Message::DefaultMessenger()->Send ("Error: EGL does not provide compatible configurations!", Message_Fail);
-      return Standard_False;
-    }
+    ::Message::DefaultMessenger()->Send ("Error: EGL does not provide compatible configurations!", Message_Fail);
+    return Standard_False;
   }
 
 #if defined(GL_ES_VERSION_2_0)
-  EGLint anEglCtxAttribs[] =
-  {
-    EGL_CONTEXT_CLIENT_VERSION, 2,
-    EGL_NONE
-  };
+  EGLint anEglCtxAttribs3[] = { EGL_CONTEXT_CLIENT_VERSION, 3, EGL_NONE, EGL_NONE };
+  EGLint anEglCtxAttribs2[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE, EGL_NONE };
   if (eglBindAPI (EGL_OPENGL_ES_API) != EGL_TRUE)
   {
     ::Message::DefaultMessenger()->Send ("Error: EGL does not provide OpenGL ES client!", Message_Fail);
     return Standard_False;
+  }
+  if (myCaps->contextMajorVersionUpper != 2)
+  {
+    myEglContext = (Aspect_RenderingContext )eglCreateContext ((EGLDisplay )myEglDisplay, myEglConfig, EGL_NO_CONTEXT, anEglCtxAttribs3);
+  }
+  if ((EGLContext )myEglContext == EGL_NO_CONTEXT)
+  {
+    myEglContext = (Aspect_RenderingContext )eglCreateContext ((EGLDisplay )myEglDisplay, myEglConfig, EGL_NO_CONTEXT, anEglCtxAttribs2);
   }
 #else
   EGLint* anEglCtxAttribs = NULL;
@@ -347,9 +318,9 @@ Standard_Boolean OpenGl_GraphicDriver::InitContext()
     ::Message::DefaultMessenger()->Send ("Error: EGL does not provide OpenGL client!", Message_Fail);
     return Standard_False;
   }
+  myEglContext = (Aspect_RenderingContext )eglCreateContext ((EGLDisplay )myEglDisplay, myEglConfig, EGL_NO_CONTEXT, anEglCtxAttribs);
 #endif
 
-  myEglContext = (Aspect_RenderingContext )eglCreateContext ((EGLDisplay )myEglDisplay, myEglConfig, EGL_NO_CONTEXT, anEglCtxAttribs);
   if ((EGLContext )myEglContext == EGL_NO_CONTEXT)
   {
     ::Message::DefaultMessenger()->Send ("Error: EGL is unable to create OpenGL context!", Message_Fail);
@@ -384,14 +355,22 @@ Standard_Boolean OpenGl_GraphicDriver::InitEglContext (Aspect_Display          t
 #endif
 
   if ((EGLDisplay )theEglDisplay == EGL_NO_DISPLAY
-   || (EGLContext )theEglContext == EGL_NO_CONTEXT
-   || theEglConfig == NULL)
+   || (EGLContext )theEglContext == EGL_NO_CONTEXT)
   {
     return Standard_False;
   }
   myEglDisplay = theEglDisplay;
   myEglContext = theEglContext;
   myEglConfig  = theEglConfig;
+  if (theEglConfig == NULL)
+  {
+    myEglConfig = chooseEglSurfConfig ((EGLDisplay )myEglDisplay);
+    if (myEglConfig == NULL)
+    {
+      ::Message::DefaultMessenger()->Send ("Error: EGL does not provide compatible configurations!", Message_Fail);
+      return Standard_False;
+    }
+  }
   return Standard_True;
 }
 #endif
@@ -406,7 +385,7 @@ Standard_Integer OpenGl_GraphicDriver::InquireLimit (const Graphic3d_TypeOfLimit
   switch (theType)
   {
     case Graphic3d_TypeOfLimit_MaxNbLights:
-      return OpenGLMaxLights;
+      return Graphic3d_ShaderProgram::THE_MAX_LIGHTS_DEFAULT;
     case Graphic3d_TypeOfLimit_MaxNbClipPlanes:
       return !aCtx.IsNull() ? aCtx->MaxClipPlanes() : 0;
     case Graphic3d_TypeOfLimit_MaxNbViews:
@@ -417,12 +396,18 @@ Standard_Integer OpenGl_GraphicDriver::InquireLimit (const Graphic3d_TypeOfLimit
       return !aCtx.IsNull() ? aCtx->MaxCombinedTextureUnits() : 1;
     case Graphic3d_TypeOfLimit_MaxMsaa:
       return !aCtx.IsNull() ? aCtx->MaxMsaaSamples() : 0;
+    case Graphic3d_TypeOfLimit_MaxViewDumpSizeX:
+      return !aCtx.IsNull() ? aCtx->MaxDumpSizeX() : 1024;
+    case Graphic3d_TypeOfLimit_MaxViewDumpSizeY:
+      return !aCtx.IsNull() ? aCtx->MaxDumpSizeY() : 1024;
     case Graphic3d_TypeOfLimit_HasRayTracing:
       return (!aCtx.IsNull() && aCtx->HasRayTracing()) ? 1 : 0;
     case Graphic3d_TypeOfLimit_HasRayTracingTextures:
       return (!aCtx.IsNull() && aCtx->HasRayTracingTextures()) ? 1 : 0;
     case Graphic3d_TypeOfLimit_HasRayTracingAdaptiveSampling:
       return (!aCtx.IsNull() && aCtx->HasRayTracingAdaptiveSampling()) ? 1 : 0;
+    case Graphic3d_TypeOfLimit_HasRayTracingAdaptiveSamplingAtomic:
+      return (!aCtx.IsNull() && aCtx->HasRayTracingAdaptiveSamplingAtomic()) ? 1 : 0;
     case Graphic3d_TypeOfLimit_HasBlendedOit:
       return (!aCtx.IsNull()
             && aCtx->hasDrawBuffers != OpenGl_FeatureNotAvailable
@@ -431,6 +416,12 @@ Standard_Integer OpenGl_GraphicDriver::InquireLimit (const Graphic3d_TypeOfLimit
       return (!aCtx.IsNull()
             && aCtx->hasSampleVariables != OpenGl_FeatureNotAvailable
             && (InquireLimit (Graphic3d_TypeOfLimit_HasBlendedOit) == 1)) ? 1 : 0;
+    case Graphic3d_TypeOfLimit_HasFlatShading:
+      return !aCtx.IsNull() && aCtx->hasFlatShading != OpenGl_FeatureNotAvailable ? 1 : 0;
+    case Graphic3d_TypeOfLimit_IsWorkaroundFBO:
+      return !aCtx.IsNull() && aCtx->MaxTextureSize() != aCtx->MaxDumpSizeX() ? 1 : 0;
+    case Graphic3d_TypeOfLimit_HasMeshEdges:
+      return !aCtx.IsNull() && aCtx->hasGeometryStage != OpenGl_FeatureNotAvailable ? 1 : 0;
     case Graphic3d_TypeOfLimit_NB:
       return 0;
   }
@@ -459,23 +450,26 @@ void OpenGl_GraphicDriver::EnableVBO (const Standard_Boolean theToTurnOn)
 // function : GetSharedContext
 // purpose  :
 // =======================================================================
-const Handle(OpenGl_Context)& OpenGl_GraphicDriver::GetSharedContext() const
+const Handle(OpenGl_Context)& OpenGl_GraphicDriver::GetSharedContext (bool theBound) const
 {
   if (myMapOfView.IsEmpty())
   {
     return TheNullGlCtx;
   }
 
-  NCollection_Map<Handle(OpenGl_View)>::Iterator anIter (myMapOfView);
-  for (; anIter.More(); anIter.Next())
+  for (NCollection_Map<Handle(OpenGl_View)>::Iterator aViewIter (myMapOfView); aViewIter.More(); aViewIter.Next())
   {
-    Handle(OpenGl_Window) aWindow = anIter.Value()->GlWindow();
-    if (aWindow.IsNull())
+    if (const Handle(OpenGl_Window)& aWindow = aViewIter.Value()->GlWindow())
     {
-      continue;
+      if (!theBound)
+      {
+        return aWindow->GetGlContext();
+      }
+      else if (aWindow->GetGlContext()->IsCurrent())
+      {
+        return aWindow->GetGlContext();
+      }
     }
-
-    return aWindow->GetGlContext();
   }
 
   return TheNullGlCtx;
@@ -526,83 +520,43 @@ void OpenGl_GraphicDriver::TextSize (const Handle(Graphic3d_CView)& theView,
   }
 
   const Standard_ShortReal aHeight = (theHeight < 2.0f) ? DefaultTextHeight() : theHeight;
-  OpenGl_TextParam aTextParam;
-  aTextParam.Height = (int )aHeight;
-  OpenGl_AspectText aTextAspect;
-  aTextAspect.Aspect()->SetSpace (0.3);
+  OpenGl_Aspects aTextAspect;
   TCollection_ExtendedString anExtText = theText;
   NCollection_String aText (anExtText.ToExtString());
-  OpenGl_Text::StringSize(aCtx, aText, aTextAspect, aTextParam, theView->RenderingParams().Resolution, theWidth, theAscent, theDescent);
+  OpenGl_Text::StringSize(aCtx, aText, aTextAspect, aHeight, theView->RenderingParams().Resolution, theWidth, theAscent, theDescent);
 }
 
 //=======================================================================
-//function : addZLayerIndex
+//function : InsertLayerBefore
 //purpose  :
 //=======================================================================
-void OpenGl_GraphicDriver::addZLayerIndex (const Graphic3d_ZLayerId theLayerId)
+void OpenGl_GraphicDriver::InsertLayerBefore (const Graphic3d_ZLayerId theLayerId,
+                                              const Graphic3d_ZLayerSettings& theSettings,
+                                              const Graphic3d_ZLayerId theLayerAfter)
 {
-  // remove index
-  for (TColStd_SequenceOfInteger::Iterator aLayerIt (myLayerSeq); aLayerIt.More(); aLayerIt.Next())
-  {
-    if (aLayerIt.Value() == theLayerId)
-    {
-      myLayerSeq.Remove (aLayerIt);
-      break;
-    }
-  }
-
-  if (myMapOfZLayerSettings.Find (theLayerId).IsImmediate())
-  {
-    myLayerSeq.Append (theLayerId);
-    return;
-  }
-
-  for (TColStd_SequenceOfInteger::Iterator aLayerIt (myLayerSeq); aLayerIt.More(); aLayerIt.Next())
-  {
-    const Graphic3d_ZLayerSettings& aSettings = myMapOfZLayerSettings.Find (aLayerIt.Value());
-    if (aSettings.IsImmediate())
-    {
-      aLayerIt.Previous();
-      if (aLayerIt.More())
-      {
-        myLayerSeq.InsertAfter (aLayerIt, theLayerId);
-        return;
-      }
-
-      // first non-immediate layer
-      myLayerSeq.Prepend (theLayerId);
-      return;
-    }
-  }
-
-  // no immediate layers
-  myLayerSeq.Append (theLayerId);
-}
-
-//=======================================================================
-//function : AddZLayer
-//purpose  :
-//=======================================================================
-void OpenGl_GraphicDriver::AddZLayer (const Graphic3d_ZLayerId theLayerId)
-{
-  if (theLayerId < 1)
-  {
-    Standard_ASSERT_RAISE (theLayerId > 0,
-                           "OpenGl_GraphicDriver::AddZLayer, "
-                           "negative and zero IDs are reserved");
-  }
-
-  myLayerIds.Add (theLayerId);
-
-  // Default z-layer settings
-  myMapOfZLayerSettings.Bind (theLayerId, Graphic3d_ZLayerSettings());
-  addZLayerIndex (theLayerId);
+  base_type::InsertLayerBefore (theLayerId, theSettings, theLayerAfter);
 
   // Add layer to all views
-  NCollection_Map<Handle(OpenGl_View)>::Iterator aViewIt (myMapOfView);
-  for (; aViewIt.More(); aViewIt.Next())
+  for (NCollection_Map<Handle(OpenGl_View)>::Iterator aViewIt (myMapOfView); aViewIt.More(); aViewIt.Next())
   {
-    aViewIt.Value()->AddZLayer (theLayerId);
+    aViewIt.Value()->InsertLayerBefore (theLayerId, theSettings, theLayerAfter);
+  }
+}
+
+//=======================================================================
+//function : InsertLayerAfter
+//purpose  :
+//=======================================================================
+void OpenGl_GraphicDriver::InsertLayerAfter (const Graphic3d_ZLayerId theNewLayerId,
+                                             const Graphic3d_ZLayerSettings& theSettings,
+                                             const Graphic3d_ZLayerId theLayerBefore)
+{
+  base_type::InsertLayerAfter (theNewLayerId, theSettings, theLayerBefore);
+
+  // Add layer to all views
+  for (NCollection_Map<Handle(OpenGl_View)>::Iterator aViewIt (myMapOfView); aViewIt.More(); aViewIt.Next())
+  {
+    aViewIt.Value()->InsertLayerAfter (theNewLayerId, theSettings, theLayerBefore);
   }
 }
 
@@ -612,52 +566,21 @@ void OpenGl_GraphicDriver::AddZLayer (const Graphic3d_ZLayerId theLayerId)
 //=======================================================================
 void OpenGl_GraphicDriver::RemoveZLayer (const Graphic3d_ZLayerId theLayerId)
 {
-  Standard_ASSERT_RAISE (theLayerId > 0,
-                         "OpenGl_GraphicDriver::AddZLayer, "
-                         "negative and zero IDs are reserved"
-                         "and can not be removed");
-
-  Standard_ASSERT_RAISE (myLayerIds.Contains (theLayerId),
-                         "OpenGl_GraphicDriver::RemoveZLayer, "
-                         "Layer with theLayerId does not exist");
+  base_type::RemoveZLayer (theLayerId);
 
   // Remove layer from all of the views
-  NCollection_Map<Handle(OpenGl_View)>::Iterator aViewIt (myMapOfView);
-  for (; aViewIt.More(); aViewIt.Next())
+  for (NCollection_Map<Handle(OpenGl_View)>::Iterator aViewIt (myMapOfView); aViewIt.More(); aViewIt.Next())
   {
     aViewIt.Value()->RemoveZLayer (theLayerId);
   }
 
   // Unset Z layer for all of the structures.
-  NCollection_DataMap<Standard_Integer, OpenGl_Structure*>::Iterator aStructIt (myMapOfStructure);
-  for( ; aStructIt.More (); aStructIt.Next ())
+  for (NCollection_DataMap<Standard_Integer, OpenGl_Structure*>::Iterator aStructIt (myMapOfStructure); aStructIt.More(); aStructIt.Next())
   {
     OpenGl_Structure* aStruct = aStructIt.ChangeValue ();
     if (aStruct->ZLayer() == theLayerId)
       aStruct->SetZLayer (Graphic3d_ZLayerId_Default);
   }
-
-  // Remove index
-  for (TColStd_SequenceOfInteger::Iterator aLayerIt (myLayerSeq); aLayerIt.More(); aLayerIt.Next())
-  {
-    if (aLayerIt.Value() == theLayerId)
-    {
-      myLayerSeq.Remove (aLayerIt);
-      break;
-    }
-  }
-
-  myMapOfZLayerSettings.UnBind (theLayerId);
-  myLayerIds.Remove  (theLayerId);
-}
-
-//=======================================================================
-//function : ZLayers
-//purpose  :
-//=======================================================================
-void OpenGl_GraphicDriver::ZLayers (TColStd_SequenceOfInteger& theLayerSeq) const
-{
-  theLayerSeq.Assign (myLayerSeq);
 }
 
 //=======================================================================
@@ -667,41 +590,13 @@ void OpenGl_GraphicDriver::ZLayers (TColStd_SequenceOfInteger& theLayerSeq) cons
 void OpenGl_GraphicDriver::SetZLayerSettings (const Graphic3d_ZLayerId theLayerId,
                                               const Graphic3d_ZLayerSettings& theSettings)
 {
-  Graphic3d_ZLayerSettings* aSettings = myMapOfZLayerSettings.ChangeSeek (theLayerId);
-  if (aSettings != NULL)
-  {
-    const bool isChanged = (aSettings->IsImmediate() != theSettings.IsImmediate());
-    *aSettings = theSettings;
-    if (isChanged)
-    {
-      addZLayerIndex (theLayerId);
-    }
-  }
-  else
-  {
-    // abnormal case
-    myMapOfZLayerSettings.Bind (theLayerId, theSettings);
-    addZLayerIndex (theLayerId);
-  }
+  base_type::SetZLayerSettings (theLayerId, theSettings);
 
   // Change Z layer settings in all managed views
   for (NCollection_Map<Handle(OpenGl_View)>::Iterator aViewIt (myMapOfView); aViewIt.More(); aViewIt.Next())
   {
     aViewIt.Value()->SetZLayerSettings (theLayerId, theSettings);
   }
-}
-
-//=======================================================================
-//function : ZLayerSettings
-//purpose  :
-//=======================================================================
-const Graphic3d_ZLayerSettings& OpenGl_GraphicDriver::ZLayerSettings (const Graphic3d_ZLayerId theLayerId) const
-{
-  Standard_ASSERT_RAISE (myLayerIds.Contains (theLayerId),
-                         "OpenGl_GraphicDriver::ZLayerSettings, "
-                         "Layer with theLayerId does not exist");
-
-  return myMapOfZLayerSettings.Find (theLayerId);
 }
 
 // =======================================================================
@@ -733,23 +628,18 @@ void OpenGl_GraphicDriver::RemoveStructure (Handle(Graphic3d_CStructure)& theCSt
 }
 
 // =======================================================================
-// function : View
+// function : CreateView
 // purpose  :
 // =======================================================================
 Handle(Graphic3d_CView) OpenGl_GraphicDriver::CreateView (const Handle(Graphic3d_StructureManager)& theMgr)
 {
   Handle(OpenGl_View) aView = new OpenGl_View (theMgr, this, myCaps, &myStateCounter);
-
   myMapOfView.Add (aView);
-
-  for (TColStd_SequenceOfInteger::Iterator aLayerIt (myLayerSeq); aLayerIt.More(); aLayerIt.Next())
+  for (NCollection_List<Handle(Graphic3d_Layer)>::Iterator aLayerIter (myLayers); aLayerIter.More(); aLayerIter.Next())
   {
-    const Graphic3d_ZLayerId        aLayerID  = aLayerIt.Value();
-    const Graphic3d_ZLayerSettings& aSettings = myMapOfZLayerSettings.Find (aLayerID);
-    aView->AddZLayer         (aLayerID);
-    aView->SetZLayerSettings (aLayerID, aSettings);
+    const Handle(Graphic3d_Layer)& aLayer = aLayerIter.Value();
+    aView->InsertLayerAfter (aLayer->LayerId(), aLayer->LayerSettings(), Graphic3d_ZLayerId_UNKNOWN);
   }
-
   return aView;
 }
 

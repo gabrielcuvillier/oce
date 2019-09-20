@@ -17,7 +17,7 @@
 #include <BinMDataStd.hxx>
 #include <BinMDataStd_ByteArrayDriver.hxx>
 #include <BinObjMgt_Persistent.hxx>
-#include <CDM_MessageDriver.hxx>
+#include <Message_Messenger.hxx>
 #include <Standard_Type.hxx>
 #include <TColStd_Array1OfInteger.hxx>
 #include <TColStd_HArray1OfByte.hxx>
@@ -30,7 +30,7 @@ IMPLEMENT_STANDARD_RTTIEXT(BinMDataStd_ByteArrayDriver,BinMDF_ADriver)
 //function : BinMDataStd_ByteArrayDriver
 //purpose  : Constructor
 //=======================================================================
-BinMDataStd_ByteArrayDriver::BinMDataStd_ByteArrayDriver(const Handle(CDM_MessageDriver)& theMsgDriver)
+BinMDataStd_ByteArrayDriver::BinMDataStd_ByteArrayDriver(const Handle(Message_Messenger)& theMsgDriver)
      : BinMDF_ADriver (theMsgDriver, STANDARD_TYPE(TDataStd_ByteArray)->Name())
 {
 
@@ -51,7 +51,7 @@ Handle(TDF_Attribute) BinMDataStd_ByteArrayDriver::NewEmpty() const
 //=======================================================================
 Standard_Boolean BinMDataStd_ByteArrayDriver::Paste(const BinObjMgt_Persistent&  theSource,
                                                     const Handle(TDF_Attribute)& theTarget,
-                                                    BinObjMgt_RRelocationTable&  ) const
+                                                    BinObjMgt_RRelocationTable&  theRelocTable) const
 {
   Standard_Integer aFirstInd, aLastInd;
   if (! (theSource >> aFirstInd >> aLastInd))
@@ -71,7 +71,7 @@ Standard_Boolean BinMDataStd_ByteArrayDriver::Paste(const BinObjMgt_Persistent& 
   anAtt->ChangeArray(bytes);
 
   Standard_Boolean aDelta(Standard_False); 
-  if(BinMDataStd::DocumentVersion() > 2) {
+  if(theRelocTable.GetHeaderData()->StorageVersion().IntegerValue() > 2) {
     Standard_Byte aDeltaValue;
     if (! (theSource >> aDeltaValue))
       return Standard_False;
@@ -80,7 +80,7 @@ Standard_Boolean BinMDataStd_ByteArrayDriver::Paste(const BinObjMgt_Persistent& 
   }
   anAtt->SetDelta(aDelta);
 
-  BinMDataStd::SetAttributeID(theSource, anAtt);
+  BinMDataStd::SetAttributeID(theSource, anAtt, theRelocTable.GetHeaderData()->StorageVersion().IntegerValue());
   return Standard_True;
 }
 

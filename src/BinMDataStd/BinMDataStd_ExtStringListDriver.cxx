@@ -17,7 +17,7 @@
 #include <BinMDataStd_ExtStringListDriver.hxx>
 #include <BinMDataStd.hxx>
 #include <BinObjMgt_Persistent.hxx>
-#include <CDM_MessageDriver.hxx>
+#include <Message_Messenger.hxx>
 #include <Standard_Type.hxx>
 #include <TColStd_Array1OfExtendedString.hxx>
 #include <TDataStd_ExtStringList.hxx>
@@ -30,7 +30,7 @@ IMPLEMENT_STANDARD_RTTIEXT(BinMDataStd_ExtStringListDriver,BinMDF_ADriver)
 //function : BinMDataStd_ExtStringListDriver
 //purpose  : Constructor
 //=======================================================================
-BinMDataStd_ExtStringListDriver::BinMDataStd_ExtStringListDriver(const Handle(CDM_MessageDriver)& theMsgDriver)
+BinMDataStd_ExtStringListDriver::BinMDataStd_ExtStringListDriver(const Handle(Message_Messenger)& theMsgDriver)
      : BinMDF_ADriver (theMsgDriver, STANDARD_TYPE(TDataStd_ExtStringList)->Name())
 {
 
@@ -52,7 +52,7 @@ Handle(TDF_Attribute) BinMDataStd_ExtStringListDriver::NewEmpty() const
 Standard_Boolean BinMDataStd_ExtStringListDriver::Paste
                                 (const BinObjMgt_Persistent&  theSource,
                                  const Handle(TDF_Attribute)& theTarget,
-                                 BinObjMgt_RRelocationTable&  ) const
+                                 BinObjMgt_RRelocationTable&  theRelocTable) const
 {
   Standard_Integer aFirstInd, aLastInd;
   if (! (theSource >> aFirstInd >> aLastInd))
@@ -74,7 +74,7 @@ Standard_Boolean BinMDataStd_ExtStringListDriver::Paste
     }
   }
 
-  BinMDataStd::SetAttributeID(theSource, anAtt);
+  BinMDataStd::SetAttributeID(theSource, anAtt, theRelocTable.GetHeaderData()->StorageVersion().IntegerValue());
   return Standard_True;
 }
 

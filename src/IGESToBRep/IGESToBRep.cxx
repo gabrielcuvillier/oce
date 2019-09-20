@@ -72,7 +72,6 @@
 #include <TopoDS.hxx>
 #include <TopoDS_Edge.hxx>
 #include <TopoDS_Face.hxx>
-#include <TopoDS_Iterator.hxx>
 #include <TopoDS_Shape.hxx>
 #include <TopoDS_Wire.hxx>
 #include <XSAlgo.hxx>
@@ -298,15 +297,15 @@ Standard_Boolean IGESToBRep::IsBRepEntity(const Handle(IGESData_IGESEntity)& sta
 	}
 	else {
 #ifdef OCCT_DEBUG
-	  cout << "Warning: IGESToBRep::TransferPCurve: pcurves are not SameRange" << endl;
+	  std::cout << "Warning: IGESToBRep::TransferPCurve: pcurves are not SameRange" << std::endl;
 #endif
 	  result = Standard_False;
 	}
       }
       catch(Standard_Failure const& anException) {
 #ifdef OCCT_DEBUG
-	cout << "\n**IGESToBRep::TransferPCurve: Exception in SameRange : "; 
-	anException.Print(cout);
+	std::cout << "\n**IGESToBRep::TransferPCurve: Exception in SameRange : "; 
+	anException.Print(std::cout);
 #endif
 	(void)anException;
 	result = Standard_False;

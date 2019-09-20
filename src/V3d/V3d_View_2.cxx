@@ -35,7 +35,6 @@
 #include <Graphic3d_GraphicDriver.hxx>
 #include <Graphic3d_Structure.hxx>
 #include <Graphic3d_TextureEnv.hxx>
-#include <Graphic3d_Vector.hxx>
 #include <Quantity_Color.hxx>
 #include <Standard_MultiplyDefined.hxx>
 #include <Standard_TypeMismatch.hxx>
@@ -54,8 +53,6 @@ void V3d_View::SetLightOn (const Handle(V3d_Light)& theLight)
 {
   if (!myActiveLights.Contains (theLight))
   {
-    if (myActiveLights.Extent() >= LightLimit())
-      throw V3d_BadValue("V3d_View::SetLightOn, too many lights");
     myActiveLights.Append (theLight);
     UpdateLights();
   }

@@ -75,7 +75,7 @@ static Standard_Integer mkface(Draw_Interpretor& , Standard_Integer n, const cha
   
   Handle(Geom_Surface) S = DrawTrSurf::GetSurface(a[2]);
   if (S.IsNull()) {
-    cout << a[2] << " is not a surface" << endl;
+    std::cout << a[2] << " is not a surface" << std::endl;
     return 1;
   }
   
@@ -201,16 +201,16 @@ static Standard_Integer mkplane(Draw_Interpretor& theDI, Standard_Integer n, con
   case BRepBuilderAPI_FaceDone:
     DBRep::Set(a[1],aMF.Face());
     break;
-  case BRepLib_NoFace:
+  case BRepBuilderAPI_NoFace:
     theDI << "Error. mkplane has been finished with \"No Face\" status.\n";
     break;
-  case BRepLib_NotPlanar:
+  case BRepBuilderAPI_NotPlanar:
     theDI << "Error. mkplane has been finished with \"Not Planar\" status.\n";
     break;
-  case BRepLib_CurveProjectionFailed:
+  case BRepBuilderAPI_CurveProjectionFailed:
     theDI << "Error. mkplane has been finished with \"Fail in projection curve\" status.\n";
     break;
-  case BRepLib_ParametersOutOfRange:
+  case BRepBuilderAPI_ParametersOutOfRange:
     theDI << "Error. mkplane has been finished with \"Parameters are out of range\" status.\n";
     break;
   default:
@@ -254,14 +254,31 @@ static Standard_Integer pcurve(Draw_Interpretor& , Standard_Integer n, const cha
       const Handle(Geom2d_Curve) c = BRep_Tool::CurveOnSurface
 	(TopoDS::Edge(ex.Current()),TopoDS::Face(S),f,l);
       if ( c.IsNull() ) {
-        cout << "Error: Edge " << i << " does not have pcurve" << endl;
+        std::cout << "Error: Edge " << i << " does not have pcurve" << std::endl;
         continue;
       }
       col = DBRep_ColorOrientation(ex.Current().Orientation());
       DrawTrSurf_CurveColor(col);
 
       Sprintf(name,"%s_%d",a[1],i);
-      DrawTrSurf::Set(name,new Geom2d_TrimmedCurve(c,f,l));
+      Standard_Real fr = c->FirstParameter(), lr = c->LastParameter();
+      Standard_Boolean IsPeriodic = c->IsPeriodic();
+      if (c->DynamicType() == STANDARD_TYPE(Geom2d_TrimmedCurve))
+      {
+        const Handle(Geom2d_Curve)& aC = Handle(Geom2d_TrimmedCurve)::DownCast (c)->BasisCurve(); 
+        IsPeriodic = aC->IsPeriodic();
+        fr = aC->FirstParameter();
+        lr = aC->LastParameter();
+      }
+      if(!IsPeriodic && 
+        ((fr - f > Precision::PConfusion()) || (l - lr > Precision::PConfusion())))
+      {
+        DrawTrSurf::Set(name, c);
+      }
+      else
+      {
+        DrawTrSurf::Set(name,new Geom2d_TrimmedCurve(c,f,l));
+      }
     }
     DrawTrSurf_CurveColor(savecol);
 
@@ -276,10 +293,27 @@ static Standard_Integer pcurve(Draw_Interpretor& , Standard_Integer n, const cha
     Standard_Real f,l;
     const Handle(Geom2d_Curve) c = BRep_Tool::CurveOnSurface
       (TopoDS::Edge(SE),TopoDS::Face(SF),f,l);
+    Standard_Real fr = c->FirstParameter(), lr = c->LastParameter();
+    Standard_Boolean IsPeriodic = c->IsPeriodic();
+    if (c->DynamicType() == STANDARD_TYPE(Geom2d_TrimmedCurve))
+    {
+      const Handle(Geom2d_Curve)& aC = Handle(Geom2d_TrimmedCurve)::DownCast (c)->BasisCurve(); 
+      IsPeriodic = aC->IsPeriodic();
+      fr = aC->FirstParameter();
+      lr = aC->LastParameter();
+    }
 
     col = DBRep_ColorOrientation(SE.Orientation());
     DrawTrSurf_CurveColor(col);
-    DrawTrSurf::Set(a[1],new Geom2d_TrimmedCurve(c,f,l));
+    if(!IsPeriodic && 
+      ((fr - f > Precision::PConfusion()) || (l - lr > Precision::PConfusion())))
+    {
+      DrawTrSurf::Set(a[1], c);
+    }
+    else
+    {
+      DrawTrSurf::Set(a[1],new Geom2d_TrimmedCurve(c,f,l));
+    }
     DrawTrSurf_CurveColor(savecol);
   }
   else { 
@@ -470,7 +504,7 @@ Standard_Integer fastsewing (Draw_Interpretor& theDI,
   {
     theDI << "Error: There are some problems while adding (" <<
                         (static_cast<Standard_Integer>(aStatus)) << ")\n";
-    aFS.GetStatuses(&cout);
+    aFS.GetStatuses(&std::cout);
   }
 
   aFS.Perform();
@@ -481,7 +515,7 @@ Standard_Integer fastsewing (Draw_Interpretor& theDI,
   {
     theDI << "Error: There are some problems while performing (" <<
                         (static_cast<Standard_Integer>(aStatus)) << ")\n";
-    aFS.GetStatuses(&cout);
+    aFS.GetStatuses(&std::cout);
   }
 
   DBRep::Set(theArgVal[1], aFS.GetResult());
@@ -546,7 +580,7 @@ static Standard_Integer getedgeregul
 {
   if( argc < 3)
   {
-    cout<<"Invalid number of arguments. Should be: checkedgeregularity edge face1 [face2]"<<endl;
+    std::cout<<"Invalid number of arguments. Should be: checkedgeregularity edge face1 [face2]"<<std::endl;
     return 1;
   }
   
@@ -555,7 +589,7 @@ static Standard_Integer getedgeregul
   TopoDS_Shape aFace2 = (argc > 3  ? DBRep::Get(argv[3],TopAbs_FACE) : aFace1);
   if( anEdge.IsNull() || aFace1.IsNull() || aFace2.IsNull())
   {
-    cout<<"Invalid number of arguments. Should be: getedgeregularity edge face1 [face2]"<<endl;
+    std::cout<<"Invalid number of arguments. Should be: getedgeregularity edge face1 [face2]"<<std::endl;
     return 1;
   }
  

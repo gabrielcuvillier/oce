@@ -132,12 +132,12 @@ static Standard_Integer QADNaming_TCopyShape (Draw_Interpretor& di,
   TR.Perform();
 
   if(TR.IsDone()){
-//    cout << "QADNaming_CopyShape:: Copy is Done " << endl;
+//    std::cout << "QADNaming_CopyShape:: Copy is Done " << std::endl;
 
     DNaming_DataMapIteratorOfDataMapOfShapeOfName itrn(aDMapOfShapeOfName);
     for(;itrn.More();itrn.Next()) {
       TCollection_AsciiString name = itrn.Value();
-      const TopoDS_Shape& Result = TR.Copied(itrn.Key());
+      const TopoDS_Shape Result = TR.Copied(itrn.Key());
       DBRep::Set(name.ToCString(), Result);
       di.AppendElement(name.ToCString());
     }

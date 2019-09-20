@@ -77,6 +77,7 @@ AIS_ColoredShape::AIS_ColoredShape (const TopoDS_Shape& theShape)
   myDrawer->SetFreeBoundaryAspect  (myDrawer->LineAspect());
   myDrawer->SetUnFreeBoundaryAspect(myDrawer->LineAspect());
   myDrawer->SetSeenLineAspect      (myDrawer->LineAspect());
+  myDrawer->SetFaceBoundaryAspect  (myDrawer->LineAspect());
 }
 
 //=======================================================================
@@ -90,6 +91,7 @@ AIS_ColoredShape::AIS_ColoredShape (const Handle(AIS_Shape)& theShape)
   myDrawer->SetFreeBoundaryAspect  (myDrawer->LineAspect());
   myDrawer->SetUnFreeBoundaryAspect(myDrawer->LineAspect());
   myDrawer->SetSeenLineAspect      (myDrawer->LineAspect());
+  myDrawer->SetFaceBoundaryAspect  (myDrawer->LineAspect());
   if (theShape->HasMaterial())
   {
     SetMaterial (theShape->Material());
@@ -122,8 +124,7 @@ Handle(AIS_ColoredDrawer) AIS_ColoredShape::CustomAspects (const TopoDS_Shape& t
   {
     aDrawer = new AIS_ColoredDrawer (myDrawer);
     myShapeColors.Bind (theShape, aDrawer);
-    LoadRecomputable (AIS_WireFrame);
-    LoadRecomputable (AIS_Shaded);
+    SetToUpdate();
   }
   return aDrawer;
 }
@@ -139,8 +140,7 @@ void AIS_ColoredShape::ClearCustomAspects()
     return;
   }
   myShapeColors.Clear();
-  LoadRecomputable (AIS_WireFrame);
-  LoadRecomputable (AIS_Shaded);
+  SetToUpdate();
 }
 
 //=======================================================================
@@ -155,8 +155,7 @@ void AIS_ColoredShape::UnsetCustomAspects (const TopoDS_Shape&    theShape,
     return;
   }
 
-  LoadRecomputable (AIS_WireFrame);
-  LoadRecomputable (AIS_Shaded);
+  SetToUpdate();
   if (theToUnregister)
   {
     myShapeColors.UnBind (theShape);
@@ -181,8 +180,23 @@ void AIS_ColoredShape::SetCustomColor (const TopoDS_Shape&   theShape,
   const Handle(AIS_ColoredDrawer)& aDrawer = CustomAspects (theShape);
   setColor (aDrawer, theColor);
   aDrawer->SetOwnColor (theColor);
-  LoadRecomputable (AIS_WireFrame);
-  LoadRecomputable (AIS_Shaded);
+}
+
+//=======================================================================
+//function : SetCustomTransparency
+//purpose  :
+//=======================================================================
+void AIS_ColoredShape::SetCustomTransparency (const TopoDS_Shape& theShape,
+                                              Standard_Real theTransparency)
+{
+  if (theShape.IsNull())
+  {
+    return;
+  }
+
+  const Handle(AIS_ColoredDrawer)& aDrawer = CustomAspects (theShape);
+  setTransparency (aDrawer, theTransparency);
+  aDrawer->SetOwnTransparency (theTransparency);
 }
 
 //=======================================================================
@@ -198,10 +212,8 @@ void AIS_ColoredShape::SetCustomWidth (const TopoDS_Shape& theShape,
   }
 
   const Handle(AIS_ColoredDrawer)& aDrawer = CustomAspects (theShape);
-  setWidth (CustomAspects (theShape), theLineWidth);
+  setWidth (aDrawer, theLineWidth);
   aDrawer->SetOwnWidth (theLineWidth);
-  LoadRecomputable (AIS_WireFrame);
-  LoadRecomputable (AIS_Shaded);
 }
 
 //=======================================================================
@@ -211,11 +223,6 @@ void AIS_ColoredShape::SetCustomWidth (const TopoDS_Shape& theShape,
 
 void AIS_ColoredShape::SetColor (const Quantity_Color&  theColor)
 {
-  setColor (myDrawer, theColor);
-  myDrawer->SetColor (theColor);
-  hasOwnColor = Standard_True;
-  LoadRecomputable (AIS_WireFrame);
-  LoadRecomputable (AIS_Shaded);
   for (AIS_DataMapOfShapeDrawer::Iterator anIter (myShapeColors); anIter.More(); anIter.Next())
   {
     const Handle(AIS_ColoredDrawer)& aDrawer = anIter.Value();
@@ -236,7 +243,12 @@ void AIS_ColoredShape::SetColor (const Quantity_Color&  theColor)
     {
       aDrawer->WireAspect()->SetColor (theColor);
     }
+    if (aDrawer->HasOwnFaceBoundaryAspect())
+    {
+      aDrawer->FaceBoundaryAspect()->SetColor (theColor);
+    }
   }
+  AIS_Shape::SetColor (theColor);
 }
 
 //=======================================================================
@@ -246,10 +258,6 @@ void AIS_ColoredShape::SetColor (const Quantity_Color&  theColor)
 
 void AIS_ColoredShape::SetWidth (const Standard_Real    theLineWidth)
 {
-  setWidth (myDrawer, theLineWidth);
-  myOwnWidth = theLineWidth;
-  LoadRecomputable (AIS_WireFrame);
-  LoadRecomputable (AIS_Shaded);
   for (AIS_DataMapOfShapeDrawer::Iterator anIter (myShapeColors); anIter.More(); anIter.Next())
   {
     const Handle(AIS_ColoredDrawer)& aDrawer = anIter.Value();
@@ -266,7 +274,21 @@ void AIS_ColoredShape::SetWidth (const Standard_Real    theLineWidth)
     {
       aDrawer->WireAspect()->SetWidth (theLineWidth);
     }
+    if (aDrawer->HasOwnFaceBoundaryAspect())
+    {
+      aDrawer->FaceBoundaryAspect()->SetWidth (theLineWidth);
+    }
   }
+  AIS_Shape::SetWidth (theLineWidth);
+}
+
+//=======================================================================
+//function : UnsetWidth
+//purpose  :
+//=======================================================================
+void AIS_ColoredShape::UnsetWidth()
+{
+  SetWidth (1.0f);
 }
 
 //=======================================================================
@@ -276,18 +298,20 @@ void AIS_ColoredShape::SetWidth (const Standard_Real    theLineWidth)
 
 void AIS_ColoredShape::SetTransparency (const Standard_Real theValue)
 {
-  setTransparency (myDrawer, theValue);
-  myDrawer->SetTransparency ((Standard_ShortReal )theValue);
-  LoadRecomputable (AIS_WireFrame);
-  LoadRecomputable (AIS_Shaded);
   for (AIS_DataMapOfShapeDrawer::Iterator anIter (myShapeColors); anIter.More(); anIter.Next())
   {
-    const Handle(Prs3d_Drawer)& aDrawer = anIter.Value();
+    const Handle(AIS_ColoredDrawer)& aDrawer = anIter.Value();
+    if (aDrawer->HasOwnTransparency())
+    {
+      continue;
+    }
+
     if (aDrawer->HasOwnShadingAspect())
     {
       aDrawer->ShadingAspect()->SetTransparency (theValue, myCurrentFacingModel);
     }
   }
+  AIS_Shape::SetTransparency (theValue);
 }
 
 //=======================================================================
@@ -296,27 +320,7 @@ void AIS_ColoredShape::SetTransparency (const Standard_Real theValue)
 //=======================================================================
 void AIS_ColoredShape::UnsetTransparency()
 {
-  myDrawer->SetTransparency (0.0f);
-  if (myDrawer->HasOwnShadingAspect())
-  {
-    myDrawer->ShadingAspect()->SetTransparency (0.0, myCurrentFacingModel);
-    if (!HasColor()
-     && !HasMaterial()
-     && !myDrawer->ShadingAspect()->Aspect()->ToMapTexture())
-    {
-      myDrawer->SetShadingAspect (Handle(Prs3d_ShadingAspect)());
-    }
-  }
-
-  for (AIS_DataMapOfShapeDrawer::Iterator anIter (myShapeColors); anIter.More(); anIter.Next())
-  {
-    const Handle(Prs3d_Drawer)& aDrawer = anIter.Value();
-    if (aDrawer->HasOwnShadingAspect())
-    {
-      aDrawer->ShadingAspect()->SetTransparency (0.0, myCurrentFacingModel);
-    }
-  }
-  SynchronizeAspects();
+  SetTransparency (0.0f);
 }
 
 //=======================================================================
@@ -326,26 +330,23 @@ void AIS_ColoredShape::UnsetTransparency()
 
 void AIS_ColoredShape::SetMaterial (const Graphic3d_MaterialAspect& theMaterial)
 {
-  setMaterial (myDrawer, theMaterial, HasColor(), IsTransparent());
-  //myOwnMaterial = theMaterial;
-  hasOwnMaterial = Standard_True;
-  LoadRecomputable (AIS_Shaded);
   for (AIS_DataMapOfShapeDrawer::Iterator anIter (myShapeColors); anIter.More(); anIter.Next())
   {
     const Handle(AIS_ColoredDrawer)& aDrawer = anIter.Value();
     //if (aDrawer->HasOwnMaterial()) continue;
     if (aDrawer->HasOwnShadingAspect())
     {
-      setMaterial (aDrawer, theMaterial, aDrawer->HasOwnColor(), Standard_False); // aDrawer->IsTransparent()
+      setMaterial (aDrawer, theMaterial, aDrawer->HasOwnColor(), aDrawer->HasOwnTransparency());
     }
   }
+  AIS_Shape::SetMaterial (theMaterial);
 }
 
 //=======================================================================
 //function : Compute
 //purpose  :
 //=======================================================================
-void AIS_ColoredShape::Compute (const Handle(PrsMgr_PresentationManager3d)& ,
+void AIS_ColoredShape::Compute (const Handle(PrsMgr_PresentationManager3d)& thePrsMgr,
                                 const Handle(Prs3d_Presentation)&           thePrs,
                                 const Standard_Integer                      theMode)
 {
@@ -359,31 +360,45 @@ void AIS_ColoredShape::Compute (const Handle(PrsMgr_PresentationManager3d)& ,
     thePrs->SetInfiniteState (Standard_True);
   }
 
-  if (theMode == AIS_Shaded)
+  switch (theMode)
   {
-    if (myDrawer->IsAutoTriangulation())
+    case AIS_WireFrame:
     {
-      // compute mesh for entire shape beforehand to ensure consistency and optimizations (parallelization)
       StdPrs_ToolTriangulatedShape::ClearOnOwnDeflectionChange (myshape, myDrawer, Standard_True);
 
       // After this call if type of deflection is relative
       // computed deflection coefficient is stored as absolute.
-      Standard_Boolean wasRecomputed = StdPrs_ToolTriangulatedShape::Tessellate (myshape, myDrawer);
-
-      // Set to update wireframe presentation on triangulation.
-      if (myDrawer->IsoOnTriangulation() && wasRecomputed)
-      {
-        SetToUpdate (AIS_WireFrame);
-      }
+      Prs3d::GetDeflection (myshape, myDrawer);
+      break;
     }
-  }
-  else // WireFrame mode
-  {
-    StdPrs_ToolTriangulatedShape::ClearOnOwnDeflectionChange (myshape, myDrawer, Standard_True);
+    case AIS_Shaded:
+    {
+      if (myDrawer->IsAutoTriangulation())
+      {
+        // compute mesh for entire shape beforehand to ensure consistency and optimizations (parallelization)
+        StdPrs_ToolTriangulatedShape::ClearOnOwnDeflectionChange (myshape, myDrawer, Standard_True);
 
-    // After this call if type of deflection is relative
-    // computed deflection coefficient is stored as absolute.
-    Prs3d::GetDeflection (myshape, myDrawer);
+        // After this call if type of deflection is relative
+        // computed deflection coefficient is stored as absolute.
+        Standard_Boolean wasRecomputed = StdPrs_ToolTriangulatedShape::Tessellate (myshape, myDrawer);
+
+        // Set to update wireframe presentation on triangulation.
+        if (myDrawer->IsoOnTriangulation() && wasRecomputed)
+        {
+          SetToUpdate (AIS_WireFrame);
+        }
+      }
+      break;
+    }
+    case 2:
+    {
+      AIS_Shape::Compute (thePrsMgr, thePrs, theMode);
+      return;
+    }
+    default:
+    {
+      return;
+    }
   }
 
   // Extract myShapeColors map (KeyshapeColored -> Color) to subshapes map (Subshape -> Color).
@@ -495,10 +510,10 @@ void AIS_ColoredShape::ComputeSelection (const Handle(SelectMgr_Selection)& theS
                             aTypOfSel, aPriority, aDeflection, aDeviationAngle);
 
   Handle(SelectMgr_SelectableObject) aThis (this);
-  for (theSelection->Init(); theSelection->More(); theSelection->Next())
+  for (NCollection_Vector<Handle(SelectMgr_SensitiveEntity)>::Iterator aSelEntIter (theSelection->Entities()); aSelEntIter.More(); aSelEntIter.Next())
   {
-    Handle(SelectMgr_EntityOwner) anOwner = Handle(SelectMgr_EntityOwner)::DownCast (theSelection->Sensitive()->BaseSensitive()->OwnerId());
-    anOwner->Set (aThis);
+    const Handle(SelectMgr_EntityOwner)& anOwner = aSelEntIter.Value()->BaseSensitive()->OwnerId();
+    anOwner->SetSelectable (aThis);
   }
 
   StdSelect_BRepSelectionTool::PreBuildBVH (theSelection);
@@ -562,7 +577,7 @@ void AIS_ColoredShape::addShapesWithCustomProps (const Handle(Prs3d_Presentation
                                                  const DataMapOfDrawerCompd& theDrawerClosedFaces,
                                                  const Standard_Integer theMode)
 {
-  Handle(Graphic3d_Group) anOpenGroup, aClosedGroup;
+  Handle(Graphic3d_Group) anOpenGroup, aClosedGroup, anEdgesGroup;
   for (size_t aShType = 0; aShType <= (size_t )TopAbs_SHAPE; ++aShType)
   {
     const Standard_Boolean isClosed = aShType == TopAbs_SHAPE;
@@ -616,7 +631,7 @@ void AIS_ColoredShape::addShapesWithCustomProps (const Handle(Prs3d_Presentation
         {
           if (aShadedGroup.IsNull())
           {
-            aShadedGroup = Prs3d_Root::NewGroup (thePrs);
+            aShadedGroup = thePrs->NewGroup();
             aShadedGroup->SetClosed (isClosed);
           }
           aShadedGroup->SetPrimitivesAspect (aDrawer->ShadingAspect()->Aspect());
@@ -625,18 +640,15 @@ void AIS_ColoredShape::addShapesWithCustomProps (const Handle(Prs3d_Presentation
 
         if (aDrawer->FaceBoundaryDraw())
         {
-          Handle(Graphic3d_ArrayOfSegments) aBndSegments = StdPrs_ShadedShape::FillFaceBoundaries (aShapeDraw);
-          if (!aBndSegments.IsNull())
+          if (Handle(Graphic3d_ArrayOfSegments) aBndSegments = StdPrs_ShadedShape::FillFaceBoundaries (aShapeDraw, aDrawer->FaceBoundaryUpperContinuity()))
           {
-            if (aShadedGroup.IsNull())
+            if (anEdgesGroup.IsNull())
             {
-              aShadedGroup = Prs3d_Root::NewGroup (thePrs);
-              aShadedGroup->SetClosed (isClosed);
+              anEdgesGroup = thePrs->NewGroup();
             }
 
-            Handle(Graphic3d_AspectLine3d) aBoundaryAspect = aDrawer->FaceBoundaryAspect()->Aspect();
-            aShadedGroup->SetPrimitivesAspect (aBoundaryAspect);
-            aShadedGroup->AddPrimitiveArray (aBndSegments);
+            anEdgesGroup->SetPrimitivesAspect (aDrawer->FaceBoundaryAspect()->Aspect());
+            anEdgesGroup->AddPrimitiveArray (aBndSegments);
           }
         }
       }
@@ -691,12 +703,28 @@ Standard_Boolean AIS_ColoredShape::dispatchColors (const Handle(AIS_ColoredDrawe
       {
         const TopoDS_Shape& aFace = aFaceIter.Value();
         Handle(AIS_ColoredDrawer) aFaceDrawer;
-        if (aFace.ShapeType() == TopAbs_FACE
-         && theShapeDrawerMap.Find (aFace, aFaceDrawer)
-         && aFaceDrawer->IsHidden())
+        if (aFace.ShapeType() != TopAbs_FACE
+        || !theShapeDrawerMap.Find (aFace, aFaceDrawer))
+        {
+          continue;
+        }
+
+        if (aFaceDrawer->IsHidden())
         {
           isClosedShell = Standard_False;
           break;
+        }
+        else if (aFaceDrawer->HasOwnShadingAspect()
+              && aFaceDrawer->ShadingAspect()->Aspect()->AlphaMode() != Graphic3d_AlphaMode_Opaque)
+        {
+          if (aFaceDrawer->ShadingAspect()->Aspect()->AlphaMode() != Graphic3d_AlphaMode_BlendAuto
+           || aFaceDrawer->ShadingAspect()->Aspect()->FrontMaterial().Alpha() < 1.0f
+           || (aFaceDrawer->ShadingAspect()->Aspect()->Distinguish()
+            && aFaceDrawer->ShadingAspect()->Aspect()->BackMaterial().Alpha()  < 1.0f))
+          {
+            isClosedShell = Standard_False;
+            break;
+          }
         }
       }
     }

@@ -36,6 +36,9 @@ vfit
 vmanipulator m -attach c1 -adjustPosition 1 -adjustSize 0 -enableModes 1 -size 40
 vmanipulator m -followRotation 1
 vmanipulator m -followTranslation 1
+vmanipulator m -part 0 4 0
+vmanipulator m -part 1 4 0
+vmanipulator m -part 2 4 0
 
 # ----------------------------------------------------
 # test x translation transform (world reference frame)
@@ -103,6 +106,9 @@ vfit
 vmanipulator m -attach c1 -adjustPosition 1 -adjustSize 0 -enableModes 1 -size 40
 vmanipulator m -followRotation 1
 vmanipulator m -followTranslation 1
+vmanipulator m -part 0 4 0
+vmanipulator m -part 1 4 0
+vmanipulator m -part 2 4 0
 
 set mouse_pick {223 143}
 set mouse_drag {181 141}

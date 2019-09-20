@@ -16,13 +16,13 @@
 #include <BOPAlgo_ArgumentAnalyzer.hxx>
 #include <BOPAlgo_CheckerSI.hxx>
 #include <BOPAlgo_CheckResult.hxx>
-#include <BOPCol_ListOfShape.hxx>
 #include <BOPDS_DS.hxx>
 #include <BOPDS_MapOfPair.hxx>
 #include <BOPTest.hxx>
 #include <BOPTest_Objects.hxx>
 #include <BOPTools_AlgoTools.hxx>
 #include <BRep_Builder.hxx>
+#include <BRepAlgoAPI_Check.hxx>
 #include <BRepBuilderAPI_Copy.hxx>
 #include <DBRep.hxx>
 #include <Draw.hxx>
@@ -31,6 +31,7 @@
 #include <TopExp_Explorer.hxx>
 #include <TopoDS_Compound.hxx>
 #include <TopoDS_Shape.hxx>
+#include <TopTools_ListOfShape.hxx>
 #include <TopTools_MapOfShape.hxx>
 #include <TopTools_ShapeMapHasher.hxx>
 
@@ -41,7 +42,7 @@
 static 
   void MakeShapeForFullOutput (const TCollection_AsciiString&,
                                const Standard_Integer,
-                               const BOPCol_ListOfShape&,
+                               const TopTools_ListOfShape&,
                                Standard_Integer& ,
                                Draw_Interpretor&,
                                Standard_Boolean bCurveOnSurf = Standard_False,
@@ -50,6 +51,7 @@ static
 //
 static Standard_Integer bopcheck   (Draw_Interpretor&, Standard_Integer, const char** );
 static Standard_Integer bopargcheck(Draw_Interpretor&, Standard_Integer, const char** );
+static Standard_Integer bopapicheck(Draw_Interpretor&, Standard_Integer, const char** );
 static Standard_Integer xdistef(Draw_Interpretor&, Standard_Integer, const char** );
 static Standard_Integer checkcurveonsurf (Draw_Interpretor&, Standard_Integer, const char**);
 
@@ -79,6 +81,16 @@ void  BOPTest::CheckCommands(Draw_Interpretor& theCommands)
   theCommands.Add("checkcurveonsurf",
                   "use checkcurveonsurf shape",
                   __FILE__, checkcurveonsurf, g);
+  theCommands.Add("bopapicheck",
+                  "Checks the validity of shape/pair of shapes.\n"
+                  "\t\tUsage: bopapicheck s1 [s2] [-op common/fuse/cut/tuc] [-se] [-si]\n"
+                  "\t\tOptions:\n"
+                  "\t\ts1, s2 - shapes for checking;\n"
+                  "\t\t-op - specifies the type of Boolean operation, for which the validity of shapes should be checked;"
+                             " Should be followed by the operation;\n"
+                  "\t\t-se - disables the check of the shapes on small edges;\n"
+                  "\t\t-si - disables the check of the shapes on self-interference.\n",
+                  __FILE__, bopapicheck, g);
 }
 //=======================================================================
 //class    : BOPTest_Interf
@@ -206,7 +218,7 @@ Standard_Integer bopcheck (Draw_Interpretor& di,
   Standard_Integer iErr, iCnt, n1, n2, iT;
   TopAbs_ShapeEnum aType1, aType2;
   BOPAlgo_CheckerSI aChecker;
-  BOPCol_ListOfShape aLS;
+  TopTools_ListOfShape aLS;
   BOPDS_MapIteratorOfMapOfPair aItMPK;
   //
   if (aLevel < (aNbInterfTypes-1)) {
@@ -235,15 +247,16 @@ Standard_Integer bopcheck (Draw_Interpretor& di,
   //
   aTimer.Stop();
   //
+  BOPTest::ReportAlerts(aChecker.GetReport());
+  //
   iErr=aChecker.HasErrors();
   //
   const BOPDS_DS& aDS=*(aChecker.PDS());
   //
   const BOPDS_MapOfPair& aMPK=aDS.Interferences();
   //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  using namespace std;
-  vector <BOPTest_Interf> aVec;
-  vector <BOPTest_Interf>::iterator aIt;
+  std::vector <BOPTest_Interf> aVec;
+  std::vector <BOPTest_Interf>::iterator aIt;
   BOPTest_Interf aBInterf;
   //
   aItMPK.Initialize(aMPK);
@@ -267,7 +280,7 @@ Standard_Integer bopcheck (Draw_Interpretor& di,
     aVec.push_back(aBInterf);
   }
   //
-  sort( aVec.begin(), aVec.end(), less<BOPTest_Interf>());
+  sort( aVec.begin(), aVec.end(), std::less<BOPTest_Interf>());
   //
   iCnt=0;
   for (aIt=aVec.begin(); aIt!=aVec.end(); aIt++) {
@@ -579,8 +592,8 @@ Standard_Integer bopargcheck (Draw_Interpretor& di,
         const BOPAlgo_CheckResult& aResult = anIt.Value();
         const TopoDS_Shape & aSS1 = aResult.GetShape1();
         const TopoDS_Shape & aSS2 = aResult.GetShape2();
-        const BOPCol_ListOfShape & aLS1 = aResult.GetFaultyShapes1();
-        const BOPCol_ListOfShape & aLS2 = aResult.GetFaultyShapes2();
+        const TopTools_ListOfShape & aLS1 = aResult.GetFaultyShapes1();
+        const TopTools_ListOfShape & aLS2 = aResult.GetFaultyShapes2();
         Standard_Boolean isL1 = !aLS1.IsEmpty();
         Standard_Boolean isL2 = !aLS2.IsEmpty();
 
@@ -908,6 +921,123 @@ Standard_Integer bopargcheck (Draw_Interpretor& di,
 }
 
 //=======================================================================
+//function : bopapicheck
+//purpose  : 
+//=======================================================================
+Standard_Integer bopapicheck(Draw_Interpretor& di,
+                             Standard_Integer n,
+                             const char** a)
+{
+  if (n < 2)
+  {
+    di.PrintHelp(a[0]);
+    return 1;
+  }
+
+  TopoDS_Shape aS1 = DBRep::Get(a[1]);
+  TopoDS_Shape aS2;
+  if (n > 2)
+  {
+    // Try to get the second shape
+    aS2 = DBRep::Get(a[2]);
+  }
+
+  BOPAlgo_Operation anOp = BOPAlgo_UNKNOWN;
+  Standard_Boolean bTestSE = Standard_True;
+  Standard_Boolean bTestSI = Standard_True;
+
+  for (Standard_Integer i = aS2.IsNull() ? 2 : 3; i < n; ++i)
+  {
+    if (!strcmp(a[i], "-op"))
+    {
+      // Get the operation type
+      ++i;
+      if (!strcmp(a[i], "common"))
+        anOp = BOPAlgo_COMMON;
+      else if (!strcmp(a[i], "fuse"))
+        anOp = BOPAlgo_FUSE;
+      else if (!strcmp(a[i], "cut"))
+        anOp = BOPAlgo_CUT;
+      else if (!strcmp(a[i], "tuc"))
+        anOp = BOPAlgo_CUT21;
+      else if (!strcmp(a[i], "section"))
+        anOp = BOPAlgo_SECTION;
+    }
+    else if (!strcmp(a[i], "-se"))
+    {
+      bTestSE = Standard_False;
+    }
+    else if (!strcmp(a[i], "-si"))
+    {
+      bTestSI = Standard_False;
+    }
+    else
+    {
+      di << "Invalid key: " << a[i] << ". Skipped.\n";
+    }
+  }
+
+  BRepAlgoAPI_Check aChecker(aS1, aS2, anOp, bTestSE, bTestSI);
+  if (aChecker.IsValid())
+  {
+    if (aS2.IsNull())
+      di << "The shape seems to be valid\n";
+    else
+      di << "The shapes seem to be valid\n";
+    return 0;
+  }
+
+  // Shapes seem to be invalid.
+  // Analyze the invalidity.
+
+  Standard_Boolean isInv1 = Standard_False, isInv2 = Standard_False;
+  Standard_Boolean isBadOp = Standard_False;
+  BOPAlgo_ListIteratorOfListOfCheckResult itF(aChecker.Result());
+  for (; itF.More(); itF.Next())
+  {
+    const BOPAlgo_CheckResult& aFaulty = itF.Value();
+    if (aFaulty.GetCheckStatus() == BOPAlgo_BadType)
+    {
+      isBadOp = Standard_True;
+    }
+    else
+    {
+      if (!isInv1)
+      {
+        isInv1 = !aFaulty.GetShape1().IsNull();
+      }
+      if (!isInv2)
+      {
+        isInv2 = !aFaulty.GetShape2().IsNull();
+      }
+    }
+
+    if (isInv1 && isInv2 && isBadOp)
+      break;
+  }
+
+  if (isInv1)
+  {
+    if (aS2.IsNull())
+      di << "The shape is invalid\n";
+    else
+      di << "The first shape is invalid\n";
+  }
+  if (isInv2)
+  {
+    di << "The second shape is invalid\n";
+  }
+  if (isBadOp)
+  {
+    if (aS2.IsNull())
+      di << "The shape is empty\n";
+    else
+      di << "The shapes are not valid for Boolean operation\n";
+  }
+  return 0;
+}
+
+//=======================================================================
 //function : xdistef
 //purpose  : 
 //=======================================================================
@@ -975,7 +1105,7 @@ Standard_Integer checkcurveonsurf(Draw_Interpretor& di,
   TopExp_Explorer aExpF, aExpE;
   char buf[200], aFName[10], anEName[10];
   NCollection_DataMap<TopoDS_Shape, Standard_Real, TopTools_ShapeMapHasher> aDMETol;
-  BOPCol_DataMapOfShapeInteger aMSI;
+  TopTools_DataMapOfShapeInteger aMSI;
   //
   anECounter = 0;
   aFCounter  = 0;
@@ -1075,7 +1205,7 @@ Standard_Integer checkcurveonsurf(Draw_Interpretor& di,
 //=======================================================================
 void MakeShapeForFullOutput (const TCollection_AsciiString & aBaseName,
                              const Standard_Integer          aIndex,
-                             const BOPCol_ListOfShape &      aList,
+                             const TopTools_ListOfShape &      aList,
                              Standard_Integer&               aCount,
                              Draw_Interpretor&               di,
                              Standard_Boolean                bCurveOnSurf,
@@ -1090,7 +1220,7 @@ void MakeShapeForFullOutput (const TCollection_AsciiString & aBaseName,
   BRep_Builder BB;
   BB.MakeCompound(cmp);
 
-  BOPCol_ListIteratorOfListOfShape anIt(aList);
+  TopTools_ListIteratorOfListOfShape anIt(aList);
   for(; anIt.More(); anIt.Next()) {
     const TopoDS_Shape & aS = anIt.Value();
     BB.Add(cmp, aS);

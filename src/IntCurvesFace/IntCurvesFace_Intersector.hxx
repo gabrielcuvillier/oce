@@ -113,7 +113,12 @@ public:
   //! or TopAbs_ON
   //! ( the point is on a boudary of the face).
     TopAbs_State State (const Standard_Integer I) const;
-  
+
+  //! Returns true if curve is parallel or belongs face surface
+  //! This case is recognized only for some pairs 
+  //! of analytical curves and surfaces (plane - line, ...)
+    Standard_Boolean IsParallel() const;
+
   //! Returns the significant face used to determine
   //! the intersection.
     const TopoDS_Face& Face() const;
@@ -155,11 +160,15 @@ private:
   IntCurveSurface_SequenceOfPnt SeqPnt;
   TColStd_SequenceOfInteger mySeqState;
   Standard_Boolean done;
+  Standard_Boolean myReady;
   Standard_Integer nbpnt;
   TopoDS_Face face;
   Standard_Address PtrOnPolyhedron;
   Standard_Address PtrOnBndBounding;
   Standard_Boolean myUseBoundTol;
+  Standard_Boolean myIsParallel; //Curve is "parallel" face surface
+                                 //This case is recognized only for some pairs 
+                                 //of analytical curves and surfaces (plane - line, ...)
 
 
 };

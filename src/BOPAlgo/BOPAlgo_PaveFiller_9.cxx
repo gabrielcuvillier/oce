@@ -16,18 +16,18 @@
 #include <Bnd_Box.hxx>
 #include <BOPAlgo_PaveFiller.hxx>
 #include <BOPAlgo_SectionAttribute.hxx>
-#include <BOPCol_MapOfInteger.hxx>
-#include <BOPCol_NCVector.hxx>
-#include <BOPCol_Parallel.hxx>
 #include <BOPDS_Curve.hxx>
 #include <BOPDS_DS.hxx>
 #include <BOPDS_Iterator.hxx>
 #include <BOPDS_ListOfPaveBlock.hxx>
 #include <BOPDS_PaveBlock.hxx>
 #include <BOPDS_ShapeInfo.hxx>
+#include <BOPTools_Parallel.hxx>
 #include <gp_Pnt.hxx>
 #include <IntTools_Context.hxx>
 #include <IntTools_ShrunkRange.hxx>
+#include <NCollection_Vector.hxx>
+#include <TColStd_MapOfInteger.hxx>
 #include <TopoDS_Edge.hxx>
 #include <TopoDS_Face.hxx>
 #include <TopoDS_Vertex.hxx>
@@ -63,20 +63,8 @@ class BOPAlgo_ShrunkRange : public IntTools_ShrunkRange {
 };
 //
 //=======================================================================
-typedef BOPCol_NCVector
-  <BOPAlgo_ShrunkRange> BOPAlgo_VectorOfShrunkRange; 
-//
-typedef BOPCol_ContextFunctor 
-  <BOPAlgo_ShrunkRange,
-  BOPAlgo_VectorOfShrunkRange,
-  Handle(IntTools_Context), 
-  IntTools_Context> BOPAlgo_ShrunkRangeFunctor;
-//
-typedef BOPCol_ContextCnt 
-  <BOPAlgo_ShrunkRangeFunctor,
-  BOPAlgo_VectorOfShrunkRange,
-  Handle(IntTools_Context)> BOPAlgo_ShrunkRangeCnt;
-//
+typedef NCollection_Vector<BOPAlgo_ShrunkRange> BOPAlgo_VectorOfShrunkRange;
+
 //=======================================================================
 // function: FillShrunkData
 // purpose: 
@@ -93,7 +81,7 @@ void BOPAlgo_PaveFiller::FillShrunkData(const TopAbs_ShapeEnum aType1,
   Standard_Integer i, nS[2], nE, nV1, nV2, aNbVSD, k;
   Standard_Real aT1, aT2;
   BOPDS_ListIteratorOfListOfPaveBlock aItLPB;
-  BOPCol_MapOfInteger aMI; 
+  TColStd_MapOfInteger aMI; 
   BOPAlgo_VectorOfShrunkRange aVSD;
   TopAbs_ShapeEnum aType[2] = { aType1, aType2 };
   //
@@ -131,7 +119,7 @@ void BOPAlgo_PaveFiller::FillShrunkData(const TopAbs_ShapeEnum aType1,
         const TopoDS_Vertex& aV2=
           (*(TopoDS_Vertex *)(&myDS->Shape(nV2))); 
         //
-        BOPAlgo_ShrunkRange& aSD=aVSD.Append1();
+        BOPAlgo_ShrunkRange& aSD=aVSD.Appended();
         //
         aSD.SetPaveBlock(aPB);
         aSD.SetData(aE, aT1, aT2, aV1, aV2); 
@@ -139,9 +127,9 @@ void BOPAlgo_PaveFiller::FillShrunkData(const TopAbs_ShapeEnum aType1,
     }
   }
   //
-  aNbVSD=aVSD.Extent();
+  aNbVSD=aVSD.Length();
   //=============================================================
-  BOPAlgo_ShrunkRangeCnt::Perform(myRunParallel, aVSD, myContext);
+  BOPTools_Parallel::Perform (myRunParallel, aVSD, myContext);
   //=============================================================
   //
   for (k=0; k < aNbVSD; ++k) {

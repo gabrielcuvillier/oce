@@ -16,6 +16,7 @@
 
 //  Modified by skv - Fri Dec 26 12:20:14 2003 OCC4455
 
+#include <Bnd_Tools.hxx>
 #include <BRep_Builder.hxx>
 #include <BRep_Tool.hxx>
 #include <BRepAdaptor_Curve.hxx>
@@ -46,8 +47,7 @@
 #include <TopTools_MapOfShape.hxx>
 //
 #include <BRepBndLib.hxx>
-#include <BOPCol_BoxBndTree.hxx>
-#include <NCollection_UBTreeFiller.hxx>
+#include <BOPTools_BoxTree.hxx>
 //
 #include <BOPTools_AlgoTools.hxx>
 
@@ -101,57 +101,6 @@ static void ExtentEdge(const TopoDS_Face& /*F*/,
 }
 
 //=======================================================================
-//function : SelectEdge
-//purpose  : 
-//=======================================================================
-static void SelectEdge (const TopoDS_Shape& theS,
-                        TopTools_ListOfShape& theLE)
-{
-  Standard_Real aT1, aT2, aDist, aDistMin;
-  TopExp_Explorer aExp;
-  TopTools_ListIteratorOfListOfShape aIt;
-  GeomAPI_ProjectPointOnCurve aProjPC;
-  gp_Pnt aPE1, aPE2;
-  TopoDS_Edge aRE;
-  //
-  aDistMin = RealLast();
-  //
-  aIt.Initialize(theLE);
-  for (; aIt.More(); aIt.Next()) {
-    const TopoDS_Edge& aE = *(TopoDS_Edge*)&aIt.Value();
-    //
-    const Handle(Geom_Curve)& aC = BRep_Tool::Curve(aE, aT1, aT2);
-    //
-    aProjPC.Init(aC, aT1, aT2);
-    aPE1 = aC->Value(aT1);
-    aPE2 = aC->Value(aT2);
-    //
-    aDist = 0.;
-    aExp.Init(theS, TopAbs_VERTEX);
-    for (; aExp.More(); aExp.Next()) {
-      const TopoDS_Vertex& aV = *(TopoDS_Vertex*)&aExp.Current();
-      const gp_Pnt aP = BRep_Tool::Pnt(aV);
-      //
-      aProjPC.Perform(aP);
-      if (aProjPC.NbPoints()) {
-        aDist += aProjPC.LowerDistance();
-      }
-      else {
-        aDist += Min(aP.Distance(aPE1), aP.Distance(aPE2));
-      }
-    }
-    //
-    if (aDist < aDistMin) {
-      aDistMin = aDist;
-      aRE = aE;
-    }
-  }
-  //
-  theLE.Clear();
-  theLE.Append(aRE);
-}
-
-//=======================================================================
 //function : CompletInt
 //purpose  : 
 //=======================================================================
@@ -165,8 +114,8 @@ void BRepOffset_Inter3d::CompletInt(const TopTools_ListOfShape& SetOfFaces,
   //---------------------------------------------------------------
 
   // Prepare tools for sorting the bounding boxes
-  BOPCol_BoxBndTree aBBTree;
-  NCollection_UBTreeFiller <Standard_Integer, Bnd_Box> aTreeFiller(aBBTree);
+  BOPTools_BoxTree aBBTree;
+  aBBTree.SetSize (SetOfFaces.Extent());
   //
   NCollection_IndexedDataMap<TopoDS_Shape, Bnd_Box, TopTools_ShapeMapHasher> aMFaces;
   // Construct bounding boxes for faces and add them to the tree
@@ -178,36 +127,36 @@ void BRepOffset_Inter3d::CompletInt(const TopTools_ListOfShape& SetOfFaces,
     Bnd_Box aBoxF;
     BRepBndLib::Add(aF, aBoxF);
     //
-    Standard_Integer i = aMFaces.Add(aF, aBoxF);
+    Standard_Integer i = aMFaces.Add (aF, aBoxF);
     //
-    aTreeFiller.Add(i, aBoxF);
+    aBBTree.Add(i, Bnd_Tools::Bnd2BVH(aBoxF));
   }
-  //
-  // shake tree filler
-  aTreeFiller.Fill();
-  //
-  // get faces with interfering bounding boxes
-  aItL.Initialize(SetOfFaces);
-  for (; aItL.More(); aItL.Next()) {
-    const TopoDS_Face& aF1 = TopoDS::Face(aItL.Value());
-    const Bnd_Box& aBoxF1 = aMFaces.FindFromKey(aF1);
-    //
-    BOPCol_BoxBndTreeSelector aSelector;
-    aSelector.SetBox(aBoxF1);
-    aBBTree.Select(aSelector);
-    //
-    const BOPCol_ListOfInteger& aLI = aSelector.Indices();
-    BOPCol_ListIteratorOfListOfInteger aItLI(aLI);
-    for (; aItLI.More(); aItLI.Next()) {
-      Standard_Integer i = aItLI.Value();
-      const TopoDS_Face& aF2 = TopoDS::Face(aMFaces.FindKey(i));
-      //
-      // intersect faces
-      FaceInter(aF1, aF2, InitOffsetFace);
-    }
+
+  // Build BVH
+  aBBTree.Build();
+
+  // Perform selection of the pairs
+  BOPTools_BoxPairSelector aSelector;
+  aSelector.SetBVHSets (&aBBTree, &aBBTree);
+  aSelector.SetSame (Standard_True);
+  aSelector.Select();
+  aSelector.Sort();
+
+  // Treat the selected pairs
+  const std::vector<BOPTools_BoxPairSelector::PairIDs>& aPairs = aSelector.Pairs();
+  const Standard_Integer aNbPairs = static_cast<Standard_Integer> (aPairs.size());
+
+  for (Standard_Integer iPair = 0; iPair < aNbPairs; ++iPair)
+  {
+    const BOPTools_BoxPairSelector::PairIDs& aPair = aPairs[iPair];
+
+    const TopoDS_Face& aF1 = TopoDS::Face (aMFaces.FindKey (Min (aPair.ID1, aPair.ID2)));
+    const TopoDS_Face& aF2 = TopoDS::Face (aMFaces.FindKey (Max (aPair.ID1, aPair.ID2)));
+
+    // intersect faces
+    FaceInter(aF1, aF2, InitOffsetFace);
   }
 }
-
 
 //=======================================================================
 //function : FaceInter
@@ -498,6 +447,11 @@ void BRepOffset_Inter3d::ConnexIntByInt
         TopExp_Explorer aExp(aFV1, TopAbs_EDGE);
         for (; aExp.More(); aExp.Next()) {
           const TopoDS_Shape& aE = aExp.Current();
+          if (aE.Orientation() != TopAbs_FORWARD &&
+              aE.Orientation() != TopAbs_REVERSED)
+            // Face is connected to the vertex through internal edge
+            break;
+
           TopoDS_Iterator aItV(aE);
           for (; aItV.More(); aItV.Next()) {
             if (aS.IsSame(aItV.Value())) {
@@ -506,7 +460,9 @@ void BRepOffset_Inter3d::ConnexIntByInt
             }
           }
         }
-        //
+        if (aExp.More())
+          continue;
+
         // get to the next face in the list
         it1 = it;
         for (it1.Next(); it1.More(); it1.Next()) {
@@ -515,7 +471,10 @@ void BRepOffset_Inter3d::ConnexIntByInt
           aExp.Init(aFV2, TopAbs_EDGE);
           for (; aExp.More(); aExp.Next()) {
             const TopoDS_Shape& aEV2 = aExp.Current();
-            if (aME.Contains(aEV2)) {
+            if (aME.Contains(aEV2) && 
+               (Analyse.Ancestors(aEV2).Extent() == 2 || // Multi-connexity is not supported in Analyzer
+               (aEV2.Orientation() != TopAbs_FORWARD &&  // Avoid intersection of faces connected by internal edge
+                aEV2.Orientation() != TopAbs_REVERSED))) { 
               break;
             }
           }
@@ -617,11 +576,6 @@ void BRepOffset_Inter3d::ConnexIntByInt
       if (!IsDone(NF1,NF2)) {
         TopTools_ListOfShape LInt1,LInt2;
         BRepOffset_Tool::Inter3D (NF1,NF2,LInt1,LInt2,CurSide,E,bEdge);
-        if (LInt1.Extent() > 1) { 
-          // intersection is in seceral edges (free sewing)
-          SelectEdge(aS, LInt1);
-          SelectEdge(aS, LInt2);
-        }
         SetDone(NF1,NF2);
         if (!LInt1.IsEmpty()) {
           Store (NF1,NF2,LInt1,LInt2);
