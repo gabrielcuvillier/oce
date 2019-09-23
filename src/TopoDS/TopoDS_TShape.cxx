@@ -17,4 +17,16 @@
 #include <TopoDS_TShape.hxx>
 #include <TopoDS_Shape.hxx>
 
+#include <Standard_Dump.hxx>
+
 IMPLEMENT_STANDARD_RTTIEXT(TopoDS_TShape,Standard_Transient)
+
+//=======================================================================
+//function : DumpJson
+//purpose  : 
+//=======================================================================
+void TopoDS_TShape::DumpJson (Standard_OStream& theOStream, const Standard_Integer) const
+{
+  DUMP_CLASS_BEGIN (theOStream, TopoDS_TShape);
+  DUMP_FIELD_VALUE_NUMERICAL (theOStream, myFlags);
+}

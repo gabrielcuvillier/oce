@@ -1,6 +1,4 @@
-// Created on: 2000-05-30
-// Created by: Sergey MOZOKHIN
-// Copyright (c) 2000-2014 OPEN CASCADE SAS
+// Copyright (c) 2016 OPEN CASCADE SAS
 //
 // This file is part of Open CASCADE Technology software library.
 //
@@ -13,12 +11,19 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
+#include <Graphic3d_PolygonOffset.hxx>
 
-#include <TopoDS_Shape.hxx>
-#include <VrmlAPI.hxx>
-#include <VrmlAPI_Writer.hxx>
+#include <Standard_Dump.hxx>
 
-Standard_Boolean VrmlAPI::Write(const TopoDS_Shape& aShape, const Standard_CString aFileName, const Standard_Integer aVersion)  {
-  VrmlAPI_Writer writer;
-  return writer.Write(aShape, aFileName, aVersion);
+//=======================================================================
+//function : DumpJson
+//purpose  : 
+//=======================================================================
+void Graphic3d_PolygonOffset::DumpJson (Standard_OStream& theOStream, const Standard_Integer) const
+{
+  DUMP_CLASS_BEGIN (theOStream, Graphic3d_PolygonOffset);
+
+  DUMP_FIELD_VALUE_NUMERICAL (theOStream, Mode);
+  DUMP_FIELD_VALUE_NUMERICAL (theOStream, Factor);
+  DUMP_FIELD_VALUE_NUMERICAL (theOStream, Units);
 }
