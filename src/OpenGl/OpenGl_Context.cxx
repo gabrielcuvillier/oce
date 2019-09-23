@@ -2,6 +2,8 @@
 // Created by: Kirill GAVRILOV
 // Copyright (c) 2012-2014 OPEN CASCADE SAS
 //
+// Emscripten-related parts: Copyright (c) 2019 Gabriel Cuvillier - Continuation Labs
+//
 // This file is part of Open CASCADE Technology software library.
 //
 // This library is free software; you can redistribute it and/or modify it under
@@ -49,6 +51,9 @@ IMPLEMENT_STANDARD_RTTIEXT(OpenGl_Context,Standard_Transient)
   #ifdef _MSC_VER
     #pragma comment(lib, "libEGL.lib")
   #endif
+#elif defined(__EMSCRIPTEN__)
+  #include <emscripten.h>
+  #include <emscripten/html5.h>
 #elif defined(_WIN32)
   //
 #elif defined(__APPLE__) && !defined(MACOSX_USE_GLX)
@@ -84,6 +89,13 @@ namespace
     TCollection_AsciiString aValue (theValue != NULL ? theValue : "");
     theDict.ChangeFromIndex (theDict.Add (theKey, aValue)) = aValue;
   }
+
+  constexpr Standard_Boolean ToUseWebGL =
+  #if defined(HAVE_WEBGL)
+    Standard_True;
+  #else
+    Standard_False;
+  #endif
 }
 
 // =======================================================================
@@ -148,6 +160,7 @@ OpenGl_Context::OpenGl_Context (const Handle(OpenGl_Caps)& theCaps)
   extBgra(Standard_False),
   extAnis(Standard_False),
   extPDS (Standard_False),
+  extTexDepth(Standard_False),
   atiMem (Standard_False),
   nvxMem (Standard_False),
   oesSampleVariables (Standard_False),
@@ -221,6 +234,9 @@ OpenGl_Context::OpenGl_Context (const Handle(OpenGl_Caps)& theCaps)
   myDisplay  = (Aspect_Display          )EGL_NO_DISPLAY;
   myWindow   = (Aspect_Drawable         )EGL_NO_SURFACE;
   myGContext = (Aspect_RenderingContext )EGL_NO_CONTEXT;
+#elif defined(__EMSCRIPTEN__)
+  myWindow   = (Aspect_Drawable         )NULL;
+  myGContext = (Aspect_RenderingContext )NULL;
 #elif defined(_WIN32)
   myWindow   = NULL;
   myWindowDC = NULL;
@@ -560,6 +576,8 @@ Standard_Boolean OpenGl_Context::IsCurrent() const
   return (((EGLDisplay )myDisplay  == eglGetCurrentDisplay())
        && ((EGLContext )myGContext == eglGetCurrentContext())
        && ((EGLSurface )myWindow   == eglGetCurrentSurface (EGL_DRAW)));
+#elif defined(__EMSCRIPTEN__)
+  return (emscripten_webgl_get_current_context() == myGContext);
 #elif defined(_WIN32)
   if (myWindowDC == NULL || myGContext == NULL)
   {
@@ -601,6 +619,8 @@ Standard_Boolean OpenGl_Context::MakeCurrent()
     myIsInitialized = Standard_False;
     return Standard_False;
   }
+#elif defined(__EMSCRIPTEN__)
+  return (emscripten_webgl_make_context_current(myGContext) == EMSCRIPTEN_RESULT_SUCCESS);
 #elif defined(_WIN32)
   if (myWindowDC == NULL || myGContext == NULL)
   {
@@ -663,6 +683,8 @@ void OpenGl_Context::SwapBuffers()
   {
     eglSwapBuffers ((EGLDisplay )myDisplay, (EGLSurface )myWindow);
   }
+#elif defined(__EMSCRIPTEN__)
+  emscripten_webgl_commit_frame();
 #elif defined(_WIN32)
   if ((HDC )myWindowDC != NULL)
   {
@@ -689,6 +711,16 @@ Standard_Boolean OpenGl_Context::SetSwapInterval (const Standard_Integer theInte
   if (::eglSwapInterval ((EGLDisplay )myDisplay, theInterval) == EGL_TRUE)
   {
     return Standard_True;
+  }
+#elif defined(__EMSCRIPTEN__)
+  if (theInterval == 0)
+  {
+    return emscripten_set_main_loop_timing(1/*EM_TIMING_RAF*/, 1) == 0;
+  }
+  else
+  {
+    // Note: Not sure about what represent theInterval value, so let's do nothing particular
+    return emscripten_set_main_loop_timing(1/*EM_TIMING_RAF*/, 1/*theInterval*/) == 0;
   }
 #elif defined(_WIN32)
   if (myFuncs->wglSwapIntervalEXT != NULL)
@@ -729,6 +761,8 @@ void* OpenGl_Context::findProc (const char* theFuncName)
 {
 #if defined(HAVE_EGL)
   return (void* )eglGetProcAddress (theFuncName);
+#elif defined(__EMSCRIPTEN__)
+  return (void*)emscripten_webgl_get_proc_address(theFuncName);
 #elif defined(_WIN32)
   return (void* )wglGetProcAddress (theFuncName);
 #elif defined(__APPLE__) && !defined(MACOSX_USE_GLX)
@@ -835,6 +869,9 @@ Standard_Boolean OpenGl_Context::Init (const Standard_Boolean theIsCoreProfile)
   myDisplay  = (Aspect_Display )eglGetCurrentDisplay();
   myGContext = (Aspect_RenderingContext )eglGetCurrentContext();
   myWindow   = (Aspect_Drawable )eglGetCurrentSurface(EGL_DRAW);
+#elif defined(__EMSCRIPTEN__)
+  myGContext = (Aspect_RenderingContext )emscripten_webgl_get_current_context();
+  myWindow   = (Aspect_Drawable )NULL;
 #elif defined(_WIN32)
   myWindowDC = (Aspect_Handle )wglGetCurrentDC();
   myGContext = (Aspect_RenderingContext )wglGetCurrentContext();
@@ -864,6 +901,10 @@ Standard_Boolean OpenGl_Context::Init (const Aspect_Drawable         theEglSurfa
                                        const Aspect_Display          theEglDisplay,
                                        const Aspect_RenderingContext theEglContext,
                                        const Standard_Boolean        theIsCoreProfile)
+#elif defined(__EMSCRIPTEN__)
+Standard_Boolean OpenGl_Context::Init (const Aspect_Drawable         theEmscriptenWindow,
+                                       const Aspect_RenderingContext theEmscriptenContext,
+                                       const Standard_Boolean        theIsCoreProfile)
 #elif defined(_WIN32)
 Standard_Boolean OpenGl_Context::Init (const Aspect_Handle           theWindow,
                                        const Aspect_Handle           theWindowDC,
@@ -891,6 +932,9 @@ Standard_Boolean OpenGl_Context::Init (const Aspect_Drawable         theWindow,
   myWindow   = theEglSurface;
   myGContext = theEglContext;
   myDisplay  = theEglDisplay;
+#elif defined(__EMSCRIPTEN__)
+  myWindow   = theEmscriptenWindow;
+  myGContext = theEmscriptenContext;
 #elif defined(_WIN32)
   myWindow   = theWindow;
   myGContext = theGContext;
@@ -1261,6 +1305,7 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
     }
   }
 
+#if !defined(GL_ES_VERSION_2_0)
   if (!caps->ffpEnable
    && !IsGlGreaterEqual (2, 0))
   {
@@ -1275,6 +1320,7 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
                                  "  Consider upgrading the graphics driver.";
     PushMessage (GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_PORTABILITY, 0, GL_DEBUG_SEVERITY_HIGH, aMsg);
   }
+#endif
 
 #if defined(GL_ES_VERSION_2_0)
   (void )theIsCoreProfile;
@@ -1349,7 +1395,7 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
 
   hasTexRGBA8 = IsGlGreaterEqual (3, 0)
              || CheckExtension ("GL_OES_rgb8_rgba8");
-  // NPOT textures has limited support within OpenGL ES 2.0
+  // NPOT textures has limited support within OpenGL ES 2.0 - GL_REPEAT not supported (only GL_CLAMP_TO_EDGE)
   // which are relaxed by OpenGL ES 3.0 or some extensions
   //arbNPTW     = IsGlGreaterEqual (3, 0)
   //           || CheckExtension ("GL_OES_texture_npot")
@@ -1361,6 +1407,16 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   extAnis = CheckExtension ("GL_EXT_texture_filter_anisotropic");
   extPDS  = IsGlGreaterEqual (3, 0)
          || CheckExtension ("GL_OES_packed_depth_stencil");
+  extTexDepth = CheckExtension ("GL_OES_depth_texture");
+
+  if constexpr(ToUseWebGL) {
+    // WEBGL_depth_texture is a subset of GL_OES_depth_texture and GL_OES_packed_depth_stencil. This should work (see OpenGl_Framebuffer.cxx)
+    if (CheckExtension("GL_WEBGL_depth_texture"))
+    {
+      extPDS = true;
+      extTexDepth = true;
+    }
+  }
 
   core11fwd = (OpenGl_GlCore11Fwd* )(&(*myFuncs));
   if (IsGlGreaterEqual (2, 0))
@@ -1369,7 +1425,9 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
     core20    = (OpenGl_GlCore20*    )(&(*myFuncs));
     core20fwd = (OpenGl_GlCore20Fwd* )(&(*myFuncs));
     core15fwd = (OpenGl_GlCore15Fwd* )(&(*myFuncs));
-    arbFBO    = (OpenGl_ArbFBO*      )(&(*myFuncs));
+    if (!caps->fboDisable) {
+      arbFBO    = (OpenGl_ArbFBO*      )(&(*myFuncs));
+    }
   }
   if (IsGlGreaterEqual (3, 0)
    && FindProcShort (glBlitFramebuffer))
@@ -1469,10 +1527,10 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   }
 
   hasFloatBuffer     = IsGlGreaterEqual (3, 2) ? OpenGl_FeatureInCore :
-                       CheckExtension ("GL_EXT_color_buffer_float") ? OpenGl_FeatureInExtensions 
+                       CheckExtension ("GL_EXT_color_buffer_float") ? OpenGl_FeatureInExtensions
                                                                     : OpenGl_FeatureNotAvailable;
   hasHalfFloatBuffer = IsGlGreaterEqual (3, 2) ? OpenGl_FeatureInCore :
-                       CheckExtension ("GL_EXT_color_buffer_half_float") ? OpenGl_FeatureInExtensions 
+                       CheckExtension ("GL_EXT_color_buffer_half_float") ? OpenGl_FeatureInExtensions
                                                                          : OpenGl_FeatureNotAvailable;
 
   oesSampleVariables = CheckExtension ("GL_OES_sample_variables");
@@ -1518,7 +1576,7 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   nvxMem           = CheckExtension ("GL_NVX_gpu_memory_info");
 
   hasDrawBuffers = IsGlGreaterEqual (2, 0) ? OpenGl_FeatureInCore :
-                   arbDrawBuffers ? OpenGl_FeatureInExtensions 
+                   arbDrawBuffers ? OpenGl_FeatureInExtensions
                                   : OpenGl_FeatureNotAvailable;
 
   hasGlslBitwiseOps = IsGlGreaterEqual (3, 0)
@@ -2749,7 +2807,7 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   }
 
   // initialize FBO extension (ARB)
-  if (hasFBO)
+  if (hasFBO && !caps->fboDisable)
   {
     arbFBO     = (OpenGl_ArbFBO*     )(&(*myFuncs));
     arbFBOBlit = (OpenGl_ArbFBOBlit* )(&(*myFuncs));
@@ -3019,6 +3077,8 @@ void OpenGl_Context::DiagnosticInformation (TColStd_IndexedDataMapOfStringString
       addInfo (theDict, "WGLExtensions", aWglExts);
     }
   #elif defined(__APPLE__)
+    //
+  #elif defined(__EMSCRIPTEN__)
     //
   #else
     Display* aDisplay = (Display*)myDisplay;

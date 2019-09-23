@@ -146,7 +146,7 @@ bool Standard_Atomic_CompareAndSwap (volatile int* theValue, int theOldValue, in
 
 #else
 
-#ifndef IGNORE_NO_ATOMICS
+#ifndef OCCT_IGNORE_NO_ATOMICS
   #error "Atomic operation isn't implemented for current platform!"
 #endif
 int Standard_Atomic_Increment (volatile int* theValue)

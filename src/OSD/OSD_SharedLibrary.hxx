@@ -28,7 +28,6 @@
 #include <OSD_LoadMode.hxx>
 #include <OSD_Function.hxx>
 
-
 //! Interface to dynamic library loader.
 //! Provides tools to load a shared library
 //! and retrieve the address of an entry point.
@@ -94,13 +93,11 @@ public:
   
   //! Frees memory allocated.
   Standard_EXPORT void Destroy();
-~OSD_SharedLibrary()
-{
-  Destroy();
-}
 
-
-
+  ~OSD_SharedLibrary()
+  {
+    Destroy();
+  }
 
 protected:
 

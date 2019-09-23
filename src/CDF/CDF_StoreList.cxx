@@ -120,7 +120,6 @@ PCDM_StoreStatus CDF_StoreList::Store (Handle(CDM_MetaData)& aMetaData, TCollect
         }
       }
     }
-
     catch (CDF_MetaDataDriverError const& anException) {
       CAUGHT(anException, aStatusAssociatedText, TCollection_ExtendedString("metadatadriver failed; reason:"));
       status = PCDM_SS_DriverFailure;

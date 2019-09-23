@@ -2509,64 +2509,6 @@ void  BRepLib::SortFaces (const TopoDS_Shape& Sh,
 }
 
 //=======================================================================
-//function : ReverseSortFaces
-//purpose  : 
-//=======================================================================
-
-void  BRepLib::ReverseSortFaces (const TopoDS_Shape& Sh,
-  TopTools_ListOfShape& LF)
-{
-  LF.Clear();
-  // Use the allocator of the result LF for intermediate results
-  TopTools_ListOfShape LTri(LF.Allocator()), LPlan(LF.Allocator()),
-    LCyl(LF.Allocator()), LCon(LF.Allocator()), LSphere(LF.Allocator()),
-    LTor(LF.Allocator()), LOther(LF.Allocator());
-  TopExp_Explorer exp(Sh,TopAbs_FACE);
-  TopLoc_Location l;
-
-  for (; exp.More(); exp.Next()) {
-    const TopoDS_Face&   F = TopoDS::Face(exp.Current());
-    const Handle(Geom_Surface)& S = BRep_Tool::Surface(F, l);
-    if (!S.IsNull()) {
-      GeomAdaptor_Surface AS(S);
-      switch (AS.GetType()) {
-      case GeomAbs_Plane: 
-        {
-          LPlan.Append(F);
-          break;
-        }
-      case GeomAbs_Cylinder: 
-        {
-          LCyl.Append(F);
-          break;
-        }
-      case GeomAbs_Cone: 
-        {
-          LCon.Append(F);
-          break;
-        }
-      case GeomAbs_Sphere: 
-        {
-          LSphere.Append(F);
-          break;
-        }
-      case GeomAbs_Torus: 
-        {
-          LTor.Append(F);
-          break;
-        }
-      default:
-        LOther.Append(F);
-      }
-    }
-    else LTri.Append(F);
-  }
-  LF.Append(LTri); LF.Append(LOther); LF.Append(LTor ); LF.Append(LSphere);
-  LF.Append(LCon); LF.Append(LCyl  ); LF.Append(LPlan);
-
-}
-
-//=======================================================================
 // function: BoundingVertex
 // purpose : 
 //=======================================================================

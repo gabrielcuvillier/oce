@@ -22,6 +22,8 @@
 #include <OSD_Protection.hxx>
 #include <OSD_File.hxx>
 
+#if !defined(GL_ES_VERSION_2_0)
+
 #include "../Shaders/Shaders_RaytraceBase_vs.pxx"
 #include "../Shaders/Shaders_RaytraceBase_fs.pxx"
 #include "../Shaders/Shaders_PathtraceBase_fs.pxx"
@@ -3106,3 +3108,5 @@ Standard_Boolean OpenGl_View::raytrace (const Standard_Integer        theSizeX,
 
   return Standard_True;
 }
+
+#endif

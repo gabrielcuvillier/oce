@@ -22,6 +22,8 @@
 #include <OpenGl_Structure.hxx>
 #include <Graphic3d_GraphicDriver.hxx>
 
+#if !defined(GL_ES_VERSION_2_0)
+
 //! Use this macro to output BVH profiling info
 // #define RAY_TRACE_PRINT_INFO
 
@@ -567,3 +569,5 @@ namespace OpenGl_Raytrace
     return Standard_False;
   }
 }
+
+#endif

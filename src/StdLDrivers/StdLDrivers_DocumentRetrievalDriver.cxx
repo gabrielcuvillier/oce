@@ -211,7 +211,6 @@ Handle(StdObjMgt_Persistent) StdLDrivers_DocumentRetrievalDriver::read (
     catch (Storage_StreamTypeMismatchError const&) { anError = Storage_VSTypeMismatch; }
     catch (Storage_StreamFormatError const&      ) { anError = Storage_VSFormatError;  }
     catch (Storage_StreamReadError const&        ) { anError = Storage_VSFormatError;  }
-
     raiseOnStorageError (anError);
   }
 
@@ -250,40 +249,41 @@ void StdLDrivers_DocumentRetrievalDriver::raiseOnStorageError (Storage_Error the
 
   case Storage_VSOpenError:
   case Storage_VSNotOpen:
-  case Storage_VSAlreadyOpen:
+  case Storage_VSAlreadyOpen: {
     myReaderStatus = PCDM_RS_OpenError;
     aMsg << "Stream Open Error" << std::endl;
     throw Standard_Failure(aMsg.str().c_str());
-
-  case Storage_VSModeError:
+  }
+  case Storage_VSModeError: {
     myReaderStatus = PCDM_RS_WrongStreamMode;
     aMsg << "Stream is opened with a wrong mode for operation" << std::endl;
     throw Standard_Failure(aMsg.str().c_str());
-
-  case Storage_VSSectionNotFound:
+  }
+  case Storage_VSSectionNotFound: {
     myReaderStatus = PCDM_RS_FormatFailure;
     aMsg << "Section is not found" << std::endl;
     throw Standard_Failure(aMsg.str().c_str());
-
-  case Storage_VSFormatError:
+  }
+  case Storage_VSFormatError: {
     myReaderStatus = PCDM_RS_FormatFailure;
     aMsg << "Wrong format error" << std::endl;
     throw Standard_Failure(aMsg.str().c_str());
-
-  case Storage_VSUnknownType:
+  }
+  case Storage_VSUnknownType: {
     myReaderStatus = PCDM_RS_TypeFailure;
     aMsg << "Try to read an unknown type" << std::endl;
     throw Standard_Failure(aMsg.str().c_str());
-
-  case Storage_VSTypeMismatch:
+  }
+  case Storage_VSTypeMismatch: {
     myReaderStatus = PCDM_RS_TypeFailure;
     aMsg << "Try to read a wrong primitive type" << std::endl;
     throw Standard_Failure(aMsg.str().c_str());
-
-  default:
+  }
+  default: {
     myReaderStatus = PCDM_RS_DriverFailure;
     aMsg << "Retrieval Driver Failure" << std::endl;
     throw Standard_Failure(aMsg.str().c_str());
+  }
   }
 }
 

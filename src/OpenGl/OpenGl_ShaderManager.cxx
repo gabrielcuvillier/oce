@@ -13,8 +13,6 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
-#include <typeinfo>
-
 #include <Graphic3d_TextureParams.hxx>
 #include <OpenGl_Aspects.hxx>
 #include <OpenGl_ClippingIterator.hxx>
@@ -1182,6 +1180,7 @@ void OpenGl_ShaderManager::pushMaterialState (const Handle(OpenGl_ShaderProgram)
   }
 }
 
+#if !defined(GL_ES_VERSION_2_0)
 // =======================================================================
 // function : pushOitState
 // purpose  :
@@ -1200,6 +1199,7 @@ void OpenGl_ShaderManager::pushOitState (const Handle(OpenGl_ShaderProgram)& the
     theProgram->SetUniform (myContext, aLocDepthFactor, myOitState.DepthFactor());
   }
 }
+#endif
 
 // =======================================================================
 // function : PushInteriorState
@@ -1249,7 +1249,9 @@ void OpenGl_ShaderManager::PushState (const Handle(OpenGl_ShaderProgram)& thePro
   PushProjectionState  (aProgram);
   PushLightSourceState (aProgram);
   PushMaterialState    (aProgram);
+#if !defined(GL_ES_VERSION_2_0)
   PushOitState         (aProgram);
+#endif
 
   if (!theProgram.IsNull())
   {
@@ -1388,6 +1390,7 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramFboBlit()
 // function : prepareStdProgramOitCompositing
 // purpose  :
 // =======================================================================
+#if !defined(GL_ES_VERSION_2_0)
 Standard_Boolean OpenGl_ShaderManager::prepareStdProgramOitCompositing (const Standard_Boolean theMsaa)
 {
   Handle(OpenGl_ShaderProgram)& aProgram = myOitCompositingProgram[theMsaa ? 1 : 0];
@@ -1475,6 +1478,7 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramOitCompositing (const St
   myContext->BindProgram (Handle(OpenGl_ShaderProgram)());
   return Standard_True;
 }
+#endif
 
 // =======================================================================
 // function : pointSpriteAlphaSrc
@@ -1803,11 +1807,13 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramUnlit (Handle(OpenGl_Sha
                          : THE_FRAG_CLIP_PLANES_2;
     }
   }
+#if !defined(GL_ES_VERSION_2_0)
   if ((theBits & OpenGl_PO_WriteOit) != 0)
   {
     aProgramSrc->SetNbFragmentOutputs (2);
     aProgramSrc->SetWeightOitOutput (true);
   }
+#endif
 
   if (theIsOutline)
   {
@@ -1837,7 +1843,7 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramUnlit (Handle(OpenGl_Sha
         EOL"  ScreenSpaceCoord = aPosition.xy * occViewport.zw + occViewport.xy;";
       aSrcFragMainGetColor = TCollection_AsciiString()
       + EOL"  vec2 anAxis = vec2 (0.0, 1.0);"
-        EOL"  if (abs (dFdx (ScreenSpaceCoord.x)) - abs (dFdy (ScreenSpaceCoord.y)) > 0.001)" 
+        EOL"  if (abs (dFdx (ScreenSpaceCoord.x)) - abs (dFdy (ScreenSpaceCoord.y)) > 0.001)"
         EOL"  {"
         EOL"    anAxis = vec2 (1.0, 0.0);"
         EOL"  }"
@@ -2159,11 +2165,13 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramGouraud (Handle(OpenGl_S
                           : THE_FRAG_CLIP_PLANES_2;
     }
   }
+#if !defined(GL_ES_VERSION_2_0)
   if ((theBits & OpenGl_PO_WriteOit) != 0)
   {
     aProgramSrc->SetNbFragmentOutputs (2);
     aProgramSrc->SetWeightOitOutput (true);
   }
+#endif
 
   aStageInOuts.Append (OpenGl_ShaderObject::ShaderVariable ("vec4 FrontColor", Graphic3d_TOS_VERTEX | Graphic3d_TOS_FRAGMENT));
   aStageInOuts.Append (OpenGl_ShaderObject::ShaderVariable ("vec4 BackColor",  Graphic3d_TOS_VERTEX | Graphic3d_TOS_FRAGMENT));
@@ -2329,11 +2337,13 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramPhong (Handle(OpenGl_Sha
                          : THE_FRAG_CLIP_PLANES_2;
     }
   }
+#if !defined(GL_ES_VERSION_2_0)
   if ((theBits & OpenGl_PO_WriteOit) != 0)
   {
     aProgramSrc->SetNbFragmentOutputs (2);
     aProgramSrc->SetWeightOitOutput (true);
   }
+#endif
 
   if (isFlatNormal)
   {
@@ -2403,6 +2413,7 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramPhong (Handle(OpenGl_Sha
   return Standard_True;
 }
 
+#if !defined(GL_ES_VERSION_2_0)
 // =======================================================================
 // function : prepareStdProgramStereo
 // purpose  :
@@ -2596,6 +2607,7 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramStereo (Handle(OpenGl_Sh
   myContext->BindProgram (NULL);
   return Standard_True;
 }
+#endif
 
 // =======================================================================
 // function : prepareStdProgramBoundBox
@@ -2670,9 +2682,11 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramBoundBox()
       return Standard_True;
     }
   }
+#if !defined(GL_ES_VERSION_2_0)
   myBoundBoxVertBuffer = new OpenGl_VertexBufferCompat();
   myBoundBoxVertBuffer->Init (myContext, 4, 24, aLinesVertices[0].GetData());
   myContext->ShareResource ("OpenGl_ShaderManager_BndBoxVbo", myBoundBoxVertBuffer);
+#endif
   return Standard_True;
 }
 
@@ -2750,7 +2764,10 @@ Standard_Boolean OpenGl_ShaderManager::BindMarkerProgram (const Handle(OpenGl_Te
                                                           const Handle(OpenGl_ShaderProgram)& theCustomProgram)
 {
   if (!theCustomProgram.IsNull()
-    || myContext->caps->ffpEnable)
+#if !defined(GL_ES_VERSION_2_0)
+    || myContext->caps->ffpEnable
+#endif
+    )
   {
     return bindProgramWithState (theCustomProgram);
   }

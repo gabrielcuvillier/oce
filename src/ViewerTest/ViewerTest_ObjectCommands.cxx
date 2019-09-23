@@ -89,8 +89,7 @@
 #include <TopLoc_Location.hxx>
 
 #include <HLRAlgo_Projector.hxx>
-#include <HLRBRep_Algo.hxx>
-#include <HLRBRep_PolyAlgo.hxx>
+#include <HLRAlgo_BRepPolyAlgo.hxx>
 #include <HLRBRep_PolyHLRToShape.hxx>
 #include <HLRBRep_HLRToShape.hxx>
 #include <Aspect_Window.hxx>
@@ -1211,7 +1210,7 @@ static Standard_Integer VPlaneBuilder (Draw_Interpretor& /*di*/,
         }
         // The third object is an AIS_Point
         Handle(AIS_InteractiveObject) aShapeC;
-        if (!GetMapOfAIS().Find2(argv[4], aShapeC)) 
+        if (!GetMapOfAIS().Find2(argv[4], aShapeC))
         {
           std::cout<<"vplane: error 3d name doesn't exist in the GetMapOfAIS().\n";
           return 1; 

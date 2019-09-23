@@ -19,7 +19,7 @@
 #include <AIS_PerpendicularRelation.hxx>
 #include <BRep_Tool.hxx>
 #include <BRepAdaptor_Surface.hxx>
-#include <BRepBuilderAPI_MakeFace.hxx>
+#include <BRepLib_MakeFace.hxx>
 #include <DsgPrs_PerpenPresentation.hxx>
 #include <ElCLib.hxx>
 #include <gce_MakeDir.hxx>
@@ -242,7 +242,7 @@ void AIS_PerpendicularRelation::ComputeTwoEdgesPerpendicular(const Handle(Prs3d_
   else return;
 
   // current face
-  BRepBuilderAPI_MakeFace makeface (myPlane->Pln());
+  BRepLib_MakeFace makeface (myPlane->Pln());
   TopoDS_Face face (makeface.Face());  
   BRepAdaptor_Surface adp (makeface.Face());
   

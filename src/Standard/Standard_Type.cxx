@@ -121,6 +121,9 @@ Standard_Type* Standard_Type::Register (const char* theSystemName, const char* t
   aRegistry.Bind (aType->mySystemName, aType);
 
 //  std::cout << "Registering " << theSystemName << ": " << aRegistry.Extent() << std::endl;
+#if 1
+  std::cout << "Registering " << theName << " (" << theSystemName << ")" << std::endl;
+#endif
 
   return aType;
 }
@@ -134,4 +137,12 @@ Standard_Type::~Standard_Type ()
 //  std::cout << "Unregistering " << mySystemName << ": " << aRegistry.Extent() << std::endl;
   Standard::Free (mySystemName);
   Standard::Free (myName);
+}
+
+void opencascade::debug_type(Standard_Transient const * theTransient) noexcept {
+  if constexpr(true) {
+    if (theTransient) {
+      theTransient->DynamicType();
+    }
+  }
 }

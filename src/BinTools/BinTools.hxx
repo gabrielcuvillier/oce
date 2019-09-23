@@ -28,6 +28,7 @@
 #include <Standard_IStream.hxx>
 
 class TopoDS_Shape;
+class Poly_Triangulation;
 class BinTools_ShapeSet;
 class BinTools_Curve2dSet;
 class BinTools_CurveSet;
@@ -44,7 +45,9 @@ public:
 
   
   Standard_EXPORT static Standard_OStream& PutReal (Standard_OStream& OS, const Standard_Real theValue);
-  
+
+  Standard_EXPORT static Standard_OStream& PutShortReal (Standard_OStream& OS, const Standard_ShortReal theValue);
+
   Standard_EXPORT static Standard_OStream& PutInteger (Standard_OStream& OS, const Standard_Integer theValue);
   
   Standard_EXPORT static Standard_OStream& PutBool (Standard_OStream& OS, const Standard_Boolean theValue);
@@ -52,7 +55,9 @@ public:
   Standard_EXPORT static Standard_OStream& PutExtChar (Standard_OStream& OS, const Standard_ExtCharacter theValue);
   
   Standard_EXPORT static Standard_IStream& GetReal (Standard_IStream& IS, Standard_Real& theValue);
-  
+
+  Standard_EXPORT static Standard_IStream& GetShortReal (Standard_IStream& IS, Standard_ShortReal& theValue);
+
   Standard_EXPORT static Standard_IStream& GetInteger (Standard_IStream& IS, Standard_Integer& theValue);
   
   Standard_EXPORT static Standard_IStream& GetBool (Standard_IStream& IS, Standard_Boolean& theValue);
@@ -71,7 +76,21 @@ public:
   //! Reads a shape from <theFile> and returns it in <theShape>.
   Standard_EXPORT static Standard_Boolean Read (TopoDS_Shape& theShape, const Standard_CString theFile);
 
-protected:
+  //! Writes <theTri> on <theStream> in binary format.
+  Standard_EXPORT static void Write (Handle(Poly_Triangulation) theTri, Standard_OStream& theStream,
+                                     Standard_Boolean bFormatWithNormals = false);
+
+  //! Reads a triangulation from <theStream> and returns it in <theShape>.
+  Standard_EXPORT static void Read (Handle(Poly_Triangulation)& theTri, Standard_IStream& theStream,
+                                    Standard_Boolean bFormatWithNormals = false);
+
+  //! Writes <theTri> in <theFile>.
+  Standard_EXPORT static Standard_Boolean Write (Handle(Poly_Triangulation) theTri, const Standard_CString theFile);
+
+  //! Reads a triangulation from <theFile> and returns it in <theTri>.
+  Standard_EXPORT static Standard_Boolean Read (Handle(Poly_Triangulation)& theTri, const Standard_CString theFile);
+
+ protected:
 
 
 

@@ -19,6 +19,7 @@ Standard_CString.cxx
 Standard_CString.hxx
 Standard_DefineAlloc.hxx
 Standard_DefineException.hxx
+Standard_DefineException.cxx
 Standard_DefineHandle.hxx
 Standard_DimensionError.hxx
 Standard_DimensionMismatch.hxx

@@ -24,7 +24,7 @@
 //! possibility of removing lines, which are hidden
 //! in a given projection. To do this, the Hidden
 //! Line Removal component provides two
-//! algorithms: HLRBRep_Algo and HLRBRep_PolyAlgo.
+//! algorithms: HLRBRep_Algo and HLRAlgo_BRepPolyAlgo.
 //! These algorithms remove or indicate lines
 //! hidden by surfaces. For a given projection, they
 //! calculate a set of lines characteristic of the
@@ -35,11 +35,11 @@
 //! is made up of edges, which represent the lines
 //! of the visualized shape in a plane. This plane is the projection plane.
 //! HLRBRep_Algo takes into account the shape
-//! itself. HLRBRep_PolyAlgo works with a
+//! itself. HLRAlgo_BRepPolyAlgo works with a
 //! polyhedral simplification of the shape. When
 //! you use HLRBRep_Algo, you obtain an exact
 //! result, whereas, when you use
-//! HLRBRep_PolyAlgo, you reduce computation
+//! HLRAlgo_BRepPolyAlgo, you reduce computation
 //! time but obtain polygonal segments.
 class HLRAlgo 
 {

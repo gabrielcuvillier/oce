@@ -267,8 +267,9 @@ GeomAbs_Shape Geom2dAdaptor_Curve::Continuity() const
     case GeomAbs_G1: return GeomAbs_G1;
     case GeomAbs_G2: return GeomAbs_G2;
 
-    default:
+    default: {
       throw Standard_NoSuchObject("Geom2dAdaptor_Curve::Continuity");
+    }
     }
   }
 
@@ -297,9 +298,10 @@ Standard_Integer Geom2dAdaptor_Curve::NbIntervals(const GeomAbs_Shape S) const
       Standard_Integer Cont;
       switch ( S) {
       case GeomAbs_G1:
-      case GeomAbs_G2:
-	throw Standard_DomainError("Geom2dAdaptor_Curve::NbIntervals");
-	break;
+      case GeomAbs_G2: {
+        throw Standard_DomainError("Geom2dAdaptor_Curve::NbIntervals");
+        break;
+      }
       case GeomAbs_C0:
 	myNbIntervals = 1;
 	break;
@@ -369,9 +371,10 @@ Standard_Integer Geom2dAdaptor_Curve::NbIntervals(const GeomAbs_Shape S) const
     GeomAbs_Shape BaseS=GeomAbs_C0;
     switch(S){
     case GeomAbs_G1:
-    case GeomAbs_G2:
+    case GeomAbs_G2: {
       throw Standard_DomainError("GeomAdaptor_Curve::NbIntervals");
       break;
+    }
     case GeomAbs_C0: BaseS = GeomAbs_C1; break;
     case GeomAbs_C1: BaseS = GeomAbs_C2; break;
     case GeomAbs_C2: BaseS = GeomAbs_C3; break;
@@ -402,9 +405,10 @@ void Geom2dAdaptor_Curve::Intervals(TColStd_Array1OfReal& T,
       Standard_Integer Cont;
       switch ( S) {
       case GeomAbs_G1:
-      case GeomAbs_G2:
-	throw Standard_DomainError("Geom2dAdaptor_Curve::NbIntervals");
-	break;
+      case GeomAbs_G2: {
+        throw Standard_DomainError("Geom2dAdaptor_Curve::NbIntervals");
+        break;
+      }
       case GeomAbs_C0:
 	myNbIntervals = 1;
 	break;
@@ -485,9 +489,10 @@ void Geom2dAdaptor_Curve::Intervals(TColStd_Array1OfReal& T,
     GeomAbs_Shape BaseS=GeomAbs_C0;
     switch(S){
     case GeomAbs_G1:
-    case GeomAbs_G2:
+    case GeomAbs_G2: {
       throw Standard_DomainError("GeomAdaptor_Curve::NbIntervals");
       break;
+    }
     case GeomAbs_C0: BaseS = GeomAbs_C1; break;
     case GeomAbs_C1: BaseS = GeomAbs_C2; break;
     case GeomAbs_C2: BaseS = GeomAbs_C3; break;

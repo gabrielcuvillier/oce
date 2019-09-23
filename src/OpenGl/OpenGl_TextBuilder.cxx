@@ -179,11 +179,13 @@ void OpenGl_TextBuilder::Perform (const Font_TextFormatter&                     
         aVertsVbo = new OpenGl_VertexBuffer();
         aTcrdsVbo = new OpenGl_VertexBuffer();
       }
+#if !defined(GL_ES_VERSION_2_0)
       else
       {
         aVertsVbo = new OpenGl_VertexBufferCompat();
         aTcrdsVbo = new OpenGl_VertexBufferCompat();
       }
+#endif
       theVertsPerTexture.Append (aVertsVbo);
       theTCrdsPerTexture.Append (aTcrdsVbo);
       aVertsVbo->Create (theCtx);

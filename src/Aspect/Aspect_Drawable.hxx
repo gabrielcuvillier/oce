@@ -24,6 +24,8 @@
 
 #ifdef _WIN32
  typedef void*        Aspect_Drawable;	/* HDC under WNT */
+#elif defined(__EMSCRIPTEN__)
+ typedef const char*  Aspect_Drawable;  /* Target Canvas under Emscripten */
 #else
  typedef unsigned long Aspect_Drawable;	/* Window or Pixmap under UNIX */
 #endif /* _WIN32 */

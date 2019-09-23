@@ -22,7 +22,7 @@
 #include <HLRAlgo_EdgeStatus.hxx>
 #include <HLRBRep_BiPoint.hxx>
 #include <HLRBRep_ListIteratorOfListOfBPoint.hxx>
-#include <HLRBRep_PolyAlgo.hxx>
+#include <HLRAlgo_BRepPolyAlgo.hxx>
 #include <HLRTest_DrawablePolyEdgeTool.hxx>
 #include <OSD_Chronometer.hxx>
 #include <Standard_Type.hxx>
@@ -42,7 +42,7 @@ IMPLEMENT_STANDARD_RTTIEXT(HLRTest_DrawablePolyEdgeTool,Draw_Drawable3D)
 //=======================================================================
 
 HLRTest_DrawablePolyEdgeTool::
-HLRTest_DrawablePolyEdgeTool (const Handle(HLRBRep_PolyAlgo)& Alg,
+HLRTest_DrawablePolyEdgeTool (const Handle(HLRAlgo_BRepPolyAlgo)& Alg,
 			      const Standard_Integer ViewId,
 			      const Standard_Boolean Debug) :
   myAlgo(Alg),

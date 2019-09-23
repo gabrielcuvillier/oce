@@ -41,7 +41,6 @@
 
 static int errh = 1;
 
-
 static void raisecheck (Standard_Failure& theException,Handle(Interface_Check)& ach)
 {
   char mess[100];
@@ -57,7 +56,6 @@ static void raisecheck (Standard_Failure& theException,Handle(Interface_Check)& 
     throw theException;
   }
 }
-
 
   //  thestat : evite a CheckSuccess de refaire un calcul prealablement fait :
   //  bit valeur 1 : Verify  fait, valeur 4 : et ilya des erreurs

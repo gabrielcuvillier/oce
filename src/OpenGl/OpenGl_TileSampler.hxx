@@ -16,6 +16,8 @@
 #ifndef _OpenGl_TileSampler_H
 #define _OpenGl_TileSampler_H
 
+#if !defined(HAVE_GLES2)
+
 #include <OpenGl_Texture.hxx>
 #include <OpenGl_HaltonSampler.hxx>
 
@@ -158,3 +160,4 @@ protected:
 };
 
 #endif // _OpenGl_TileSampler_H
+#endif

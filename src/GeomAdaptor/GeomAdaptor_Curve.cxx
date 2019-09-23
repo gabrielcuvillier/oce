@@ -223,8 +223,9 @@ GeomAbs_Shape GeomAdaptor_Curve::Continuity() const
       case GeomAbs_C1: return GeomAbs_C0; 
       case GeomAbs_G1: return GeomAbs_G1;
       case GeomAbs_G2: return GeomAbs_G2;
-      default:
+      default: {
         throw Standard_NoSuchObject("GeomAdaptor_Curve::Continuity");
+      }
     }
   }
   else if (myTypeCurve == GeomAbs_OtherCurve) {
@@ -251,9 +252,10 @@ Standard_Integer GeomAdaptor_Curve::NbIntervals(const GeomAbs_Shape S) const
       Standard_Integer Cont;
       switch ( S) {
       case GeomAbs_G1:
-      case GeomAbs_G2:
+      case GeomAbs_G2: {
         throw Standard_DomainError("GeomAdaptor_Curve::NbIntervals");
         break;
+      }
       case GeomAbs_C0:
         myNbIntervals = 1;
         break;
@@ -329,9 +331,10 @@ Standard_Integer GeomAdaptor_Curve::NbIntervals(const GeomAbs_Shape S) const
     GeomAbs_Shape BaseS=GeomAbs_C0;
     switch(S){
     case GeomAbs_G1:
-    case GeomAbs_G2:
+    case GeomAbs_G2: {
       throw Standard_DomainError("GeomAdaptor_Curve::NbIntervals");
       break;
+    }
     case GeomAbs_C0: BaseS = GeomAbs_C1; break;
     case GeomAbs_C1: BaseS = GeomAbs_C2; break;
     case GeomAbs_C2: BaseS = GeomAbs_C3; break;
@@ -378,9 +381,10 @@ void GeomAdaptor_Curve::Intervals(TColStd_Array1OfReal& T,
 	Standard_Integer Cont;
 	switch ( S) {
 	case GeomAbs_G1:
-	case GeomAbs_G2:
-	  throw Standard_DomainError("Geom2dAdaptor_Curve::NbIntervals");
-	  break;
+	case GeomAbs_G2: {
+      throw Standard_DomainError("Geom2dAdaptor_Curve::NbIntervals");
+      break;
+    }
 	case GeomAbs_C0:
 	  myNbIntervals = 1;
 	  break;
@@ -473,9 +477,10 @@ void GeomAdaptor_Curve::Intervals(TColStd_Array1OfReal& T,
     GeomAbs_Shape BaseS=GeomAbs_C0;
     switch(S){
     case GeomAbs_G1:
-    case GeomAbs_G2:
+    case GeomAbs_G2: {
       throw Standard_DomainError("GeomAdaptor_Curve::NbIntervals");
       break;
+    }
     case GeomAbs_C0: BaseS = GeomAbs_C1; break;
     case GeomAbs_C1: BaseS = GeomAbs_C2; break;
     case GeomAbs_C2: BaseS = GeomAbs_C3; break;

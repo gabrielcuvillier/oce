@@ -471,10 +471,10 @@ void BRepOffset_Inter3d::ConnexIntByInt
           aExp.Init(aFV2, TopAbs_EDGE);
           for (; aExp.More(); aExp.Next()) {
             const TopoDS_Shape& aEV2 = aExp.Current();
-            if (aME.Contains(aEV2) && 
+            if (aME.Contains(aEV2) &&
                (Analyse.Ancestors(aEV2).Extent() == 2 || // Multi-connexity is not supported in Analyzer
                (aEV2.Orientation() != TopAbs_FORWARD &&  // Avoid intersection of faces connected by internal edge
-                aEV2.Orientation() != TopAbs_REVERSED))) { 
+                aEV2.Orientation() != TopAbs_REVERSED))) {
               break;
             }
           }

@@ -285,7 +285,7 @@ Standard_Boolean OpenGl_PrimitiveArray::initNormalVbo (const Handle(OpenGl_Conte
 Standard_Boolean OpenGl_PrimitiveArray::buildVBO (const Handle(OpenGl_Context)& theCtx,
                                                   const Standard_Boolean        theToKeepData) const
 {
-  bool isNormalMode = theCtx->ToUseVbo();
+  const bool isNormalMode = theCtx->ToUseVbo();
   clearMemoryGL (theCtx);
   if (myAttribs.IsNull()
    || myAttribs->IsEmpty()
@@ -314,6 +314,7 @@ Standard_Boolean OpenGl_PrimitiveArray::buildVBO (const Handle(OpenGl_Context)& 
     return Standard_True;
   }
 
+#if !defined(GL_ES_VERSION_2_0)
   Handle(OpenGl_VertexBufferCompat) aVboAttribs;
   switch (myAttribs->NbAttributes)
   {
@@ -361,6 +362,9 @@ Standard_Boolean OpenGl_PrimitiveArray::buildVBO (const Handle(OpenGl_Context)& 
   }
 
   return Standard_True;
+#else
+  return Standard_False;
+#endif
 }
 
 // =======================================================================

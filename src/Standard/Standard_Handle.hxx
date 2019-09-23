@@ -24,6 +24,8 @@ class Standard_Transient;
 //! Namespace opencascade is intended for low-level template classes and functions
 namespace opencascade {
 
+  void debug_type(Standard_Transient const* theTransient) noexcept;
+
   //! Intrusive smart pointer for use with Standard_Transient class and its descendants.
   //!
   //! This class is similar to boost::intrusive_ptr<>. The reference counter
@@ -59,15 +61,15 @@ namespace opencascade {
     handle () : entity(0) {}
 
     //! Constructor from pointer to new object
-    handle (const T *thePtr) : entity(const_cast<T*>(thePtr))
+    handle (const T *thePtr) : entity(0)
     {
-      BeginScope();
+      Assign(const_cast<T*>(thePtr));
     }
 
     //! Copy constructor
-    handle (const handle& theHandle) : entity(theHandle.entity)
+    handle (const handle& theHandle) : entity(0)
     {
-      BeginScope();
+      Assign(theHandle.entity);
     }
 
 #ifndef OCCT_NO_RVALUE_REFERENCE
@@ -191,7 +193,7 @@ namespace opencascade {
 
     //! Down casting operator from pointer to base type
     template <class T2>
-    static typename opencascade::std::enable_if<is_base_but_not_same<T2, T>::value, handle>::type 
+    static typename opencascade::std::enable_if<is_base_but_not_same<T2, T>::value, handle>::type
       DownCast (const T2* thePtr)
     {
       return handle (dynamic_cast<T*>(const_cast<T2*>(thePtr)));
@@ -246,9 +248,9 @@ namespace opencascade {
     //! Constructs handle holding entity of base type (T) from the one which holds entity of derived type (T2).
     template <class T2, typename = typename std::enable_if <is_base_but_not_same <T, T2>::value>::type>
     handle (const handle<T2>& theHandle) :
-      entity(theHandle.entity)
+      entity(0)
     {
-      BeginScope();
+      Assign(theHandle.entity);
     }
 
     //! Generalized move constructor
@@ -302,9 +304,9 @@ namespace opencascade {
     //! Constructs handle holding entity of base type (T) from the one which holds entity of derived type (T2).
     template <class T2>
     handle (const handle<T2>& theHandle, typename std::enable_if <is_base_but_not_same <T, T2>::value>::type* = nullptr) :
-      entity(theHandle.entity)
+      entity(0)
     {
-      BeginScope();
+      Assign(theHandle.entity);
     }
 
 #ifndef OCCT_NO_RVALUE_REFERENCE
@@ -378,6 +380,14 @@ namespace opencascade {
       EndScope();
       entity = thePtr;
       BeginScope();
+
+#if defined(__EMSCRIPTEN__)
+      static bool once = false;
+      if (!once) {
+        once = true;
+        opencascade::debug_type(entity);
+      }
+#endif
     }
   
     //! Increment reference counter of referred object 

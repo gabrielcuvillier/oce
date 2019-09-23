@@ -81,7 +81,7 @@ IMPLEMENT_STANDARD_RTTIEXT(Font_FontMgr,Standard_Transient)
       NULL
     };
 
-  #if !defined(__ANDROID__) && !defined(__APPLE__)
+  #if !defined(__ANDROID__) && !defined(__APPLE__) && !defined(__EMSCRIPTEN__)
     // X11 configuration file in plain text format (obsolete - doesn't exists in modern distributives)
     static Standard_CString myFontServiceConf[] = {"/etc/X11/fs/config",
                                                    "/usr/X11R6/lib/X11/fs/config",
@@ -99,6 +99,11 @@ IMPLEMENT_STANDARD_RTTIEXT(Font_FontMgr,Standard_Transient)
     static Standard_CString myDefaultFontsDirs[] = {"/System/Library/Fonts",
                                                     "/Library/Fonts",
                                                     NULL
+                                                   };
+  #elif defined(__EMSCRIPTEN__)
+    // Use CSF_CustomFontDirectory environment variable, or "/fonts" by default
+    static Standard_CString myDefaultFontsDirs[] = { getenv("CSF_CustomFontDirectory") ? getenv("CSF_CustomFontDirectory") : "/fonts",
+                                                     NULL
                                                    };
   #else
     // default fonts paths in most Unix systems (Linux and others)
@@ -273,6 +278,10 @@ Font_FontMgr::Font_FontMgr()
   aMono  ->Append (Font_FontAlias ("droid sans mono"));
   aSerif ->Append (Font_FontAlias ("droid serif"));
   aSans  ->Append (Font_FontAlias ("roboto")); // actually DroidSans.ttf
+#elif defined(__EMSCRIPTEN__)
+  aMono  ->Append (Font_FontAlias ("bitstream vera sans mono"));
+  aSerif ->Append (Font_FontAlias ("bitstream vera serif"));
+  aSans  ->Append (Font_FontAlias ("bitstream vera sans"));
 #elif !defined(_WIN32) && !defined(__APPLE__) //X11
   aSerif ->Append (Font_FontAlias ("times"));
   aSans  ->Append (Font_FontAlias ("helvetica"));
@@ -473,7 +482,7 @@ void Font_FontMgr::InitFontDataBase()
 #else
 
   NCollection_Map<TCollection_AsciiString> aMapOfFontsDirs;
-#if !defined(__ANDROID__) && !defined(__APPLE__)
+#if !defined(__ANDROID__) && !defined(__APPLE__) && !defined(__EMSCRIPTEN__)
   if (FcConfig* aFcCfg = FcInitLoadConfig())
   {
     if (FcStrList* aFcFontDir = FcConfigGetFontDirs (aFcCfg))
@@ -576,7 +585,7 @@ void Font_FontMgr::InitFontDataBase()
   for (NCollection_Map<TCollection_AsciiString>::Iterator anIter (aMapOfFontsDirs);
        anIter.More(); anIter.Next())
   {
-  #if !defined(__ANDROID__) && !defined(__APPLE__)
+  #if !defined(__ANDROID__) && !defined(__APPLE__) && !defined(__EMSCRIPTEN__)
     OSD_File aReadFile (anIter.Value() + "/fonts.dir");
     if (!aReadFile.Exists())
     {
@@ -597,7 +606,7 @@ void Font_FontMgr::InitFontDataBase()
         }
       }
 
-  #if !defined(__ANDROID__) && !defined(__APPLE__)
+  #if !defined(__ANDROID__) && !defined(__APPLE__) &&!defined(__EMSCRIPTEN__)
       continue;
     }
 

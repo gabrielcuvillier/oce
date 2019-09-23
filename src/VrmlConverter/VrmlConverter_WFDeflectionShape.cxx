@@ -11,6 +11,7 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
+#if !defined(OCCT_DISABLE_EXACTHLR_IN_VISUALIZATION)
 
 #include <Bnd_Box.hxx>
 #include <BRep_Tool.hxx>
@@ -295,3 +296,5 @@ void VrmlConverter_WFDeflectionShape::Add( Standard_OStream&                   a
       }
 
 }
+
+#endif

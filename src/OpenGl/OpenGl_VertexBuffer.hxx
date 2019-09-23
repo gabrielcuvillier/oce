@@ -301,7 +301,7 @@ public: //! @name advanced methods
                                const Graphic3d_TypeOfAttribute theMode);
 
 private:
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_GLES2)
   //! Setup FFP array pointer.
   static void bindFixed (const Handle(OpenGl_Context)&   theGlCtx,
                          const Graphic3d_TypeOfAttribute theMode,
@@ -316,9 +316,9 @@ private:
 
   //! Disable FFP color array pointer.
   Standard_EXPORT static void unbindFixedColor (const Handle(OpenGl_Context)& theCtx);
-
 #endif
-public: //! @name methods for interleaved attributes array
+
+ public: //! @name methods for interleaved attributes array
 
   //! @return true if buffer contains per-vertex color attribute
   Standard_EXPORT virtual bool HasColorAttribute() const;

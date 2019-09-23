@@ -11,6 +11,7 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
+#if !defined(OCCT_DISABLE_EXACTHLR_IN_VISUALIZATION)
 
 #include <Adaptor3d_IsoCurve.hxx>
 #include <Bnd_Box2d.hxx>
@@ -350,4 +351,5 @@ void VrmlConverter_WFRestrictedFace::AddVIso
 		      finv,
 		      aDrawer);
 }
+#endif
 

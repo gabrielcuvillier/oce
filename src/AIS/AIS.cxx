@@ -23,8 +23,8 @@
 #include <BRepAdaptor_Curve.hxx>
 #include <BRepAdaptor_HSurface.hxx>
 #include <BRepAdaptor_Surface.hxx>
-#include <BRepBuilderAPI_MakeEdge.hxx>
-#include <BRepBuilderAPI_MakeVertex.hxx>
+#include <BRepLib_MakeEdge.hxx>
+#include <BRepLib_MakeVertex.hxx>
 #include <BRepTools.hxx>
 #include <BRepTopAdaptor_FClass2d.hxx>
 #include <ElCLib.hxx>
@@ -1428,11 +1428,11 @@ void AIS::ComputeProjEdgePresentation (const Handle(Prs3d_Presentation)& aPresen
     if ( !isInfinite) {
       pf = ElCLib::Parameter(gl->Lin(),FirstP);
       pl = ElCLib::Parameter(gl->Lin(),LastP);
-      BRepBuilderAPI_MakeEdge MakEd(gl->Lin(), pf, pl);
+      BRepLib_MakeEdge MakEd(gl->Lin(), pf, pl);
       E = MakEd.Edge();
     }
     else {
-      BRepBuilderAPI_MakeEdge MakEd(gl->Lin());
+      BRepLib_MakeEdge MakEd(gl->Lin());
       E = MakEd.Edge();
     }
   }
@@ -1443,7 +1443,7 @@ void AIS::ComputeProjEdgePresentation (const Handle(Prs3d_Presentation)& aPresen
     // ENDCLE
     pf = ElCLib::Parameter(gc->Circ(),FirstP);
     pl = ElCLib::Parameter(gc->Circ(),LastP);
-    BRepBuilderAPI_MakeEdge MakEd(gc->Circ(),pf, pl);
+    BRepLib_MakeEdge MakEd(gc->Circ(),pf, pl);
     E = MakEd.Edge();
   }
   StdPrs_WFShape::Add (aPresentation, E, aDrawer);
@@ -1458,28 +1458,28 @@ void AIS::ComputeProjEdgePresentation (const Handle(Prs3d_Presentation)& aPresen
     // it is patch!
     if (FirstP.SquareDistance (ppf) > SquareTolerance)
     {
-      BRepBuilderAPI_MakeEdge MakEd1 (FirstP, ppf);
+      BRepLib_MakeEdge MakEd1 (FirstP, ppf);
       StdPrs_WFShape::Add (aPresentation, MakEd1.Edge(), aDrawer);
     }
     else
     {
-      BRepBuilderAPI_MakeVertex MakVert1 (FirstP);
+      BRepLib_MakeVertex MakVert1 (FirstP);
       StdPrs_WFShape::Add (aPresentation, MakVert1.Vertex(), aDrawer);
     }
     if (LastP.SquareDistance (ppl) > SquareTolerance)
     {
-      BRepBuilderAPI_MakeEdge MakEd2 (LastP, ppl);
+      BRepLib_MakeEdge MakEd2 (LastP, ppl);
       StdPrs_WFShape::Add (aPresentation, MakEd2.Edge(), aDrawer);
     }
     else
     {
-      BRepBuilderAPI_MakeVertex MakVert2 (LastP);
+      BRepLib_MakeVertex MakVert2 (LastP);
       StdPrs_WFShape::Add (aPresentation, MakVert2.Vertex(), aDrawer);
     }
 /*
-    BRepBuilderAPI_MakeEdge MakEd1 (FirstP, ppf);
+    BRepLib_MakeEdge MakEd1 (FirstP, ppf);
     StdPrs_WFShape::Add (aPresentation, MakEd1.Edge(), aDrawer);
-    BRepBuilderAPI_MakeEdge MakEd2 (LastP, ppl);
+    BRepLib_MakeEdge MakEd2 (LastP, ppl);
     StdPrs_WFShape::Add (aPresentation, MakEd2.Edge(), aDrawer);
 */
   }
@@ -1529,7 +1529,7 @@ void AIS::ComputeProjVertexPresentation (const Handle( Prs3d_Presentation )& aPr
   if (!ProjPoint.IsEqual (BRep_Tool::Pnt (aVertex), Precision::Confusion()))
   {
     // calculate the lines of recall
-    BRepBuilderAPI_MakeEdge MakEd (ProjPoint, BRep_Tool::Pnt (aVertex));
+    BRepLib_MakeEdge MakEd (ProjPoint, BRep_Tool::Pnt (aVertex));
     StdPrs_WFShape::Add (aPresentation, MakEd.Edge(), aDrawer);
   }
 }

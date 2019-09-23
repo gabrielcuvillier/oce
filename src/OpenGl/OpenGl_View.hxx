@@ -49,6 +49,7 @@
 #include <OpenGl_Window.hxx>
 #include <OpenGl_Workspace.hxx>
 #include <OpenGl_TileSampler.hxx>
+#include <OpenGl_TextureBufferArb.hxx>
 
 #include <map>
 #include <set>
@@ -430,6 +431,7 @@ private:
   //! Initialize blit quad.
   OpenGl_VertexBuffer* initBlitQuad (const Standard_Boolean theToFlip);
 
+#if !defined(HAVE_GLES2)
   //! Blend together views pair into stereo image.
   void drawStereoPair (OpenGl_FrameBuffer* theDrawFbo);
 
@@ -441,6 +443,7 @@ private:
   bool chooseOitColorConfiguration (const Handle(OpenGl_Context)& theGlContext,
                                     const Standard_Integer theConfigIndex,
                                     OpenGl_ColorFormats& theFormats);
+#endif
 
 protected:
 
@@ -519,6 +522,7 @@ protected: //! @name Background parameters
 
 protected: //! @name data types related to ray-tracing
 
+#if !defined(HAVE_GLES2)
   //! Result of OpenGL shaders initialization.
   enum RaytraceInitStatus
   {
@@ -595,6 +599,7 @@ protected: //! @name data types related to ray-tracing
 
     OpenGl_RT_NbVariables // special field
   };
+#endif
 
   //! Defines OpenGL image samplers.
   enum ShaderImageNames
@@ -656,6 +661,7 @@ protected: //! @name data types related to ray-tracing
 
   };
 
+#if !defined(HAVE_GLES2)
   //! Default ray-tracing depth.
   static const Standard_Integer THE_DEFAULT_NB_BOUNCES = 3;
 
@@ -694,7 +700,7 @@ protected: //! @name data types related to ray-tracing
 
     //! Maximum radiance value used for clamping radiance estimation.
     Standard_ShortReal RadianceClampingValue;
-    
+
     //! Enables/disables depth-of-field effect (path tracing, perspective camera).
     Standard_Boolean DepthOfField;
 
@@ -716,6 +722,7 @@ protected: //! @name data types related to ray-tracing
       DepthOfField           (Standard_False),
       ToneMappingMethod      (Graphic3d_ToneMappingMethod_Disabled) { }
   };
+#endif
 
   //! Describes state of OpenGL structure.
   struct StructState
@@ -744,6 +751,10 @@ protected: //! @name data types related to ray-tracing
 
 protected: //! @name methods related to ray-tracing
 
+  //! Marks if environment map should be updated.
+  Standard_Boolean myToUpdateEnvironmentMap;
+
+#if !defined(HAVE_GLES2)
   //! Updates 3D scene geometry for ray-tracing.
   Standard_Boolean updateRaytraceGeometry (const RaytraceUpdateMode      theMode,
                                            const Standard_Integer        theViewId,
@@ -1027,9 +1038,6 @@ protected: //! @name fields related to ray-tracing
   //! Set of IDs of non-raytracable elements (to detect updates).
   std::set<Standard_Integer> myNonRaytraceStructureIDs;
 
-  //! Marks if environment map should be updated.
-  Standard_Boolean myToUpdateEnvironmentMap;
-
   //! State of OpenGL layer list.
   Standard_Size myRaytraceLayerListState;
 
@@ -1065,6 +1073,7 @@ protected: //! @name fields related to ray-tracing
 
   //! Focal distance of camera on previous frame used for depth-of-field (path tracing)
   float myPrevCameraFocalPlaneDist;
+#endif
 
 public:
 

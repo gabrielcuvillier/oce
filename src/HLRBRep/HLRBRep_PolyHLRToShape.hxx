@@ -25,7 +25,7 @@
 #include <Standard_Boolean.hxx>
 #include <TopoDS_Shape.hxx>
 #include <Standard_Integer.hxx>
-class HLRBRep_PolyAlgo;
+class HLRAlgo_BRepPolyAlgo;
 class TopoDS_Shape;
 
 
@@ -68,7 +68,7 @@ public:
   //! Use the extraction filters to obtain the results you want for A.
   Standard_EXPORT HLRBRep_PolyHLRToShape();
   
-  Standard_EXPORT void Update (const Handle(HLRBRep_PolyAlgo)& A);
+  Standard_EXPORT void Update (const Handle(HLRAlgo_BRepPolyAlgo)& A);
   
     void Show();
   
@@ -129,7 +129,7 @@ private:
   Standard_EXPORT TopoDS_Shape InternalCompound (const Standard_Integer typ, const Standard_Boolean visible, const TopoDS_Shape& S);
 
 
-  Handle(HLRBRep_PolyAlgo) myAlgo;
+  Handle(HLRAlgo_BRepPolyAlgo) myAlgo;
   HLRBRep_ListOfBPnt2D myBiPntVis;
   HLRBRep_ListOfBPnt2D myBiPntHid;
   Standard_Boolean myHideMode;

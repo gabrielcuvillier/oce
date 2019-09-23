@@ -21,7 +21,7 @@
 
 //! @brief Simple tool for code parallelization.
 //!
-//! OSD_Parallel class provides simple interface for parallel processing of 
+//! OSD_Parallel class provides simple interface for parallel processing of
 //! tasks that can be formulated in terms of "for" or "foreach" loops.
 //!
 //! To use this tool it is necessary to:
@@ -33,7 +33,7 @@
 //!   a functor object.
 //!
 //! Iterators should satisfy requirements of STL forward iterator.
-//! Functor 
+//! Functor
 //!
 //! @code
 //! class Functor
@@ -79,7 +79,7 @@ private:
     virtual IteratorInterface* Clone() const = 0;
   };
 
-  //! Implementation of polymorphic iterator wrapper suitable for basic 
+  //! Implementation of polymorphic iterator wrapper suitable for basic
   //! types as well as for std iterators.
   //! Wraps instance of actual iterator type Type.
   template<class Type>
@@ -114,12 +114,12 @@ protected:
   // Note: UniversalIterator and FunctorInterface are made protected to be
   // accessible from specialization using threads (non-TBB).
 
-  //! Fixed-type iterator, implementing STL forward iterator interface, used for 
+  //! Fixed-type iterator, implementing STL forward iterator interface, used for
   //! iteration over objects subject to parallel processing.
-  //! It stores pointer to instance of polymorphic iterator inheriting from 
+  //! It stores pointer to instance of polymorphic iterator inheriting from
   //! IteratorInterface, which contains actual type-specific iterator.
-  class UniversalIterator : 
-    // Note that TBB requires that value_type of iterator be copyable, 
+  class UniversalIterator :
+    // Note that TBB requires that value_type of iterator be copyable,
     // thus we use its own type for that
     public std::iterator<std::forward_iterator_tag, UniversalIterator, ptrdiff_t, UniversalIterator*, UniversalIterator&>
   {
@@ -187,7 +187,7 @@ protected:
   };
 
   //! Interface class representing functor object.
-  //! Intended to add polymorphic behavour to For and ForEach functionality 
+  //! Intended to add polymorphic behavour to For and ForEach functionality
   //! enabling execution of arbitrary function in parallel mode.
   class FunctorInterface
   {
@@ -271,7 +271,7 @@ private:
   //! forEach_impl function defined in opencascade::parallel namespace.
   //! @param theBegin   the first index (inclusive)
   //! @param theEnd     the last  index (exclusive)
-  //! @param theFunctor functor providing an interface "void operator(InputIterator theIter){}" 
+  //! @param theFunctor functor providing an interface "void operator(InputIterator theIter){}"
   //!                   performing task for the specified iterator position
   //! @param theNbItems number of items passed by iterator, -1 if unknown
   Standard_EXPORT static void forEachOcct (UniversalIterator& theBegin,
@@ -306,7 +306,7 @@ public: //! @name public methods
   //! @endcode
   //! @param theBegin   the first index (inclusive)
   //! @param theEnd     the last  index (exclusive)
-  //! @param theFunctor functor providing an interface "void operator(InputIterator theIter){}" 
+  //! @param theFunctor functor providing an interface "void operator(InputIterator theIter){}"
   //!                   performing task for specified iterator position
   //! @param isForceSingleThreadExecution if true, then no threads will be created
   //! @param theNbItems number of items passed by iterator, -1 if unknown
@@ -346,7 +346,7 @@ public: //! @name public methods
   //! @endcode
   //! @param theBegin   the first index (inclusive)
   //! @param theEnd     the last  index (exclusive)
-  //! @param theFunctor functor providing an interface "void operator(int theIndex){}" 
+  //! @param theFunctor functor providing an interface "void operator(int theIndex){}"
   //!                   performing task for specified index
   //! @param isForceSingleThreadExecution if true, then no threads will be created
   template <typename Functor>

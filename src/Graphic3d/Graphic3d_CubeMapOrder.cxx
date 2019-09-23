@@ -15,6 +15,7 @@
 #include <Graphic3d_CubeMapOrder.hxx>
 
 #include <Standard_Failure.hxx>
+#include <Standard_DefineException.hxx>
 
 #include <bitset>
 

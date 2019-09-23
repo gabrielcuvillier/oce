@@ -25,17 +25,17 @@
 #endif
 
 #ifndef OCCT_CLOCALE_POSIX2008
-  //! @def OCCT_CLOCALE_POSIX2008
-  //!
-  //! POSIX.1-2008 extends C locale API by providing methods like newlocale/freelocale/uselocale.
-  //! Presence of this extension cannot be checked in straightforward way (like (_POSIX_C_SOURCE >= 200809L))
-  //! due to missing such declarations in standard.
-  //! On macOS new functions are declared within "xlocale.h" header (the same is for glibc, but this header has been removed since glibc 2.26).
+//! @def OCCT_CLOCALE_POSIX2008
+//!
+//! POSIX.1-2008 extends C locale API by providing methods like newlocale/freelocale/uselocale.
+//! Presence of this extension cannot be checked in straightforward way (like (_POSIX_C_SOURCE >= 200809L))
+//! due to missing such declarations in standard.
+//! On macOS new functions are declared within "xlocale.h" header (the same is for glibc, but this header has been removed since glibc 2.26).
   #if defined(__APPLE__)
     #define OCCT_CLOCALE_POSIX2008
   #endif
 
-  //! We check _GNU_SOURCE for glibc extensions here and it is always defined by g++ compiler.
+//! We check _GNU_SOURCE for glibc extensions here and it is always defined by g++ compiler.
   #if defined(_GNU_SOURCE) && !defined(__ANDROID__)
     #define OCCT_CLOCALE_POSIX2008
   #endif

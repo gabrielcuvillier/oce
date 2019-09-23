@@ -2487,7 +2487,7 @@ Standard_Real BRepMesh_Delaun::polyArea(const IMeshData::SequenceOfInteger& theP
 #include <TopoDS_Compound.hxx>
 #include <BRep_Builder.hxx>
 #include <Standard_ErrorHandler.hxx>
-#include <BRepBuilderAPI_MakeEdge.hxx>
+#include <BRepLib_MakeEdge.hxx>
 #include <BRepTools.hxx>
 Standard_CString BRepMesh_DumpPoly(void*            thePolygon,
                                    void*            theMeshHandlePtr,
@@ -2532,7 +2532,7 @@ Standard_CString BRepMesh_DumpPoly(void*            thePolygon,
       if (aPnt[0].SquareDistance(aPnt[1]) < Precision::SquareConfusion())
         continue;
 
-      aBuilder.Add(aMesh, BRepBuilderAPI_MakeEdge(aPnt[0], aPnt[1]));
+      aBuilder.Add(aMesh, BRepLib_MakeEdge(aPnt[0], aPnt[1]));
     }
 
     if (!BRepTools::Write(aMesh, theFileNameStr))

@@ -13,6 +13,8 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
+#if !defined(OCCT_DISABLE_UNICODE_CONVERSIONS)
+
 static unsigned int big5uni [19782] = {
 0x0000, 0x0000, 0x0000, 0x0000,
 0x0000, 0x0000, 0x0000, 0x0000,
@@ -4961,3 +4963,5 @@ static unsigned int big5uni [19782] = {
 0x6E2A, 0x27126, 0x3EA8, 0x79C6,
 0x2910D, 0x79D4
 } ;
+
+#endif

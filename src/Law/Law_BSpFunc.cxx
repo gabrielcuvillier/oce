@@ -70,9 +70,10 @@ Standard_Integer Law_BSpFunc::NbIntervals(const GeomAbs_Shape S) const
     Standard_Integer Cont;
     switch ( S) {
     case GeomAbs_G1:
-    case GeomAbs_G2:
+    case GeomAbs_G2: {
       throw Standard_DomainError("Law_BSpFunc::NbIntervals");
       break;
+    }
     case GeomAbs_C0:
       myNbIntervals = 1;
       break;
@@ -133,9 +134,10 @@ void Law_BSpFunc::Intervals(TColStd_Array1OfReal& T,
     Standard_Integer Cont;
     switch ( S) {
     case GeomAbs_G1:
-    case GeomAbs_G2:
+    case GeomAbs_G2: {
       throw Standard_DomainError("Law_BSpFunc_Curve::Intervals");
       break;
+    }
     case GeomAbs_C0:
       myNbIntervals = 1;
       break;

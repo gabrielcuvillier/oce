@@ -73,8 +73,7 @@ private:
 //=======================================================================
 
 Standard_MMgrFactory::Standard_MMgrFactory()
-: myFMMgr (NULL)
-{
+: myFMMgr (NULL) {
 /*#if defined(_MSC_VER) && (_MSC_VER > 1400)
   // Turn ON thread-safe C locale globally to avoid side effects by setlocale() calls between threads.
   // After this call all following _configthreadlocale() will be ignored assuming
@@ -89,7 +88,7 @@ Standard_MMgrFactory::Standard_MMgrFactory()
 
   // Check basic assumption.
   // If assertion happens, then OCCT should be corrected for compatibility with such CPU architecture.
-  Standard_STATIC_ASSERT(sizeof(Standard_Utf8Char)  == 1);
+  Standard_STATIC_ASSERT(sizeof(Standard_Utf8Char) == 1);
   Standard_STATIC_ASSERT(sizeof(short) == 2);
   Standard_STATIC_ASSERT(sizeof(Standard_Utf16Char) == 2);
   Standard_STATIC_ASSERT(sizeof(Standard_Utf32Char) == 4);
@@ -97,9 +96,20 @@ Standard_MMgrFactory::Standard_MMgrFactory()
   Standard_STATIC_ASSERT(sizeof(Standard_WideChar) == sizeof(Standard_Utf16Char));
 #endif
 
-  char* aVar;
-  aVar = getenv ("MMGT_OPT");
-  Standard_Integer anAllocId   = (aVar ?  atoi (aVar): OCCT_MMGT_OPT_DEFAULT);
+  char *aVar = nullptr;
+  Standard_Integer anAllocId = 0;
+
+  constexpr Standard_Boolean ToUseOptMemAlloc =
+  #if !defined(OCCT_DISABLE_OPTIMIZED_MEMORY_ALLOCATOR)
+    Standard_True;
+  #else
+    Standard_False;
+  #endif
+
+  if constexpr(ToUseOptMemAlloc) {
+    aVar = getenv("MMGT_OPT");
+    anAllocId = (aVar ? atoi(aVar) : OCCT_MMGT_OPT_DEFAULT);
+  }
 
 #if defined(_WIN32) && !defined(_WIN64) && !defined(__MINGW32__)
   static const DWORD _SSE2_FEATURE_BIT(0x04000000);
@@ -132,8 +142,10 @@ Standard_MMgrFactory::Standard_MMgrFactory()
   }
 #endif
 
-  aVar = getenv ("MMGT_CLEAR");
-  Standard_Boolean toClear     = (aVar ? (atoi (aVar) != 0) : Standard_True);
+  // Emscripten Warning: there is a random crash issue issue with malloc (uncleared memory). calloc will work (cleared memory)
+  // Hopefully, the default is to use calloc. But this have to be investigated
+  aVar = getenv("MMGT_CLEAR");
+  const Standard_Boolean toClear = (aVar ? (atoi(aVar) != 0) : Standard_True);
 
   // on Windows (actual for XP and 2000) activate low fragmentation heap
   // for CRT heap in order to get best performance.
@@ -148,27 +160,31 @@ Standard_MMgrFactory::Standard_MMgrFactory()
   }
 #endif
 
-  switch (anAllocId)
-  {
-    case 1:  // OCCT optimized memory allocator
-    {
-      aVar = getenv ("MMGT_MMAP");
-      Standard_Boolean bMMap       = (aVar ? (atoi (aVar) != 0) : Standard_True);
-      aVar = getenv ("MMGT_CELLSIZE");
-      Standard_Integer aCellSize   = (aVar ?  atoi (aVar) : 200);
-      aVar = getenv ("MMGT_NBPAGES");
-      Standard_Integer aNbPages    = (aVar ?  atoi (aVar) : 1000);
-      aVar = getenv ("MMGT_THRESHOLD");
-      Standard_Integer aThreshold  = (aVar ?  atoi (aVar) : 40000);
-      myFMMgr = new Standard_MMgrOpt (toClear, bMMap, aCellSize, aNbPages, aThreshold);
-      break;
+  if constexpr(ToUseOptMemAlloc) {
+    switch (anAllocId) {
+      case 1:  // OCCT optimized memory allocator
+      {
+        aVar = getenv("MMGT_MMAP");
+        Standard_Boolean bMMap = (aVar ? (atoi(aVar) != 0) : Standard_True);
+        aVar = getenv("MMGT_CELLSIZE");
+        Standard_Integer aCellSize = (aVar ? atoi(aVar) : 200);
+        aVar = getenv("MMGT_NBPAGES");
+        Standard_Integer aNbPages = (aVar ? atoi(aVar) : 1000);
+        aVar = getenv("MMGT_THRESHOLD");
+        Standard_Integer aThreshold = (aVar ? atoi(aVar) : 40000);
+        myFMMgr = new Standard_MMgrOpt(toClear, bMMap, aCellSize, aNbPages, aThreshold);
+        break;
+      }
+      case 2:  // TBB memory allocator
+        myFMMgr = new Standard_MMgrTBBalloc(toClear);
+        break;
+      case 0:
+      default: // system default memory allocator
+        myFMMgr = new Standard_MMgrRaw(toClear);
     }
-    case 2:  // TBB memory allocator
-      myFMMgr = new Standard_MMgrTBBalloc (toClear);
-      break;
-    case 0:
-    default: // system default memory allocator
-      myFMMgr = new Standard_MMgrRaw (toClear);
+  }
+  else {
+    myFMMgr = new Standard_MMgrRaw (toClear);
   }
 }
 
@@ -281,6 +297,8 @@ Standard_Address Standard::AllocateAligned (const Standard_Size theSize,
 {
 #if defined(_MSC_VER)
   return _aligned_malloc (theSize, theAlign);
+#elif defined(__EMSCRIPTEN__)
+  return aligned_alloc(theAlign, theSize);
 #elif defined(__ANDROID__) || defined(__QNX__)
   return memalign (theAlign, theSize);
 #elif (defined(__GNUC__) && __GNUC__ >= 4 && __GNUC_MINOR__ >= 1 && (defined(__i386) || defined(__x86_64)))
@@ -305,6 +323,8 @@ void Standard::FreeAligned (Standard_Address thePtrAligned)
 #if defined(_MSC_VER)
   _aligned_free (thePtrAligned);
 #elif defined(__ANDROID__) || defined(__QNX__)
+  free (thePtrAligned);
+#elif defined(__EMSCRIPTEN__)
   free (thePtrAligned);
 #elif (defined(__GNUC__) && __GNUC__ >= 4 && __GNUC_MINOR__ >= 1 && (defined(__i386) || defined(__x86_64)))
   _mm_free (thePtrAligned);

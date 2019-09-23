@@ -2,6 +2,8 @@
 // Created by: Sergey ZERCHANINOV
 // Copyright (c) 2011-2014 OPEN CASCADE SAS
 //
+// Emscripten-related parts: Copyright (c) 2019 Gabriel Cuvillier - Continuation Labs
+//
 // This file is part of Open CASCADE Technology software library.
 //
 // This library is free software; you can redistribute it and/or modify it under
@@ -32,15 +34,16 @@ IMPLEMENT_STANDARD_RTTIEXT(OpenGl_Window,Standard_Transient)
 
 #if defined(HAVE_EGL)
   #include <EGL/egl.h>
+#elif defined(__EMSCRIPTEN__)
+  #include <emscripten/html5.h>
 #endif
-
 
 #if !defined(__APPLE__) || defined(MACOSX_USE_GLX)
 
 namespace
 {
 
-#if defined(HAVE_EGL)
+#if defined(HAVE_EGL) || defined(HAVE_GLES2)
   //
 #elif defined(_WIN32)
 
@@ -235,6 +238,29 @@ OpenGl_Window::OpenGl_Window (const Handle(OpenGl_GraphicDriver)& theDriver,
   }
 
   myGlContext->Init ((Aspect_Drawable )anEglSurf, (Aspect_Display )anEglDisplay, (Aspect_RenderingContext )anEglContext, isCoreProfile);
+#elif defined(__EMSCRIPTEN__)
+  (void)theDriver;
+  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE aGContext = NULL;
+
+  if (!myOwnGContext)
+  {
+    aGContext = theGContext;
+  }
+  else
+  {
+    EmscriptenWebGLContextAttributes attrs;
+    emscripten_webgl_init_context_attributes(&attrs);
+    attrs.enableExtensionsByDefault = true;
+    attrs.stencil = true; // not enabled by default, be sure to have one
+    attrs.antialias = true;
+    aGContext = emscripten_webgl_create_context(thePlatformWindow->NativeHandle(), &attrs);
+    if (aGContext <= 0) {
+      return;
+    }
+    emscripten_webgl_make_context_current(aGContext);
+  }
+
+  myGlContext->Init ((Aspect_Drawable )thePlatformWindow->NativeHandle(), (Aspect_RenderingContext )aGContext, isCoreProfile);
 #elif defined(_WIN32)
   (void )theDriver;
   HWND  aWindow   = (HWND )myPlatformWindow->NativeHandle();
@@ -642,6 +668,8 @@ OpenGl_Window::~OpenGl_Window()
     eglDestroySurface ((EGLDisplay )myGlContext->myDisplay,
                        (EGLSurface )myGlContext->myWindow);
   }
+#elif defined(__EMSCRIPTEN__)
+  emscripten_webgl_destroy_context( myGlContext->myGContext);
 #elif defined(_WIN32)
   HWND  aWindow          = (HWND  )myGlContext->myWindow;
   HDC   aWindowDC        = (HDC   )myGlContext->myWindowDC;
@@ -698,7 +726,7 @@ Standard_Boolean OpenGl_Window::Activate()
 // =======================================================================
 void OpenGl_Window::Resize()
 {
-#if !defined(_WIN32) && !defined(HAVE_EGL)
+#if !defined(_WIN32) && !defined(HAVE_EGL) && !defined(__EMSCRIPTEN__)
   Display* aDisp = (Display* )myGlContext->myDisplay;
   if (aDisp == NULL)
     return;
@@ -715,7 +743,7 @@ void OpenGl_Window::Resize()
   myWidth  = aWidth;
   myHeight = aHeight;
 
-#if !defined(_WIN32) && !defined(HAVE_EGL)
+#if !defined(_WIN32) && !defined(HAVE_EGL) && !defined(__EMSCRIPTEN__)
   XResizeWindow (aDisp, myGlContext->myWindow, (unsigned int )myWidth, (unsigned int )myHeight);
   XSync (aDisp, False);
 #endif
@@ -761,6 +789,8 @@ void OpenGl_Window::Init()
     eglQuerySurface ((EGLDisplay )myGlContext->myDisplay, (EGLSurface )myGlContext->myWindow, EGL_WIDTH,  &myWidth);
     eglQuerySurface ((EGLDisplay )myGlContext->myDisplay, (EGLSurface )myGlContext->myWindow, EGL_HEIGHT, &myHeight);
   }
+#elif defined(__EMSCRIPTEN__)
+  emscripten_get_canvas_element_size(myGlContext->myWindow, &myWidth, &myHeight);
 #elif defined(_WIN32)
   //
 #else

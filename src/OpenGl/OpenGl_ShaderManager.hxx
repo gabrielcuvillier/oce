@@ -114,7 +114,10 @@ public:
                                     const Handle(OpenGl_ShaderProgram)& theCustomProgram)
   {
     if (!theCustomProgram.IsNull()
-     || myContext->caps->ffpEnable)
+#if !defined(HAVE_GLES2)
+        || myContext->caps->ffpEnable
+#endif
+        )
     {
       return bindProgramWithState (theCustomProgram);
     }
@@ -137,7 +140,10 @@ public:
                                     const Handle(OpenGl_ShaderProgram)& theCustomProgram)
   {
     if (!theCustomProgram.IsNull()
-     || myContext->caps->ffpEnable)
+#if !defined(HAVE_GLES2)
+        || myContext->caps->ffpEnable
+#endif
+        )
     {
       return bindProgramWithState (theCustomProgram);
     }
@@ -163,7 +169,10 @@ public:
   Standard_Boolean BindFontProgram (const Handle(OpenGl_ShaderProgram)& theCustomProgram)
   {
     if (!theCustomProgram.IsNull()
-     || myContext->caps->ffpEnable)
+#if !defined(HAVE_GLES2)
+        || myContext->caps->ffpEnable
+#endif
+        )
     {
       return bindProgramWithState (theCustomProgram);
     }
@@ -179,10 +188,12 @@ public:
   //! Bind program for outline rendering
   Standard_Boolean BindOutlineProgram()
   {
+#if !defined(HAVE_GLES2)
     if (myContext->caps->ffpEnable)
     {
       return false;
     }
+#endif
 
     const Standard_Integer aBits = getProgramBits (Handle(OpenGl_TextureSet)(), Graphic3d_AlphaMode_Opaque, Aspect_IS_SOLID, false, false, false);
     if (myOutlinePrograms.IsNull())
@@ -208,6 +219,7 @@ public:
          && myContext->BindProgram (myBlitProgram);
   }
 
+#if !defined(HAVE_GLES2)
   //! Bind program for blended order-independent transparency buffers compositing.
   Standard_Boolean BindOitCompositingProgram (const Standard_Boolean theIsMSAAEnabled)
   {
@@ -237,6 +249,7 @@ public:
     return !aProgram.IsNull()
          && myContext->BindProgram (aProgram);
   }
+#endif
 
   //! Bind program for rendering bounding box.
   Standard_Boolean BindBoundBoxProgram()
@@ -399,6 +412,7 @@ public:
 
 public:
 
+#if !defined(HAVE_GLES2)
   //! Returns state of OIT uniforms.
   const OpenGl_OitState& OitState() const { return myOitState; }
 
@@ -423,6 +437,7 @@ public:
 
   //! Pushes state of OIT uniforms to the specified program.
   Standard_EXPORT void pushOitState (const Handle(OpenGl_ShaderProgram)& theProgram) const;
+#endif
 
 public:
 
@@ -588,10 +603,12 @@ protected:
       aBits |= OpenGl_PO_VertColor;
     }
 
+#if !defined(__EMSCRIPTEN__)
     if (myOitState.ToEnableWrite())
     {
       aBits |= OpenGl_PO_WriteOit;
     }
+#endif
     return aBits;
   }
 
@@ -633,8 +650,10 @@ protected:
   //! Prepare standard GLSL program for FBO blit operation.
   Standard_EXPORT Standard_Boolean prepareStdProgramFboBlit();
 
+#if !defined(HAVE_GLES2)
   //! Prepare standard GLSL programs for OIT compositing operation.
   Standard_EXPORT Standard_Boolean prepareStdProgramOitCompositing (const Standard_Boolean theMsaa);
+#endif
 
   //! Prepare standard GLSL program without lighting.
   Standard_EXPORT Standard_Boolean prepareStdProgramUnlit (Handle(OpenGl_ShaderProgram)& theProgram,
@@ -679,9 +698,11 @@ protected:
   //! Set pointer myLightPrograms to active lighting programs set from myMapOfLightPrograms
   Standard_EXPORT void switchLightPrograms();
 
+#if !defined(HAVE_GLES2)
   //! Prepare standard GLSL program for stereoscopic image.
   Standard_EXPORT Standard_Boolean prepareStdProgramStereo (Handle(OpenGl_ShaderProgram)& theProgram,
                                                             const Graphic3d_StereoMode    theStereoMode);
+#endif
 
   //! Prepare standard GLSL program for bounding box.
   Standard_EXPORT Standard_Boolean prepareStdProgramBoundBox();

@@ -224,12 +224,15 @@ Handle(Vrml_Material) VrmlAPI_Writer::GetUnfreeBoundsMaterial() const
 
 void VrmlAPI_Writer::Write(const TopoDS_Shape& aShape,const Standard_CString aFile, const Standard_Integer aVersion) const
 {
+#if !defined(OCCT_DISABLE_EXACTHLR_IN_VISUALIZATION)
   if (aVersion == 1)
     write_v1(aShape, aFile);
   else if (aVersion == 2)
+#endif
     write_v2(aShape, aFile);
 }
 
+#if !defined(OCCT_DISABLE_EXACTHLR_IN_VISUALIZATION)
 void VrmlAPI_Writer::write_v1(const TopoDS_Shape& aShape,const Standard_CString aFile) const
 {
   OSD_Path thePath(aFile);
@@ -355,6 +358,7 @@ void VrmlAPI_Writer::write_v1(const TopoDS_Shape& aShape,const Standard_CString 
   S2.Print(outfile); 
   S1.Print(outfile); 
 }
+#endif
 
 void VrmlAPI_Writer::write_v2(const TopoDS_Shape& aShape,const Standard_CString aFile) const
 {

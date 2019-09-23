@@ -159,6 +159,9 @@
   #define GL_DEPTH32F_STENCIL8              0x8CAD
   #define GL_FLOAT_32_UNSIGNED_INT_24_8_REV 0x8DAD
 
+  // GL_WEBGL_depth_texture
+  #define GL_DEPTH_STENCIL_ATTACHMENT       0x821A
+
   #define GL_READ_FRAMEBUFFER               0x8CA8
   #define GL_DRAW_FRAMEBUFFER               0x8CA9
 
@@ -216,7 +219,7 @@
   #define GL_PATCHES                    0x000E
 #endif
 
-#if !defined(HAVE_EGL) && (defined(__ANDROID__) || defined(__QNX__) || defined(HAVE_GLES2) || defined(OCCT_UWP))
+#if !defined(HAVE_EGL) && (defined(__ANDROID__) || defined(__QNX__) || (defined(HAVE_GLES2) && !defined(__EMSCRIPTEN__)) || defined(OCCT_UWP))
   #define HAVE_EGL
 #endif
 
@@ -1851,6 +1854,9 @@ public: //! @name wgl extensions
 
 #elif defined(__APPLE__)
 public: //! @name CGL extensions
+
+#elif defined(HAVE_WEBGL)
+public: //! @name WebGL extensions
 
 #else
 public: //! @name glX extensions

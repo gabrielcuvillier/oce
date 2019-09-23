@@ -5,6 +5,10 @@ if(FLAGS_ALREADY_INCLUDED)
 endif()
 set(FLAGS_ALREADY_INCLUDED 1)
 
+if(EMSCRIPTEN)
+  message(STATUS "Info: Building for Emscripten/WebAssembly.")
+endif()
+
 # force option /fp:precise for Visual Studio projects.
 #
 # Note that while this option is default for MSVC compiler, Visual Studio
@@ -27,9 +31,44 @@ endif()
 if (MSVC)
   add_definitions (-D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_DEPRECATE)
 else()
-  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions -fPIC")
-  set (CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fexceptions -fPIC")
-  add_definitions(-DOCC_CONVERT_SIGNALS)
+  if (EMSCRIPTEN)
+    message (STATUS "Info: Exceptions are disabled")
+    add_compile_options(-fno-exceptions)
+
+    message (STATUS "Info: PIC disabled")
+    add_compile_options(-fno-PIC)
+
+    message (STATUS "Info: OCCT_DISABLE_THREADS is defined due to unsupported on Browsers")
+    add_definitions(-DOCCT_DISABLE_THREADS)
+
+    message (STATUS "Info: OCCT_DISABLE_UNICODE_CONVERSIONS is defined")
+    add_definitions(-DOCCT_DISABLE_UNICODE_CONVERSIONS)
+
+    #Keep Meshing in Vizu for now
+    #message (STATUS "Info: OCCT_DISABLE_MESHING_IN_VISUALIZATION is defined")
+    #add_definitions(-DOCCT_DISABLE_MESHING_IN_VISUALIZATION)
+
+    message (STATUS "Info: OCCT_DISABLE_EXACTHLR_IN_VISUALIZATION is defined")
+    add_definitions(-DOCCT_DISABLE_EXACTHLR_IN_VISUALIZATION)
+
+    message (STATUS "Info: OCCT_DISABLE_OPTIMIZED_MEMORY_ALLOCATOR is defined")
+    add_definitions(-DOCCT_DISABLE_OPTIMIZED_MEMORY_ALLOCATOR)
+
+    message (STATUS "Info: OCCT_DISABLE_SHAREDLIBRARY is defined")
+    add_definitions(-DOCCT_DISABLE_SHAREDLIBRARY)
+
+    message (STATUS "Info: OCCT_HANDLE_NOCAST is defined to prevent some unsafe methods with Handles")
+    add_definitions(-DOCCT_HANDLE_NOCAST)
+
+    message (STATUS "Info: OCCT_IGNORE_NO_ATOMICS is defined due to unsupported atomics on Emscripten")
+    add_definitions(-DOCCT_IGNORE_NO_ATOMICS)
+
+    message (STATUS "Info: OCCT_CONVERT_SIGNALS is NOT defined")
+  else()
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions -fPIC")
+    set (CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fexceptions -fPIC")
+    add_definitions(-DOCCT_CONVERT_SIGNALS)
+  endif()
 endif()
 
 # enable structured exceptions for MSVC
@@ -111,6 +150,8 @@ elseif (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMP
   endif()
 endif()
 
+set(CMAKE_CXX_STANDARD 17)
+
 if(MINGW)
   # Set default release optimization option to O2 instead of O3, since in
   # some OCCT related examples, this gives significantly smaller binaries
@@ -122,19 +163,9 @@ if(MINGW)
     set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2")
   endif()
 
-  set (CMAKE_CXX_FLAGS "-std=gnu++0x ${CMAKE_CXX_FLAGS}")
   add_definitions(-D_WIN32_WINNT=0x0501)
   # workaround bugs in mingw with vtable export
   set (CMAKE_SHARED_LINKER_FLAGS "-Wl,--export-all-symbols")
-elseif ("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xClang")
-  if (APPLE)
-    # CLang can be used with both libstdc++ and libc++, however on OS X libstdc++ is outdated.
-    set (CMAKE_CXX_FLAGS "-std=c++0x -stdlib=libc++ ${CMAKE_CXX_FLAGS}")
-  else()
-    set (CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS}")
-  endif()
-elseif (DEFINED CMAKE_COMPILER_IS_GNUCXX)
-  set (CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS}")
 endif()
 
 # Optimize size of binaries
@@ -146,4 +177,81 @@ endif()
 if (BUILD_RELEASE_DISABLE_EXCEPTIONS)
   set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DNo_Exception")
   set (CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -DNo_Exception")
+  set (CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} -DNo_Exception")
+  set (CMAKE_C_FLAGS_MINSIZEREL "${CMAKE_C_FLAGS_MINSIZEREL} -DNo_Exception")
+endif()
+
+set (ENABLE_LTO OFF CACHE BOOL "Enable LTO")
+if (ENABLE_LTO)
+  if (EMSCRIPTEN)
+    set(COMPILE_LTO_FLAGS "-s WASM_OBJECT_FILES=0 -flto")
+    set(LINK_LTO_FLAGS    "-s WASM_OBJECT_FILES=0 --llvm-lto 1 -flto")
+  else()
+    set(COMPILE_LTO_FLAGS "-flto")
+    set(LINK_LTO_FLAGS    "-flto")
+  endif()
+else()
+  unset(COMPILE_LTO_FLAGS)
+  unset(LINK_LTO_FLAGS)
+endif()
+
+set(CMAKE_C_FLAGS_RELEASE             "${CMAKE_C_FLAGS_RELEASE} ${COMPILE_LTO_FLAGS}")
+set(CMAKE_CXX_FLAGS_RELEASE           "${CMAKE_CXX_FLAGS_RELEASE} ${COMPILE_LTO_FLAGS}")
+set(CMAKE_EXE_LINKER_FLAGS_RELEASE    "${CMAKE_EXE_LINKER_FLAGS_RELEASE} ${LINK_LTO_FLAGS}")
+set(CMAKE_C_FLAGS_MINSIZEREL          "${CMAKE_C_FLAGS_MINSIZEREL} ${COMPILE_LTO_FLAGS}")
+set(CMAKE_CXX_FLAGS_MINSIZEREL        "${CMAKE_CXX_FLAGS_MINSIZEREL} ${COMPILE_LTO_FLAGS}")
+set(CMAKE_EXE_LINKER_FLAGS_MINSIZEREL "${CMAKE_EXE_LINKER_FLAGS_MINSIZEREL} ${LINK_LTO_FLAGS}")
+
+set (ENABLE_OZ OFF CACHE BOOL "Enable Oz build for MinSizeRel")
+if (ENABLE_OZ)
+  # Use 'Oz' optimization level (instead of Os)
+  string (REGEX MATCH "-Os" IS_Os_CXX "${CMAKE_CXX_FLAGS_MINSIZEREL}")
+  if (IS_Os_CXX)
+    string (REGEX REPLACE "-Os" "-Oz" CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL}")
+  else()
+    set (CMAKE_CXX_FLAGS_MINSIZEREL "${CMAKE_CXX_FLAGS_MINSIZEREL} -Oz")
+  endif()
+
+  string (REGEX MATCH "-Os" IS_Os_C "${CMAKE_C_FLAGS_MINSIZEREL}")
+  if (IS_Os_C)
+    string (REGEX REPLACE "-Os" "-Oz" CMAKE_C_FLAGS_MINSIZEREL "${CMAKE_C_FLAGS_MINSIZEREL}")
+  else()
+    set (CMAKE_C_FLAGS_MINSIZEREL "${CMAKE_C_FLAGS_MINSIZEREL} -Oz")
+  endif()
+endif()
+
+set (ENABLE_O3 OFF CACHE BOOL "Enable O3 build for Release")
+if (ENABLE_O3)
+  # Use 'O2' optimization level (instead of O3)
+  string (REGEX MATCH "-O2" IS_O2_CXX "${CMAKE_CXX_FLAGS_RELEASE}")
+  if (IS_O2_CXX)
+    string (REGEX REPLACE "-O2" "-O3" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+  else()
+    set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
+  endif()
+
+  string (REGEX MATCH "-O2" IS_O2_C "${CMAKE_C_FLAGS_RELEASE}")
+  if (IS_O2_C)
+    string (REGEX REPLACE "-O2" "-O3" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+  else()
+    set (CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3")
+  endif()
+endif()
+
+set (ENABLE_O1 OFF CACHE BOOL "Enable O1 build for Release")
+if (ENABLE_O1)
+  # Use 'O2' optimization level (instead of O3)
+  string (REGEX MATCH "-O2" IS_O2_CXX "${CMAKE_CXX_FLAGS_RELEASE}")
+  if (IS_O2_CXX)
+    string (REGEX REPLACE "-O2" "-O1" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+  else()
+    set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O1")
+  endif()
+
+  string (REGEX MATCH "-O2" IS_O2_C "${CMAKE_C_FLAGS_RELEASE}")
+  if (IS_O2_C)
+    string (REGEX REPLACE "-O2" "-O1" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+  else()
+    set (CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O1")
+  endif()
 endif()

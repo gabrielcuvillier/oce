@@ -568,10 +568,12 @@ void OpenGl_Text::drawRect (const Handle(OpenGl_Context)& theCtx,
     {
       myBndVertsVbo = new OpenGl_VertexBuffer();
     }
+#if !defined(GL_ES_VERSION_2_0)
     else
     {
       myBndVertsVbo = new OpenGl_VertexBufferCompat();
     }
+#endif
     myBndVertsVbo->Init (theCtx, 2, 4, aQuad[0].GetData());
   }
 

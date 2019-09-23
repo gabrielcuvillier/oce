@@ -68,7 +68,7 @@ public:
   //! Perform initialization of default OpenGL context.
   Standard_EXPORT Standard_Boolean InitContext();
 
-#if defined(HAVE_EGL) || defined(HAVE_GLES2) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__)
+#if defined(HAVE_EGL) || (defined(HAVE_GLES2) && !defined(__EMSCRIPTEN__)) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__)
   //! Initialize default OpenGL context using existing one.
   //! @param theEglDisplay EGL connection to the Display
   //! @param theEglContext EGL rendering context
@@ -150,10 +150,16 @@ public:
   //! Specify swap buffer behavior.
   Standard_EXPORT void SetBuffersNoSwap (const Standard_Boolean theIsNoSwap);
 
+#if !defined(HAVE_GLES2)
   //! VBO usage can be forbidden by this method even if it is supported by GL driver.
   //! Notice that disabling of VBO will cause rendering performance degradation.
   //! Warning! This method should be called only before any primitives are displayed in GL scene!
   Standard_EXPORT void EnableVBO (const Standard_Boolean theToTurnOn) Standard_OVERRIDE;
+#endif
+
+  //! FBO usage can be forbidden by this method even if it is supported by GL driver.
+  //! Warning! This method should be called only before any primitives are displayed in GL scene!
+  Standard_EXPORT void EnableFBO (const Standard_Boolean theToTurnOn);
 
   //! Returns information about GPU memory usage.
   //! Please read OpenGl_Context::MemoryInfo() for more description.
@@ -168,7 +174,7 @@ public:
   //!                 any context will be returned otherwise
   Standard_EXPORT const Handle(OpenGl_Context)& GetSharedContext (bool theBound = false) const;
 
-#if defined(HAVE_EGL) || defined(HAVE_GLES2) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__)
+#if defined(HAVE_EGL) || (defined(HAVE_GLES2) && !defined(__EMSCRIPTEN__)) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__)
   Aspect_Display          getRawGlDisplay() const { return myEglDisplay; }
   Aspect_RenderingContext getRawGlContext() const { return myEglContext;  }
   void*                   getRawGlConfig()  const { return myEglConfig; }
@@ -188,7 +194,7 @@ public:
 protected:
 
   Standard_Boolean        myIsOwnContext; //!< indicates that shared context has been created within OpenGl_GraphicDriver
-#if defined(HAVE_EGL) || defined(HAVE_GLES2) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__)
+#if defined(HAVE_EGL) || (defined(HAVE_GLES2) && !defined(__EMSCRIPTEN__)) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__)
   Aspect_Display          myEglDisplay;   //!< EGL connection to the Display : EGLDisplay
   Aspect_RenderingContext myEglContext;   //!< EGL rendering context         : EGLContext
   void*                   myEglConfig;    //!< EGL configuration             : EGLConfig

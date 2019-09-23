@@ -17,6 +17,8 @@
 
 #include <OpenGl_VertexBuffer.hxx>
 
+#if !defined(HAVE_GLES2)
+
 //! Compatibility layer for old OpenGL without VBO.
 //! Make sure to pass pointer from GetDataOffset() instead of NULL.
 //! Method GetDataOffset() returns pointer to real data in this class
@@ -95,3 +97,4 @@ public:
 DEFINE_STANDARD_HANDLE(OpenGl_VertexBufferCompat, OpenGl_VertexBuffer)
 
 #endif // _OpenGl_VertexBufferCompat_HeaderFile
+#endif

@@ -256,6 +256,12 @@ public:
                                          const Aspect_Display          theEglDisplay,
                                          const Aspect_RenderingContext theEglContext,
                                          const Standard_Boolean        theIsCoreProfile = Standard_False);
+#elif defined(__EMSCRIPTEN__)
+  //! Initialize class from specified surface and rendering context. Method should be called only once.
+  //! @return false if OpenGL context can not be bound to specified surface
+  Standard_EXPORT Standard_Boolean Init (const Aspect_Drawable         theEmscriptenWindow,       // Target Canvas: const char*
+                                         const Aspect_RenderingContext theEmscriptenContext,      // WebGL Context: int (=> EMSCRIPTEN_WEBGL_CONTEXT_HANDLE)
+                                         const Standard_Boolean        theIsCoreProfile = Standard_False);
 #elif defined(_WIN32)
   //! Initialize class from specified window and rendering context. Method should be called only once.
   //! @return false if OpenGL context can not be bound to specified window
@@ -380,7 +386,7 @@ public:
   //! Return true if active mode is GL_RENDER (cached state)
   Standard_Boolean IsRender() const
   {
-  #if !defined(GL_ES_VERSION_2_0)
+  #if !defined(HAVE_GLES2)
     return myRenderMode == GL_RENDER;
   #else
     return Standard_True;
@@ -390,7 +396,7 @@ public:
   //! Return true if active mode is GL_FEEDBACK (cached state)
   Standard_Boolean IsFeedback() const
   {
-  #if !defined(GL_ES_VERSION_2_0)
+  #if !defined(HAVE_GLES2)
     return myRenderMode == GL_FEEDBACK;
   #else
     return Standard_False;
@@ -541,8 +547,12 @@ public:
   //! Returns true if VBO is supported and permitted.
   inline bool ToUseVbo() const
   {
+#if !defined(HAVE_GLES2)
     return core15fwd != NULL
        && !caps->vboDisable;
+#else
+    return true;
+#endif
   }
 
   //! @return cached state of GL_NORMALIZE.
@@ -634,7 +644,7 @@ public:
   //! right rendering buffers.
   Standard_Boolean HasStereoBuffers() const
   {
-  #if !defined(GL_ES_VERSION_2_0)
+  #if !defined(HAVE_GLES2)
     return myIsStereoBuffers;
   #else
     return Standard_False;
@@ -919,6 +929,7 @@ public: //! @name extensions
   Standard_Boolean       extBgra;            //!< GL_EXT_bgra or GL_EXT_texture_format_BGRA8888 on OpenGL ES
   Standard_Boolean       extAnis;            //!< GL_EXT_texture_filter_anisotropic
   Standard_Boolean       extPDS;             //!< GL_EXT_packed_depth_stencil
+  Standard_Boolean       extTexDepth;        //!< GL_OES_depth_texture
   Standard_Boolean       atiMem;             //!< GL_ATI_meminfo
   Standard_Boolean       nvxMem;             //!< GL_NVX_gpu_memory_info
   Standard_Boolean       oesSampleVariables; //!< GL_OES_sample_variables
@@ -936,6 +947,9 @@ private: // system-dependent fields
   Aspect_Drawable         myWindow;   //!< EGL surface                   : EGLSurface
   Aspect_Display          myDisplay;  //!< EGL connection to the Display : EGLDisplay
   Aspect_RenderingContext myGContext; //!< EGL rendering context         : EGLContext
+#elif defined(__EMSCRIPTEN__)
+  Aspect_Drawable         myWindow;   //!< Emscripten Target Canvas      : const char*
+  Aspect_RenderingContext myGContext; //!< Emscripten WebGL Context      : int (=> EMSCRIPTEN_WEBGL_CONTEXT_HANDLE)
 #elif defined(_WIN32)
   Aspect_Handle           myWindow;   //!< window handle (owner of GL context) : HWND
   Aspect_Handle           myWindowDC; //!< Device Descriptor handle : HDC

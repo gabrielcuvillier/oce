@@ -14,6 +14,8 @@
 
 #include <OpenGl_VertexBufferCompat.hxx>
 
+#if !defined(GL_ES_VERSION_2_0)
+
 #include <NCollection_AlignedAllocator.hxx>
 
 
@@ -175,3 +177,5 @@ bool OpenGl_VertexBufferCompat::subData (const Handle(OpenGl_Context)& ,
   memcpy (myData->ChangeData() + anOffset, theData, aNbBytes);
   return true;
 }
+
+#endif

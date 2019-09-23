@@ -259,6 +259,7 @@ Standard_Boolean StdPrs_ToolTriangulatedShape::Tessellate (const TopoDS_Shape&  
 
   Standard_Real aDeflection = Prs3d::GetDeflection (theShape, theDrawer);
 
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
   // retrieve meshing tool from Factory
   Handle(BRepMesh_DiscretRoot) aMeshAlgo = BRepMesh_DiscretFactory::Get().Discret (theShape,
                                                                                    aDeflection,
@@ -268,6 +269,7 @@ Standard_Boolean StdPrs_ToolTriangulatedShape::Tessellate (const TopoDS_Shape&  
     aMeshAlgo->Perform();
     wasRecomputed = Standard_True;
   }
+#endif
 
   return wasRecomputed;
 }

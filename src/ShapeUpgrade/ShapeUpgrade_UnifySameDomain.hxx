@@ -45,13 +45,13 @@ DEFINE_STANDARD_HANDLE(ShapeUpgrade_UnifySameDomain, Standard_Transient)
 //! on BSpline or Bezier curves with C1 continuity on their common vertices,
 //! will be merged into one common edge.
 //!
-//! The input shape can be of any type containing faces or edges - compsolid, solid, shell, 
+//! The input shape can be of any type containing faces or edges - compsolid, solid, shell,
 //! wire, compound of any kind of shapes. The algorithm preserves the structure of compsolids,
 //! solids, shells and wires. E.g., if two shells have a common edge and the faces sharing
-//! this edge lie on the same surface the algorithm will not unify these faces, otherwise 
+//! this edge lie on the same surface the algorithm will not unify these faces, otherwise
 //! the structure of shells would be broken. However, if such faces belong to different
 //! compounds of faces they will be unified.
-//! 
+//!
 //! The output result of the tool is the unified shape.
 //!
 //! All the modifications of initial shape are recorded during unifying.
@@ -72,7 +72,7 @@ public:
   //! Constructor defining input shape and necessary flags.
   //! It does not perform unification.
   Standard_EXPORT ShapeUpgrade_UnifySameDomain
-                   (const TopoDS_Shape& aShape, 
+                   (const TopoDS_Shape& aShape,
                     const Standard_Boolean UnifyEdges = Standard_True,
                     const Standard_Boolean UnifyFaces = Standard_True,
                     const Standard_Boolean ConcatBSplines = Standard_False);
@@ -118,7 +118,7 @@ public:
     myLinTol = theValue;
   }
 
-  //! Sets the angular tolerance. If two shapes form a connection angle greater than 
+  //! Sets the angular tolerance. If two shapes form a connection angle greater than
   //! this value they will not be merged. Default value is Precision::Angular().
   void SetAngularTolerance(const Standard_Real theValue)
   {

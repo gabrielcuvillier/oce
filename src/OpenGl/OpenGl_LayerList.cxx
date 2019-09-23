@@ -852,10 +852,12 @@ void OpenGl_LayerList::renderTransparent (const Handle(OpenGl_Workspace)&   theW
   // should contain two additional color buffers to handle accumulated color channels,
   // blended alpha channel and weight factors - these accumulation buffers are required
   // to implement commuting blend operator (at least OpenGl 2.0 should be available).
+#if !defined(GL_ES_VERSION_2_0)
   const bool isEnabledOit = theOitAccumFbo != NULL
                          && theOitAccumFbo->NbColorBuffers() >= 2
                          && theOitAccumFbo->ColorTexture (0)->IsValid()
                          && theOitAccumFbo->ColorTexture (1)->IsValid();
+#endif
 
   // Check if current iterator has already reached the end of the stack.
   // This should happen if no additional layers has been added to
@@ -875,6 +877,7 @@ void OpenGl_LayerList::renderTransparent (const Handle(OpenGl_Workspace)&   theW
 
   aCtx->core11fwd->glEnable (GL_BLEND);
 
+#if !defined(GL_ES_VERSION_2_0)
   if (isEnabledOit)
   {
     aManager->SetOitState (true, aDepthFactor);
@@ -888,6 +891,7 @@ void OpenGl_LayerList::renderTransparent (const Handle(OpenGl_Workspace)&   theW
     aCtx->core15fwd->glBlendFuncSeparate (GL_ONE, GL_ONE, GL_ZERO, GL_ONE_MINUS_SRC_ALPHA);
   }
   else
+#endif
   {
     aCtx->core11fwd->glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   }
@@ -906,6 +910,7 @@ void OpenGl_LayerList::renderTransparent (const Handle(OpenGl_Workspace)&   theW
   }
 
   // Revert state of rendering.
+#if !defined(GL_ES_VERSION_2_0)
   if (isEnabledOit)
   {
     aManager->SetOitState (false, aDepthFactor);
@@ -918,8 +923,10 @@ void OpenGl_LayerList::renderTransparent (const Handle(OpenGl_Workspace)&   theW
     static const Standard_Integer aDrawBuffers[] = { GL_COLOR_ATTACHMENT0 };
     aCtx->SetDrawBuffers (1, aDrawBuffers);
   }
+#endif
 
   theWorkspace->SetRenderFilter (aPrevFilter | OpenGl_RenderFilter_OpaqueOnly);
+#if !defined(GL_ES_VERSION_2_0)
   if (isEnabledOit)
   {
     const Standard_Boolean isMSAA = theReadDrawFbo && theReadDrawFbo->NbSamples() > 0;
@@ -964,6 +971,7 @@ void OpenGl_LayerList::renderTransparent (const Handle(OpenGl_Workspace)&   theW
       }
     }
   }
+#endif
 
   aCtx->core11fwd->glDisable (GL_BLEND);
   aCtx->core11fwd->glBlendFunc (GL_ONE, GL_ZERO);

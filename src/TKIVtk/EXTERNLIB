@@ -9,6 +9,7 @@ TKMath
 TKMesh
 TKService
 TKTopAlgo
+TKTopBase
 TKV3d
 vtkCommonCore
 vtkRenderingCore

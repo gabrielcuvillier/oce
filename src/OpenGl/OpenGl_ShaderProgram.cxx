@@ -389,7 +389,7 @@ Standard_Boolean OpenGl_ShaderProgram::Initialize (const Handle(OpenGl_Context)&
 
     TCollection_AsciiString aHeaderType;
     switch (anIter.Value()->Type())
-    {
+    { 
       case Graphic3d_TOS_COMPUTE:         { aHeaderType = "#define COMPUTE_SHADER\n";         break; }
       case Graphic3d_TOS_VERTEX:          { aHeaderType = "#define VERTEX_SHADER\n";          break; }
       case Graphic3d_TOS_TESS_CONTROL:    { aHeaderType = "#define TESS_CONTROL_SHADER\n";    break; }

@@ -153,7 +153,7 @@ inline Standard_Integer HashCode (const long long int theValue, const Standard_I
   return IntegerHashCode(theValue, 0x7fffffffffffffff, theUpperBound);
 }
 
-#if (defined(_LP64) || defined(__LP64__) || defined(_WIN64)) || defined(__APPLE__)
+#if (defined(_LP64) || defined(__LP64__) || defined(_WIN64)) || defined(__APPLE__) || defined(__EMSCRIPTEN__)
 
 //! Computes a hash code for the given value of the Standard_Utf32Char type, in range [1, theUpperBound]
 //! @param theValue the value of the Standard_Utf32Char type which hash code is to be computed

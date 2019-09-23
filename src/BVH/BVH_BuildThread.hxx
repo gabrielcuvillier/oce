@@ -43,8 +43,7 @@ public:
   }
 
   //! Waits till the thread finishes execution.
-  void Wait()
-  {
+  void Wait() {
     myWorkThread.Wait();
   }
 
@@ -78,3 +77,4 @@ public:
 DEFINE_STANDARD_HANDLE (BVH_BuildThread, Standard_Transient)
 
 #endif // _BVH_BuildThread_Header
+

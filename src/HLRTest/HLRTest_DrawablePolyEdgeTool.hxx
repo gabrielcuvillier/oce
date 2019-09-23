@@ -24,7 +24,7 @@
 #include <Standard_Integer.hxx>
 #include <HLRBRep_ListOfBPoint.hxx>
 #include <Draw_Drawable3D.hxx>
-class HLRBRep_PolyAlgo;
+class HLRAlgo_BRepPolyAlgo;
 class Draw_Display;
 
 
@@ -38,7 +38,7 @@ class HLRTest_DrawablePolyEdgeTool : public Draw_Drawable3D
 public:
 
   
-  Standard_EXPORT HLRTest_DrawablePolyEdgeTool(const Handle(HLRBRep_PolyAlgo)& Alg, const Standard_Integer ViewId, const Standard_Boolean Debug = Standard_False);
+  Standard_EXPORT HLRTest_DrawablePolyEdgeTool(const Handle(HLRAlgo_BRepPolyAlgo)& Alg, const Standard_Integer ViewId, const Standard_Boolean Debug = Standard_False);
   
     void Show();
   
@@ -75,7 +75,7 @@ protected:
 private:
 
 
-  Handle(HLRBRep_PolyAlgo) myAlgo;
+  Handle(HLRAlgo_BRepPolyAlgo) myAlgo;
   Standard_Boolean myDispRg1;
   Standard_Boolean myDispRgN;
   Standard_Boolean myDispHid;

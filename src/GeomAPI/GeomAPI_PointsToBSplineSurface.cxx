@@ -119,7 +119,7 @@ static void BuildPeriodicTangent(const AppDef_MultiLine& theLine,
   {
     P1(i) = thePars(i);
   }
- 
+
   AppDef_BSpParLeastSquareOfMyBSplGradientOfBSplineCompute SQ1(theLine, firstpt, lastp, Cons, Cons, nnpol);
   SQ1.Perform(P1);
   const AppParCurves_MultiCurve& C1 = SQ1.BezierValue();
@@ -307,8 +307,8 @@ void GeomAPI_PointsToBSplineSurface::Init(const TColgp_Array2OfPnt& Points,
 
 void GeomAPI_PointsToBSplineSurface::Init(const TColgp_Array2OfPnt& Points,
             const Approx_ParametrizationType ParType,
-            const Standard_Integer DegMin, 
-            const Standard_Integer DegMax, 
+            const Standard_Integer DegMin,
+            const Standard_Integer DegMax,
             const GeomAbs_Shape Continuity,
             const Standard_Real Tol3D,
             const Standard_Boolean thePeriodic)

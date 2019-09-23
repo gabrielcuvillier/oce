@@ -171,12 +171,19 @@ namespace {
   }
 #endif
 
-  static Standard_Boolean OSD_Parallel_ToUseOcctThreads =
-  #ifdef HAVE_TBB
-    Standard_False;
-  #else
-    Standard_True;
-  #endif
+constexpr Standard_Boolean OSD_Parallel_ToUseThreads =
+#if !defined(OCCT_DISABLE_THREADS)
+  Standard_True;
+#else
+  Standard_False;
+#endif
+
+static Standard_Boolean OSD_Parallel_ToUseOcctThreads =
+#ifdef HAVE_TBB
+  Standard_False;
+#else
+  OSD_Parallel_ToUseThreads;
+#endif
 }
 
 //=======================================================================

@@ -17,6 +17,8 @@
 #ifndef _VrmlConverter_WFDeflectionRestrictedFace_HeaderFile
 #define _VrmlConverter_WFDeflectionRestrictedFace_HeaderFile
 
+#if !defined(OCCT_DISABLE_EXACTHLR_IN_VISUALIZATION)
+
 #include <Standard.hxx>
 #include <Standard_DefineAlloc.hxx>
 #include <Standard_Handle.hxx>
@@ -56,3 +58,4 @@ public:
 };
 
 #endif // _VrmlConverter_WFDeflectionRestrictedFace_HeaderFile
+#endif

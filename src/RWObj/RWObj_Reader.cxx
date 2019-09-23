@@ -694,10 +694,10 @@ Standard_Integer RWObj_Reader::triangulatePolygon (const NCollection_Array1<Stan
     }
     return aNbTrisAdded;
   }
-  catch (Standard_Failure const& theFailure)
+  catch (Standard_Failure const& anException)
   {
     Message::DefaultMessenger()->Send (TCollection_AsciiString ("Error: exception raised during polygon split\n[")
-                                       + theFailure.GetMessageString() + "]", Message_Warning);
+                                       + anException.GetMessageString() + "]", Message_Warning);
   }
   return triangulatePolygonFan (theIndices);
 }

@@ -1199,7 +1199,7 @@ void BOPAlgo_BOP::BuildSolid()
 
 //=======================================================================
 //function : CheckArgsForOpenSolid
-//purpose  : 
+//purpose  :
 //=======================================================================
 Standard_Boolean BOPAlgo_BOP::CheckArgsForOpenSolid()
 {
@@ -1314,7 +1314,7 @@ Standard_Boolean BOPAlgo_BOP::CheckArgsForOpenSolid()
       // Warning has been generated for this solid, return positive result right away.
       return Standard_True;
 
-    
+
     // Check the splits not to acquire new INTERNAL faces
     const TopTools_ListOfShape *pLSIm = myImages.Seek(aSolid);
     if (!pLSIm)

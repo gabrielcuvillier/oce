@@ -14,6 +14,8 @@
  commercial license or contractual agreement.
 */
 
+#if !defined(OCCT_DISABLE_UNICODE_CONVERSIONS)
+
 static  char16 unigb [65536] = {
 0x0 , 0x0 , 0x0 , 0x0 ,
 0x0 , 0x0 , 0x0 , 0x0 ,
@@ -32786,3 +32788,5 @@ static  char16 gbuni [65536] = {
 0x0 , 0x0 , 0x0 , 0x0 ,
 0x0 , 0x0 , 0x0 , 0x0 ,
 } ;
+
+#endif

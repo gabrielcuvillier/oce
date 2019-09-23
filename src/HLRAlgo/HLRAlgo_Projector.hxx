@@ -44,7 +44,7 @@ class gp_Lin;
 //! You define the projection of the selected shape
 //! by calling one of the following functions:
 //! -   HLRBRep_Algo::Projector, or
-//! -   HLRBRep_PolyAlgo::Projector
+//! -   HLRAlgo_BRepPolyAlgo::Projector
 //! The choice depends on the algorithm, which you are using.
 //! The parameters of the view are defined at the
 //! time of construction of a Prs3d_Projector object.

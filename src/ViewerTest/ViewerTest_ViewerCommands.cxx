@@ -6729,10 +6729,13 @@ static int VVbo (Draw_Interpretor& theDI,
 {
   const Standard_Boolean toSet    = (theArgNb > 1);
   const Standard_Boolean toUseVbo = toSet ? (Draw::Atoi (theArgVec[1]) == 0) : 1;
+
+#if !defined(GL_ES_VERSION_2_0)
   if (toSet)
   {
     ViewerTest_myDefaultCaps.vboDisable = toUseVbo;
   }
+#endif
 
   // get the context
   Handle(AIS_InteractiveContext) aContextAIS = ViewerTest::GetAISContext();
@@ -6747,6 +6750,7 @@ static int VVbo (Draw_Interpretor& theDI,
   Handle(OpenGl_GraphicDriver) aDriver = Handle(OpenGl_GraphicDriver)::DownCast (aContextAIS->CurrentViewer()->Driver());
   if (!aDriver.IsNull())
   {
+#if !defined(GL_ES_VERSION_2_0)
     if (!toSet)
     {
       theDI << (aDriver->Options().vboDisable ? "0" : "1") << "\n";
@@ -6755,6 +6759,7 @@ static int VVbo (Draw_Interpretor& theDI,
     {
       aDriver->ChangeOptions().vboDisable = toUseVbo;
     }
+#endif
   }
 
   return 0;
@@ -6780,11 +6785,16 @@ static int VCaps (Draw_Interpretor& theDI,
 
   if (theArgNb < 2)
   {
+
+#if !defined(GL_ES_VERSION_2_0)
     theDI << "VBO:     " << (aCaps->vboDisable        ? "0" : "1") << "\n";
+#endif
     theDI << "Sprites: " << (aCaps->pntSpritesDisable ? "0" : "1") << "\n";
     theDI << "SoftMode:" << (aCaps->contextNoAccel    ? "1" : "0") << "\n";
+#if !defined(GL_ES_VERSION_2_0)
     theDI << "FFP:     " << (aCaps->ffpEnable         ? "1" : "0") << "\n";
     theDI << "PolygonMode: " << (aCaps->usePolygonMode ? "1" : "0") << "\n";
+#endif
     theDI << "VSync:   " <<  aCaps->swapInterval                   << "\n";
     theDI << "Compatible:" << (aCaps->contextCompatible ? "1" : "0") << "\n";
     theDI << "Stereo:  " << (aCaps->contextStereo ? "1" : "0") << "\n";
@@ -6823,7 +6833,9 @@ static int VCaps (Draw_Interpretor& theDI,
       {
         --anArgIter;
       }
+#if !defined(GL_ES_VERSION_2_0)
       aCaps->ffpEnable = toEnable;
+#endif
     }
     else if (anArgCase == "-polygonmode")
     {
@@ -6833,7 +6845,9 @@ static int VCaps (Draw_Interpretor& theDI,
       {
         --anArgIter;
       }
+#if !defined(GL_ES_VERSION_2_0)
       aCaps->usePolygonMode = toEnable;
+#endif
     }
     else if (anArgCase == "-vbo")
     {
@@ -6843,7 +6857,9 @@ static int VCaps (Draw_Interpretor& theDI,
       {
         --anArgIter;
       }
+#if !defined(GL_ES_VERSION_2_0)
       aCaps->vboDisable = !toEnable;
+#endif
     }
     else if (anArgCase == "-sprite"
           || anArgCase == "-sprites")
@@ -6905,7 +6921,9 @@ static int VCaps (Draw_Interpretor& theDI,
       aCaps->contextCompatible = toEnable;
       if (!aCaps->contextCompatible)
       {
+#if !defined(GL_ES_VERSION_2_0)
         aCaps->ffpEnable = Standard_False;
+#endif
       }
     }
     else if (anArgCase == "-core"
@@ -6920,7 +6938,9 @@ static int VCaps (Draw_Interpretor& theDI,
       aCaps->contextCompatible = !toEnable;
       if (!aCaps->contextCompatible)
       {
+#if !defined(GL_ES_VERSION_2_0)
         aCaps->ffpEnable = Standard_False;
+#endif
       }
     }
     else if (anArgCase == "-stereo"

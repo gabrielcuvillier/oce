@@ -27,13 +27,18 @@ class OpenGl_Caps : public Standard_Transient
 
 public: //! @name flags to disable particular functionality, should be used only for testing purposes!
 
+#if !defined(HAVE_GLES2)
   Standard_Boolean vboDisable;        //!< flag permits VBO usage, will significantly affect performance (OFF by default)
+#endif
   Standard_Boolean pntSpritesDisable; //!< flag permits Point Sprites usage, will significantly affect performance (OFF by default)
   Standard_Boolean keepArrayData;     //!< Disables freeing CPU memory after building VBOs (OFF by default)
+#if !defined(HAVE_GLES2)
   Standard_Boolean ffpEnable;         //!< Enables FFP (fixed-function pipeline), do not use built-in GLSL programs (OFF by default)
   Standard_Boolean usePolygonMode;    //!< Enables Polygon Mode instead of built-in GLSL programs (OFF by default; unsupported on OpenGL ES)
+#endif
   Standard_Boolean useSystemBuffer;   //!< Enables usage of system backbuffer for blitting (OFF by default on desktop OpenGL and ON on OpenGL ES for testing)
   Standard_Integer swapInterval;      //!< controls swap interval - 0 for VSync off and 1 for VSync on, 1 by default
+  Standard_Integer fboDisable;        //!< flag permits FBO usage, might be needed to be disabled if you use a GL context created externally
 
 public: //! @name context creation parameters
 

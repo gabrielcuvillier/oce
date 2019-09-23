@@ -489,10 +489,13 @@ void AIS_ColoredShape::ComputeSelection (const Handle(SelectMgr_Selection)& theS
   const Standard_Real    aDeflection = Prs3d::GetDeflection (myshape, myDrawer);
   const Standard_Real    aDeviationAngle = myDrawer->HLRAngle();
   const Standard_Integer aPriority   = StdSelect_BRepSelectionTool::GetStandardPriority (myshape, aTypOfSel);
+
   if (myDrawer->IsAutoTriangulation()
   && !BRepTools::Triangulation (myshape, Precision::Infinite()))
   {
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
     BRepMesh_IncrementalMesh aMesher (myshape, aDeflection, Standard_False, aDeviationAngle);
+#endif
   }
 
   AIS_DataMapOfShapeDrawer aSubshapeDrawerMap;

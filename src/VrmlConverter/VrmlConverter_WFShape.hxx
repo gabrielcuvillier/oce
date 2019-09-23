@@ -17,6 +17,8 @@
 #ifndef _VrmlConverter_WFShape_HeaderFile
 #define _VrmlConverter_WFShape_HeaderFile
 
+#if !defined(OCCT_DISABLE_EXACTHLR_IN_VISUALIZATION)
+
 #include <Standard.hxx>
 #include <Standard_DefineAlloc.hxx>
 #include <Standard_Handle.hxx>
@@ -68,3 +70,4 @@ private:
 
 
 #endif // _VrmlConverter_WFShape_HeaderFile
+#endif

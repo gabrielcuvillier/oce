@@ -160,6 +160,8 @@ void OpenGl_View::Redraw()
 {
   const Standard_Boolean wasDisabledMSAA = myToDisableMSAA;
   const Standard_Boolean hadFboBlit      = myHasFboBlit;
+
+#if !defined(GL_ES_VERSION_2_0)
   if (myRenderParams.Method == Graphic3d_RM_RAYTRACING
   && !myCaps->vboDisable
   && !myCaps->keepArrayData)
@@ -169,6 +171,7 @@ void OpenGl_View::Redraw()
     myDriver->setDeviceLost();
     myCaps->keepArrayData = Standard_True;
   }
+#endif
 
   if (!myWorkspace->Activate())
   {
@@ -178,7 +181,9 @@ void OpenGl_View::Redraw()
   myWindow->SetSwapInterval();
 
   ++myFrameCounter;
+#if !defined(GL_ES_VERSION_2_0)
   const Graphic3d_StereoMode   aStereoMode  = myRenderParams.StereoMode;
+#endif
   Graphic3d_Camera::Projection aProjectType = myCamera->ProjectionType();
   Handle(OpenGl_Context)       aCtx         = myWorkspace->GetGlContext();
   aCtx->FrameStats()->FrameStart (myWorkspace->View(), false);
@@ -210,6 +215,7 @@ void OpenGl_View::Redraw()
   }
 
   // determine multisampling parameters
+#if !defined(GL_ES_VERSION_2_0)
   Standard_Integer aNbSamples = !myToDisableMSAA && aSizeX == aRendSizeX
                               ? Max (Min (myRenderParams.NbMsaaSamples, aCtx->MaxMsaaSamples()), 0)
                               : 0;
@@ -217,9 +223,16 @@ void OpenGl_View::Redraw()
   {
     aNbSamples = OpenGl_Context::GetPowerOfTwo (aNbSamples, aCtx->MaxMsaaSamples());
   }
+#else
+  Standard_Integer aNbSamples = 0;
+#endif
 
+#if !defined(GL_ES_VERSION_2_0)
   bool toUseOit = myRenderParams.TransparencyMethod == Graphic3d_RTM_BLEND_OIT
                && checkOitCompatibility (aCtx, aNbSamples > 0);
+#else
+  const bool toUseOit = false;
+#endif
 
   const bool toInitImmediateFbo = myTransientDrawToFront
                                && (!aCtx->caps->useSystemBuffer || (toUseOit && HasImmediateStructures()));
@@ -288,6 +301,7 @@ void OpenGl_View::Redraw()
     myImmediateSceneFbos[1]->ChangeViewport (0, 0);
   }
 
+#if !defined(GL_ES_VERSION_2_0)
   if (aProjectType == Graphic3d_Camera::Projection_Stereo
    && myMainSceneFbos[0]->IsValid())
   {
@@ -333,7 +347,9 @@ void OpenGl_View::Redraw()
       }
     }
   }
+#endif
 
+#if !defined(GL_ES_VERSION_2_0)
   // create color and coverage accumulation buffers required for OIT algorithm
   if (toUseOit)
   {
@@ -410,6 +426,8 @@ void OpenGl_View::Redraw()
       toUseOit = false;
     }
   }
+#endif
+
   if (!toUseOit && myMainSceneFbosOit[0]->IsValid())
   {
     myMainSceneFbosOit     [0]->Release (aCtx.operator->());
@@ -422,6 +440,7 @@ void OpenGl_View::Redraw()
     myImmediateSceneFbosOit[1]->ChangeViewport (0, 0);
   }
 
+#if !defined(GL_ES_VERSION_2_0)
   if (aProjectType == Graphic3d_Camera::Projection_Stereo)
   {
     OpenGl_FrameBuffer* aMainFbos[2] =
@@ -510,6 +529,7 @@ void OpenGl_View::Redraw()
     }
   }
   else
+#endif
   {
     OpenGl_FrameBuffer* aMainFbo    = myMainSceneFbos[0]->IsValid() ? myMainSceneFbos[0].operator->() : aFrameBuffer;
     OpenGl_FrameBuffer* aMainFboOit = myMainSceneFbosOit[0]->IsValid() ? myMainSceneFbosOit[0].operator->() : NULL;
@@ -552,11 +572,13 @@ void OpenGl_View::Redraw()
     }
   }
 
+#if !defined(GL_ES_VERSION_2_0)
   if (myRenderParams.Method == Graphic3d_RM_RAYTRACING
    && myRenderParams.IsGlobalIlluminationEnabled)
   {
     myAccumFrames++;
   }
+#endif
 
   // bind default FBO
   bindDefaultFbo();
@@ -570,10 +592,12 @@ void OpenGl_View::Redraw()
 
   // reset state for safety
   aCtx->BindProgram (Handle(OpenGl_ShaderProgram)());
+#if !defined(GL_ES_VERSION_2_0)
   if (aCtx->caps->ffpEnable)
   {
     aCtx->ShaderManager()->PushState (Handle(OpenGl_ShaderProgram)());
   }
+#endif
 
   // Swap the buffers
   if (toSwap)
@@ -614,7 +638,9 @@ void OpenGl_View::RedrawImmediate()
     return;
   }
 
+#if !defined(GL_ES_VERSION_2_0)
   const Graphic3d_StereoMode   aStereoMode  = myRenderParams.StereoMode;
+#endif
   Graphic3d_Camera::Projection aProjectType = myCamera->ProjectionType();
   OpenGl_FrameBuffer*          aFrameBuffer = myFBO.get();
   aCtx->FrameStats()->FrameStart (myWorkspace->View(), true);
@@ -626,6 +652,7 @@ void OpenGl_View::RedrawImmediate()
     aFrameBuffer = aCtx->DefaultFrameBuffer().operator->();
   }
 
+#if !defined(GL_ES_VERSION_2_0)
   if (aProjectType == Graphic3d_Camera::Projection_Stereo)
   {
     if (myMainSceneFbos[0]->IsValid()
@@ -634,8 +661,10 @@ void OpenGl_View::RedrawImmediate()
       aProjectType = Graphic3d_Camera::Projection_Perspective;
     }
   }
+#endif
 
   bool toSwap = false;
+#if !defined(GL_ES_VERSION_2_0)
   if (aProjectType == Graphic3d_Camera::Projection_Stereo)
   {
     OpenGl_FrameBuffer* aMainFbos[2] =
@@ -711,6 +740,7 @@ void OpenGl_View::RedrawImmediate()
     }
   }
   else
+#endif
   {
     OpenGl_FrameBuffer* aMainFbo = myMainSceneFbos[0]->IsValid() ? myMainSceneFbos[0].operator->() : NULL;
     OpenGl_FrameBuffer* anImmFbo = aFrameBuffer;
@@ -745,10 +775,12 @@ void OpenGl_View::RedrawImmediate()
 
   // reset state for safety
   aCtx->BindProgram (Handle(OpenGl_ShaderProgram)());
+#if !defined(GL_ES_VERSION_2_0)
   if (aCtx->caps->ffpEnable)
   {
     aCtx->ShaderManager()->PushState (Handle(OpenGl_ShaderProgram)());
   }
+#endif
 
   if (toSwap && !aCtx->caps->buffersNoSwap)
   {
@@ -936,7 +968,9 @@ void OpenGl_View::render (Graphic3d_Camera::Projection theProjection,
   Graphic3d_WorldViewProjState aWVPState = myCamera->WorldViewProjState();
   if (myWorldViewProjState != aWVPState)
   {
+#if !defined(GL_ES_VERSION_2_0)
     myAccumFrames = 0;
+#endif
     myWorldViewProjState = aWVPState;
   }
 
@@ -1067,10 +1101,12 @@ void OpenGl_View::render (Graphic3d_Camera::Projection theProjection,
 
   // reset FFP state for safety
   aContext->BindProgram (Handle(OpenGl_ShaderProgram)());
+#if !defined(GL_ES_VERSION_2_0)
   if (aContext->caps->ffpEnable)
   {
     aContext->ShaderManager()->PushState (Handle(OpenGl_ShaderProgram)());
   }
+#endif
 
   // ==============================================================
   //      Step 6: Keep shader manager informed about last View
@@ -1106,10 +1142,15 @@ void OpenGl_View::renderStructs (Graphic3d_Camera::Projection theProjection,
 
   Handle(OpenGl_Context) aCtx = myWorkspace->GetGlContext();
   Standard_Boolean toRenderGL = theToDrawImmediate ||
+#if !defined(GL_ES_VERSION_2_0)
     myRenderParams.Method != Graphic3d_RM_RAYTRACING ||
     myRaytraceInitStatus == OpenGl_RT_FAIL ||
+#else
+    true ||
+#endif
     aCtx->IsFeedback();
 
+#if !defined(GL_ES_VERSION_2_0)
   if (!toRenderGL)
   {
     const Standard_Integer aSizeX = theReadDrawFbo != NULL ? theReadDrawFbo->GetVPSizeX() : myWindow->Width();
@@ -1171,6 +1212,7 @@ void OpenGl_View::renderStructs (Graphic3d_Camera::Projection theProjection,
       myZLayers.Render (myWorkspace, theToDrawImmediate, OpenGl_LF_Upper, theReadDrawFbo, theOitAccumFbo);
     }
   }
+#endif
 
   // Redraw 3D scene using OpenGL in standard
   // mode or in case of ray-tracing failure
@@ -1366,6 +1408,7 @@ bool OpenGl_View::blitBuffers (OpenGl_FrameBuffer*    theReadFbo,
 #endif
   aCtx->core20fwd->glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
+#if !defined(GL_ES_VERSION_2_0)
   if (aCtx->arbFBOBlit != NULL
    && theReadFbo->NbSamples() != 0)
   {
@@ -1440,6 +1483,7 @@ bool OpenGl_View::blitBuffers (OpenGl_FrameBuffer*    theReadFbo,
     }
   }
   else
+#endif
   {
     aCtx->core20fwd->glDepthFunc (GL_ALWAYS);
     aCtx->core20fwd->glDepthMask (GL_TRUE);
@@ -1505,6 +1549,7 @@ bool OpenGl_View::blitBuffers (OpenGl_FrameBuffer*    theReadFbo,
   return true;
 }
 
+#if !defined(GL_ES_VERSION_2_0)
 // =======================================================================
 // function : drawStereoPair
 // purpose  :
@@ -1687,6 +1732,7 @@ void OpenGl_View::drawStereoPair (OpenGl_FrameBuffer* theDrawFbo)
                        aMsg);
   }
 }
+#endif
 
 // =======================================================================
 // function : copyBackToFront
@@ -1761,6 +1807,7 @@ bool OpenGl_View::copyBackToFront()
 #endif
 }
 
+#if !defined(GL_ES_VERSION_2_0)
 // =======================================================================
 // function : checkOitCompatibility
 // purpose  :
@@ -1831,3 +1878,4 @@ bool OpenGl_View::chooseOitColorConfiguration (const Handle(OpenGl_Context)& the
   }
   return false; // color combination does not exist
 }
+#endif

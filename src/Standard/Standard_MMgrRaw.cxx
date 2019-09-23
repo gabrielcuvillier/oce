@@ -17,6 +17,15 @@
 #include <Standard_OutOfMemory.hxx>
 #include <stdlib.h>
 
+namespace {
+constexpr Standard_Boolean ToUseEmscripten =
+#if defined(__EMSCRIPTEN__)
+  Standard_True;
+#else
+  Standard_False;
+#endif
+}
+
 //=======================================================================
 //function : Standard_MMgrRaw
 //purpose  : 
@@ -32,11 +41,17 @@ Standard_MMgrRaw::Standard_MMgrRaw(const Standard_Boolean aClear)
 //purpose  : 
 //=======================================================================
 
-Standard_Address Standard_MMgrRaw::Allocate(const Standard_Size aSize)
+Standard_Address Standard_MMgrRaw::Allocate(const Standard_Size theSize)
 {
   // the size is rounded up to 4 since some OCC classes
   // (e.g. TCollection_AsciiString) assume memory to be double word-aligned
-  const Standard_Size aRoundSize = (aSize + 3) & ~0x3;
+  Standard_Size aRoundSize;
+  if constexpr(ToUseEmscripten) {
+    // Some Emscripten memory allocator (ie. emmalloc) have troubles with calloc/malloc(0), so just prevent this
+    aRoundSize = theSize ? (theSize + 3) & ~0x3 : 4;
+  } else {
+    aRoundSize = (theSize + 3) & ~0x3;
+  }
   // we use ?: operator instead of if() since it is faster :-)
   Standard_Address aPtr = ( myClear ? calloc(aRoundSize, sizeof(char)) :
                                       malloc(aRoundSize) );
@@ -65,7 +80,13 @@ Standard_Address Standard_MMgrRaw::Reallocate(Standard_Address theStorage,
 {
   // the size is rounded up to 4 since some OCC classes
   // (e.g. TCollection_AsciiString) assume memory to be double word-aligned
-  const Standard_Size aRoundSize = (theSize + 3) & ~0x3;
+  Standard_Size aRoundSize;
+  if constexpr(ToUseEmscripten) {
+    // Some Emscripten memory allocator (ie. emmalloc) have troubles with calloc/malloc(0), so just prevent this
+    aRoundSize = theSize ? (theSize + 3) & ~0x3 : 4;
+  } else {
+    aRoundSize = (theSize + 3) & ~0x3;
+  }
   Standard_Address newStorage = (Standard_Address)realloc(theStorage, aRoundSize);
   if ( ! newStorage )
     throw Standard_OutOfMemory("Standard_MMgrRaw::Reallocate(): realloc failed");

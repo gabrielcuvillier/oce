@@ -140,13 +140,16 @@ void OpenGl_FrameStats::updateStatistics (const Handle(Graphic3d_CView)& theView
       aMemFbos += estimatedDataSize (aView->myMainSceneFbos[1]);
       aMemFbos += estimatedDataSize (aView->myImmediateSceneFbos[0]);
       aMemFbos += estimatedDataSize (aView->myImmediateSceneFbos[1]);
+#if !defined(GL_ES_VERSION_2_0)
       // OIT FBOs
       aMemFbos += estimatedDataSize (aView->myMainSceneFbosOit[0]);
       aMemFbos += estimatedDataSize (aView->myMainSceneFbosOit[1]);
       aMemFbos += estimatedDataSize (aView->myImmediateSceneFbosOit[0]);
       aMemFbos += estimatedDataSize (aView->myImmediateSceneFbosOit[1]);
+#endif
       // dump FBO
       aMemFbos += estimatedDataSize (aView->myFBO);
+#if !defined(GL_ES_VERSION_2_0)
       // RayTracing FBO
       aMemFbos += estimatedDataSize (aView->myOpenGlFBO);
       aMemFbos += estimatedDataSize (aView->myOpenGlFBO2);
@@ -163,8 +166,10 @@ void OpenGl_FrameStats::updateStatistics (const Handle(Graphic3d_CView)& theView
       aMemFbos += estimatedDataSize (aView->myRaytraceTileOffsetsTexture[1]);
       aMemFbos += estimatedDataSize (aView->myRaytraceTileSamplesTexture[0]);
       aMemFbos += estimatedDataSize (aView->myRaytraceTileSamplesTexture[1]);
+#endif
     }
     {
+#if !defined(GL_ES_VERSION_2_0)
       // Ray Tracing geometry
       Standard_Size& aMemGeom = myCountersTmp[Graphic3d_FrameStatsCounter_EstimatedBytesGeom];
       aMemGeom += estimatedDataSize (aView->mySceneNodeInfoTexture);
@@ -177,6 +182,7 @@ void OpenGl_FrameStats::updateStatistics (const Handle(Graphic3d_CView)& theView
       aMemGeom += estimatedDataSize (aView->myGeometryTriangTexture);
       aMemGeom += estimatedDataSize (aView->myRaytraceMaterialTexture);
       aMemGeom += estimatedDataSize (aView->myRaytraceLightSrcTexture);
+#endif
     }
   }
 }

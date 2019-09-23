@@ -27,6 +27,16 @@
 #include <windows.h>
 #endif
 
+namespace {
+constexpr Standard_Boolean ToUseThreads =
+#if !defined(OCCT_DISABLE_THREADS)
+  Standard_True;
+#else
+  Standard_False;
+#endif
+}
+
+
 // ===========================================================================
 // The class "Standard_ErrorHandler" variables
 // ===========================================================================
@@ -47,7 +57,11 @@ static Standard_Mutex theMutex;
 static inline Standard_ThreadId GetThreadID()
 {
 #ifndef _WIN32
-  return (Standard_ThreadId)pthread_self();
+  if constexpr(ToUseThreads) {
+    return (Standard_ThreadId)pthread_self();
+  } else {
+    return (Standard_ThreadId)0;
+  }
 #else
   return GetCurrentThreadId();
 #endif
@@ -267,7 +281,7 @@ Standard_ErrorHandler* Standard_ErrorHandler::FindHandler(const Standard_Handler
   return anActive;
 }
 
-#if defined(OCC_CONVERT_SIGNALS)
+#if defined(OCCT_CONVERT_SIGNALS)
 
 Standard_ErrorHandler::Callback::Callback ()
   : myHandler(0), myPrev(0), myNext(0)
@@ -306,5 +320,21 @@ void Standard_ErrorHandler::Callback::UnregisterCallback ()
   else if ( ((Standard_ErrorHandler*)myHandler)->myCallbackPtr == this)
     ((Standard_ErrorHandler*)myHandler)->myCallbackPtr = (Standard_ErrorHandler::Callback*)myNext;
   myHandler = myNext = myPrev = 0;
+}
+#else
+// If OCCT_CONVERT_SIGNALS is not defined,
+// provide empty implementation
+Standard_ErrorHandler::Callback::Callback ()
+       : myHandler(0), myPrev(0), myNext(0)
+{
+}
+Standard_ErrorHandler::Callback::~Callback ()
+{
+}
+void Standard_ErrorHandler::Callback::RegisterCallback ()
+{
+}
+void Standard_ErrorHandler::Callback::UnregisterCallback ()
+{
 }
 #endif

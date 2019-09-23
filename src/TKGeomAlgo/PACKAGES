@@ -1,4 +1,3 @@
-Hatch
 GeomInt
 IntStart
 IntWalk
@@ -16,6 +15,7 @@ ApproxInt
 GccAna
 GccEnt
 GccInt
+Hatch
 HatchGen
 Geom2dHatch
 Law

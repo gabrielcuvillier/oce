@@ -164,10 +164,12 @@ Standard_Boolean OpenGl_Workspace::Activate()
   {
     myGlContext->core20fwd->glUseProgram (OpenGl_ShaderProgram::NO_PROGRAM);
   }
+#if !defined(GL_ES_VERSION_2_0)
   if (myGlContext->caps->ffpEnable)
   {
     myGlContext->ShaderManager()->PushState (Handle(OpenGl_ShaderProgram)());
   }
+#endif
   return Standard_True;
 }
 
@@ -386,6 +388,7 @@ Standard_Boolean OpenGl_Workspace::BufferDump (const Handle(OpenGl_FrameBuffer)&
 bool OpenGl_Workspace::ShouldRender (const OpenGl_Element* theElement)
 {
   // render only non-raytracable elements when RayTracing is enabled
+#if !defined(GL_ES_VERSION_2_0)
   if ((myRenderFilter & OpenGl_RenderFilter_NonRaytraceableOnly) != 0)
   {
     if (OpenGl_Raytrace::IsRaytracedElement (theElement))
@@ -393,7 +396,9 @@ bool OpenGl_Workspace::ShouldRender (const OpenGl_Element* theElement)
       return false;
     }
   }
-  else if ((myRenderFilter & OpenGl_RenderFilter_FillModeOnly) != 0)
+  else
+#endif
+  if ((myRenderFilter & OpenGl_RenderFilter_FillModeOnly) != 0)
   {
     if (!theElement->IsFillDrawMode())
     {

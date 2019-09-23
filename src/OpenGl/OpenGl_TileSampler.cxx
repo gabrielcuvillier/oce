@@ -18,6 +18,8 @@
 #include <Graphic3d_RenderingParams.hxx>
 #include <TCollection_ExtendedString.hxx>
 
+#if !defined(GL_ES_VERSION_2_0)
+
 // define to debug algorithm values
 //#define RAY_TRACE_PRINT_DEBUG_INFO
 
@@ -327,3 +329,4 @@ bool OpenGl_TileSampler::upload (const Handle(OpenGl_Context)& theContext,
   }
   return !hasErrors;
 }
+#endif

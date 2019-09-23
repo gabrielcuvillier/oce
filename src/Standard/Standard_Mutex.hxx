@@ -24,9 +24,19 @@
   #include <windows.h>
 #else
   #include <pthread.h>
-  ///#include <sys/errno.h>
+  #if defined(__EMSCRIPTEN__)
+    #include <errno.h>  // including <errno.h> instead of incorrect <sys/errno.h>
+  #else
+    #include <sys/errno.h>
+  #endif
   #include <unistd.h>
   #include <time.h>
+#endif
+
+#if !defined(OCCT_DISABLE_THREADS)
+typedef pthread_mutex_t Standard_PMutex;
+#else
+typedef pthread_mutex_t Standard_PMutex; // Can't use Standard_Size hack like does OSD_PThread
 #endif
 
 /** 
@@ -166,19 +176,8 @@ private:
 #if (defined(_WIN32) || defined(__WIN32__))
   CRITICAL_SECTION myMutex;
 #else
-  pthread_mutex_t myMutex;
-#endif  
-};
-
-// Implementation of the method Unlock is inline, since it is 
-// just a shortcut to system function
-inline void Standard_Mutex::Unlock ()
-{
-#if (defined(_WIN32) || defined(__WIN32__))
-  LeaveCriticalSection (&myMutex);
-#else
-  pthread_mutex_unlock (&myMutex);
+  Standard_PMutex myMutex;
 #endif
-}
+};
 
 #endif /* _Standard_Mutex_HeaderFile */

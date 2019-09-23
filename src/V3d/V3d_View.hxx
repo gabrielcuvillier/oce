@@ -988,7 +988,7 @@ private:
   //! Returns the objects number and the box encompassing
   //! the objects contained in the view
   Standard_EXPORT Standard_Integer MinMax (Standard_Real& Xmin, Standard_Real& Ymin, Standard_Real& Zmin, Standard_Real& Xmax, Standard_Real& Ymax, Standard_Real& Zmax) const;
-  
+
   Standard_EXPORT void Init();
   
   //! Returns a new vertex when the grid is activated.

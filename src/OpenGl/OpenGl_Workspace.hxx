@@ -26,7 +26,7 @@
 #include <OpenGl_ShaderObject.hxx>
 #include <OpenGl_ShaderProgram.hxx>
 #include <OpenGl_TextureBufferArb.hxx>
-#include <OpenGl_RenderFilter.hxx>
+//#include <OpenGl_RenderFilter.hxx>
 #include <OpenGl_Vec.hxx>
 #include <OpenGl_Window.hxx>
 

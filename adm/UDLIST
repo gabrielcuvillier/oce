@@ -81,6 +81,7 @@ n TopTools
 n TopoDS
 n gce
 t TKBRep
+t TKTopBase
 t TKG2d
 t TKG3d
 t TKGeomBase
@@ -191,6 +192,7 @@ t TKFeat
 t TKFillet
 t TKGeomAlgo
 t TKHLR
+t TKHLRBase
 t TKMesh
 t TKOffset
 t TKPrim
@@ -219,6 +221,7 @@ n V3d
 n WNT
 n Xw
 n Cocoa
+n Emscripten
 r Textures
 r Shaders
 t TKMeshVS

@@ -238,8 +238,10 @@ GeomAbs_Shape GeomAdaptor_Surface::UContinuity() const
       case GeomAbs_C1 :
       case GeomAbs_C0 : return GeomAbs_C0;
       }
-      throw Standard_NoSuchObject("GeomAdaptor_Surface::UContinuity");
-      break;
+      {
+        throw Standard_NoSuchObject("GeomAdaptor_Surface::UContinuity");
+        break;
+      }
     }
     case GeomAbs_SurfaceOfExtrusion:
     {
@@ -248,8 +250,9 @@ GeomAbs_Shape GeomAdaptor_Surface::UContinuity() const
       GeomAdaptor_Curve GC(myExtSurf->BasisCurve(), myUFirst, myULast);
       return GC.Continuity();
     }
-    case GeomAbs_OtherSurface: 
+    case GeomAbs_OtherSurface: {
       throw Standard_NoSuchObject("GeomAdaptor_Surface::UContinuity");
+    }
     case GeomAbs_Plane:
     case GeomAbs_Cylinder:
     case GeomAbs_Cone:
@@ -292,8 +295,10 @@ GeomAbs_Shape GeomAdaptor_Surface::VContinuity() const
       case GeomAbs_C1 :
       case GeomAbs_C0 : return GeomAbs_C0;
       }
-      throw Standard_NoSuchObject("GeomAdaptor_Surface::VContinuity");
-      break;
+      {
+        throw Standard_NoSuchObject("GeomAdaptor_Surface::VContinuity");
+        break;
+      }
     }
     case GeomAbs_SurfaceOfRevolution:
     {
@@ -302,8 +307,9 @@ GeomAbs_Shape GeomAdaptor_Surface::VContinuity() const
       GeomAdaptor_Curve GC(myRevSurf->BasisCurve(), myVFirst, myVLast);
       return GC.Continuity();
     }
-    case GeomAbs_OtherSurface:
+    case GeomAbs_OtherSurface: {
       throw Standard_NoSuchObject("GeomAdaptor_Surface::VContinuity");
+    }
     case GeomAbs_Plane:
     case GeomAbs_Cylinder:
     case GeomAbs_Cone:
@@ -345,7 +351,7 @@ Standard_Integer GeomAdaptor_Surface::NbUIntervals(const GeomAbs_Shape S) const
       switch(S)
       {
         case GeomAbs_G1:
-        case GeomAbs_G2: throw Standard_DomainError("GeomAdaptor_Curve::NbUIntervals");
+        case GeomAbs_G2: { throw Standard_DomainError("GeomAdaptor_Curve::NbUIntervals"); }
         case GeomAbs_C0: BaseS = GeomAbs_C1; break;
         case GeomAbs_C1: BaseS = GeomAbs_C2; break;
         case GeomAbs_C2: BaseS = GeomAbs_C3; break;
@@ -398,7 +404,7 @@ Standard_Integer GeomAdaptor_Surface::NbVIntervals(const GeomAbs_Shape S) const
       switch(S)
       {
         case GeomAbs_G1:
-        case GeomAbs_G2: throw Standard_DomainError("GeomAdaptor_Curve::NbVIntervals");
+        case GeomAbs_G2: { throw Standard_DomainError("GeomAdaptor_Curve::NbVIntervals"); }
         case GeomAbs_C0: BaseS = GeomAbs_C1; break;
         case GeomAbs_C1: BaseS = GeomAbs_C2; break;
         case GeomAbs_C2: BaseS = GeomAbs_C3; break;
@@ -458,7 +464,7 @@ void GeomAdaptor_Surface::UIntervals(TColStd_Array1OfReal& T, const GeomAbs_Shap
       switch(S)
       {
         case GeomAbs_G1:
-        case GeomAbs_G2: throw Standard_DomainError("GeomAdaptor_Curve::UIntervals");
+        case GeomAbs_G2: { throw Standard_DomainError("GeomAdaptor_Curve::UIntervals"); }
         case GeomAbs_C0: BaseS = GeomAbs_C1; break;
         case GeomAbs_C1: BaseS = GeomAbs_C2; break;
         case GeomAbs_C2: BaseS = GeomAbs_C3; break;
@@ -523,7 +529,7 @@ void GeomAdaptor_Surface::VIntervals(TColStd_Array1OfReal& T, const GeomAbs_Shap
       switch(S)
       {
         case GeomAbs_G1:
-        case GeomAbs_G2: throw Standard_DomainError("GeomAdaptor_Curve::VIntervals");
+        case GeomAbs_G2: { throw Standard_DomainError("GeomAdaptor_Curve::VIntervals"); }
         case GeomAbs_C0: BaseS = GeomAbs_C1; break;
         case GeomAbs_C1: BaseS = GeomAbs_C2; break;
         case GeomAbs_C2: BaseS = GeomAbs_C3; break;

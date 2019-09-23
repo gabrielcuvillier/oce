@@ -219,16 +219,18 @@ Handle(CDM_Document) CDF_Application::Retrieve(const Handle(CDM_MetaData)& aMeta
   if(IsComponent) {
     Standard_SStream aMsg;
     switch (CanRetrieve(aMetaData)) {
-    case PCDM_RS_UnknownDocument: 
+    case PCDM_RS_UnknownDocument: {
       aMsg << "could not find the referenced document: " << aMetaData->Path() << "; not found."  <<(char)0 << std::endl;
       myRetrievableStatus = PCDM_RS_UnknownDocument;
       throw Standard_Failure(aMsg.str().c_str());
       break;
-    case PCDM_RS_PermissionDenied:      
+      }
+    case PCDM_RS_PermissionDenied: {
       aMsg << "Could not find the referenced document: " << aMetaData->Path() << "; permission denied. " <<(char)0 << std::endl;
       myRetrievableStatus = PCDM_RS_PermissionDenied;
       throw Standard_Failure(aMsg.str().c_str());
       break;
+      }
     default:
       break;
     }
@@ -358,7 +360,7 @@ Handle(CDM_Document) CDF_Application::Read (Standard_IStream& theIStream)
   try
   {
     OCC_CATCH_SIGNALS
-  
+
     aReader->Read (theIStream, dData, aDoc, this);
   }
   catch (Standard_Failure const& anException)
@@ -369,7 +371,7 @@ Handle(CDM_Document) CDF_Application::Read (Standard_IStream& theIStream)
       Standard_SStream aMsg;
       aMsg << anException << std::endl;
       throw Standard_Failure(aMsg.str().c_str());
-    }	
+    }
   }
 
   myRetrievableStatus = aReader->GetStatus();
@@ -463,16 +465,17 @@ Handle(PCDM_StorageDriver) CDF_Application::WriterFromFormat(const TCollection_E
   // Convert to GUID.
   Standard_GUID aPluginId = UTL::GUID(strPluginId);
 
-  try {
-    OCC_CATCH_SIGNALS
-    aDriver = Handle(PCDM_StorageDriver)::DownCast(Plugin::Load(aPluginId));
-  } 
-  catch (Standard_Failure const& anException)
   {
-    myWriters.Add(theFormat, aDriver);
-    myRetrievableStatus = PCDM_RS_WrongResource;
-    throw anException;
-  }	
+    try {
+      OCC_CATCH_SIGNALS
+      aDriver = Handle(PCDM_StorageDriver)::DownCast(Plugin::Load(aPluginId));
+    }
+    catch (Standard_Failure const &anException) {
+      myWriters.Add(theFormat, aDriver);
+      myRetrievableStatus = PCDM_RS_WrongResource;
+      throw anException;
+    }
+  }
   if (aDriver.IsNull()) 
   {
     myRetrievableStatus = PCDM_RS_WrongResource;

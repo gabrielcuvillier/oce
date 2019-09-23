@@ -210,7 +210,7 @@ const TopTools_ListOfShape& BRepAlgoAPI_BuilderAlgo::Modified(const TopoDS_Shape
 }
 //=======================================================================
 //function : Generated
-//purpose  : 
+//purpose  :
 //=======================================================================
 const TopTools_ListOfShape& BRepAlgoAPI_BuilderAlgo::Generated(const TopoDS_Shape& theS)
 {
@@ -253,7 +253,7 @@ Standard_Boolean BRepAlgoAPI_BuilderAlgo::HasDeleted() const
 }
 //=======================================================================
 //function : SectionEdges
-//purpose  : 
+//purpose  :
 //=======================================================================
 const TopTools_ListOfShape& BRepAlgoAPI_BuilderAlgo::SectionEdges()
 {

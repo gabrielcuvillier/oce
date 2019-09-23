@@ -36,7 +36,6 @@
 #include <Graphic3d_Structure.hxx>
 #include <Message.hxx>
 #include <Message_Messenger.hxx>
-#include <HLRBRep.hxx>
 #include <OSD_Timer.hxx>
 #include <Precision.hxx>
 #include <Prs3d.hxx>
@@ -64,6 +63,10 @@
 #include <StdSelect_DisplayMode.hxx>
 #include <TColStd_ListIteratorOfListOfInteger.hxx>
 #include <TopExp.hxx>
+#include <TopExp_Explorer.hxx>
+#include <TopoDS_Iterator.hxx>
+#include <TopoDS_Shape.hxx>
+#include <HLRAlgo_BRepPolyAlgo.hxx>
 
 IMPLEMENT_STANDARD_RTTIEXT(AIS_Shape,AIS_InteractiveObject)
 
@@ -282,8 +285,10 @@ void AIS_Shape::computeHlrPresentation (const Handle(Prs3d_Projector)& theProjec
       switch (theDrawer->TypeOfHLR())
       {
         case Prs3d_TOH_Algo:
+#if !defined(OCCT_DISABLE_EXACTHLR_IN_VISUALIZATION)
           StdPrs_HLRShape::Add (thePrs, theShape, theDrawer, theProjector);
           break;
+#endif
         case Prs3d_TOH_PolyAlgo:
         default:
           StdPrs_HLRPolyShape::Add (thePrs, theShape, theDrawer, theProjector);
@@ -896,7 +901,7 @@ void AIS_Shape::SetOwnDeviationAngle (const Standard_Real theAngle)
 void AIS_Shape::SetAngleAndDeviation ( const Standard_Real  anAngle )
 {
   Standard_Real OutAngl,OutDefl;
-  HLRBRep::PolyHLRAngleAndDeflection(anAngle,OutAngl,OutDefl);
+  HLRAlgo_BRepPolyAlgo::PolyHLRAngleAndDeflection(anAngle,OutAngl,OutDefl);
   SetOwnDeviationAngle(anAngle) ;
   SetOwnDeviationCoefficient(OutDefl) ;
   myInitAng = anAngle;
@@ -922,11 +927,11 @@ Standard_Real AIS_Shape::UserAngle() const
 void AIS_Shape::SetHLRAngleAndDeviation ( const Standard_Real  anAngle )
 {
   Standard_Real OutAngl,OutDefl;
-  HLRBRep::PolyHLRAngleAndDeflection(anAngle,OutAngl,OutDefl);
+  HLRAlgo_BRepPolyAlgo::PolyHLRAngleAndDeflection(anAngle,OutAngl,OutDefl);
   SetOwnHLRDeviationAngle( OutAngl );
   SetOwnHLRDeviationCoefficient(OutDefl);
-
 }
+
 //=======================================================================
 //function : SetOwnHLRDeviationAngle
 //purpose  : 

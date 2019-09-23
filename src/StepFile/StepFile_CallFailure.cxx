@@ -15,6 +15,7 @@
 
 #include <Standard_Failure.hxx>
 #include <StepFile_CallFailure.hxx>
+#include <Standard_DefineException.hxx>
 
 void StepFile_CallFailure(char * const message)
 {

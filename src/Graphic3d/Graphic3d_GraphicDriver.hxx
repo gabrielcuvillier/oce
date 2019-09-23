@@ -95,9 +95,11 @@ public:
   //! Removes view from graphic driver and releases its resources.
   virtual void RemoveView (const Handle(Graphic3d_CView)& theView) = 0;
 
+#if !defined(HAVE_GLES2)
   //! enables/disables usage of OpenGL vertex buffer arrays while drawing primitiev arrays
   virtual void EnableVBO (const Standard_Boolean status) = 0;
-  
+#endif
+
   //! Returns information about GPU memory usage.
   virtual Standard_Boolean MemoryInfo (Standard_Size& theFreeBytes, TCollection_AsciiString& theInfo) const = 0;
   

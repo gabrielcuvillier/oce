@@ -36,4 +36,5 @@ public:
                         const Handle(Prs3d_Projector)&    theProjector);
 
 };
+
 #endif

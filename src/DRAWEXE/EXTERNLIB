@@ -2,7 +2,9 @@ TKDraw
 TKMesh
 TKShHealing
 TKTopAlgo
+TKTopBase
 TKHLR
+TKHLRBase
 TKGeomAlgo
 TKGeomBase
 TKG2d

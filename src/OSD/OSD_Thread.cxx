@@ -15,6 +15,15 @@
 
 #include <OSD_Thread.hxx>
 
+namespace {
+constexpr Standard_Boolean ToUseThreads =
+#if !defined(OCCT_DISABLE_THREADS)
+  Standard_True;
+#else
+  Standard_False;
+#endif
+}
+
 //=============================================
 // OSD_Thread::OSD_Thread
 //=============================================
@@ -157,14 +166,21 @@ Standard_Boolean OSD_Thread::Run (const Standard_Address data,
 
 #else
 
-  if (pthread_create (&myThread, 0, myFunc, data) != 0)
-  {
-    myThread = 0;
+  if constexpr(ToUseThreads) {
+    if (pthread_create (&myThread, 0, myFunc, data) != 0)
+    {
+      myThread = 0;
+    }
+    else
+    {
+      myThreadId = (Standard_ThreadId)myThread;
+    }
   }
-  else
-  {
-    myThreadId = (Standard_ThreadId)myThread;
+  else {
+    // If no threading support, directly call the function
+    myFunc(data);
   }
+
 #endif
   return myThread != 0;
 }
@@ -184,8 +200,10 @@ void OSD_Thread::Detach ()
 #else
 
   // On Unix/Linux, detach a thread
-  if ( myThread )
-    pthread_detach ( myThread );
+  if constexpr(ToUseThreads) {
+    if (myThread)
+      pthread_detach(myThread);
+  }
 
 #endif
 
@@ -226,9 +244,10 @@ Standard_Boolean OSD_Thread::Wait (Standard_Address& theResult)
   return Standard_True;
 #else
   // On Unix/Linux, join the thread
-  if (pthread_join (myThread, &theResult) != 0)
-  {
-    return Standard_False;
+  if constexpr(ToUseThreads) {
+    if (pthread_join(myThread, &theResult) != 0) {
+      return Standard_False;
+    }
   }
 
   myThread   = 0;
@@ -292,18 +311,21 @@ Standard_Boolean OSD_Thread::Wait (const Standard_Integer theTimeMs,
     aTimeout.tv_sec  += aSeconds;
     aTimeout.tv_nsec += aMicroseconds * 1000;
 
-    if (pthread_timedjoin_np (myThread, &theResult, &aTimeout) != 0)
-    {
-      return Standard_False;
+    if constexpr(ToUseThreads) {
+      if (pthread_timedjoin_np (myThread, &theResult, &aTimeout) != 0)
+      {
+        return Standard_False;
+      }
     }
-
   #else
     // join the thread without timeout
     (void )theTimeMs;
-    if (pthread_join (myThread, &theResult) != 0)
-    {
-      return Standard_False;
+    if constexpr(ToUseThreads) {
+      if (pthread_join(myThread, &theResult) != 0) {
+        return Standard_False;
+      }
     }
+
   #endif
     myThread   = 0;
     myThreadId = 0;
@@ -329,6 +351,11 @@ Standard_ThreadId OSD_Thread::Current ()
 #ifdef _WIN32
   return GetCurrentThreadId();
 #else
-  return (Standard_ThreadId)pthread_self();
+  if constexpr(ToUseThreads) {
+    return (Standard_ThreadId)pthread_self();
+  }
+  else {
+    return 0;
+  }
 #endif
 }

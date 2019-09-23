@@ -26,7 +26,36 @@
     DEFINE_STANDARD_HANDLE(C1,C2) before it.
 */
 
-#define DEFINE_STANDARD_EXCEPTION(C1,C2) \
+// As Exceptions are disabled on Emscripten (-fno-exceptions + DISABLE_EXCEPTION_CATCHING=1) due to being too slow,
+// redefine throw/try/catch to specific exception hijacking code
+#if defined(__EMSCRIPTEN__)
+
+#include <string>
+
+class _TerminateWithStandardFailure {
+ private:
+  std::string myFailureType;
+  std::string myMessage;
+ public:
+  _TerminateWithStandardFailure(Standard_Failure const &) noexcept;
+  [[noreturn]] ~_TerminateWithStandardFailure() noexcept;
+};
+
+// 'throw' is redefined use _TerminateWithStandardFailure functionality
+// NB: notice the assignment operator at the end. This is intended, to "absorb" the thrown failure object;
+#define throw _TerminateWithStandardFailure _absorb_failure =
+
+// 'try' is redefined to do nothing
+#define try
+
+// 'catch' is redefined discard the catch expression as well as eliminate the catch block at compile time
+// (thanks to C++17 'if constexpr'), while still defining 'anException' so that the block compiles (thanks to
+// C++17 if with initialization statement)
+#define catch(x) if constexpr(Standard_Failure anException{}; false)
+
+#endif
+
+#define DEFINE_STANDARD_EXCEPTION(C1, C2) \
  \
 class C1 : public C2 { \
   void Throw () const Standard_OVERRIDE { throw *this; } \
@@ -46,6 +75,6 @@ public: \
 };
 
 //! Obsolete macro, kept for compatibility with old code
-#define IMPLEMENT_STANDARD_EXCEPTION(C1) 
+#define IMPLEMENT_STANDARD_EXCEPTION(C1)
 
 #endif

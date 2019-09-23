@@ -285,12 +285,13 @@ void OSD_ThreadPool::performJob (Handle(Standard_Failure)& theFailure,
     OCC_CATCH_SIGNALS
     theJob->Perform (theThreadIndex);
   }
-  catch (Standard_Failure const& aFailure)
+  catch (Standard_Failure const& anException)
   {
-    TCollection_AsciiString aMsg = TCollection_AsciiString (aFailure.DynamicType()->Name())
-                                 + ": " + aFailure.GetMessageString();
+    TCollection_AsciiString aMsg = TCollection_AsciiString (anException.DynamicType()->Name())
+                                 + ": " + anException.GetMessageString();
     theFailure = new Standard_ProgramError (aMsg.ToCString());
   }
+#if !defined(__EMSCRIPTEN__)
   catch (std::exception& anStdException)
   {
     TCollection_AsciiString aMsg = TCollection_AsciiString (typeid(anStdException).name())
@@ -301,6 +302,7 @@ void OSD_ThreadPool::performJob (Handle(Standard_Failure)& theFailure,
   {
     theFailure = new Standard_ProgramError ("Error: Unknown exception");
   }
+#endif
 }
 
 // =======================================================================

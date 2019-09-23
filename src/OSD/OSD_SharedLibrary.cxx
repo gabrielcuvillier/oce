@@ -14,7 +14,6 @@
 
 #ifndef _WIN32
 
-
 #include <OSD_Function.hxx>
 #include <OSD_LoadMode.hxx>
 #include <OSD_SharedLibrary.hxx>
@@ -45,12 +44,21 @@ extern "C" {void    *dlerror (void);}
 
 #define BAD(X)  ((X) == NULL)
 
+namespace {
+constexpr Standard_Boolean ToUseSharedLibrary =
+#if !defined(OCCT_DISABLE_SHAREDLIBRARY)
+  Standard_True;
+#else
+  Standard_False;
+#endif
+}
+
 // ----------------------------------------------------------------
 //
 // Create and initialize a shared library object to NULL
 //
 // ----------------------------------------------------------------
-OSD_SharedLibrary::OSD_SharedLibrary():myHandle(NULL),myName(NULL){
+OSD_SharedLibrary::OSD_SharedLibrary() : myHandle(NULL), myName(NULL) {
 }
 // ----------------------------------------------------------------
 //
@@ -58,11 +66,10 @@ OSD_SharedLibrary::OSD_SharedLibrary():myHandle(NULL),myName(NULL){
 // name given as argument
 //
 // ----------------------------------------------------------------
-OSD_SharedLibrary::OSD_SharedLibrary(const Standard_CString aName):myHandle(NULL) 
-{
+OSD_SharedLibrary::OSD_SharedLibrary(const Standard_CString aName) : myHandle(NULL) {
   if (aName != NULL) {
-    myName = new char [(strlen (aName) + 1 )];
-    strcpy (myName,aName);
+    myName = new char[(strlen(aName) + 1)];
+    strcpy(myName, aName);
   }
 }
 // ----------------------------------------------------------------
@@ -70,18 +77,18 @@ OSD_SharedLibrary::OSD_SharedLibrary(const Standard_CString aName):myHandle(NULL
 // Name: Returns the shared library name
 //
 // ----------------------------------------------------------------
-Standard_CString  OSD_SharedLibrary::Name() const {
-  return myName; 
+Standard_CString OSD_SharedLibrary::Name() const {
+  return myName;
 }
 // ----------------------------------------------------------------
 //
 // SetName: Sets a name to a shared library object
 //
 // ----------------------------------------------------------------
-void  OSD_SharedLibrary::SetName(const Standard_CString aName)  {
+void OSD_SharedLibrary::SetName(const Standard_CString aName) {
   if (aName != NULL) {
-    myName = new char [(strlen (aName) + 1 )];
-    strcpy (myName,aName);
+    myName = new char[(strlen(aName) + 1)];
+    strcpy(myName, aName);
   }
 }
 // ----------------------------------------------------------------
@@ -107,20 +114,20 @@ void  OSD_SharedLibrary::SetName(const Standard_CString aName)  {
 // executable, which allows access to dynamic symbols in the running program.
 //
 // ----------------------------------------------------------------
-Standard_Boolean  OSD_SharedLibrary::DlOpen(const OSD_LoadMode aMode ) {
-if (aMode == OSD_RTLD_LAZY){
-  myHandle = dlopen (myName,RTLD_LAZY);
-}
-else if (aMode == OSD_RTLD_NOW){
-  myHandle = dlopen (myName,RTLD_NOW);
-}
+Standard_Boolean OSD_SharedLibrary::DlOpen(const OSD_LoadMode aMode) {
+  if constexpr(ToUseSharedLibrary) {
+    if (aMode == OSD_RTLD_LAZY) {
+      myHandle = dlopen(myName, RTLD_LAZY);
+    } else if (aMode == OSD_RTLD_NOW) {
+      myHandle = dlopen(myName, RTLD_NOW);
+    }
+  }
 
-if (!BAD(myHandle)){
-  return Standard_True;
- }
-else {
-  return Standard_False;
- }
+  if (!BAD(myHandle)) {
+    return Standard_True;
+  } else {
+    return Standard_False;
+  }
 }
 // ----------------------------------------------------------------
 //
@@ -130,15 +137,16 @@ else {
 // pointer is returned.
 //
 // ----------------------------------------------------------------
-OSD_Function  OSD_SharedLibrary::DlSymb(const Standard_CString aName )const{
-void (*fp)();
-fp =  (void (*)()) dlsym (myHandle,aName);
-if (!BAD(fp)){
-  return (OSD_Function)fp;
- }
-else {
-  return (OSD_Function)NULL;
- }
+OSD_Function OSD_SharedLibrary::DlSymb(const Standard_CString aName) const {
+  void (*fp)() = nullptr;
+  if constexpr(ToUseSharedLibrary) {
+    fp = (void (*)()) dlsym(myHandle, aName);
+  }
+  if (!BAD(fp)) {
+    return (OSD_Function) fp;
+  } else {
+    return (OSD_Function) NULL;
+  }
 }
 // ----------------------------------------------------------------
 //
@@ -148,8 +156,10 @@ else {
 //cated	by dlclose, the	results	are undefined.
 //
 // ----------------------------------------------------------------
-void OSD_SharedLibrary::DlClose()const{
- dlclose(myHandle);
+void OSD_SharedLibrary::DlClose() const {
+  if constexpr(ToUseSharedLibrary) {
+    dlclose(myHandle);
+  }
 }
 // ----------------------------------------------------------------
 //
@@ -157,17 +167,22 @@ void OSD_SharedLibrary::DlClose()const{
 // occurred from a call to dlopen, dlclose or dlsym.
 //
 // ----------------------------------------------------------------
-Standard_CString OSD_SharedLibrary::DlError()const{
-return (char*) dlerror();
+Standard_CString OSD_SharedLibrary::DlError() const {
+  if constexpr(ToUseSharedLibrary) {
+    return (char *) dlerror();
+  }
+  else {
+    return nullptr;
+  }
 }
 // ----------------------------------------------------------------------------
 // Destroy
 // ----------------------------------------------------------------------------
 void OSD_SharedLibrary::Destroy() {
   if (myName != NULL) {
-     delete [] myName;
-     myName = NULL;
-     myHandle = NULL;
+    delete[] myName;
+    myName = NULL;
+    myHandle = NULL;
   }
 }
 
