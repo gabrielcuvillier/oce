@@ -410,6 +410,11 @@ Standard_Boolean OpenGl_ShaderProgram::Initialize (const Handle(OpenGl_Context)&
       aHeaderConstants += "#define THE_HAS_DEFAULT_SAMPLER\n";
     }
 
+    // There is some specific tweaks for WebGL
+    #if defined(HAVE_WEBGL)
+      anExtensions += "#define HAVE_WEBGL\n";
+    #endif
+
     const TCollection_AsciiString aSource = aHeaderVer                     // #version   - header defining GLSL version, should be first
                                           + (!aHeaderVer.IsEmpty() ? "\n" : "")
                                           + anExtensions                   // #extension - list of enabled extensions,   should be second

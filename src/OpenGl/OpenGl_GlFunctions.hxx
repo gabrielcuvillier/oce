@@ -160,7 +160,9 @@
   #define GL_FLOAT_32_UNSIGNED_INT_24_8_REV 0x8DAD
 
   // GL_WEBGL_depth_texture
+#if defined(HAVE_WEBGL)
   #define GL_DEPTH_STENCIL_ATTACHMENT       0x821A
+#endif
 
   #define GL_READ_FRAMEBUFFER               0x8CA8
   #define GL_DRAW_FRAMEBUFFER               0x8CA9

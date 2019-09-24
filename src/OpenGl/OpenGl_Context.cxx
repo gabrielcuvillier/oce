@@ -1454,6 +1454,7 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   }
   extFragDepth = !IsGlGreaterEqual(3, 0)
                && CheckExtension ("GL_EXT_frag_depth");
+
   if (IsGlGreaterEqual (3, 1)
    && FindProcShort (glTexStorage2DMultisample))
   {
