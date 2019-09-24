@@ -597,11 +597,11 @@ endif()
 
 # FFmpeg
 if (NOT EMSCRIPTEN)
-# search for CSF_FFmpeg variable in EXTERNLIB of each being used toolkit
-OCCT_IS_PRODUCT_REQUIRED (CSF_FFmpeg CAN_USE_FFMPEG)
+  # search for CSF_FFmpeg variable in EXTERNLIB of each being used toolkit
+  OCCT_IS_PRODUCT_REQUIRED (CSF_FFmpeg CAN_USE_FFMPEG)
 else()
-set(CAN_USE_FFMPEG OFF)
-set(USE_FFMPEG OFF)
+  set(CAN_USE_FFMPEG OFF)
+  set(USE_FFMPEG OFF)
 endif()
 
 if (CAN_USE_FFMPEG)
@@ -681,8 +681,14 @@ else()
 endif()
 
 # RapidJSON
-# search for CSF_RapidJSON variable in EXTERNLIB of each being used toolkit
-OCCT_IS_PRODUCT_REQUIRED (CSF_RapidJSON CAN_USE_RAPIDJSON)
+if (NOT EMSCRIPTEN)
+  # search for CSF_RapidJSON variable in EXTERNLIB of each being used toolkit
+  OCCT_IS_PRODUCT_REQUIRED (CSF_RapidJSON CAN_USE_RAPIDJSON)
+else()
+  set(CAN_USE_RAPIDJSON OFF)
+  set(USE_RAPIDJSON OFF)
+endif()
+
 if (CAN_USE_RAPIDJSON)
   set (USE_RAPIDJSON OFF CACHE BOOL "${USE_RAPIDJSON_DESCR}")
 
