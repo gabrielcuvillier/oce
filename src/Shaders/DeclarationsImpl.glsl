@@ -48,6 +48,7 @@ float occLight_LinearAttenuation (in int theId) { for (int x = 0; x < THE_MAX_LI
 float occLight_SpotCutOff        (in int theId) { for (int x = 0; x < THE_MAX_LIGHTS; x++) { if (x == theId) { return occLightSources[x * 4 + 3].z; }} }
 float occLight_SpotExponent      (in int theId) { for (int x = 0; x < THE_MAX_LIGHTS; x++) { if (x == theId) { return occLightSources[x * 4 + 3].w; }} }
 #endif
+#endif
 
 // material state
 uniform vec4 occFrontMaterial[5];
