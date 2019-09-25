@@ -35,7 +35,6 @@ else()
     message (STATUS "Info: Exceptions are disabled")
     add_compile_options(-fno-exceptions)
 
-    message (STATUS "Info: PIC disabled")
     add_compile_options(-fno-PIC)
 
     message (STATUS "Info: OCCT_DISABLE_THREADS is defined due to unsupported on Browsers")
@@ -240,7 +239,6 @@ endif()
 
 set (ENABLE_O1 OFF CACHE BOOL "Enable O1 build for Release")
 if (ENABLE_O1)
-  # Use 'O2' optimization level (instead of O3)
   string (REGEX MATCH "-O2" IS_O2_CXX "${CMAKE_CXX_FLAGS_RELEASE}")
   if (IS_O2_CXX)
     string (REGEX REPLACE "-O2" "-O1" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")

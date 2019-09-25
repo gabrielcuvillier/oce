@@ -1,3 +1,5 @@
+project (OCCT)
+
 cmake_minimum_required (VERSION 3.8.2 FATAL_ERROR)    # "CMAKE_CXX_STANDARD 17" requires this version (for "if constexpr" most notably)
 
 set (CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/adm/cmake")
@@ -42,9 +44,6 @@ else()
   unset (BUILD_SHARED_LIBS)
   unset (BUILD_SHARED_LIBRARY_NAME_POSTFIX)
 endif()
-
-# the name of the project
-project (OCCT)
 
 if (WIN32)
   add_definitions(-DUNICODE)
@@ -409,6 +408,10 @@ if (ANDROID AND BUILD_MODULE_Draw)
 endif()
 if ("${CMAKE_SYSTEM_NAME}" STREQUAL "WindowsStore" AND BUILD_MODULE_Draw)
   message (STATUS "Info: Draw module is turned off due to it is not supported on UWP")
+  set (BUILD_MODULE_Draw OFF CACHE BOOL "${BUILD_MODULE_Draw_DESCR}" FORCE)
+endif()
+if (EMSCRIPTEN)
+  message (STATUS "Info: Draw module is turned off due to it is not supported on Emscripten")
   set (BUILD_MODULE_Draw OFF CACHE BOOL "${BUILD_MODULE_Draw_DESCR}" FORCE)
 endif()
 

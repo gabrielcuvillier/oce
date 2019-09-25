@@ -1,3 +1,5 @@
+// Copyright (c) 2019, Gabriel Cuvillier - Continuation-Labs
+
 #include <Standard_DefineException.hxx>
 #include <Standard_Failure.hxx>
 
