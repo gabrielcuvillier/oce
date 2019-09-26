@@ -443,6 +443,14 @@ t TKVCAF
 n XCAFView
 n XCAFNoteObjects
 t TKRWMesh
+t TKJT
+n JtAttribute
+n JtData
+n JtDecode
+n JtElement
+n JtNode
+n JtProperty
+n JtToTopoDS
 n RWGltf
 n RWMesh
 n RWObj

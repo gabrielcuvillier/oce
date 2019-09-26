@@ -1,0 +1,6 @@
+JtAttribute_Base.cxx
+JtAttribute_Base.hxx
+JtAttribute_GeometricTransform.cxx
+JtAttribute_GeometricTransform.hxx
+JtAttribute_Material.cxx
+JtAttribute_Material.hxx

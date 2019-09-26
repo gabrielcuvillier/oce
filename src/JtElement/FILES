@@ -1,0 +1,10 @@
+JtElement_MetaData_PMIManager.cxx
+JtElement_MetaData_PMIManager.hxx
+JtElement_ShapeLOD_Base.cxx
+JtElement_ShapeLOD_Base.hxx
+JtElement_ShapeLOD_TriStripSet.cxx
+JtElement_ShapeLOD_TriStripSet.hxx
+JtElement_ShapeLOD_Vertex.cxx
+JtElement_ShapeLOD_Vertex.hxx
+JtElement_XTBRep.cxx
+JtElement_XTBRep.hxx
