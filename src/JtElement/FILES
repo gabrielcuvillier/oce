@@ -8,3 +8,5 @@ JtElement_ShapeLOD_Vertex.cxx
 JtElement_ShapeLOD_Vertex.hxx
 JtElement_XTBRep.cxx
 JtElement_XTBRep.hxx
+JtElement_STEPBRep.cxx
+JtElement_STEPBRep.hxx
