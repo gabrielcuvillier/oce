@@ -451,6 +451,7 @@ n JtElement
 n JtNode
 n JtProperty
 n JtToTopoDS
+n RWPly
 n RWGltf
 n RWMesh
 n RWObj
