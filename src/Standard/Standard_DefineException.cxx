@@ -12,7 +12,7 @@ _TerminateWithStandardFailure::_TerminateWithStandardFailure(Standard_Failure co
     myFailureType(next.DynamicType()->Name()), myMessage(next.GetMessageString()) { }
 
 _TerminateWithStandardFailure::_TerminateWithStandardFailure(std::exception const & next) noexcept :
-    myFailureType("std::exception"), myMessage("") { }
+    myFailureType("std::exception"), myMessage(next.what()) { }
 
 _TerminateWithStandardFailure::~_TerminateWithStandardFailure() noexcept {
   std::cerr << myFailureType << ": " << myMessage << std::endl;
