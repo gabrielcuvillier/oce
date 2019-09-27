@@ -53,7 +53,7 @@ void HandleFaces(std::shared_ptr<PlyData> theData, opencascade::handle<Poly_Tria
 
   int i = 0;
   for (auto node : vec) {
-    thePoly->ChangeTriangle(i + 1) = Poly_Triangle(node.x, node.y, node.z);
+    thePoly->ChangeTriangle(i + 1) = Poly_Triangle(node.x + 1, node.y + 1, node.z + 1);
     i++;
   }
 }
@@ -75,7 +75,7 @@ opencascade::handle<Poly_Triangulation> RWPly::ReadFile(const Standard_CString t
     faces = file.request_properties_from_element("face", {"vertex_indices"}, 3);
 
     opencascade::handle<Poly_Triangulation>
-        aPoly = new Poly_Triangulation(vertices->count, faces->count, texcoords->count > 0);
+        aPoly = new Poly_Triangulation(vertices->count, faces->count, Standard_False /*texcoords->count > 0*/);
 
     file.read(ss);
 
