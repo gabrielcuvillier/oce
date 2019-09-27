@@ -15,6 +15,7 @@
 #define _Standard_DefineException_HeaderFile
 
 #include <Standard_Type.hxx>
+#include <Standard_Failure.hxx>
 
 //! Defines an exception class \a C1 that inherits an exception class \a C2.
 /*! \a C2 must be Standard_Failure or its ancestor.
@@ -31,6 +32,7 @@
 #if defined(__EMSCRIPTEN__)
 
 #include <string>
+#include <exception>
 
 class _TerminateWithStandardFailure {
  private:
@@ -38,6 +40,7 @@ class _TerminateWithStandardFailure {
   std::string myMessage;
  public:
   _TerminateWithStandardFailure(Standard_Failure const &) noexcept;
+  _TerminateWithStandardFailure(std::exception const &) noexcept;
   [[noreturn]] ~_TerminateWithStandardFailure() noexcept;
 };
 
