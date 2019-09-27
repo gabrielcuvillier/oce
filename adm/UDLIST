@@ -443,7 +443,7 @@ t TKVCAF
 n XCAFView
 n XCAFNoteObjects
 t TKRWMesh
-t TKJT
+t TKJt
 n JtAttribute
 n JtData
 n JtDecode
