@@ -29,7 +29,6 @@ OpenGl_Caps::OpenGl_Caps()
 #if !defined(GL_ES_VERSION_2_0)
   vboDisable        (Standard_False),
 #endif
-  fboDisable        (Standard_False),
   pntSpritesDisable (Standard_False),
   keepArrayData     (Standard_False),
 #if !defined(GL_ES_VERSION_2_0)
@@ -40,6 +39,7 @@ OpenGl_Caps::OpenGl_Caps()
   useSystemBuffer   (Standard_True),
 #endif
   swapInterval      (1),
+  fboDisable        (Standard_False),
   buffersNoSwap     (Standard_False),
   contextStereo     (Standard_False),
 #ifdef OCCT_DEBUG
