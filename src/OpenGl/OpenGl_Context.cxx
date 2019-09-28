@@ -89,13 +89,6 @@ namespace
     TCollection_AsciiString aValue (theValue != NULL ? theValue : "");
     theDict.ChangeFromIndex (theDict.Add (theKey, aValue)) = aValue;
   }
-
-  constexpr Standard_Boolean ToUseWebGL =
-  #if defined(HAVE_WEBGL)
-    Standard_True;
-  #else
-    Standard_False;
-  #endif
 }
 
 // =======================================================================
@@ -103,12 +96,13 @@ namespace
 // purpose  :
 // =======================================================================
 OpenGl_Context::OpenGl_Context (const Handle(OpenGl_Caps)& theCaps)
-: core11     (NULL),
-  core11fwd  (NULL),
-  core15     (NULL),
+: core11fwd  (NULL),
   core15fwd  (NULL),
-  core20     (NULL),
   core20fwd  (NULL),
+#if !defined(GL_ES_VERSION_2_0)
+  core11     (NULL),
+  core15     (NULL),
+  core20     (NULL),
   core32     (NULL),
   core32back (NULL),
   core33     (NULL),
@@ -123,6 +117,7 @@ OpenGl_Context::OpenGl_Context (const Handle(OpenGl_Caps)& theCaps)
   core44back (NULL),
   core45     (NULL),
   core45back (NULL),
+#endif
   caps   (!theCaps.IsNull() ? theCaps : new OpenGl_Caps()),
 #if defined(GL_ES_VERSION_2_0)
   hasHighp   (Standard_False),
@@ -146,17 +141,21 @@ OpenGl_Context::OpenGl_Context (const Handle(OpenGl_Caps)& theCaps)
   arbTexRG (Standard_False),
   arbTexFloat (Standard_False),
   arbSamplerObject (NULL),
+#if !defined(HAVE_WEBGL)
   arbTexBindless (NULL),
   arbTBO (NULL),
   arbTboRGB32 (Standard_False),
   arbIns (NULL),
+#endif
   arbDbg (NULL),
   arbFBO (NULL),
   arbFBOBlit (NULL),
   arbSampleShading (Standard_False),
   extFragDepth (Standard_False),
   extDrawBuffers (Standard_False),
+#if !defined(HAVE_WEBGL)
   extGS  (NULL),
+#endif
   extBgra(Standard_False),
   extAnis(Standard_False),
   extPDS (Standard_False),
@@ -1324,9 +1323,7 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
 
 #if defined(GL_ES_VERSION_2_0)
   (void )theIsCoreProfile;
-  const bool isCoreProfile = false;
 #else
-
   if (myVendor.Search ("nvidia") != -1)
   {
     // Buffer detailed info: Buffer object 1 (bound to GL_ARRAY_BUFFER_ARB, usage hint is GL_STATIC_DRAW)
@@ -1354,16 +1351,18 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   }
 #endif
 
+  core11fwd  = (OpenGl_GlCore11Fwd* )(&(*myFuncs));
+  core15fwd  = NULL;
+  core20fwd  = NULL;
+
+#if !defined(GL_ES_VERSION_2_0)
   core11     = NULL;
   if (!isCoreProfile)
   {
     core11 = (OpenGl_GlCore11* )(&(*myFuncs));
   }
-  core11fwd  = (OpenGl_GlCore11Fwd* )(&(*myFuncs));
   core15     = NULL;
-  core15fwd  = NULL;
   core20     = NULL;
-  core20fwd  = NULL;
   core32     = NULL;
   core32back = NULL;
   core33     = NULL;
@@ -1381,10 +1380,13 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   arbTBO     = NULL;
   arbTboRGB32 = Standard_False;
   arbIns     = NULL;
+#endif
   arbDbg     = NULL;
   arbFBO     = NULL;
   arbFBOBlit = NULL;
+#if !defined(HAVE_WEBGL)
   extGS      = NULL;
+#endif
   myDefaultVao = 0;
 
   //! Make record shorter to retrieve function pointer using variable with same name
@@ -1409,20 +1411,19 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
          || CheckExtension ("GL_OES_packed_depth_stencil");
   extTexDepth = CheckExtension ("GL_OES_depth_texture");
 
-  if constexpr(ToUseWebGL) {
+#if defined(HAVE_WEBGL)
     // WEBGL_depth_texture is a subset of GL_OES_depth_texture and GL_OES_packed_depth_stencil. This should work (see OpenGl_Framebuffer.cxx)
     if (CheckExtension("GL_WEBGL_depth_texture"))
     {
       extPDS = true;
       extTexDepth = true;
     }
-  }
+#endif
 
   core11fwd = (OpenGl_GlCore11Fwd* )(&(*myFuncs));
   if (IsGlGreaterEqual (2, 0))
   {
     // enable compatible functions
-    core20    = (OpenGl_GlCore20*    )(&(*myFuncs));
     core20fwd = (OpenGl_GlCore20Fwd* )(&(*myFuncs));
     core15fwd = (OpenGl_GlCore15Fwd* )(&(*myFuncs));
     if (!caps->fboDisable) {
@@ -1455,6 +1456,7 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   extFragDepth = !IsGlGreaterEqual(3, 0)
                && CheckExtension ("GL_EXT_frag_depth");
 
+#if !defined(HAVE_WEBGL)
   if (IsGlGreaterEqual (3, 1)
    && FindProcShort (glTexStorage2DMultisample))
   {
@@ -1462,6 +1464,7 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
     // but MSAA Textures - only in OpenGL ES 3.1+
     ::glGetIntegerv (GL_MAX_SAMPLES, &myMaxMsaaSamples);
   }
+#endif
 
   hasUintIndex = IsGlGreaterEqual (3, 0)
               || CheckExtension ("GL_OES_element_index_uint");
@@ -1477,6 +1480,7 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   arbTexFloat = IsGlGreaterEqual (3, 0)
              && FindProcShort (glTexImage3D);
 
+#if !defined(HAVE_WEBGL)
   const Standard_Boolean hasTexBuffer32  = IsGlGreaterEqual (3, 2) && FindProcShort (glTexBuffer);
   const Standard_Boolean hasExtTexBuffer = CheckExtension ("GL_EXT_texture_buffer") && FindProc ("glTexBufferEXT", myFuncs->glTexBuffer);
 
@@ -1484,6 +1488,7 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   {
     arbTBO = reinterpret_cast<OpenGl_ArbTBO*> (myFuncs.get());
   }
+#endif
 
   // initialize debug context extension
   if (CheckExtension ("GL_KHR_debug"))
@@ -1527,16 +1532,25 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
     hasDrawBuffers = OpenGl_FeatureInExtensions;
   }
 
-  hasFloatBuffer     = IsGlGreaterEqual (3, 2) ? OpenGl_FeatureInCore :
+  hasFloatBuffer     =
+#if !defined(HAVE_WEBGL)
+      IsGlGreaterEqual (3, 2) ? OpenGl_FeatureInCore :
+#endif
                        CheckExtension ("GL_EXT_color_buffer_float") ? OpenGl_FeatureInExtensions
                                                                     : OpenGl_FeatureNotAvailable;
-  hasHalfFloatBuffer = IsGlGreaterEqual (3, 2) ? OpenGl_FeatureInCore :
+  hasHalfFloatBuffer =
+#if !defined(HAVE_WEBGL)
+  IsGlGreaterEqual (3, 2) ? OpenGl_FeatureInCore :
+#endif
                        CheckExtension ("GL_EXT_color_buffer_half_float") ? OpenGl_FeatureInExtensions
                                                                          : OpenGl_FeatureNotAvailable;
 
   oesSampleVariables = CheckExtension ("GL_OES_sample_variables");
   oesStdDerivatives  = CheckExtension ("GL_OES_standard_derivatives");
-  hasSampleVariables = IsGlGreaterEqual (3, 2) ? OpenGl_FeatureInCore :
+  hasSampleVariables =
+#if !defined(HAVE_WEBGL)
+      IsGlGreaterEqual (3, 2) ? OpenGl_FeatureInCore :
+#endif
                        oesSampleVariables ? OpenGl_FeatureInExtensions
                                           : OpenGl_FeatureNotAvailable;
   hasGlslBitwiseOps = IsGlGreaterEqual (3, 0)
@@ -1548,16 +1562,22 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
                   : (oesStdDerivatives && hasHighp
                    ? OpenGl_FeatureInExtensions
                    : OpenGl_FeatureNotAvailable);
-  if (!IsGlGreaterEqual (3, 1)
-    && myVendor.Search("qualcomm") != -1)
+
+  if (
+      #if !defined(HAVE_WEBGL)
+      !IsGlGreaterEqual (3, 1) &&
+      #endif
+      myVendor.Search("qualcomm") != -1)
   {
     // dFdx/dFdy are completely broken on tested Adreno devices with versions below OpenGl ES 3.1
     hasFlatShading = OpenGl_FeatureNotAvailable;
   }
 
-  hasGeometryStage = IsGlGreaterEqual (3, 2)
-                   ? OpenGl_FeatureInCore
-                   : (CheckExtension ("GL_EXT_geometry_shader") && CheckExtension ("GL_EXT_shader_io_blocks")
+  hasGeometryStage =
+  #if !defined(HAVE_WEBGL)
+      IsGlGreaterEqual (3, 2) ? OpenGl_FeatureInCore:
+  #endif
+                   (CheckExtension ("GL_EXT_geometry_shader") && CheckExtension ("GL_EXT_shader_io_blocks")
                      ? OpenGl_FeatureInExtensions
                      : OpenGl_FeatureNotAvailable);
 #else
@@ -3665,7 +3685,7 @@ void OpenGl_Context::SetTypeOfLine (const Aspect_TypeOfLine  theType,
 // =======================================================================
 void OpenGl_Context::SetLineWidth (const Standard_ShortReal theWidth)
 {
-  if (core11 != NULL)
+  if (core11fwd != NULL)
   {
     // glLineWidth() is still defined within Core Profile, but has no effect with values != 1.0f
     core11fwd->glLineWidth (theWidth * myLineWidthScale);

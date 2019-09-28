@@ -993,12 +993,12 @@ Standard_Boolean OpenGl_ShaderProgram::SetUniform (const Handle(OpenGl_Context)&
                                                    GLint                         theLocation,
                                                    const OpenGl_Vec2u&           theValue)
 {
+#if !defined(GL_ES_VERSION_2_0)
   if (theCtx->core32 == NULL || myProgramID == NO_PROGRAM || theLocation == INVALID_LOCATION)
   {
     return Standard_False;
   }
 
-#if !defined(GL_ES_VERSION_2_0)
   theCtx->core32->glUniform2uiv (theLocation, 1, theValue.GetData());
   return Standard_True;
 #else
@@ -1028,12 +1028,12 @@ Standard_Boolean OpenGl_ShaderProgram::SetUniform (const Handle(OpenGl_Context)&
                                                    const GLsizei                 theCount,
                                                    const OpenGl_Vec2u*           theValue)
 {
+#if !defined(GL_ES_VERSION_2_0)
   if (theCtx->core32 == NULL || myProgramID == NO_PROGRAM || theLocation == INVALID_LOCATION)
   {
     return Standard_False;
   }
 
-#if !defined(GL_ES_VERSION_2_0)
   theCtx->core32->glUniform2uiv (theLocation, theCount, theValue->GetData());
   return Standard_True;
 #else

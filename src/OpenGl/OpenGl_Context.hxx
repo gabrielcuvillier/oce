@@ -875,12 +875,14 @@ private:
 
 public: //! @name core profiles
 
-  OpenGl_GlCore11*     core11;     //!< OpenGL 1.1 core functionality
   OpenGl_GlCore11Fwd*  core11fwd;  //!< OpenGL 1.1 without deprecated entry points
-  OpenGl_GlCore15*     core15;     //!< OpenGL 1.5 core functionality
   OpenGl_GlCore15Fwd*  core15fwd;  //!< OpenGL 1.5 without deprecated entry points
-  OpenGl_GlCore20*     core20;     //!< OpenGL 2.0 core functionality (includes 1.5)
   OpenGl_GlCore20Fwd*  core20fwd;  //!< OpenGL 2.0 without deprecated entry points
+
+#if !defined(HAVE_GLES2)
+  OpenGl_GlCore11*     core11;     //!< OpenGL 1.1 core functionality
+  OpenGl_GlCore15*     core15;     //!< OpenGL 1.5 core functionality
+  OpenGl_GlCore20*     core20;     //!< OpenGL 2.0 core functionality (includes 1.5)
   OpenGl_GlCore32*     core32;     //!< OpenGL 3.2 core profile
   OpenGl_GlCore32Back* core32back; //!< OpenGL 3.2 backward compatibility profile
   OpenGl_GlCore33*     core33;     //!< OpenGL 3.3 core profile
@@ -895,6 +897,7 @@ public: //! @name core profiles
   OpenGl_GlCore44Back* core44back; //!< OpenGL 4.4 backward compatibility profile
   OpenGl_GlCore45*     core45;     //!< OpenGL 4.5 core profile
   OpenGl_GlCore45Back* core45back; //!< OpenGL 4.5 backward compatibility profile
+#endif
 
   Handle(OpenGl_Caps) caps; //!< context options
 
@@ -915,17 +918,21 @@ public: //! @name extensions
   Standard_Boolean       arbTexRG;           //!< GL_ARB_texture_rg
   Standard_Boolean       arbTexFloat;        //!< GL_ARB_texture_float (on desktop OpenGL - since 3.0 or as extension GL_ARB_texture_float; on OpenGL ES - since 3.0)
   OpenGl_ArbSamplerObject* arbSamplerObject; //!< GL_ARB_sampler_objects (on desktop OpenGL - since 3.3 or as extension GL_ARB_sampler_objects; on OpenGL ES - since 3.0)
+#if !defined(HAVE_WEBGL)
   OpenGl_ArbTexBindless* arbTexBindless;     //!< GL_ARB_bindless_texture
   OpenGl_ArbTBO*         arbTBO;             //!< GL_ARB_texture_buffer_object
   Standard_Boolean       arbTboRGB32;        //!< GL_ARB_texture_buffer_object_rgb32 (3-component TBO), in core since 4.0
   OpenGl_ArbIns*         arbIns;             //!< GL_ARB_draw_instanced
+#endif
   OpenGl_ArbDbg*         arbDbg;             //!< GL_ARB_debug_output
   OpenGl_ArbFBO*         arbFBO;             //!< GL_ARB_framebuffer_object
   OpenGl_ArbFBOBlit*     arbFBOBlit;         //!< glBlitFramebuffer function, moved out from OpenGl_ArbFBO structure for compatibility with OpenGL ES 2.0
   Standard_Boolean       arbSampleShading;   //!< GL_ARB_sample_shading
   Standard_Boolean       extFragDepth;       //!< GL_EXT_frag_depth on OpenGL ES 2.0 (gl_FragDepthEXT built-in variable, before OpenGL ES 3.0)
   Standard_Boolean       extDrawBuffers;     //!< GL_EXT_draw_buffers
+#if !defined(HAVE_WEBGL)
   OpenGl_ExtGS*          extGS;              //!< GL_EXT_geometry_shader4
+#endif
   Standard_Boolean       extBgra;            //!< GL_EXT_bgra or GL_EXT_texture_format_BGRA8888 on OpenGL ES
   Standard_Boolean       extAnis;            //!< GL_EXT_texture_filter_anisotropic
   Standard_Boolean       extPDS;             //!< GL_EXT_packed_depth_stencil

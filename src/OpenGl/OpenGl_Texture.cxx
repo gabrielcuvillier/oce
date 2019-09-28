@@ -194,41 +194,47 @@ bool OpenGl_Texture::GetDataFormat (const Handle(OpenGl_Context)& theCtx,
   {
     case Image_Format_GrayF:
     {
-      if (theCtx->core11 == NULL)
-      {
-        theTextFormat  = GL_R8;  // GL_R32F
-        thePixelFormat = GL_RED;
-      }
-      else
-      {
-      #if !defined(GL_ES_VERSION_2_0)
-        theTextFormat  = GL_LUMINANCE8;
-      #else
+      #if defined(GL_ES_VERSION_2_0)
         theTextFormat  = GL_LUMINANCE;
-      #endif
         thePixelFormat = GL_LUMINANCE;
-      }
-      theDataType = GL_FLOAT;
-      return true;
+        theDataType = GL_FLOAT;
+        return true;
+      #else
+        if (theCtx->core11 == NULL)
+        {
+          theTextFormat  = GL_R8;  // GL_R32F
+          thePixelFormat = GL_RED;
+        }
+        else
+        {
+          theTextFormat  = GL_LUMINANCE8;
+          thePixelFormat = GL_LUMINANCE;
+        }
+        theDataType = GL_FLOAT;
+        return true;
+      #endif
     }
     case Image_Format_AlphaF:
     {
-      if (theCtx->core11 == NULL)
-      {
-        theTextFormat  = GL_R8;  // GL_R32F
-        thePixelFormat = GL_RED;
-      }
-      else
-      {
-      #if !defined(GL_ES_VERSION_2_0)
-        theTextFormat  = GL_ALPHA8;
-      #else
+      #if defined(GL_ES_VERSION_2_0)
         theTextFormat  = GL_ALPHA;
-      #endif
         thePixelFormat = GL_ALPHA;
-      }
-      theDataType = GL_FLOAT;
-      return true;
+        theDataType = GL_FLOAT;
+        return true;
+      #else
+        if (theCtx->core11 == NULL)
+        {
+          theTextFormat  = GL_R8;  // GL_R32F
+          thePixelFormat = GL_RED;
+        }
+        else
+        {
+          theTextFormat  = GL_ALPHA8;
+          thePixelFormat = GL_ALPHA;
+        }
+        theDataType = GL_FLOAT;
+        return true;
+      #endif
     }
     case Image_Format_RGBAF:
     {
@@ -348,6 +354,12 @@ bool OpenGl_Texture::GetDataFormat (const Handle(OpenGl_Context)& theCtx,
     }
     case Image_Format_Gray:
     {
+      #if defined(GL_ES_VERSION_2_0)
+        theTextFormat  = GL_LUMINANCE;
+        thePixelFormat = GL_LUMINANCE;
+        theDataType = GL_UNSIGNED_BYTE;
+        return true;
+      #else
       if (theCtx->core11 == NULL)
       {
         theTextFormat  = GL_R8;
@@ -355,18 +367,21 @@ bool OpenGl_Texture::GetDataFormat (const Handle(OpenGl_Context)& theCtx,
       }
       else
       {
-      #if !defined(GL_ES_VERSION_2_0)
         theTextFormat  = GL_LUMINANCE8;
-      #else
-        theTextFormat  = GL_LUMINANCE;
-      #endif
         thePixelFormat = GL_LUMINANCE;
       }
       theDataType = GL_UNSIGNED_BYTE;
       return true;
+      #endif
     }
     case Image_Format_Alpha:
     {
+      #if defined(GL_ES_VERSION_2_0)
+        theTextFormat  = GL_ALPHA;
+        thePixelFormat = GL_ALPHA;
+        theDataType = GL_UNSIGNED_BYTE;
+        return true;
+      #else
       if (theCtx->core11 == NULL)
       {
         theTextFormat  = GL_R8;
@@ -374,15 +389,12 @@ bool OpenGl_Texture::GetDataFormat (const Handle(OpenGl_Context)& theCtx,
       }
       else
       {
-      #if !defined(GL_ES_VERSION_2_0)
         theTextFormat  = GL_ALPHA8;
-      #else
-        theTextFormat  = GL_ALPHA;
-      #endif
         thePixelFormat = GL_ALPHA;
       }
       theDataType = GL_UNSIGNED_BYTE;
       return true;
+      #endif
     }
     case Image_Format_UNKNOWN:
     {
@@ -844,7 +856,12 @@ bool OpenGl_Texture::Init2DMultisample (const Handle(OpenGl_Context)& theCtx,
     theCtx->Functions()->glTexImage2DMultisample   (myTarget, myNbSamples, theTextFormat, theSizeX, theSizeY, GL_FALSE);
   }
 #else
+#if !defined(HAVE_WEBGL)
   theCtx->Functions()  ->glTexStorage2DMultisample (myTarget, myNbSamples, theTextFormat, theSizeX, theSizeY, GL_FALSE);
+#else
+  Unbind (theCtx);
+  return false;
+#endif
 #endif
   if (theCtx->core11fwd->glGetError() != GL_NO_ERROR)
   {

@@ -818,6 +818,8 @@ public: //! @name OpenGL ES 3.0
   typedef void (APIENTRY *glGetSamplerParameterfv_t)(GLuint sampler, GLenum pname, GLfloat* params);
   glGetSamplerParameterfv_t glGetSamplerParameterfv;
 
+#if !defined(HAVE_WEBGL)
+
 public: //! @name OpenGL ES 3.1
 
   typedef void (APIENTRY *glTexStorage2DMultisample_t)(GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height, GLboolean fixedsamplelocations);
@@ -827,6 +829,8 @@ public: //! @name OpenGL ES 3.2
 
   typedef void (APIENTRY *glTexBuffer_t)(GLenum target, GLenum internalFormat, GLuint buffer);
   glTexBuffer_t glTexBuffer;
+
+#endif
 
 public: //! @name GL_KHR_debug (optional)
 
