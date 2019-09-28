@@ -251,7 +251,7 @@ OpenGl_Window::OpenGl_Window (const Handle(OpenGl_GraphicDriver)& theDriver,
     EmscriptenWebGLContextAttributes attrs;
     emscripten_webgl_init_context_attributes(&attrs);
     attrs.enableExtensionsByDefault = true;
-    attrs.stencil = true; // not enabled by default, be sure to have one
+    attrs.stencil = true; // not enabled by default. It seems it is needed by Visualization
     attrs.antialias = true;
     aGContext = emscripten_webgl_create_context(thePlatformWindow->NativeHandle(), &attrs);
     if (aGContext <= 0) {
@@ -791,6 +791,8 @@ void OpenGl_Window::Init()
   }
 #elif defined(__EMSCRIPTEN__)
   emscripten_get_canvas_element_size(myGlContext->myWindow, &myWidth, &myHeight);
+  // Maybe the following should be done instead
+  // emscripten_webgl_get_drawing_buffer_size(myGlContext->myGContext, &myWidth, &myHeight);
 #elif defined(_WIN32)
   //
 #else

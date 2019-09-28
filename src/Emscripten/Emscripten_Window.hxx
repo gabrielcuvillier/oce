@@ -76,6 +76,10 @@ public:
     return myTargetCanvas;
   }
 
+  virtual void SetTitle (const TCollection_AsciiString& theTitle) Standard_OVERRIDE;
+
+  virtual void InvalidateContent (const Handle(Aspect_DisplayConnection)& theDisp) Standard_OVERRIDE;
+
 private:
 
   // Canvas Target Id

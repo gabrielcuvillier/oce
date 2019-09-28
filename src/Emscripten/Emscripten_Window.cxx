@@ -109,10 +109,10 @@ Standard_Boolean Emscripten_Window::DoMapping() const
 // =======================================================================
 Standard_Real Emscripten_Window::Ratio() const
 {
-  int width = 1, height = 1;
-  emscripten_get_canvas_element_size(myTargetCanvas, &width, &height);
+  double width = 1, height = 1;
+  emscripten_get_element_css_size(myTargetCanvas, &width, &height); // Use CSS size to compute ratio
 
-  return (Standard_Real)width/(Standard_Real)height;
+  return width/height;
 }
 
 // =======================================================================
@@ -123,7 +123,7 @@ void Emscripten_Window::Position (Standard_Integer& X1, Standard_Integer& Y1,
                           Standard_Integer& X2, Standard_Integer& Y2) const
 {
   int width = 0, height = 0;
-  emscripten_get_canvas_element_size(myTargetCanvas, &width, &height);
+  emscripten_get_canvas_element_size(myTargetCanvas, &width, &height);  // use Canvas client size for Position
   X1 = 0;
   Y1 = 0;
   X2 = width;
@@ -138,9 +138,18 @@ void Emscripten_Window::Size (Standard_Integer& theWidth,
                               Standard_Integer& theHeight) const
 {
   int width = 0, height = 0;
-  emscripten_get_canvas_element_size(myTargetCanvas, &width, &height);
+  emscripten_get_canvas_element_size(myTargetCanvas, &width, &height); // use Canvas client size for Size
   theWidth = width;
   theHeight = height;
 }
+
+void Emscripten_Window::SetTitle (const TCollection_AsciiString& theTitle) {
+  //std::cout << "Emscripten_Window::SetTitle: " << theTitle << std::endl;
+}
+
+void Emscripten_Window::InvalidateContent (const Handle(Aspect_DisplayConnection)& theDisp) {
+  //std::cout << "Emscripten_Window::InvalidateContent" << std::endl;
+}
+
 
 #endif
