@@ -791,7 +791,10 @@ void OpenGl_Window::Init()
   }
 #elif defined(__EMSCRIPTEN__)
   emscripten_get_canvas_element_size(myGlContext->myWindow, &myWidth, &myHeight);
-  // Maybe the following should be done instead
+
+  // Maybe the following should be done instead, to handle issues when canvas.clientWidth/Height does not match
+  // canvas.drawingBufferWidth/Height (mostly on multiple monitor displays, with browser window spanning on several displays)
+  // This have to be tested first though.
   // emscripten_webgl_get_drawing_buffer_size(myGlContext->myGContext, &myWidth, &myHeight);
 #elif defined(_WIN32)
   //
