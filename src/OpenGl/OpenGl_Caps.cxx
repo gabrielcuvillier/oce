@@ -79,6 +79,7 @@ OpenGl_Caps& OpenGl_Caps::operator= (const OpenGl_Caps& theCopy)
   keepArrayData     = theCopy.keepArrayData;
 #if !defined(GL_ES_VERSION_2_0)
   ffpEnable         = theCopy.ffpEnable;
+  usePolygonMode    = theCopy.usePolygonMode;
 #endif
   useSystemBuffer   = theCopy.useSystemBuffer;
   swapInterval      = theCopy.swapInterval;
