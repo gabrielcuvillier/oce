@@ -14,8 +14,6 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
-// Functions only used for Debug in Visual Studio
-#if 0
 #include <BRepTools.hxx>
 #include <Standard_ErrorHandler.hxx>
 #include <Standard_Failure.hxx>
@@ -111,5 +109,4 @@ const char* BRepTools_DumpLoc (const TopoDS_Shape& theShape)
   return BRepTools_DumpLoc ((void*)&theShape);
 }
 
-#endif
 #endif
