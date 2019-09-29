@@ -24,9 +24,6 @@ enum Aspect_InteriorStyle
   Aspect_IS_HATCH,      //!< hatched surface interior
   Aspect_IS_HIDDENLINE, //!< interior is filled with viewer background color
   Aspect_IS_POINT,      //!< display only vertices of surface (obsolete)
-
-  // obsolete aliases
-  Aspect_IS_HOLLOW = Aspect_IS_EMPTY, //!< transparent surface interior
 };
 
 #endif // _Aspect_InteriorStyle_HeaderFile

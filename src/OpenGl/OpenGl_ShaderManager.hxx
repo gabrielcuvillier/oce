@@ -581,7 +581,7 @@ protected:
      && myContext->hasGeometryStage != OpenGl_FeatureNotAvailable)
     {
       aBits |= OpenGl_PO_MeshEdges;
-      if (theInteriorStyle == Aspect_IS_HOLLOW)
+      if (theInteriorStyle == Aspect_IS_EMPTY)
       {
         aBits |= OpenGl_PO_AlphaTest;
       }

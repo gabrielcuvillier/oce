@@ -1221,7 +1221,7 @@ void OpenGl_ShaderManager::PushInteriorState (const Handle(OpenGl_ShaderProgram)
   }
   if (const OpenGl_ShaderUniformLocation aLocWireframeColor = theProgram->GetStateLocation (OpenGl_OCCT_WIREFRAME_COLOR))
   {
-    if (theAspect->InteriorStyle() == Aspect_IS_HOLLOW)
+    if (theAspect->InteriorStyle() == Aspect_IS_EMPTY)
     {
       theProgram->SetUniform (myContext, aLocWireframeColor, OpenGl_Vec4 (-1.0f, -1.0f, -1.0f, -1.0f));
     }

@@ -1718,7 +1718,7 @@ static bool parseInteriorStyle (const TCollection_AsciiString& theArg,
   }
   else if (anArg == "hollow")
   {
-    theStyle = Aspect_IS_HOLLOW;
+    theStyle = Aspect_IS_EMPTY;
   }
   else if (anArg == "solid")
   {

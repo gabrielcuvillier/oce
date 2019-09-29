@@ -966,7 +966,7 @@ void OpenGl_PrimitiveArray::Render (const Handle(OpenGl_Workspace)& theWorkspace
   // draw triangulation edges using Polygon Mode
   if (toDrawInteriorEdges == 2)
   {
-    if (anAspectFace->Aspect()->InteriorStyle() == Aspect_IS_HOLLOW
+    if (anAspectFace->Aspect()->InteriorStyle() == Aspect_IS_EMPTY
      && anAspectFace->Aspect()->EdgeLineType()  == Aspect_TOL_SOLID)
     {
       aCtx->SetPolygonMode (GL_FILL);
