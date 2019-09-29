@@ -57,6 +57,7 @@ class Geom_Curve;
 class Geom2d_Curve;
 class Geom_Surface;
 
+
 //! The BRepTools package provides  utilities for BRep
 //! data structures.
 //!
@@ -228,7 +229,7 @@ public:
   //! (other,Torus,Sphere,Cone,Cylinder,Plane)
   Standard_EXPORT static void ReverseSortFaces (const TopoDS_Shape& S, TopTools_ListOfShape& LF);
 
- protected:
+protected:
 
 
 

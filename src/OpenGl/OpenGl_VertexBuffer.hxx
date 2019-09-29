@@ -317,8 +317,7 @@ private:
   //! Disable FFP color array pointer.
   Standard_EXPORT static void unbindFixedColor (const Handle(OpenGl_Context)& theCtx);
 #endif
-
- public: //! @name methods for interleaved attributes array
+public: //! @name methods for interleaved attributes array
 
   //! @return true if buffer contains per-vertex color attribute
   Standard_EXPORT virtual bool HasColorAttribute() const;

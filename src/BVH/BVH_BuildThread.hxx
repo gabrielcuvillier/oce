@@ -43,7 +43,8 @@ public:
   }
 
   //! Waits till the thread finishes execution.
-  void Wait() {
+  void Wait()
+  {
     myWorkThread.Wait();
   }
 

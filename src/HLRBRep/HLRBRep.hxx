@@ -96,6 +96,9 @@ public:
   
   Standard_EXPORT static TopoDS_Edge MakeEdge3d (const HLRBRep_Curve& ec, const Standard_Real U1, const Standard_Real U2);
 
+
+
+
 protected:
 
 

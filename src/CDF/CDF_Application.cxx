@@ -465,16 +465,15 @@ Handle(PCDM_StorageDriver) CDF_Application::WriterFromFormat(const TCollection_E
   // Convert to GUID.
   Standard_GUID aPluginId = UTL::GUID(strPluginId);
 
+  try {
+    OCC_CATCH_SIGNALS
+    aDriver = Handle(PCDM_StorageDriver)::DownCast(Plugin::Load(aPluginId));
+  }
+  catch (Standard_Failure const& anException)
   {
-    try {
-      OCC_CATCH_SIGNALS
-      aDriver = Handle(PCDM_StorageDriver)::DownCast(Plugin::Load(aPluginId));
-    }
-    catch (Standard_Failure const &anException) {
-      myWriters.Add(theFormat, aDriver);
-      myRetrievableStatus = PCDM_RS_WrongResource;
-      throw anException;
-    }
+    myWriters.Add(theFormat, aDriver);
+    myRetrievableStatus = PCDM_RS_WrongResource;
+    throw anException;
   }
   if (aDriver.IsNull()) 
   {

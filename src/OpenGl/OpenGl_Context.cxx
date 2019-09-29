@@ -1324,6 +1324,7 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
 #if defined(GL_ES_VERSION_2_0)
   (void )theIsCoreProfile;
 #else
+
   if (myVendor.Search ("nvidia") != -1)
   {
     // Buffer detailed info: Buffer object 1 (bound to GL_ARRAY_BUFFER_ARB, usage hint is GL_STATIC_DRAW)

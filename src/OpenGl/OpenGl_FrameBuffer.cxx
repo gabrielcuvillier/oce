@@ -440,7 +440,8 @@ Standard_Boolean OpenGl_FrameBuffer::Init (const Handle(OpenGl_Context)& theGlCo
                                  GL_DEBUG_SEVERITY_HIGH,
                                  aMsg);
 
-      hasStencilRB = aPixelFormat == GL_DEPTH_STENCIL && theGlContext->extPDS;
+      hasStencilRB = aPixelFormat == GL_DEPTH_STENCIL
+                  && theGlContext->extPDS;
       GLint aDepthStencilFormat = hasStencilRB
                                 ? GL_DEPTH24_STENCIL8
                                 : GL_DEPTH_COMPONENT16;
