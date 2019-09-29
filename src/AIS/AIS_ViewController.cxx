@@ -25,6 +25,8 @@
 #include <gp_Quaternion.hxx>
 #include <V3d_View.hxx>
 
+IMPLEMENT_STANDARD_RTTIEXT(AIS_ViewController, Standard_Transient)
+
 // =======================================================================
 // function : AIS_ViewController
 // purpose  :

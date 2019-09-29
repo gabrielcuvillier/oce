@@ -14,6 +14,7 @@
 #ifndef _AIS_ViewController_HeaderFile
 #define _AIS_ViewController_HeaderFile
 
+#include <Standard_Transient.hxx>
 #include <Aspect_VKeySet.hxx>
 #include <Aspect_TouchMap.hxx>
 #include <AIS_DragAction.hxx>
@@ -44,9 +45,11 @@ class V3d_View;
 //! - Mapping mouse/multi-touch input to View camera manipulations (panning/rotating/zooming).
 //! - Input events are not applied immediately but queued for separate processing from two working threads
 //!   UI thread receiving user input and Rendering thread for OCCT 3D Viewer drawing.
-class AIS_ViewController
+class AIS_ViewController : public Standard_Transient
 {
 public:
+
+  DEFINE_STANDARD_RTTIEXT(AIS_ViewController, Standard_Transient)
 
   //! Empty constructor.
   Standard_EXPORT AIS_ViewController();
@@ -680,5 +683,7 @@ protected: //! @name rotation/panning transient state variables
   Graphic3d_Vec3d     myRotateStartYawPitchRoll;  //!< camera yaw pitch roll at the beginning of rotation
 
 };
+
+DEFINE_STANDARD_HANDLE(AIS_ViewController, Standard_Transient)
 
 #endif // _AIS_ViewController_HeaderFile
