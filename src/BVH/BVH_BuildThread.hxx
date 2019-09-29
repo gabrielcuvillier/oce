@@ -78,4 +78,3 @@ public:
 DEFINE_STANDARD_HANDLE (BVH_BuildThread, Standard_Transient)
 
 #endif // _BVH_BuildThread_Header
-
