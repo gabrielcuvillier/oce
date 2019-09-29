@@ -295,6 +295,7 @@ Standard_Boolean OpenGl_ShaderProgram::Initialize (const Handle(OpenGl_Context)&
       aHeaderVer = "#version 150";
     }
   }
+#endif
 #else
   if ((myHasTessShader)||((aShaderMask & Graphic3d_TOS_GEOMETRY) != 0)||((aShaderMask & Graphic3d_TOS_COMPUTE) != 0))
   {
