@@ -224,11 +224,13 @@ Handle(Vrml_Material) VrmlAPI_Writer::GetUnfreeBoundsMaterial() const
 
 Standard_Boolean VrmlAPI_Writer::Write(const TopoDS_Shape& aShape,const Standard_CString aFile, const Standard_Integer aVersion) const
 {
-#if !defined(OCCT_DISABLE_EXACTHLR_IN_VISUALIZATION)
+  // VRML 1.0 is such an outdated format, let's disable this
+#if 0
   if (aVersion == 1)
     return write_v1 (aShape, aFile);
-  else if (aVersion == 2)
+  else
 #endif
+  if (aVersion == 2)
     return write_v2 (aShape, aFile);
 
   return Standard_False;

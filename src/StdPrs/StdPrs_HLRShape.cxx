@@ -11,13 +11,16 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
+#include <StdPrs_HLRShape.hxx>
+
+#if !defined(OCCT_DISABLE_EXACTHLR_IN_VISUALIZATION)
+
 #include <BRepAdaptor_Curve.hxx>
 #include <Graphic3d_Group.hxx>
 #include <Prs3d_Drawer.hxx>
 #include <Prs3d_LineAspect.hxx>
 #include <Prs3d_Presentation.hxx>
 #include <Prs3d_Projector.hxx>
-#include <StdPrs_HLRShape.hxx>
 #include <StdPrs_HLRToolShape.hxx>
 #include <StdPrs_DeflectionCurve.hxx>
 #include <TopoDS_Shape.hxx>
@@ -70,3 +73,5 @@ void StdPrs_HLRShape::Add (const Handle(Prs3d_Presentation)& thePresentation,
     }
   }
 } 
+
+#endif

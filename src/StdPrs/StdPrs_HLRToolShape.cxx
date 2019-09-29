@@ -19,6 +19,8 @@
 #include <StdPrs_HLRToolShape.hxx>
 #include <TopoDS_Shape.hxx>
 
+#if !defined(OCCT_DISABLE_EXACTHLR_IN_VISUALIZATION)
+
 StdPrs_HLRToolShape::StdPrs_HLRToolShape (
 		  const TopoDS_Shape& TheShape,
                   const HLRAlgo_Projector& TheProjector)
@@ -80,3 +82,5 @@ void StdPrs_HLRToolShape::Hidden (BRepAdaptor_Curve& TheEdge,
   Standard_ShortReal t1,t2;
   myEdgeIterator.Hidden(U1,t1,U2,t2);
 }
+
+#endif
