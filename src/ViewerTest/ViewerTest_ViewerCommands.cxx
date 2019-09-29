@@ -7062,8 +7062,7 @@ static int VReadPixel (Draw_Interpretor& theDI,
     return 1;
   }
 
-  Standard_Boolean toShowName = Standard_False;
-  Standard_Boolean toShowHls  = Standard_False;
+  bool toShowName = false, toShowHls = false, toShowHex = false;
   for (Standard_Integer anIter = 3; anIter < theArgNb; ++anIter)
   {
     TCollection_AsciiString aParam (theArgVec[anIter]);
@@ -7110,9 +7109,15 @@ static int VReadPixel (Draw_Interpretor& theDI,
     {
       toShowName = Standard_True;
     }
+    else if (aParam == "-hex"
+          || aParam == "hex")
+    {
+      toShowHex = Standard_True;
+    }
     else
     {
       std::cout << "Syntax error at '" << aParam << "'\n";
+      return 1;
     }
   }
 
@@ -7148,6 +7153,17 @@ static int VReadPixel (Draw_Interpretor& theDI,
     else
     {
       theDI << Quantity_Color::StringName (aColor.GetRGB().Name());
+    }
+  }
+  else if (toShowHex)
+  {
+    if (aBufferType == Graphic3d_BT_RGBA)
+    {
+      theDI << Quantity_ColorRGBA::ColorToHex (aColor);
+    }
+    else
+    {
+      theDI << Quantity_Color::ColorToHex (aColor.GetRGB());
     }
   }
   else
@@ -13920,7 +13936,7 @@ void ViewerTest::ViewerCommands(Draw_Interpretor& theCommands)
     " with f option returns free memory in bytes",
     __FILE__, VMemGpu, group);
   theCommands.Add ("vreadpixel",
-    "vreadpixel xPixel yPixel [{rgb|rgba|depth|hls|rgbf|rgbaf}=rgba] [-name]"
+    "vreadpixel xPixel yPixel [{rgb|rgba|depth|hls|rgbf|rgbaf}=rgba] [-name|-hex]"
     " : Read pixel value for active view",
     __FILE__, VReadPixel, group);
   theCommands.Add("diffimage",

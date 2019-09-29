@@ -439,7 +439,7 @@ class TColStd_Array1OfReal; -> #include <TColStd_Array1OfReal.hxx>
 ~~~~~
 Handle_Class -> Handle(Class)
 ~~~~~
-  This change is not applied if the source or header file is recognized as containing the definition of Qt class with signals or slots, to avoid possible compilation errors of MOC files caused by inability of MOC to recognize macros (see http://doc.qt.io/qt-4.8/signalsandslots.html).
+  This change is not applied if the source or header file is recognized as containing the definition of Qt class with signals or slots, to avoid possible compilation errors of MOC files caused by inability of MOC to recognize macros (see https://doc.qt.io/qt-4.8/signalsandslots.html).
   The file is considered as defining a Qt object if it contains strings *Q_OBJECT* and either *slots:* or *signals:*. 
 
 4. Removes forward declarations of classes with names <i>Handle(C)</i> or *Handle_C*, replacing them either by forward declaration of its argument class, or (for files defining Qt objects) <i>\#include</i> statement for a header with the name of the argument class and extension .hxx:
@@ -736,9 +736,9 @@ If you like to preserve the compatibility of your application code with OCCT ver
 If your application is essentially based on CDL, and you need to upgrade it to OCCT 7.0, you will very likely need to convert your application code to non-CDL form.
 This is a non-trivial effort; the required actions would depend strongly on the structure of the code and used CDL features.
 
-The upgrade script and sources of a specialized WOK version used for OCCT code upgrade can be found in WOK Git repository in branch [CR0_700_2](http://git.dev.opencascade.org/gitweb/?p=occt-wok.git;a=log;h=refs/heads/CR0_700_2).
+The upgrade script and sources of a specialized WOK version used for OCCT code upgrade can be found in WOK Git repository in branch [CR0_700_2](https://git.dev.opencascade.org/gitweb/?p=occt-wok.git;a=log;h=refs/heads/CR0_700_2).
 
-[Contact us](http://www.opencascade.com/contact/) if you need more help.
+[Contact us](https://www.opencascade.com/contact/) if you need more help.
 
 @subsection upgrade_occt700_bspline Separation of BSpline cache
 
@@ -1810,6 +1810,34 @@ Code iterating through the list of low-level structures AIS_InteractiveObject::P
 Forward declarations of *Prs3d_Presentation* should be corrected, since it is now a typedef to *Graphic3d_Structure*.
 
 Proxy classes *SelectBasics_SensitiveEntity* and *SelectBasics_EntityOwner* have been removed - *Select3D_SensitiveEntity* and *SelectMgr_EntityOwner* should be now used directly instead.
+
+@subsection upgrade_740_offset Polygon offset defaults
+
+*Graphic3d_PolygonOffset* default constructor has been corrected to define Units=1 instead of Units=0.
+Default polygon offset settings Mode=Aspect_POM_Fill + Factor=1 + Units=1 are intended to push triangulation
+(Shaded presentation) a little bit behind of lines (Wireframe and Face Edges)
+for reducing z-fighting effect of Shaded+Wireframe combination.
+The change in defaults (Units changed from 0 to 1) is intended to cover scenario when camera direction is perpendicular to model plane (like 2D view).
+
+Application observing unexpected visual difference on this change should consider customizing this property within AIS_InteractiveContext default attributes
+or on per-presentation basis via *Graphic3d_Aspects::SetPolygonOffset()* methods.
+
+@subsection upgrade_740_zlayer Adding ZLayers in given position
+
+Interface of insertion ZLayer in the viewer has been improved with ability to insert new layer before or after existing one.
+Previously undocumented behavior of *V3d_Viewer::AddZlayer()* method has been corrected to insert new layer before *Graphic3d_ZLayerId_Top*.
+Applications might need revising their custom layers creation code and specify precisely their order with new methods *V3d_Viewer::InsertLayerBefore()* and *V3d_Viewer::InsertLayerAfter()*.
+
+@subsection upgrade_740_enum_changed Modified enumerations
+
+Applications using integer values of the following enumerations in persistence
+should be corrected as these enumerations have been modified:
+
+| Name |
+| :----- |
+| AIS_TypeOfAttribute |
+| Aspect_InteriorStyle |
+| Font_FontAspect |
 
 @subsection upgrade_740_geproj Custom defines within env.bat
 

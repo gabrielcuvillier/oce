@@ -192,9 +192,10 @@ Standard_Integer TopLoc_Location::HashCode (const Standard_Integer theUpperBound
   while (items.More())
   {
     depth += 3;
-    unsigned int i = ::HashCode (items.Value().myDatum, theUpperBound);
-    unsigned int j = ((i + items.Value().myPower) << depth);
-    j              = j >> (32 - depth) | j << depth;
+    unsigned int           i             = ::HashCode (items.Value().myDatum, theUpperBound);
+    const Standard_Integer aClampedDepth = depth % 32;
+    unsigned int           j             = ((i + items.Value().myPower) << aClampedDepth);
+    j                                    = j >> (32 - aClampedDepth) | j << aClampedDepth;
     h ^= j;
     items.Next ();
   }
@@ -237,10 +238,10 @@ Standard_Boolean TopLoc_Location::IsDifferent
 //=======================================================================
 void TopLoc_Location::DumpJson (Standard_OStream& theOStream, const Standard_Integer theDepth) const
 {
-  DUMP_CLASS_BEGIN (theOStream, TopLoc_Location);
+  OCCT_DUMP_CLASS_BEGIN (theOStream, TopLoc_Location);
 
-  DUMP_FIELD_VALUES_DUMPED (theOStream, theDepth, &Transformation());
-  DUMP_FIELD_VALUE_NUMERICAL (theOStream, IsIdentity());
+  OCCT_DUMP_FIELD_VALUES_DUMPED (theOStream, theDepth, &Transformation());
+  OCCT_DUMP_FIELD_VALUE_NUMERICAL (theOStream, IsIdentity());
 }
 
 //=======================================================================
