@@ -577,6 +577,8 @@ protected:
     }
 
     aBits |= getClipPlaneBits();
+
+#if !defined(HAVE_WEBGL)  // Geometry stages are not supported on WebGL 1.0 and 2.0
     if (theEnableMeshEdges
      && myContext->hasGeometryStage != OpenGl_FeatureNotAvailable)
     {
@@ -586,6 +588,9 @@ protected:
         aBits |= OpenGl_PO_AlphaTest;
       }
     }
+#else
+    (void)theEnableMeshEdges;
+#endif
 
     if (theEnableEnvMap)
     {
@@ -603,7 +608,7 @@ protected:
       aBits |= OpenGl_PO_VertColor;
     }
 
-#if !defined(__EMSCRIPTEN__)
+#if !defined(HAVE_GLES2)
     if (myOitState.ToEnableWrite())
     {
       aBits |= OpenGl_PO_WriteOit;

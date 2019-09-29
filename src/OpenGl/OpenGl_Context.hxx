@@ -547,7 +547,7 @@ public:
   //! Returns true if VBO is supported and permitted.
   inline bool ToUseVbo() const
   {
-#if !defined(HAVE_GLES2)
+#if !defined(HAVE_GLES2)   // OpenGL without VBO disabled on GLES2
     return core15fwd != NULL
        && !caps->vboDisable;
 #else
@@ -879,7 +879,7 @@ public: //! @name core profiles
   OpenGl_GlCore15Fwd*  core15fwd;  //!< OpenGL 1.5 without deprecated entry points
   OpenGl_GlCore20Fwd*  core20fwd;  //!< OpenGL 2.0 without deprecated entry points
 
-#if !defined(HAVE_GLES2)
+#if !defined(HAVE_GLES2)  // Only Core11Fwd, Core15Fwd, and Core20Fwd supported on GLES2
   OpenGl_GlCore11*     core11;     //!< OpenGL 1.1 core functionality
   OpenGl_GlCore15*     core15;     //!< OpenGL 1.5 core functionality
   OpenGl_GlCore20*     core20;     //!< OpenGL 2.0 core functionality (includes 1.5)
@@ -912,17 +912,21 @@ public: //! @name extensions
   OpenGl_FeatureFlag     hasFloatBuffer;     //!< Complex flag indicating support of float color buffer format (desktop OpenGL 3.0, GL_ARB_color_buffer_float, GL_EXT_color_buffer_float)
   OpenGl_FeatureFlag     hasHalfFloatBuffer; //!< Complex flag indicating support of half-float color buffer format (desktop OpenGL 3.0, GL_ARB_color_buffer_float, GL_EXT_color_buffer_half_float)
   OpenGl_FeatureFlag     hasSampleVariables; //!< Complex flag indicating support of MSAA variables in GLSL shader (desktop OpenGL 4.0, GL_ARB_sample_shading)
+#if !defined(HAVE_WEBGL)  // Geometry stages are not supported on WebGL 1.0 or 2.0
   OpenGl_FeatureFlag     hasGeometryStage;   //!< Complex flag indicating support of Geometry shader (desktop OpenGL 3.2, OpenGL ES 3.2, GL_EXT_geometry_shader)
+#endif
   Standard_Boolean       arbDrawBuffers;     //!< GL_ARB_draw_buffers
   Standard_Boolean       arbNPTW;            //!< GL_ARB_texture_non_power_of_two
   Standard_Boolean       arbTexRG;           //!< GL_ARB_texture_rg
   Standard_Boolean       arbTexFloat;        //!< GL_ARB_texture_float (on desktop OpenGL - since 3.0 or as extension GL_ARB_texture_float; on OpenGL ES - since 3.0)
   OpenGl_ArbSamplerObject* arbSamplerObject; //!< GL_ARB_sampler_objects (on desktop OpenGL - since 3.3 or as extension GL_ARB_sampler_objects; on OpenGL ES - since 3.0)
-#if !defined(HAVE_WEBGL)
+#if !defined(HAVE_GLES2)  // TexBindless and DrawInstanced are not supported on GLES2
   OpenGl_ArbTexBindless* arbTexBindless;     //!< GL_ARB_bindless_texture
+  OpenGl_ArbIns*         arbIns;             //!< GL_ARB_draw_instanced
+#endif
+#if !defined(HAVE_WEBGL)  // TBO is not supported on WebGL 1.0 or 2.0
   OpenGl_ArbTBO*         arbTBO;             //!< GL_ARB_texture_buffer_object
   Standard_Boolean       arbTboRGB32;        //!< GL_ARB_texture_buffer_object_rgb32 (3-component TBO), in core since 4.0
-  OpenGl_ArbIns*         arbIns;             //!< GL_ARB_draw_instanced
 #endif
   OpenGl_ArbDbg*         arbDbg;             //!< GL_ARB_debug_output
   OpenGl_ArbFBO*         arbFBO;             //!< GL_ARB_framebuffer_object
@@ -930,7 +934,7 @@ public: //! @name extensions
   Standard_Boolean       arbSampleShading;   //!< GL_ARB_sample_shading
   Standard_Boolean       extFragDepth;       //!< GL_EXT_frag_depth on OpenGL ES 2.0 (gl_FragDepthEXT built-in variable, before OpenGL ES 3.0)
   Standard_Boolean       extDrawBuffers;     //!< GL_EXT_draw_buffers
-#if !defined(HAVE_WEBGL)
+#if !defined(HAVE_WEBGL)  // Geometry shaders are not supported on WebGL 1.0 or 2.0
   OpenGl_ExtGS*          extGS;              //!< GL_EXT_geometry_shader4
 #endif
   Standard_Boolean       extBgra;            //!< GL_EXT_bgra or GL_EXT_texture_format_BGRA8888 on OpenGL ES

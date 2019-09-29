@@ -17,7 +17,7 @@
 #include <OpenGl_Context.hxx>
 #include <Standard_Assert.hxx>
 
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL)
 
 IMPLEMENT_STANDARD_RTTIEXT(OpenGl_TextureBufferArb,OpenGl_VertexBuffer)
 

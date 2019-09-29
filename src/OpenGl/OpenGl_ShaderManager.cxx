@@ -1536,6 +1536,7 @@ int OpenGl_ShaderManager::defaultGlslVersion (const Handle(Graphic3d_ShaderProgr
 #else
   // prefer "100 es" on OpenGL ES 3.0- devices (save the features unavailable before "300 es")
   // and    "300 es" on OpenGL ES 3.1+ devices
+#if !defined(HAVE_WEBGL)
   if (myContext->IsGlGreaterEqual (3, 1))
   {
     if ((theBits & OpenGl_PO_NeedsGeomShader) != 0)
@@ -1548,9 +1549,13 @@ int OpenGl_ShaderManager::defaultGlslVersion (const Handle(Graphic3d_ShaderProgr
     }
   }
   else
+#endif
   {
-    if ((theBits & OpenGl_PO_WriteOit) != 0
-     || (theBits & OpenGl_PO_StippleLine) != 0)
+    if (
+#if !defined(GL_ES_VERSION_2_0)
+        (theBits & OpenGl_PO_WriteOit) != 0 ||
+#endif
+        (theBits & OpenGl_PO_StippleLine) != 0)
     {
       if (myContext->IsGlGreaterEqual (3, 0))
       {
@@ -1558,7 +1563,9 @@ int OpenGl_ShaderManager::defaultGlslVersion (const Handle(Graphic3d_ShaderProgr
       }
       else
       {
+#if !defined(GL_ES_VERSION_2_0)
         aBits = aBits & ~OpenGl_PO_WriteOit;
+#endif
         if (!myContext->oesStdDerivatives)
         {
           aBits = aBits & ~OpenGl_PO_StippleLine;
@@ -1594,6 +1601,9 @@ TCollection_AsciiString OpenGl_ShaderManager::prepareGeomMainSrc (OpenGl_ShaderO
                                                                   OpenGl_ShaderObject::ShaderVariableList& theStageInOuts,
                                                                   Standard_Integer theBits)
 {
+#if defined(HAVE_WEBGL)
+  return TCollection_AsciiString();
+#else
   if ((theBits & OpenGl_PO_NeedsGeomShader) == 0)
   {
     return TCollection_AsciiString();
@@ -1665,6 +1675,7 @@ TCollection_AsciiString OpenGl_ShaderManager::prepareGeomMainSrc (OpenGl_ShaderO
     EOL"}";
 
   return aSrcMainGeom;
+#endif
 }
 
 // =======================================================================
@@ -1879,9 +1890,11 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramUnlit (Handle(OpenGl_Sha
     + EOL"}";
 
   TCollection_AsciiString aSrcGeom = prepareGeomMainSrc (aUniforms, aStageInOuts, theBits);
-  aSrcFragGetColor += (theBits & OpenGl_PO_MeshEdges) != 0
-    ? THE_FRAG_WIREFRAME_COLOR
-    : EOL"#define getFinalColor getColor";
+  aSrcFragGetColor +=
+#if !defined(HAVE_WEBGL)
+      (theBits & OpenGl_PO_MeshEdges) != 0 ? THE_FRAG_WIREFRAME_COLOR :
+#endif
+      EOL"#define getFinalColor getColor";
 
   aSrcFrag =
       aSrcFragGetColor
@@ -2202,9 +2215,11 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramGouraud (Handle(OpenGl_S
     + EOL"}";
 
   TCollection_AsciiString aSrcGeom = prepareGeomMainSrc (aUniforms, aStageInOuts, theBits);
-  aSrcFragGetColor += (theBits & OpenGl_PO_MeshEdges) != 0
-    ? THE_FRAG_WIREFRAME_COLOR
-    : EOL"#define getFinalColor getColor";
+  aSrcFragGetColor +=
+#if !defined(HAVE_WEBGL)
+      (theBits & OpenGl_PO_MeshEdges) != 0 ? THE_FRAG_WIREFRAME_COLOR :
+#endif
+      EOL"#define getFinalColor getColor";
 
   aSrcFrag = TCollection_AsciiString()
     + aSrcFragGetColor
@@ -2381,9 +2396,11 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramPhong (Handle(OpenGl_Sha
     + EOL"}";
 
   TCollection_AsciiString aSrcGeom = prepareGeomMainSrc (aUniforms, aStageInOuts, theBits);
-  aSrcFragGetColor += (theBits & OpenGl_PO_MeshEdges) != 0
-    ? THE_FRAG_WIREFRAME_COLOR
-    : EOL"#define getFinalColor getColor";
+  aSrcFragGetColor +=
+#if !defined(HAVE_WEBGL)
+      (theBits & OpenGl_PO_MeshEdges) != 0 ? THE_FRAG_WIREFRAME_COLOR :
+#endif
+    EOL"#define getFinalColor getColor";
 
   Standard_Integer aNbLights = 0;
   const TCollection_AsciiString aLights = stdComputeLighting (aNbLights, !aSrcFragGetVertColor.IsEmpty());

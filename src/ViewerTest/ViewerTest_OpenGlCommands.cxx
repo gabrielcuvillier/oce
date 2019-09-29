@@ -825,12 +825,14 @@ static Standard_Integer VShaderProg (Draw_Interpretor& theDI,
     }
   }
 
+#if !defined(GL_ES_VERSION_2_0)
   if (!aProgram.IsNull()
     && ViewerTest::CurrentView()->RenderingParams().TransparencyMethod == Graphic3d_RTM_BLEND_OIT)
   {
     aProgram->SetNbFragmentOutputs (2);
     aProgram->SetWeightOitOutput (true);
   }
+#endif
 
   ViewerTest_DoubleMapIteratorOfDoubleMapOfInteractiveAndName aGlobalPrsIter (GetMapOfAIS());
   NCollection_Sequence<Handle(AIS_InteractiveObject)>::Iterator aPrsIter (aPrsList);

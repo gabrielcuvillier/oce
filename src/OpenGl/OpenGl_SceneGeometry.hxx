@@ -16,7 +16,7 @@
 #ifndef _OpenGl_SceneGeometry_Header
 #define _OpenGl_SceneGeometry_Header
 
-#if !defined(HAVE_GLES2)
+#if !defined(HAVE_GLES2)  // Raytracing disabled on GLES2
 
 #include <BVH_Geometry.hxx>
 #include <BVH_Triangulation.hxx>

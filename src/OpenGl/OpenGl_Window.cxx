@@ -250,9 +250,13 @@ OpenGl_Window::OpenGl_Window (const Handle(OpenGl_GraphicDriver)& theDriver,
   {
     EmscriptenWebGLContextAttributes attrs;
     emscripten_webgl_init_context_attributes(&attrs);
-    attrs.enableExtensionsByDefault = true;
-    attrs.stencil = true; // not enabled by default. It seems it is needed by Visualization
-    attrs.antialias = true;
+    attrs.majorVersion = 1; // WebGL 1.0
+    attrs.minorVersion = 0;
+    attrs.alpha = true;
+    attrs.depth = true;
+    attrs.stencil = true; // need for clipping/capping algo
+    attrs.antialias = true; // nicer. Will not be applied if renderering is done to offscreen FBOs
+    attrs.enableExtensionsByDefault = true; // some commonly implemented extensions are useful (OES_derivatives, etc...)
     aGContext = emscripten_webgl_create_context(thePlatformWindow->NativeHandle(), &attrs);
     if (aGContext <= 0) {
       return;

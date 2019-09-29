@@ -159,8 +159,7 @@
   #define GL_DEPTH32F_STENCIL8              0x8CAD
   #define GL_FLOAT_32_UNSIGNED_INT_24_8_REV 0x8DAD
 
-  // GL_WEBGL_depth_texture
-#if defined(HAVE_WEBGL)
+#if defined(HAVE_WEBGL) // GL_WEBGL_depth_texture extension exposes GL_DEPTH_STENCIL_ATTACHMENT
   #define GL_DEPTH_STENCIL_ATTACHMENT       0x821A
 #endif
 
@@ -818,7 +817,7 @@ public: //! @name OpenGL ES 3.0
   typedef void (APIENTRY *glGetSamplerParameterfv_t)(GLuint sampler, GLenum pname, GLfloat* params);
   glGetSamplerParameterfv_t glGetSamplerParameterfv;
 
-#if !defined(HAVE_WEBGL)
+#if !defined(HAVE_WEBGL)  // ES 3.1 and 3.2 APIs are not supported on WebGL 1.0 or 2.0
 
 public: //! @name OpenGL ES 3.1
 
@@ -1861,7 +1860,7 @@ public: //! @name wgl extensions
 #elif defined(__APPLE__)
 public: //! @name CGL extensions
 
-#elif defined(HAVE_WEBGL)
+#elif defined(HAVE_WEBGL) // WebGL extensions
 public: //! @name WebGL extensions
 
 #else

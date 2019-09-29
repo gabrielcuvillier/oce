@@ -215,7 +215,7 @@ void OpenGl_View::Redraw()
   }
 
   // determine multisampling parameters
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL)
   Standard_Integer aNbSamples = !myToDisableMSAA && aSizeX == aRendSizeX
                               ? Max (Min (myRenderParams.NbMsaaSamples, aCtx->MaxMsaaSamples()), 0)
                               : 0;
@@ -1408,7 +1408,7 @@ bool OpenGl_View::blitBuffers (OpenGl_FrameBuffer*    theReadFbo,
 #endif
   aCtx->core20fwd->glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL)
   if (aCtx->arbFBOBlit != NULL
    && theReadFbo->NbSamples() != 0)
   {

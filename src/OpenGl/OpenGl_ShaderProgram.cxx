@@ -199,6 +199,7 @@ Standard_Boolean OpenGl_ShaderProgram::Initialize (const Handle(OpenGl_Context)&
   myHasWeightOitOutput = !myProxy.IsNull() ? myProxy->HasWeightOitOutput() && myNbFragOutputs >= 2 : 1;
 
   // detect the minimum GLSL version required for defined Shader Objects
+#if !defined(HAVE_WEBGL)
 #if defined(GL_ES_VERSION_2_0)
   if (myHasTessShader)
   {
@@ -294,6 +295,13 @@ Standard_Boolean OpenGl_ShaderProgram::Initialize (const Handle(OpenGl_Context)&
       aHeaderVer = "#version 150";
     }
   }
+#else
+  if ((myHasTessShader)||((aShaderMask & Graphic3d_TOS_GEOMETRY) != 0)||((aShaderMask & Graphic3d_TOS_COMPUTE) != 0))
+  {
+    theCtx->PushMessage (GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, 0, GL_DEBUG_SEVERITY_HIGH,
+                             "Error! Geometry stages are not supported on WebGL");
+    return false;
+  }
 #endif
 
   for (Graphic3d_ShaderObjectList::Iterator anIter (theShaders); anIter.More(); anIter.Next())
@@ -367,12 +375,14 @@ Standard_Boolean OpenGl_ShaderProgram::Initialize (const Handle(OpenGl_Context)&
       }
 #endif
     }
+#if !defined(HAVE_WEBGL)
 #if defined(GL_ES_VERSION_2_0)
     if (theCtx->hasGeometryStage == OpenGl_FeatureInExtensions)
     {
       anExtensions += "#extension GL_EXT_geometry_shader : enable\n"
                       "#extension GL_EXT_shader_io_blocks : enable\n";
     }
+#endif
 #endif
 
     TCollection_AsciiString aPrecisionHeader;
@@ -410,7 +420,7 @@ Standard_Boolean OpenGl_ShaderProgram::Initialize (const Handle(OpenGl_Context)&
       aHeaderConstants += "#define THE_HAS_DEFAULT_SAMPLER\n";
     }
 
-    // There is some specific tweaks for WebGL
+    // There is some specific tweaks for GLSL in WebGL
     #if defined(HAVE_WEBGL)
       anExtensions += "#define HAVE_WEBGL\n";
     #endif

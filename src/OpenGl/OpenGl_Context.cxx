@@ -135,17 +135,21 @@ OpenGl_Context::OpenGl_Context (const Handle(OpenGl_Caps)& theCaps)
   hasFloatBuffer     (OpenGl_FeatureNotAvailable),
   hasHalfFloatBuffer (OpenGl_FeatureNotAvailable),
   hasSampleVariables (OpenGl_FeatureNotAvailable),
+#if !defined(HAVE_WEBGL)
   hasGeometryStage   (OpenGl_FeatureNotAvailable),
+#endif
   arbDrawBuffers (Standard_False),
   arbNPTW  (Standard_False),
   arbTexRG (Standard_False),
   arbTexFloat (Standard_False),
   arbSamplerObject (NULL),
-#if !defined(HAVE_WEBGL)
+#if !defined(GL_ES_VERSION_2_0)
   arbTexBindless (NULL),
+  arbIns (NULL),
+#endif
+#if !defined(HAVE_WEBGL)
   arbTBO (NULL),
   arbTboRGB32 (Standard_False),
-  arbIns (NULL),
 #endif
   arbDbg (NULL),
   arbFBO (NULL),
@@ -1378,9 +1382,14 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   core44back = NULL;
   core45     = NULL;
   core45back = NULL;
+#endif
+#if !defined(GL_ES_VERSION_2_0)
+  arbIns     = NULL;
+  arbTexBindless = NULL;
+#endif
+#if !defined(HAVE_WEBGL)
   arbTBO     = NULL;
   arbTboRGB32 = Standard_False;
-  arbIns     = NULL;
 #endif
   arbDbg     = NULL;
   arbFBO     = NULL;
@@ -1574,13 +1583,13 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
     hasFlatShading = OpenGl_FeatureNotAvailable;
   }
 
-  hasGeometryStage =
   #if !defined(HAVE_WEBGL)
+    hasGeometryStage =
       IsGlGreaterEqual (3, 2) ? OpenGl_FeatureInCore:
-  #endif
                    (CheckExtension ("GL_EXT_geometry_shader") && CheckExtension ("GL_EXT_shader_io_blocks")
                      ? OpenGl_FeatureInExtensions
                      : OpenGl_FeatureNotAvailable);
+  #endif
 #else
 
   myTexClamp = IsGlGreaterEqual (1, 2) ? GL_CLAMP_TO_EDGE : GL_CLAMP;
@@ -1611,9 +1620,11 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
                                          CheckExtension ("GL_ARB_color_buffer_float") ? OpenGl_FeatureInExtensions
                                                                                       : OpenGl_FeatureNotAvailable;
 
+#if !defined(HAVE_WEBGL)
   hasGeometryStage = IsGlGreaterEqual (3, 2)
                    ? OpenGl_FeatureInCore
                    : OpenGl_FeatureNotAvailable;
+#endif
 
   hasSampleVariables = IsGlGreaterEqual (4, 0) ? OpenGl_FeatureInCore :
                         arbSampleShading ? OpenGl_FeatureInExtensions

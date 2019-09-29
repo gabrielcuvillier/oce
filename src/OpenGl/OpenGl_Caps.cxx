@@ -28,8 +28,8 @@ OpenGl_Caps::OpenGl_Caps()
 :
 #if !defined(GL_ES_VERSION_2_0)
   vboDisable        (Standard_False),
-#endif
   pntSpritesDisable (Standard_False),
+#endif
   keepArrayData     (Standard_False),
 #if !defined(GL_ES_VERSION_2_0)
   ffpEnable         (Standard_False),
@@ -73,9 +73,9 @@ OpenGl_Caps& OpenGl_Caps::operator= (const OpenGl_Caps& theCopy)
 {
 #if !defined(GL_ES_VERSION_2_0)
   vboDisable        = theCopy.vboDisable;
+  pntSpritesDisable = theCopy.pntSpritesDisable;
 #endif
   fboDisable        = theCopy.fboDisable;
-  pntSpritesDisable = theCopy.pntSpritesDisable;
   keepArrayData     = theCopy.keepArrayData;
 #if !defined(GL_ES_VERSION_2_0)
   ffpEnable         = theCopy.ffpEnable;

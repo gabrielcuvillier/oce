@@ -423,7 +423,11 @@ Standard_Integer OpenGl_GraphicDriver::InquireLimit (const Graphic3d_TypeOfLimit
     case Graphic3d_TypeOfLimit_IsWorkaroundFBO:
       return !aCtx.IsNull() && aCtx->MaxTextureSize() != aCtx->MaxDumpSizeX() ? 1 : 0;
     case Graphic3d_TypeOfLimit_HasMeshEdges:
+#if !defined(HAVE_WEBGL)
       return !aCtx.IsNull() && aCtx->hasGeometryStage != OpenGl_FeatureNotAvailable ? 1 : 0;
+#else
+      return false;
+#endif
     case Graphic3d_TypeOfLimit_NB:
       return 0;
   }
@@ -439,16 +443,16 @@ Standard_ShortReal OpenGl_GraphicDriver::DefaultTextHeight() const
   return 16.;
 }
 
-#if !defined(GL_ES_VERSION_2_0)
 // =======================================================================
 // function : EnableVBO
 // purpose  :
 // =======================================================================
 void OpenGl_GraphicDriver::EnableVBO (const Standard_Boolean theToTurnOn)
 {
+#if !defined(GL_ES_VERSION_2_0)
   myCaps->vboDisable = !theToTurnOn;
-}
 #endif
+}
 
 // =======================================================================
 // function : EnableFBO
