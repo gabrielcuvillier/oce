@@ -7,12 +7,15 @@
 
 #include <iostream>
 #include <exception>
+#include <typeinfo>
 
 _TerminateWithStandardFailure::_TerminateWithStandardFailure(Standard_Failure const & next) noexcept :
-    myFailureType(next.DynamicType()->Name()), myMessage(next.GetMessageString()) { }
+    myFailureType(next.DynamicType()->Name()),
+    myMessage(next.GetMessageString()) { }
 
 _TerminateWithStandardFailure::_TerminateWithStandardFailure(std::exception const & next) noexcept :
-    myFailureType("std::exception"), myMessage(next.what()) { }
+    myFailureType(typeid(next).name()),
+    myMessage(next.what()) { }
 
 _TerminateWithStandardFailure::~_TerminateWithStandardFailure() noexcept {
   std::cerr << myFailureType << ": " << myMessage << std::endl;
