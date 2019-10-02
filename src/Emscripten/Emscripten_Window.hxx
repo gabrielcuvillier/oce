@@ -13,9 +13,12 @@
 
 #if defined(__EMSCRIPTEN__)
 
+#include <emscripten/val.h>
+
 #include <Aspect_Window.hxx>
-#include <Aspect_Handle.hxx>
 #include <Aspect_TypeOfResize.hxx>
+#include <Standard_CString.hxx>
+#include <Standard_Character.hxx>
 #include <Standard.hxx>
 #include <Standard_DefineHandle.hxx>
 
@@ -24,8 +27,9 @@ class Emscripten_Window : public Aspect_Window
 
 public:
 
-  //! Creates an Emscripten window defined by its target canvas id. NULL means the default canvas.
-  Standard_EXPORT Emscripten_Window ( const char* theTargetCanvas = NULL );
+  //! Creates an Emscripten window defined by its target canvas id. nullptr means the default canvas (not recommended).
+  Standard_EXPORT Emscripten_Window ( Standard_CString theTargetCanvas = nullptr,
+                                      emscripten::val theWindowInvalidateHandler = emscripten::val::undefined() );
 
   Standard_EXPORT virtual ~Emscripten_Window();
 
@@ -59,7 +63,7 @@ public:
 
   //! @return native Window handle
   Standard_EXPORT virtual Aspect_Drawable NativeHandle() const Standard_OVERRIDE {
-    return TargetCanvas();  // Return the CanvasTarget
+    return TargetCanvas();  // Return the TargetCanvas
   }
 
   //! @return parent of native Window handle
@@ -71,19 +75,24 @@ public:
     return 0; // No FBConfig
   }
 
+  //! Sets window title.
+  Standard_EXPORT virtual void SetTitle (const TCollection_AsciiString& theTitle) Standard_OVERRIDE;
+
+  //! Invalidate entire window content, through calling the window invalidate handler
+  Standard_EXPORT virtual void InvalidateContent (const Handle(Aspect_DisplayConnection)& theDisp) Standard_OVERRIDE;
+
   //! @return the Canvas Target Id
-  Standard_EXPORT const char* TargetCanvas() const {
+  Standard_EXPORT Aspect_Drawable TargetCanvas() const {
     return myTargetCanvas;
   }
-
-  virtual void SetTitle (const TCollection_AsciiString& theTitle) Standard_OVERRIDE;
-
-  virtual void InvalidateContent (const Handle(Aspect_DisplayConnection)& theDisp) Standard_OVERRIDE;
 
 private:
 
   // Canvas Target Id
-  char* myTargetCanvas;
+  Standard_Character* myTargetCanvas;
+
+  // Window invalidate handler
+  emscripten::val myWindowInvalidateHandler;
 
 public:
 

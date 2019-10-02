@@ -14,7 +14,8 @@
 
 #include <emscripten.h>
 #include <emscripten/html5.h>
-#include <string.h>
+#include <emscripten/val.h>
+#include <cstring>
 
 IMPLEMENT_STANDARD_RTTIEXT(Emscripten_Window, Aspect_Window)
 
@@ -22,14 +23,16 @@ IMPLEMENT_STANDARD_RTTIEXT(Emscripten_Window, Aspect_Window)
 // function : Emscripten_Window
 // purpose  :
 // =======================================================================
-Emscripten_Window::Emscripten_Window ( const char* theTargetCanvas )
+Emscripten_Window::Emscripten_Window ( Standard_CString theTargetCanvas,
+                                       emscripten::val theWindowInvalidateHandler )
 : Aspect_Window(),
-  myTargetCanvas(NULL)
+  myTargetCanvas(nullptr), // don't initialize it yet, we need to make a copy
+  myWindowInvalidateHandler(theWindowInvalidateHandler)
 {
-  // Do a copy of the input target canvas, as it may come from Emscripten runtime (the lifetime of the pointer is sometime unclear)
-  if (theTargetCanvas != NULL) {
-    myTargetCanvas = new char [(strlen (theTargetCanvas) + 1 )];
-    strcpy (myTargetCanvas,theTargetCanvas);
+  // Do a copy of the input target canvas string, as it may come from Emscripten runtime which has temporary lifetime for the pointer
+  if (theTargetCanvas != nullptr) {
+    myTargetCanvas = new Standard_Character[ std::strlen(theTargetCanvas) + 1 ];
+    std::strcpy(myTargetCanvas, theTargetCanvas);
   }
 }
 
@@ -39,10 +42,11 @@ Emscripten_Window::Emscripten_Window ( const char* theTargetCanvas )
 // =======================================================================
 Emscripten_Window::~Emscripten_Window()
 {
-  if (myTargetCanvas != NULL) {
+  if (myTargetCanvas != nullptr) {
     delete [] myTargetCanvas;
-    myTargetCanvas = NULL;
+    myTargetCanvas = nullptr;
   }
+  myWindowInvalidateHandler = emscripten::val::undefined();
 }
 
 // =======================================================================
@@ -59,12 +63,10 @@ Standard_Boolean Emscripten_Window::IsMapped() const
   if (emscripten_get_visibility_status(&aVis) == EMSCRIPTEN_RESULT_SUCCESS) {
     if (aVis.hidden == 0) {
       return Standard_True;
-    }
-    else {
+    } else {
       return Standard_False;
     }
-  }
-  else {
+  } else {
     return Standard_False;
   }
 }
@@ -109,10 +111,14 @@ Standard_Boolean Emscripten_Window::DoMapping() const
 // =======================================================================
 Standard_Real Emscripten_Window::Ratio() const
 {
-  double width = 1, height = 1;
-  emscripten_get_element_css_size(myTargetCanvas, &width, &height); // Use CSS size to compute ratio
+  double width = 0., height = 0.;
+  EMSCRIPTEN_RESULT hr = emscripten_get_element_css_size(myTargetCanvas, &width, &height); // Use CSS size to compute ratio
 
-  return width/height;
+  if ((hr == EMSCRIPTEN_RESULT_SUCCESS) && (height != 0.)) {
+    return (width / height);
+  } else {
+    return 1;
+  }
 }
 
 // =======================================================================
@@ -122,12 +128,18 @@ Standard_Real Emscripten_Window::Ratio() const
 void Emscripten_Window::Position (Standard_Integer& X1, Standard_Integer& Y1,
                           Standard_Integer& X2, Standard_Integer& Y2) const
 {
-  int width = 0, height = 0;
-  emscripten_get_canvas_element_size(myTargetCanvas, &width, &height);  // use Canvas client size for Position
+  double width = 0., height = 0.;
+  EMSCRIPTEN_RESULT hr = emscripten_get_element_css_size(myTargetCanvas, &width, &height);  // use CSS size for Position
   X1 = 0;
   Y1 = 0;
-  X2 = width;
-  Y2 = height;
+
+  if (hr == EMSCRIPTEN_RESULT_SUCCESS) {
+    X2 = width;
+    Y2 = height;
+  } else {
+    X2 = 0;
+    Y2 = 0;
+  }
 }
 
 // =======================================================================
@@ -137,19 +149,42 @@ void Emscripten_Window::Position (Standard_Integer& X1, Standard_Integer& Y1,
 void Emscripten_Window::Size (Standard_Integer& theWidth,
                               Standard_Integer& theHeight) const
 {
-  int width = 0, height = 0;
-  emscripten_get_canvas_element_size(myTargetCanvas, &width, &height); // use Canvas client size for Size
-  theWidth = width;
-  theHeight = height;
+  double width = 0., height = 0.;
+  EMSCRIPTEN_RESULT hr = emscripten_get_element_css_size(myTargetCanvas, &width, &height); // use CSS size for Size
+
+  if (hr == EMSCRIPTEN_RESULT_SUCCESS) {
+    theWidth = width;
+    theHeight = height;
+  }
+  else {
+    theWidth = 0;
+    theHeight = 0;
+  }
 }
 
+// =======================================================================
+// function : SetTitle
+// purpose  :
+// =======================================================================
 void Emscripten_Window::SetTitle (const TCollection_AsciiString& theTitle) {
-  //std::cout << "Emscripten_Window::SetTitle: " << theTitle << std::endl;
+  EM_ASM({
+    const canvas = document.querySelector($0);
+    if (canvas) {
+      canvas.title = $1;
+    }
+  }, myTargetCanvas, theTitle.ToCString());
 }
 
+// =======================================================================
+// function : InvalidateContent
+// purpose  :
+// =======================================================================
 void Emscripten_Window::InvalidateContent (const Handle(Aspect_DisplayConnection)& theDisp) {
-  //std::cout << "Emscripten_Window::InvalidateContent" << std::endl;
+  (void)theDisp;
+  if (myWindowInvalidateHandler != emscripten::val::undefined() &&
+      myWindowInvalidateHandler != emscripten::val::null()) {
+    myWindowInvalidateHandler();
+  }
 }
-
 
 #endif
