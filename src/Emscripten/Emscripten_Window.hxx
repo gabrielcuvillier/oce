@@ -82,7 +82,7 @@ public:
   Standard_EXPORT virtual void InvalidateContent (const Handle(Aspect_DisplayConnection)& theDisp) Standard_OVERRIDE;
 
   //! @return the Canvas Target Id
-  Standard_EXPORT Aspect_Drawable TargetCanvas() const {
+  Standard_EXPORT Standard_NODISCARD Standard_CString TargetCanvas() const {
     return myTargetCanvas;
   }
 

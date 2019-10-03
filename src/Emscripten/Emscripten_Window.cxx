@@ -55,10 +55,6 @@ Emscripten_Window::~Emscripten_Window()
 // =======================================================================
 Standard_Boolean Emscripten_Window::IsMapped() const
 {
-  if (IsVirtual()) {
-    return Standard_True;
-  }
-
   EmscriptenVisibilityChangeEvent aVis;
   if (emscripten_get_visibility_status(&aVis) == EMSCRIPTEN_RESULT_SUCCESS) {
     if (aVis.hidden == 0) {
@@ -77,6 +73,7 @@ Standard_Boolean Emscripten_Window::IsMapped() const
 // =======================================================================
 void Emscripten_Window::Map() const
 {
+  // Not implemented
 }
 
 // =======================================================================
@@ -85,6 +82,7 @@ void Emscripten_Window::Map() const
 // =======================================================================
 void Emscripten_Window::Unmap() const
 {
+  // Not implemented
 }
 
 // =======================================================================
@@ -93,6 +91,7 @@ void Emscripten_Window::Unmap() const
 // =======================================================================
 Aspect_TypeOfResize Emscripten_Window::DoResize() const
 {
+  // Not implemented
   return Aspect_TOR_UNKNOWN;
 }
 
@@ -102,6 +101,7 @@ Aspect_TypeOfResize Emscripten_Window::DoResize() const
 // =======================================================================
 Standard_Boolean Emscripten_Window::DoMapping() const
 {
+  // Not implemented. Just return the current mapping status
   return IsMapped();
 }
 
@@ -112,9 +112,11 @@ Standard_Boolean Emscripten_Window::DoMapping() const
 Standard_Real Emscripten_Window::Ratio() const
 {
   double width = 0., height = 0.;
-  EMSCRIPTEN_RESULT hr = emscripten_get_element_css_size(myTargetCanvas, &width, &height); // Use CSS size to compute ratio
 
-  if ((hr == EMSCRIPTEN_RESULT_SUCCESS) && (height != 0.)) {
+  // Use the CSS size for ratio
+  if ((emscripten_get_element_css_size(myTargetCanvas, &width, &height) == EMSCRIPTEN_RESULT_SUCCESS)
+      && (height != 0.)) // protect against height eventually being 0
+  {
     return (width / height);
   } else {
     return 1;
@@ -128,18 +130,13 @@ Standard_Real Emscripten_Window::Ratio() const
 void Emscripten_Window::Position (Standard_Integer& X1, Standard_Integer& Y1,
                           Standard_Integer& X2, Standard_Integer& Y2) const
 {
-  double width = 0., height = 0.;
-  EMSCRIPTEN_RESULT hr = emscripten_get_element_css_size(myTargetCanvas, &width, &height);  // use CSS size for Position
+  int width = 0, height = 0;
+  const bool result = (emscripten_get_canvas_element_size(myTargetCanvas, &width, &height) == EMSCRIPTEN_RESULT_SUCCESS);
+  (void)result;
   X1 = 0;
   Y1 = 0;
-
-  if (hr == EMSCRIPTEN_RESULT_SUCCESS) {
-    X2 = width;
-    Y2 = height;
-  } else {
-    X2 = 0;
-    Y2 = 0;
-  }
+  X2 = width;
+  Y2 = height;
 }
 
 // =======================================================================
@@ -149,17 +146,13 @@ void Emscripten_Window::Position (Standard_Integer& X1, Standard_Integer& Y1,
 void Emscripten_Window::Size (Standard_Integer& theWidth,
                               Standard_Integer& theHeight) const
 {
-  double width = 0., height = 0.;
-  EMSCRIPTEN_RESULT hr = emscripten_get_element_css_size(myTargetCanvas, &width, &height); // use CSS size for Size
-
-  if (hr == EMSCRIPTEN_RESULT_SUCCESS) {
-    theWidth = width;
-    theHeight = height;
-  }
-  else {
-    theWidth = 0;
-    theHeight = 0;
-  }
+  int width = 0, height = 0;
+  // Use the canvas internal size, because the values returned by this function are expected to be used by glViewport
+  // NB: might be buggy if the canvas internal size does not match with the WebGL drawing buffer size
+  const bool result = (emscripten_get_canvas_element_size(myTargetCanvas, &width, &height) == EMSCRIPTEN_RESULT_SUCCESS);
+  (void)result;
+  theWidth = width;
+  theHeight = height;
 }
 
 // =======================================================================
