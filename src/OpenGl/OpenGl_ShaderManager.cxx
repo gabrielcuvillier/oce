@@ -277,6 +277,7 @@ EOL"  {"
 EOL"    discard;"
 EOL"  }";
 
+#if !defined(GL_ES_VERSION_2_0)
 //! Modify color for Wireframe presentation.
 const char THE_FRAG_WIREFRAME_COLOR[] =
 EOL"vec4 getFinalColor(void)"
@@ -289,6 +290,7 @@ EOL"                 ? vec4 (getColor().rgb, 1.0 - aMixVal)"          // edges o
 EOL"                 : mix (occWireframeColor, getColor(), aMixVal);" // interior + edges
 EOL"  return aMixColor;"
 EOL"}";
+#endif
 
 //! Compute gl_Position vertex shader output.
 const char THE_VERT_gl_Position[] =
@@ -1602,6 +1604,9 @@ TCollection_AsciiString OpenGl_ShaderManager::prepareGeomMainSrc (OpenGl_ShaderO
                                                                   Standard_Integer theBits)
 {
 #if defined(HAVE_WEBGL)
+  (void)theUnifoms;
+  (void)theStageInOuts;
+  (void)theBits;
   return TCollection_AsciiString();
 #else
   if ((theBits & OpenGl_PO_NeedsGeomShader) == 0)

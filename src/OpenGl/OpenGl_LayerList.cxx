@@ -857,6 +857,9 @@ void OpenGl_LayerList::renderTransparent (const Handle(OpenGl_Workspace)&   theW
                          && theOitAccumFbo->NbColorBuffers() >= 2
                          && theOitAccumFbo->ColorTexture (0)->IsValid()
                          && theOitAccumFbo->ColorTexture (1)->IsValid();
+#else
+  (void)theReadDrawFbo;
+  (void)theOitAccumFbo;
 #endif
 
   // Check if current iterator has already reached the end of the stack.
@@ -868,9 +871,11 @@ void OpenGl_LayerList::renderTransparent (const Handle(OpenGl_Workspace)&   theW
   }
 
   const Handle(OpenGl_Context) aCtx            = theWorkspace->GetGlContext();
+#if !defined(GL_ES_VERSION_2_0)
   const Handle(OpenGl_ShaderManager)& aManager = aCtx->ShaderManager();
   OpenGl_View* aView = theWorkspace->View();
   const float aDepthFactor =  aView != NULL ? aView->RenderingParams().OitDepthFactor : 0.0f;
+#endif
 
   const Standard_Integer aPrevFilter = theWorkspace->RenderFilter() & ~(Standard_Integer )(OpenGl_RenderFilter_OpaqueOnly | OpenGl_RenderFilter_TransparentOnly);
   theWorkspace->SetRenderFilter (aPrevFilter | OpenGl_RenderFilter_TransparentOnly);

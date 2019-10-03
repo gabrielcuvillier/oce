@@ -570,11 +570,7 @@ Handle(OpenGl_TriangleSet) OpenGl_View::addRaytracePrimitiveArray (const OpenGl_
   const Handle(Graphic3d_Buffer)&      anAttribs = theArray->Attributes();
 
   if (theArray->DrawMode() < GL_TRIANGLES
-  #ifndef GL_ES_VERSION_2_0
    || theArray->DrawMode() > GL_POLYGON
-  #else
-   || theArray->DrawMode() > GL_TRIANGLE_FAN
-  #endif
    || anAttribs.IsNull())
   {
     return Handle(OpenGl_TriangleSet)();
@@ -725,11 +721,9 @@ Standard_Boolean OpenGl_View::addRaytraceVertexIndices (OpenGl_TriangleSet&     
     case GL_TRIANGLES:      return addRaytraceTriangleArray        (theSet, theMatID, theCount, theOffset, theArray.Indices());
     case GL_TRIANGLE_FAN:   return addRaytraceTriangleFanArray     (theSet, theMatID, theCount, theOffset, theArray.Indices());
     case GL_TRIANGLE_STRIP: return addRaytraceTriangleStripArray   (theSet, theMatID, theCount, theOffset, theArray.Indices());
-  #if !defined(GL_ES_VERSION_2_0)
     case GL_QUAD_STRIP:     return addRaytraceQuadrangleStripArray (theSet, theMatID, theCount, theOffset, theArray.Indices());
     case GL_QUADS:          return addRaytraceQuadrangleArray      (theSet, theMatID, theCount, theOffset, theArray.Indices());
     case GL_POLYGON:        return addRaytracePolygonArray         (theSet, theMatID, theCount, theOffset, theArray.Indices());
-  #endif
   }
 
   return Standard_False;
@@ -2640,7 +2634,6 @@ void OpenGl_View::bindRaytraceTextures (const Handle(OpenGl_Context)& theGlConte
   if (myRaytraceParameters.AdaptiveScreenSampling
    && myRaytraceParameters.GlobalIllumination)
   {
-  #if !defined(GL_ES_VERSION_2_0)
     theGlContext->core42->glBindImageTexture (OpenGl_RT_OutputImage,
                                               myRaytraceOutputTexture[theStereoView]->TextureId(), 0, GL_TRUE, 0, GL_READ_WRITE, GL_R32F);
     theGlContext->core42->glBindImageTexture (OpenGl_RT_VisualErrorImage,
@@ -2655,9 +2648,6 @@ void OpenGl_View::bindRaytraceTextures (const Handle(OpenGl_Context)& theGlConte
       theGlContext->core42->glBindImageTexture (OpenGl_RT_TileSamplesImage,
                                                 myRaytraceTileSamplesTexture[theStereoView]->TextureId(), 0, GL_TRUE, 0, GL_READ_WRITE, GL_R32I);
     }
-  #else
-    (void )theStereoView;
-  #endif
   }
 
   if (!myTextureEnv.IsNull()
@@ -2889,15 +2879,11 @@ Standard_Boolean OpenGl_View::runPathtrace (const Standard_Integer              
         myTileSampler.UploadSamples (theGlContext, myRaytraceTileSamplesTexture[aFBOIdx], false);
       }
 
-    #if !defined(GL_ES_VERSION_2_0)
       theGlContext->core44->glClearTexImage (myRaytraceOutputTexture[aFBOIdx]->TextureId(), 0, GL_RED, GL_FLOAT, NULL);
-    #endif
     }
 
     // Clear adaptive screen sampling images
-  #if !defined(GL_ES_VERSION_2_0)
     theGlContext->core44->glClearTexImage (myRaytraceVisualErrorTexture[aFBOIdx]->TextureId(), 0, GL_RED_INTEGER, GL_INT, NULL);
-  #endif
   }
 
   bindRaytraceTextures (theGlContext, aFBOIdx);
@@ -2956,9 +2942,7 @@ Standard_Boolean OpenGl_View::runPathtrace (const Standard_Integer              
     theGlContext->core20fwd->glDrawArrays (GL_TRIANGLES, 0, 6);
     if (myRaytraceParameters.AdaptiveScreenSampling)
     {
-    #if !defined(GL_ES_VERSION_2_0)
       theGlContext->core44->glMemoryBarrier (GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-    #endif
     }
   }
   aRenderImageFramebuffer->UnbindBuffer (theGlContext);

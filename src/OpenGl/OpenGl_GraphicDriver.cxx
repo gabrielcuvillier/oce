@@ -451,6 +451,8 @@ void OpenGl_GraphicDriver::EnableVBO (const Standard_Boolean theToTurnOn)
 {
 #if !defined(GL_ES_VERSION_2_0)
   myCaps->vboDisable = !theToTurnOn;
+#else
+  (void)theToTurnOn;
 #endif
 }
 

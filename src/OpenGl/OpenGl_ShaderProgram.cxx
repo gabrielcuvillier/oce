@@ -1013,7 +1013,9 @@ Standard_Boolean OpenGl_ShaderProgram::SetUniform (const Handle(OpenGl_Context)&
   theCtx->core32->glUniform2uiv (theLocation, 1, theValue.GetData());
   return Standard_True;
 #else
-  (void )theValue;
+  (void)theValue;
+  (void)theLocation;
+  (void)theCtx;
   return Standard_False;
 #endif
 }
@@ -1050,6 +1052,8 @@ Standard_Boolean OpenGl_ShaderProgram::SetUniform (const Handle(OpenGl_Context)&
 #else
   (void )theCount;
   (void )theValue;
+  (void)theCtx;
+  (void)theLocation;
   return Standard_False;
 #endif
 }
