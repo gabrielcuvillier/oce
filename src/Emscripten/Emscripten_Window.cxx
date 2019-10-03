@@ -113,7 +113,7 @@ Standard_Real Emscripten_Window::Ratio() const
 {
   double width = 0., height = 0.;
 
-  // Use the CSS size for ratio
+  // Use the CSS size for ratio (and not canvas internal size), in case the canvas might be stretched by CSS
   if ((emscripten_get_element_css_size(myTargetCanvas, &width, &height) == EMSCRIPTEN_RESULT_SUCCESS)
       && (height != 0.)) // protect against height eventually being 0
   {
@@ -131,6 +131,7 @@ void Emscripten_Window::Position (Standard_Integer& X1, Standard_Integer& Y1,
                           Standard_Integer& X2, Standard_Integer& Y2) const
 {
   int width = 0, height = 0;
+  // Use the canvas internal size, because the values returned by this function might be be used for glViewport
   const bool result = (emscripten_get_canvas_element_size(myTargetCanvas, &width, &height) == EMSCRIPTEN_RESULT_SUCCESS);
   (void)result;
   X1 = 0;
@@ -147,7 +148,7 @@ void Emscripten_Window::Size (Standard_Integer& theWidth,
                               Standard_Integer& theHeight) const
 {
   int width = 0, height = 0;
-  // Use the canvas internal size, because the values returned by this function are expected to be used by glViewport
+  // Use the canvas internal size, because the values returned by this function are expected to be used for glViewport
   // NB: might be buggy if the canvas internal size does not match with the WebGL drawing buffer size
   const bool result = (emscripten_get_canvas_element_size(myTargetCanvas, &width, &height) == EMSCRIPTEN_RESULT_SUCCESS);
   (void)result;
@@ -160,12 +161,13 @@ void Emscripten_Window::Size (Standard_Integer& theWidth,
 // purpose  :
 // =======================================================================
 void Emscripten_Window::SetTitle (const TCollection_AsciiString& theTitle) {
-  EM_ASM({
-    const canvas = document.querySelector($0);
+  std::cout << "Emscripten_Window::SetTitle" << std::endl;
+  EM_ASM_({
+    const canvas = document.querySelector(UTF8ToString($0));
     if (canvas) {
-      canvas.title = $1;
+      canvas.title = UTF8ToString($1);
     }
-  }, myTargetCanvas, theTitle.ToCString());
+  }, (const char*)(myTargetCanvas), (const char*)(theTitle.ToCString()));
 }
 
 // =======================================================================
