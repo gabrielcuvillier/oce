@@ -161,6 +161,24 @@ namespace
 
 }
 
+#if defined(__EMSCRIPTEN__)
+namespace {
+  EM_BOOL _webgl_lost_context_callback(int eventType, const void */*reserved*/, void *userData) {
+    if (eventType == EMSCRIPTEN_EVENT_WEBGLCONTEXTLOST) {
+      std::cerr << "OpenGL_Window: WebGL Context lost" << std::endl;
+      OpenGl_GraphicDriver* pDriver = static_cast<OpenGl_GraphicDriver*>(userData);
+      if (pDriver != nullptr) {
+        pDriver->ReleaseContext();
+      }
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+}
+#endif
+
 // =======================================================================
 // function : OpenGl_Window
 // purpose  :
@@ -239,31 +257,61 @@ OpenGl_Window::OpenGl_Window (const Handle(OpenGl_GraphicDriver)& theDriver,
 
   myGlContext->Init ((Aspect_Drawable )anEglSurf, (Aspect_Display )anEglDisplay, (Aspect_RenderingContext )anEglContext, isCoreProfile);
 #elif defined(__EMSCRIPTEN__)
-  (void)theDriver;
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE aGContext = NULL;
 
   if (!myOwnGContext) {
     aGContext = theGContext;
   } else {
+    // Initialize WebGL context attributes
     EmscriptenWebGLContextAttributes attrs;
     emscripten_webgl_init_context_attributes(&attrs); // No return code
     attrs.majorVersion = 1; // WebGL 1.0 context
     attrs.minorVersion = 0;
     attrs.alpha = true;     // mandatory
     attrs.depth = true;     // mandatory
-    attrs.stencil = true;   // needed for clipping/capping plane algorithm
-    attrs.antialias = true; // optional, but nicer. Note: will not be applied if renderering is done using FBOs
+    attrs.failIfMajorPerformanceCaveat = true;     // don't try to rely on software rendering
+    attrs.powerPreference = EM_WEBGL_POWER_PREFERENCE_DEFAULT;
+    attrs.stencil = true;   // optional, but needed for clipping/capping plane algorithm
+    attrs.antialias = true; // optional, but nicer. Note: this will not be applied to renderering done to offscreen FBOs
     attrs.enableExtensionsByDefault = true; // optional, but some commonly implemented extensions are very useful (OES_standard_derivatives)
+
+    // Create the WebGL Context with specified attributes
     aGContext = emscripten_webgl_create_context(thePlatformWindow->NativeHandle(), &attrs);
+
     if (aGContext <= 0) {
       throw Aspect_GraphicDeviceDefinitionError("WebGL Context creation failed");
     }
+    if (emscripten_webgl_get_context_attributes(aGContext, &attrs) != EMSCRIPTEN_RESULT_SUCCESS) {
+      throw Aspect_GraphicDeviceDefinitionError("Unable to get WebGL context attributes");
+    }
+    // Fail if some mandatory context flags are not set: alpha and depth buffers
+    if (!attrs.alpha || !attrs.depth) {
+      throw Aspect_GraphicDeviceDefinitionError("WebGL Context does not support alpha or depth buffers");
+    }
+    // Just warn for some missing context flags: stencil buffer
+    if (!attrs.stencil) {
+      std::cerr << "WebGL Context does not support stencil buffer. Clipping will not work." <<std::endl
+    }
+    // Make the context current
     if (emscripten_webgl_make_context_current(aGContext) != EMSCRIPTEN_RESULT_SUCCESS) {
       throw Aspect_GraphicDeviceDefinitionError("Unable to make Webgl Context current");
     }
+
+    // Register handler for WebGL context lost
+    const bool result = emscripten_set_webglcontextlost_callback(
+        thePlatformWindow->NativeHandle(),
+        theDriver.get(),
+        false,
+        _webgl_lost_context_callback) == EMSCRIPTEN_RESULT_SUCCESS;
+    (void)result; // don't care about the previous call result
+
+    // don't try to handle the WebGL contextrestored event, as it would be too dificult to restore all GL ressources in TKOpenGL code
+    // emscripten_set_webglcontextrestored_callback(...)
   }
 
+  // Finally, initialize the OpenGl_Context structure with the newly created WebGL context
   myGlContext->Init ((Aspect_Drawable )thePlatformWindow->NativeHandle(), (Aspect_RenderingContext )aGContext, isCoreProfile);
+
 #elif defined(_WIN32)
   (void )theDriver;
   HWND  aWindow   = (HWND )myPlatformWindow->NativeHandle();
@@ -794,10 +842,11 @@ void OpenGl_Window::Init()
     eglQuerySurface ((EGLDisplay )myGlContext->myDisplay, (EGLSurface )myGlContext->myWindow, EGL_HEIGHT, &myHeight);
   }
 #elif defined(__EMSCRIPTEN__)
-  // This would be better to use 'emscripten_get_drawing_buffer_size' instead (in case it might be different from canvas
-  // internal size). But that would make things inconsistent with the way the opengl window can be resized later on
-  // (using Emscripten_Window::Size, that always return the canvas internal size)
-  if (emscripten_get_canvas_element_size(myGlContext->myWindow, &myWidth, &myHeight) != EMSCRIPTEN_RESULT_SUCCESS) {
+  // Use 'emscripten_get_drawing_buffer_size' instead of 'emscripten_get_canvas_element_size', to help with the rare
+  // corner case where the webgl drawing buffer size is different from the canvas internal size (might happen if webgl
+  // was not able to allocate a drawing buffer corresponding to the requested canvas internal size, and then caps the
+  // buffer size to a max value)
+  if (emscripten_webgl_get_drawing_buffer_size(myGlContext->myGContext, &myWidth, &myHeight) != EMSCRIPTEN_RESULT_SUCCESS) {
     throw Aspect_GraphicDeviceDefinitionError("Unable to get the WebGL drawing buffer size");
   }
 #elif defined(_WIN32)
