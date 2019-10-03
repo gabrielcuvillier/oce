@@ -290,7 +290,7 @@ OpenGl_Window::OpenGl_Window (const Handle(OpenGl_GraphicDriver)& theDriver,
     }
     // Just warn for some missing context flags: stencil buffer
     if (!attrs.stencil) {
-      std::cerr << "WebGL Context does not support stencil buffer. Clipping will not work." <<std::endl
+      std::cerr << "WebGL Context does not support stencil buffer. Clipping will not work." << std::endl;
     }
     // Make the context current
     if (emscripten_webgl_make_context_current(aGContext) != EMSCRIPTEN_RESULT_SUCCESS) {
