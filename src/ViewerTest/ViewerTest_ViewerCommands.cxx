@@ -6767,17 +6767,17 @@ static int VCaps (Draw_Interpretor& theDI,
 
 #if !defined(GL_ES_VERSION_2_0)
     theDI << "VBO:     " << (aCaps->vboDisable        ? "0" : "1") << "\n";
+    theDI << "SoftMode:" << (aCaps->contextNoAccel    ? "1" : "0") << "\n";
 #endif
     theDI << "Sprites: " << (aCaps->pntSpritesDisable ? "0" : "1") << "\n";
-    theDI << "SoftMode:" << (aCaps->contextNoAccel    ? "1" : "0") << "\n";
 #if !defined(GL_ES_VERSION_2_0)
     theDI << "FFP:     " << (aCaps->ffpEnable         ? "1" : "0") << "\n";
     theDI << "PolygonMode: " << (aCaps->usePolygonMode ? "1" : "0") << "\n";
+    theDI << "WinBuffer: " << (aCaps->useSystemBuffer ? "1" : "0") << "\n";
 #endif
     theDI << "VSync:   " <<  aCaps->swapInterval                   << "\n";
     theDI << "Compatible:" << (aCaps->contextCompatible ? "1" : "0") << "\n";
     theDI << "Stereo:  " << (aCaps->contextStereo ? "1" : "0") << "\n";
-    theDI << "WinBuffer: " << (aCaps->useSystemBuffer ? "1" : "0") << "\n";
     theDI << "NoExt:"    << (aCaps->contextNoExtensions ? "1" : "0") << "\n";
     theDI << "MaxVersion:" << aCaps->contextMajorVersionUpper << "." << aCaps->contextMinorVersionUpper << "\n";
     return 0;
@@ -6804,6 +6804,7 @@ static int VCaps (Draw_Interpretor& theDI,
       }
       aCaps->swapInterval = toEnable;
     }
+#if !defined(GL_ES_VERSION_2_0)
     else if (anArgCase == "-ffp")
     {
       Standard_Boolean toEnable = Standard_True;
@@ -6812,9 +6813,7 @@ static int VCaps (Draw_Interpretor& theDI,
       {
         --anArgIter;
       }
-#if !defined(GL_ES_VERSION_2_0)
       aCaps->ffpEnable = toEnable;
-#endif
     }
     else if (anArgCase == "-polygonmode")
     {
@@ -6824,9 +6823,7 @@ static int VCaps (Draw_Interpretor& theDI,
       {
         --anArgIter;
       }
-#if !defined(GL_ES_VERSION_2_0)
       aCaps->usePolygonMode = toEnable;
-#endif
     }
     else if (anArgCase == "-vbo")
     {
@@ -6836,10 +6833,9 @@ static int VCaps (Draw_Interpretor& theDI,
       {
         --anArgIter;
       }
-#if !defined(GL_ES_VERSION_2_0)
       aCaps->vboDisable = !toEnable;
-#endif
     }
+#endif
     else if (anArgCase == "-sprite"
           || anArgCase == "-sprites")
     {
@@ -6851,6 +6847,7 @@ static int VCaps (Draw_Interpretor& theDI,
       }
       aCaps->pntSpritesDisable = !toEnable;
     }
+#if !defined(GL_ES_VERSION_2_0)
     else if (anArgCase == "-softmode")
     {
       Standard_Boolean toEnable = Standard_True;
@@ -6886,6 +6883,7 @@ static int VCaps (Draw_Interpretor& theDI,
       }
       aCaps->contextNoAccel = !toEnable;
     }
+#endif
     else if (anArgCase == "-compat"
           || anArgCase == "-compatprofile"
           || anArgCase == "-compatible"
