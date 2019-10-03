@@ -242,26 +242,25 @@ OpenGl_Window::OpenGl_Window (const Handle(OpenGl_GraphicDriver)& theDriver,
   (void)theDriver;
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE aGContext = NULL;
 
-  if (!myOwnGContext)
-  {
+  if (!myOwnGContext) {
     aGContext = theGContext;
-  }
-  else
-  {
+  } else {
     EmscriptenWebGLContextAttributes attrs;
-    emscripten_webgl_init_context_attributes(&attrs);
-    attrs.majorVersion = 1; // WebGL 1.0
+    emscripten_webgl_init_context_attributes(&attrs); // No return code
+    attrs.majorVersion = 1; // WebGL 1.0 context
     attrs.minorVersion = 0;
-    attrs.alpha = true;
-    attrs.depth = true;
-    attrs.stencil = true; // need for clipping/capping algo
-    attrs.antialias = true; // nicer. Will not be applied if renderering is done to offscreen FBOs
-    attrs.enableExtensionsByDefault = true; // some commonly implemented extensions are useful (OES_derivatives, etc...)
+    attrs.alpha = true;     // mandatory
+    attrs.depth = true;     // mandatory
+    attrs.stencil = true;   // needed for clipping/capping plane algorithm
+    attrs.antialias = true; // optional, but nicer. Note: will not be applied if renderering is done using FBOs
+    attrs.enableExtensionsByDefault = true; // optional, but some commonly implemented extensions are very useful (OES_standard_derivatives)
     aGContext = emscripten_webgl_create_context(thePlatformWindow->NativeHandle(), &attrs);
     if (aGContext <= 0) {
-      return;
+      throw Aspect_GraphicDeviceDefinitionError("WebGL Context creation failed");
     }
-    emscripten_webgl_make_context_current(aGContext);
+    if (emscripten_webgl_make_context_current(aGContext) != EMSCRIPTEN_RESULT_SUCCESS) {
+      throw Aspect_GraphicDeviceDefinitionError("Unable to make Webgl Context current");
+    }
   }
 
   myGlContext->Init ((Aspect_Drawable )thePlatformWindow->NativeHandle(), (Aspect_RenderingContext )aGContext, isCoreProfile);
@@ -673,7 +672,8 @@ OpenGl_Window::~OpenGl_Window()
                        (EGLSurface )myGlContext->myWindow);
   }
 #elif defined(__EMSCRIPTEN__)
-  emscripten_webgl_destroy_context( myGlContext->myGContext);
+  const bool result = (emscripten_webgl_destroy_context( myGlContext->myGContext) == EMSCRIPTEN_RESULT_SUCCESS);  // Return code not used
+  (void)result;
 #elif defined(_WIN32)
   HWND  aWindow          = (HWND  )myGlContext->myWindow;
   HDC   aWindowDC        = (HDC   )myGlContext->myWindowDC;
@@ -794,12 +794,12 @@ void OpenGl_Window::Init()
     eglQuerySurface ((EGLDisplay )myGlContext->myDisplay, (EGLSurface )myGlContext->myWindow, EGL_HEIGHT, &myHeight);
   }
 #elif defined(__EMSCRIPTEN__)
-  emscripten_get_canvas_element_size(myGlContext->myWindow, &myWidth, &myHeight);
-
-  // Maybe the following should be done instead, to handle issues when canvas.clientWidth/Height does not match
-  // canvas.drawingBufferWidth/Height (mostly on multiple monitor displays, with browser window spanning on several displays)
-  // This have to be tested first though.
-  // emscripten_webgl_get_drawing_buffer_size(myGlContext->myGContext, &myWidth, &myHeight);
+  // This would be better to use 'emscripten_get_drawing_buffer_size' instead (in case it might be different from canvas
+  // internal size). But that would make things inconsistent with the way the opengl window can be resized later on
+  // (using Emscripten_Window::Size, that always return the canvas internal size)
+  if (emscripten_get_canvas_element_size(myGlContext->myWindow, &myWidth, &myHeight) != EMSCRIPTEN_RESULT_SUCCESS) {
+    throw Aspect_GraphicDeviceDefinitionError("Unable to get the WebGL drawing buffer size");
+  }
 #elif defined(_WIN32)
   //
 #else
