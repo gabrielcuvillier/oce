@@ -5,6 +5,7 @@
 
 #if defined(__EMSCRIPTEN__)
 
+#include <string>
 #include <iostream>
 #include <exception>
 #include <typeinfo>
@@ -19,7 +20,7 @@ _TerminateWithStandardFailure::_TerminateWithStandardFailure(std::exception cons
 
 _TerminateWithStandardFailure::~_TerminateWithStandardFailure() noexcept {
   std::cerr << myFailureType << ": " << myMessage << std::endl;
-  std::terminate();
+  std::terminate(); // Ideally, std::set_terminate should be set by the main application
 };
 
 #endif

@@ -39,9 +39,17 @@ class _TerminateWithStandardFailure {
   std::string myFailureType;
   std::string myMessage;
  public:
+  // Constructors
   _TerminateWithStandardFailure(Standard_Failure const &) noexcept;
   _TerminateWithStandardFailure(std::exception const &) noexcept;
-  [[noreturn]] ~_TerminateWithStandardFailure() noexcept;
+  // Destructor
+  [[noreturn]] ~_TerminateWithStandardFailure() noexcept; // [[noreturn]] attribute is crucial there
+
+  // Discared defaults
+  _TerminateWithStandardFailure(_TerminateWithStandardFailure const &) = delete;
+  _TerminateWithStandardFailure(_TerminateWithStandardFailure &&) = delete;
+  _TerminateWithStandardFailure & operator = (_TerminateWithStandardFailure const &) = delete;
+  _TerminateWithStandardFailure & operator = (_TerminateWithStandardFailure &&) = delete;
 };
 
 // 'throw' is redefined use _TerminateWithStandardFailure functionality
