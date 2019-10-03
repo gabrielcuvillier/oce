@@ -174,8 +174,10 @@ public:
     Callback();
 
   private:
+#if defined(OCCT_CONVERT_SIGNALS)
     Standard_Address myHandler;
     Standard_Address myPrev;
+#endif
     Standard_Address myNext;
 
   friend class Standard_ErrorHandler;

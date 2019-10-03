@@ -324,8 +324,7 @@ void Standard_ErrorHandler::Callback::UnregisterCallback ()
 #else
 // If OCCT_CONVERT_SIGNALS is not defined,
 // provide empty implementation
-Standard_ErrorHandler::Callback::Callback ()
-       : myHandler(0), myPrev(0), myNext(0)
+Standard_ErrorHandler::Callback::Callback () : myNext(0)
 {
 }
 Standard_ErrorHandler::Callback::~Callback ()
