@@ -138,9 +138,9 @@ void OpenGl_FrameStats::updateStatistics (const Handle(Graphic3d_CView)& theView
       // main FBOs
       aMemFbos += estimatedDataSize (aView->myMainSceneFbos[0]);
       aMemFbos += estimatedDataSize (aView->myMainSceneFbos[1]);
+#if !defined(GL_ES_VERSION_2_0)
       aMemFbos += estimatedDataSize (aView->myImmediateSceneFbos[0]);
       aMemFbos += estimatedDataSize (aView->myImmediateSceneFbos[1]);
-#if !defined(GL_ES_VERSION_2_0)
       // OIT FBOs
       aMemFbos += estimatedDataSize (aView->myMainSceneFbosOit[0]);
       aMemFbos += estimatedDataSize (aView->myMainSceneFbosOit[1]);

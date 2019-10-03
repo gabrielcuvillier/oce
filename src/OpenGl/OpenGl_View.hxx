@@ -497,9 +497,11 @@ protected: //! @name Rendering properties
   GLint                      myFboDepthFormat;        //!< sized format for depth-stencil attachments
   OpenGl_ColorFormats        myFboOitColorConfig;     //!< selected color format configuration for OIT color attachments
   Handle(OpenGl_FrameBuffer) myMainSceneFbos[2];
+#if !defined(GL_ES_VERSION_2_0)
   Handle(OpenGl_FrameBuffer) myMainSceneFbosOit[2];      //!< Additional buffers for transparent draw of main layer.
   Handle(OpenGl_FrameBuffer) myImmediateSceneFbos[2];    //!< Additional buffers for immediate layer in stereo mode.
   Handle(OpenGl_FrameBuffer) myImmediateSceneFbosOit[2]; //!< Additional buffers for transparency draw of immediate layer.
+#endif
   OpenGl_VertexBuffer        myFullScreenQuad;        //!< Vertices for full-screen quad rendering.
   OpenGl_VertexBuffer        myFullScreenQuadFlip;
   Standard_Boolean           myToFlipOutput;          //!< Flag to draw result image upside-down

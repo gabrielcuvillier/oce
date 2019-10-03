@@ -103,12 +103,14 @@ OpenGl_View::OpenGl_View (const Handle(Graphic3d_StructureManager)& theMgr,
 
   myMainSceneFbos[0]         = new OpenGl_FrameBuffer();
   myMainSceneFbos[1]         = new OpenGl_FrameBuffer();
+#if !defined(GL_ES_VERSION_2_0)
   myMainSceneFbosOit[0]      = new OpenGl_FrameBuffer();
   myMainSceneFbosOit[1]      = new OpenGl_FrameBuffer();
   myImmediateSceneFbos[0]    = new OpenGl_FrameBuffer();
   myImmediateSceneFbos[1]    = new OpenGl_FrameBuffer();
   myImmediateSceneFbosOit[0] = new OpenGl_FrameBuffer();
   myImmediateSceneFbosOit[1] = new OpenGl_FrameBuffer();
+#endif
   myOpenGlFBO                = new OpenGl_FrameBuffer();
   myOpenGlFBO2               = new OpenGl_FrameBuffer();
 #if !defined(GL_ES_VERSION_2_0)
@@ -177,12 +179,14 @@ void OpenGl_View::ReleaseGlResources (const Handle(OpenGl_Context)& theCtx)
 
   myMainSceneFbos[0]        ->Release (theCtx.get());
   myMainSceneFbos[1]        ->Release (theCtx.get());
+#if !defined(GL_ES_VERSION_2_0)
   myMainSceneFbosOit[0]     ->Release (theCtx.get());
   myMainSceneFbosOit[1]     ->Release (theCtx.get());
   myImmediateSceneFbos[0]   ->Release (theCtx.get());
   myImmediateSceneFbos[1]   ->Release (theCtx.get());
   myImmediateSceneFbosOit[0]->Release (theCtx.get());
   myImmediateSceneFbosOit[1]->Release (theCtx.get());
+#endif
   myOpenGlFBO               ->Release (theCtx.get());
   myOpenGlFBO2              ->Release (theCtx.get());
   myFullScreenQuad           .Release (theCtx.get());
