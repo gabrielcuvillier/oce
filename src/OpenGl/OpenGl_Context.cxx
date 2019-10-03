@@ -687,6 +687,7 @@ void OpenGl_Context::SwapBuffers()
     eglSwapBuffers ((EGLDisplay )myDisplay, (EGLSurface )myWindow);
   }
 #elif defined(__EMSCRIPTEN__)
+  // Only works if WebGL context have been created with "explicitSwapControl==true". This is not the case by default (and not recommended)
   const bool result = (emscripten_webgl_commit_frame() == EMSCRIPTEN_RESULT_SUCCESS); // Return code not used
   (void)result;
 #elif defined(_WIN32)
@@ -717,12 +718,9 @@ Standard_Boolean OpenGl_Context::SetSwapInterval (const Standard_Integer theInte
     return Standard_True;
   }
 #elif defined(__EMSCRIPTEN__)
-  if (theInterval == 0) {
-    return (emscripten_set_main_loop_timing(EM_TIMING_RAF, 1) == 0);
-  } else {
-    // Note: I am not sure about what represent "theInterval" value for emscripten, so let's discard it
-    return (emscripten_set_main_loop_timing(EM_TIMING_RAF, 1 /* theInterval */) == 0);
-  }
+  // Always use VSync on Emscripten (= synchronize to Browser requestAnimationFrame)
+  (void)theInterval;
+  return (emscripten_set_main_loop_timing(EM_TIMING_RAF, 1) == 0);
 #elif defined(_WIN32)
   if (myFuncs->wglSwapIntervalEXT != NULL)
   {
