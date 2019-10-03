@@ -115,7 +115,7 @@ void BinLDrivers_DocumentSection::WriteTOC (Standard_OStream& theStream)
 
   if (myName.IsEmpty() == Standard_False) {
     Standard_Integer * aBufSz = reinterpret_cast<Standard_Integer *> (&aBuf[0]);
-    const Standard_Size aBufSzSize = sizeof(aBuf) / sizeof(Standard_Integer);
+    const Standard_Size aBufSzSize = sizeof(aBuf) / (sizeof(Standard_Integer));
     aBufSz[aBufSzSize-1] = 0;
 
     strncpy (&aBuf[sizeof(Standard_Integer)],
