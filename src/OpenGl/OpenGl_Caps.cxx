@@ -35,13 +35,11 @@ OpenGl_Caps::OpenGl_Caps()
   ffpEnable         (Standard_False),
   usePolygonMode    (Standard_False),
   useSystemBuffer   (Standard_False),
-#else
-  useSystemBuffer   (Standard_True),
+  contextStereo     (Standard_False),
 #endif
   swapInterval      (1),
   fboDisable        (Standard_False),
   buffersNoSwap     (Standard_False),
-  contextStereo     (Standard_False),
 #ifdef OCCT_DEBUG
   contextDebug      (Standard_True),
   contextSyncDebug  (Standard_True),
@@ -49,11 +47,9 @@ OpenGl_Caps::OpenGl_Caps()
   contextDebug      (Standard_False),
   contextSyncDebug  (Standard_False),
 #endif
-  contextNoAccel    (Standard_False),
 #if !defined(GL_ES_VERSION_2_0)
   contextCompatible (Standard_True),
-#else
-  contextCompatible (Standard_False),
+  contextNoAccel    (Standard_False),
 #endif
   contextNoExtensions (Standard_False),
   contextMajorVersionUpper (-1),
@@ -74,21 +70,19 @@ OpenGl_Caps& OpenGl_Caps::operator= (const OpenGl_Caps& theCopy)
 #if !defined(GL_ES_VERSION_2_0)
   vboDisable        = theCopy.vboDisable;
   pntSpritesDisable = theCopy.pntSpritesDisable;
+  ffpEnable         = theCopy.ffpEnable;
+  usePolygonMode    = theCopy.usePolygonMode;
+  useSystemBuffer   = theCopy.useSystemBuffer;
+  contextNoAccel    = theCopy.contextNoAccel;
+  contextStereo     = theCopy.contextStereo;
+  contextCompatible = theCopy.contextCompatible;
 #endif
   fboDisable        = theCopy.fboDisable;
   keepArrayData     = theCopy.keepArrayData;
-#if !defined(GL_ES_VERSION_2_0)
-  ffpEnable         = theCopy.ffpEnable;
-  usePolygonMode    = theCopy.usePolygonMode;
-#endif
-  useSystemBuffer   = theCopy.useSystemBuffer;
   swapInterval      = theCopy.swapInterval;
   buffersNoSwap     = theCopy.buffersNoSwap;
-  contextStereo     = theCopy.contextStereo;
   contextDebug      = theCopy.contextDebug;
   contextSyncDebug  = theCopy.contextSyncDebug;
-  contextNoAccel    = theCopy.contextNoAccel;
-  contextCompatible = theCopy.contextCompatible;
   contextNoExtensions = theCopy.contextNoExtensions;
   contextMajorVersionUpper = theCopy.contextMajorVersionUpper;
   contextMinorVersionUpper = theCopy.contextMinorVersionUpper;

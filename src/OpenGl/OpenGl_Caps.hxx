@@ -32,9 +32,9 @@ public: //! @name flags to disable particular functionality, should be used only
   Standard_Boolean pntSpritesDisable; //!< flag permits Point Sprites usage, will significantly affect performance (OFF by default)
   Standard_Boolean ffpEnable;         //!< Enables FFP (fixed-function pipeline), do not use built-in GLSL programs (OFF by default)
   Standard_Boolean usePolygonMode;    //!< Enables Polygon Mode instead of built-in GLSL programs (OFF by default; unsupported on OpenGL ES)
+  Standard_Boolean useSystemBuffer;   //!< Enables usage of system backbuffer for blitting (OFF by default on desktop OpenGL and ON on OpenGL ES for testing)
 #endif
   Standard_Boolean keepArrayData;     //!< Disables freeing CPU memory after building VBOs (OFF by default)
-  Standard_Boolean useSystemBuffer;   //!< Enables usage of system backbuffer for blitting (OFF by default on desktop OpenGL and ON on OpenGL ES for testing)
   Standard_Integer swapInterval;      //!< controls swap interval - 0 for VSync off and 1 for VSync on, 1 by default
   Standard_Integer fboDisable;        //!< flag permits FBO usage, might be needed to be disabled if you use a GL context created externally
 
@@ -80,6 +80,7 @@ public: //! @name context creation parameters
    */
   Standard_Boolean contextSyncDebug;
 
+#if !defined(HAVE_GLES2)
   /**
    * Disable hardware acceleration.
    *
@@ -109,6 +110,7 @@ public: //! @name context creation parameters
    * ON by default.
    */
   Standard_Boolean contextCompatible;
+#endif
 
   /**
    * Disallow using OpenGL extensions.
