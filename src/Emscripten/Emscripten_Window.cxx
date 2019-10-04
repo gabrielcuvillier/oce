@@ -163,7 +163,7 @@ void Emscripten_Window::Size (Standard_Integer& theWidth,
 void Emscripten_Window::SetTitle (const TCollection_AsciiString& theTitle) {
   std::cout << "Emscripten_Window::SetTitle" << std::endl;
   EM_ASM_({
-    const canvas = document.querySelector(UTF8ToString($0));
+    var canvas = document.querySelector(UTF8ToString($0));
     if (canvas) {
       canvas.title = UTF8ToString($1);
     }
