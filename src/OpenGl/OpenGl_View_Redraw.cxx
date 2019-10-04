@@ -217,7 +217,7 @@ void OpenGl_View::Redraw()
     aNbSamples = OpenGl_Context::GetPowerOfTwo (aNbSamples, aCtx->MaxMsaaSamples());
   }
 
-  const bool toUseOit = myRenderParams.TransparencyMethod == Graphic3d_RTM_BLEND_OIT
+  bool toUseOit = myRenderParams.TransparencyMethod == Graphic3d_RTM_BLEND_OIT
                && checkOitCompatibility (aCtx, aNbSamples > 0);
   const bool toInitImmediateFbo = myTransientDrawToFront
       && (!aCtx->caps->useSystemBuffer || (toUseOit && HasImmediateStructures()));

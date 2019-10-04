@@ -1870,7 +1870,7 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramUnlit (Handle(OpenGl_Sha
          EOL"  if ((uint (occStipplePattern) & (1U << aBit)) == 0U) discard;"
        : EOL"  int aBit = int (mod (floor (aRotatePoint / occStippleFactor + 0.5), 16.0));"
          #if !defined(HAVE_WEBGL)
-          EOL"  if (!occStipplePattern[aBit]) discard;"
+          EOL"  if (!occStipplePattern[aBit]) discard;")
          #else
           // GAB 2019: On WebGL, array indices must be constant expressions. So we use a loop instead.
           EOL"  for (int x = 0; x < 32; x++) { if (x == aBit) { if (!occStipplePattern[x]) { discard; break; } } }")

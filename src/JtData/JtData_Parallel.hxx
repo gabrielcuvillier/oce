@@ -17,10 +17,8 @@
 #ifndef _JtData_Parallel_HeaderFile
 #define _JtData_Parallel_HeaderFile
 
-#ifdef __ANDROID__
-  #define NO_JT_MULTITHREADING
-#elif defined(__EMSCRIPTEN__)
-  #define NO_JT_MULTITHREADING
+#if !defined(HAVE_TBB)
+#define NO_JT_MULTITHREADING
 #endif
 
 #ifndef NO_JT_MULTITHREADING
