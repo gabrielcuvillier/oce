@@ -37,6 +37,9 @@ Release
 *.VC.opendb
 *.ipch
 *.aps
+/out
+/.vs
+CMakeSettings.json
 
 # test results
 /results*
