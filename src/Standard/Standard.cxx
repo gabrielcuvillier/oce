@@ -100,14 +100,14 @@ Standard_MMgrFactory::Standard_MMgrFactory()
   char *aVar = nullptr;
   Standard_Integer anAllocId = 0;
 
-  constexpr Standard_Boolean ToUseOptMemAlloc =
+  const Standard_Boolean ToUseOptMemAlloc =
   #if !defined(OCCT_DISABLE_OPTIMIZED_MEMORY_ALLOCATOR)
     Standard_True;
   #else
     Standard_False;
   #endif
 
-  if constexpr(ToUseOptMemAlloc) {
+  if Standard_IF_CONSTEXPR(ToUseOptMemAlloc) {
     aVar = getenv("MMGT_OPT");
     anAllocId = (aVar ? atoi(aVar) : OCCT_MMGT_OPT_DEFAULT);
   }
@@ -161,7 +161,7 @@ Standard_MMgrFactory::Standard_MMgrFactory()
   }
 #endif
 
-  if constexpr(ToUseOptMemAlloc) {
+  if Standard_IF_CONSTEXPR(ToUseOptMemAlloc) {
     switch (anAllocId) {
       case 1:  // OCCT optimized memory allocator
       {

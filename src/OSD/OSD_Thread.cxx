@@ -16,7 +16,7 @@
 #include <OSD_Thread.hxx>
 
 namespace {
-constexpr Standard_Boolean ToUseThreads =
+const Standard_Boolean ToUseThreads =
 #if !defined(OCCT_DISABLE_THREADS)
   Standard_True;
 #else
@@ -166,7 +166,7 @@ Standard_Boolean OSD_Thread::Run (const Standard_Address data,
 
 #else
 
-  if constexpr(ToUseThreads) {
+  if Standard_IF_CONSTEXPR(ToUseThreads) {
     if (pthread_create (&myThread, 0, myFunc, data) != 0)
     {
       myThread = 0;
@@ -200,7 +200,7 @@ void OSD_Thread::Detach ()
 #else
 
   // On Unix/Linux, detach a thread
-  if constexpr(ToUseThreads) {
+  if Standard_IF_CONSTEXPR(ToUseThreads) {
     if (myThread)
       pthread_detach(myThread);
   }
@@ -244,7 +244,7 @@ Standard_Boolean OSD_Thread::Wait (Standard_Address& theResult)
   return Standard_True;
 #else
   // On Unix/Linux, join the thread
-  if constexpr(ToUseThreads) {
+  if Standard_IF_CONSTEXPR(ToUseThreads) {
     if (pthread_join(myThread, &theResult) != 0) {
       return Standard_False;
     }
@@ -311,7 +311,7 @@ Standard_Boolean OSD_Thread::Wait (const Standard_Integer theTimeMs,
     aTimeout.tv_sec  += aSeconds;
     aTimeout.tv_nsec += aMicroseconds * 1000;
 
-    if constexpr(ToUseThreads) {
+    if Standard_IF_CONSTEXPR(ToUseThreads) {
       if (pthread_timedjoin_np (myThread, &theResult, &aTimeout) != 0)
       {
         return Standard_False;
@@ -321,7 +321,7 @@ Standard_Boolean OSD_Thread::Wait (const Standard_Integer theTimeMs,
   #else
     // join the thread without timeout
     (void )theTimeMs;
-    if constexpr(ToUseThreads) {
+    if Standard_IF_CONSTEXPR(ToUseThreads) {
       if (pthread_join(myThread, &theResult) != 0) {
         return Standard_False;
       }
@@ -351,7 +351,7 @@ Standard_ThreadId OSD_Thread::Current ()
 #ifdef _WIN32
   return GetCurrentThreadId();
 #else
-  if constexpr(ToUseThreads) {
+  if Standard_IF_CONSTEXPR(ToUseThreads) {
     return (Standard_ThreadId)pthread_self();
   }
   else {

@@ -57,6 +57,25 @@
   #define Standard_FALLTHROUGH
 #endif
 
+// CASCADE does some deprecated stuff with iterators on CXX17
+// Disable MSVC warning about this
+#if defined(__cplusplus) && (__cplusplus >= 201703L)
+  #if defined(_MSC_VER)
+    #define _SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING
+  #endif
+#endif
+
+#if defined(__cplusplus) && (__cplusplus >= 201703L)
+  #if !defined(__MINGW32__) && !defined(__MINGW64__)  // MinGW have troubles with this C++ 17 feature
+    // part of C++17 standard
+    #define Standard_IF_CONSTEXPR constexpr
+  #else
+    #define Standard_IF_CONSTEXPR
+  #endif
+#else
+  #define Standard_IF_CONSTEXPR
+#endif
+
 //! @def Standard_NODISCARD
 //! This attribute may appear in a function declaration,
 //! enumeration declaration or class declaration. It tells the compiler to

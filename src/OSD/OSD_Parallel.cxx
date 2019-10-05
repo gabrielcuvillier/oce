@@ -171,7 +171,7 @@ namespace {
   }
 #endif
 
-constexpr Standard_Boolean OSD_Parallel_ToUseThreads =
+const Standard_Boolean OSD_Parallel_ToUseThreads =
 #if !defined(OCCT_DISABLE_THREADS)
   Standard_True;
 #else

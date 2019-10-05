@@ -28,7 +28,7 @@
 #endif
 
 namespace {
-constexpr Standard_Boolean ToUseThreads =
+const Standard_Boolean ToUseThreads =
 #if !defined(OCCT_DISABLE_THREADS)
   Standard_True;
 #else
@@ -57,7 +57,7 @@ static Standard_Mutex theMutex;
 static inline Standard_ThreadId GetThreadID()
 {
 #ifndef _WIN32
-  if constexpr(ToUseThreads) {
+  if Standard_IF_CONSTEXPR(ToUseThreads) {
     return (Standard_ThreadId)pthread_self();
   } else {
     return (Standard_ThreadId)0;

@@ -18,7 +18,7 @@
 #include <stdlib.h>
 
 namespace {
-constexpr Standard_Boolean ToUseEmscripten =
+const Standard_Boolean ToUseEmscripten =
 #if defined(__EMSCRIPTEN__)
   Standard_True;
 #else
@@ -46,7 +46,7 @@ Standard_Address Standard_MMgrRaw::Allocate(const Standard_Size theSize)
   // the size is rounded up to 4 since some OCC classes
   // (e.g. TCollection_AsciiString) assume memory to be double word-aligned
   Standard_Size aRoundSize;
-  if constexpr(ToUseEmscripten) {
+  if Standard_IF_CONSTEXPR(ToUseEmscripten) {
     // Some Emscripten memory allocator (ie. emmalloc) have troubles with calloc/malloc(0), so just prevent this
     aRoundSize = theSize ? (theSize + 3) & ~0x3 : 4;
   } else {
@@ -81,7 +81,7 @@ Standard_Address Standard_MMgrRaw::Reallocate(Standard_Address theStorage,
   // the size is rounded up to 4 since some OCC classes
   // (e.g. TCollection_AsciiString) assume memory to be double word-aligned
   Standard_Size aRoundSize;
-  if constexpr(ToUseEmscripten) {
+  if Standard_IF_CONSTEXPR(ToUseEmscripten) {
     // Some Emscripten memory allocator (ie. emmalloc) have troubles with calloc/malloc(0), so just prevent this
     aRoundSize = theSize ? (theSize + 3) & ~0x3 : 4;
   } else {

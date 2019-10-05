@@ -25,7 +25,7 @@
 #include <TCollection_ExtendedString.hxx>
 #include <NCollection_UtfString.hxx>
 
-#if defined(_WIN32) && defined(__GLIBCXX__)
+#if defined(_WIN32) && defined(__GLIBCXX__) && !defined(__MINGW32__) && !defined(__MINGW64__)
   #include <ext/stdio_filebuf.h> // __gnu_cxx::stdio_filebuf
 #endif
 
@@ -57,7 +57,7 @@ inline bool OSD_OpenStream (::std::filebuf& theFileBuf,
                             const TCollection_ExtendedString& theName,
                             const std::ios_base::openmode theMode)
 {
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(__MINGW32__) && !defined(__MINGW64__)
   #if defined(__GLIBCXX__)
   // if file buffer is already open, open() should fail according to C++ standard
   if (theFileBuf.is_open())
@@ -93,7 +93,7 @@ inline void OSD_OpenStream (T& theStream,
                             const TCollection_ExtendedString& theName,
                             const std::ios_base::openmode theMode)
 {
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(__MINGW32__) && !defined(__MINGW64__)
   #if defined(__GLIBCXX__)
   // Use hackish code for opening wchar_t* file paths on MinGW,
   // which considers implementation details of std::filebuf within std::fstream/std::ifstream/std::ofstream.

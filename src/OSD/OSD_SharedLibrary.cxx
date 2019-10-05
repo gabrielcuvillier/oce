@@ -46,7 +46,7 @@ extern "C" {void    *dlerror (void);}
 #define BAD(X)  ((X) == NULL)
 
 namespace {
-constexpr Standard_Boolean ToUseSharedLibrary =
+const Standard_Boolean ToUseSharedLibrary =
 #if !defined(OCCT_DISABLE_SHAREDLIBRARY)
   Standard_True;
 #else
@@ -117,7 +117,7 @@ void  OSD_SharedLibrary::SetName(const Standard_CString aName)  {
 //
 // ----------------------------------------------------------------
 Standard_Boolean OSD_SharedLibrary::DlOpen(const OSD_LoadMode aMode) {
-  if constexpr(ToUseSharedLibrary) {
+  if Standard_IF_CONSTEXPR(ToUseSharedLibrary) {
     if (aMode == OSD_RTLD_LAZY) {
       myHandle = dlopen(myName, RTLD_LAZY);
     } else if (aMode == OSD_RTLD_NOW) {
@@ -142,7 +142,7 @@ else {
 // ----------------------------------------------------------------
 OSD_Function OSD_SharedLibrary::DlSymb(const Standard_CString aName) const {
   void (*fp)() = nullptr;
-  if constexpr(ToUseSharedLibrary) {
+  if Standard_IF_CONSTEXPR(ToUseSharedLibrary) {
     fp = (void (*)()) dlsym(myHandle, aName);
   }
   if (!BAD(fp)) {
@@ -160,7 +160,7 @@ OSD_Function OSD_SharedLibrary::DlSymb(const Standard_CString aName) const {
 //
 // ----------------------------------------------------------------
 void OSD_SharedLibrary::DlClose() const {
-  if constexpr(ToUseSharedLibrary) {
+  if Standard_IF_CONSTEXPR(ToUseSharedLibrary) {
     dlclose(myHandle);
   }
 }
@@ -171,7 +171,7 @@ void OSD_SharedLibrary::DlClose() const {
 //
 // ----------------------------------------------------------------
 Standard_CString OSD_SharedLibrary::DlError() const {
-  if constexpr(ToUseSharedLibrary) {
+  if Standard_IF_CONSTEXPR(ToUseSharedLibrary) {
     return (char *) dlerror();
   }
   else {

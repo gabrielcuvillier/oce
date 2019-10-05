@@ -19,7 +19,7 @@
 #include <errno.h>
 
 namespace {
-constexpr Standard_Boolean ToUseThreads =
+const Standard_Boolean ToUseThreads =
 #if !defined(OCCT_DISABLE_THREADS)
   Standard_True;
 #else
@@ -36,7 +36,7 @@ Standard_Mutex::Standard_Mutex ()
 #if (defined(_WIN32) || defined(__WIN32__))
   InitializeCriticalSection (&myMutex);
 #else
-  if constexpr(ToUseThreads) {
+  if Standard_IF_CONSTEXPR(ToUseThreads) {
     pthread_mutexattr_t anAttr;
     pthread_mutexattr_init(&anAttr);
     pthread_mutexattr_settype(&anAttr, PTHREAD_MUTEX_RECURSIVE);
@@ -55,7 +55,7 @@ Standard_Mutex::~Standard_Mutex ()
 #if (defined(_WIN32) || defined(__WIN32__))
   DeleteCriticalSection (&myMutex);
 #else
-  if constexpr(ToUseThreads) {
+  if Standard_IF_CONSTEXPR(ToUseThreads) {
     pthread_mutex_destroy(&myMutex);
   }
 #endif
@@ -70,7 +70,7 @@ void Standard_Mutex::Lock ()
 #if (defined(_WIN32) || defined(__WIN32__))
   EnterCriticalSection (&myMutex);
 #else
-  if constexpr(ToUseThreads) {
+  if Standard_IF_CONSTEXPR(ToUseThreads) {
     pthread_mutex_lock(&myMutex);
   }
 #endif
@@ -85,7 +85,7 @@ Standard_Boolean Standard_Mutex::TryLock ()
 #if (defined(_WIN32) || defined(__WIN32__))
   return (TryEnterCriticalSection (&myMutex) != 0);
 #else
-  if constexpr(ToUseThreads) {
+  if Standard_IF_CONSTEXPR(ToUseThreads) {
     return (pthread_mutex_trylock(&myMutex) != EBUSY);
   }
   else {
@@ -113,7 +113,7 @@ void Standard_Mutex::Unlock ()
 #if (defined(_WIN32) || defined(__WIN32__))
   LeaveCriticalSection (&myMutex);
 #else
-  if constexpr(ToUseThreads) {
+  if Standard_IF_CONSTEXPR(ToUseThreads) {
     pthread_mutex_unlock (&myMutex);
   }
 #endif
