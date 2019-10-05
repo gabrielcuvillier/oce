@@ -693,14 +693,13 @@ endif()
 if (NOT EMSCRIPTEN)
   # search for CSF_RapidJSON variable in EXTERNLIB of each being used toolkit
   OCCT_IS_PRODUCT_REQUIRED (CSF_RapidJSON CAN_USE_RAPIDJSON)
-else()
-  message (STATUS "Info: RapidJSON is used by OCCT")
 endif()
 
 if (CAN_USE_RAPIDJSON)
-  set (USE_RAPIDJSON OFF CACHE BOOL "${USE_RAPIDJSON_DESCR}")
+  set (USE_RAPIDJSON ON CACHE BOOL "${USE_RAPIDJSON_DESCR}")
 
   if (USE_RAPIDJSON)
+    message (STATUS "Info: RapidJSON is used by OCCT")
     add_definitions (-DHAVE_RAPIDJSON)
     if (NOT EMSCRIPTEN)
       OCCT_INCLUDE_CMAKE_FILE ("adm/cmake/rapidjson")
