@@ -113,6 +113,7 @@ else()
     if (USE_GLES2)
       set (CSF_OpenGlLibs  "EGL GLESv2")
     else()
+      # OpenGl libs on UNIX are dependent on the system configuration
       find_library (OpenGlLibs_LIB NAMES OpenGL)
       set (CSF_OpenGlLibs  ${OpenGlLibs_LIB} GLX)
     endif()
