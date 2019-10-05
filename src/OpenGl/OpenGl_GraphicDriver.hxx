@@ -153,7 +153,7 @@ public:
   //! VBO usage can be forbidden by this method even if it is supported by GL driver.
   //! Notice that disabling of VBO will cause rendering performance degradation.
   //! Warning! This method should be called only before any primitives are displayed in GL scene!
-  Standard_EXPORT void EnableVBO (const Standard_Boolean theToTurnOn);
+  Standard_EXPORT void EnableVBO (const Standard_Boolean theToTurnOn) Standard_OVERRIDE;
 
   //! FBO usage can be forbidden by this method even if it is supported by GL driver.
   //! Warning! This method should be called only before any primitives are displayed in GL scene!

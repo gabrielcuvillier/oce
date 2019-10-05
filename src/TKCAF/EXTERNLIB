@@ -1,8 +1,8 @@
 TKernel
 TKGeomBase
 TKBRep
-TKTopBase
 TKTopAlgo
+TKGeomAlgo
 TKMath
 TKG2d
 TKG3d

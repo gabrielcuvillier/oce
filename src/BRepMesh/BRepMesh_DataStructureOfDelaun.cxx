@@ -490,9 +490,6 @@ void BRepMesh_DataStructureOfDelaun::Statistics(Standard_OStream& theStream) con
 //
 //  Stores the mesh data structure to BRep file with the given name.
 //=======================================================================
-#ifdef OCCT_DEBUG
-#include <BRepLib_MakeEdge.hxx>
-#include <BRepLib_MakeVertex.hxx>
 Standard_CString BRepMesh_Dump(void*            theMeshHandlePtr,
                                Standard_CString theFileNameStr)
 {
@@ -522,7 +519,7 @@ Standard_CString BRepMesh_Dump(void*            theMeshHandlePtr,
       {
         const gp_XY& aNode = aMeshData->GetNode(i).Coord();
         gp_Pnt aPnt(aNode.X(), aNode.Y(), 0.);
-        aBuilder.Add(aMesh, BRepLib_MakeVertex(aPnt));
+        aBuilder.Add(aMesh, BRepBuilderAPI_MakeVertex(aPnt));
       }
     }
     else
@@ -544,7 +541,7 @@ Standard_CString BRepMesh_Dump(void*            theMeshHandlePtr,
         if (aPnt[0].SquareDistance(aPnt[1]) < Precision::SquareConfusion())
           continue;
 
-        aBuilder.Add(aMesh, BRepLib_MakeEdge(aPnt[0], aPnt[1]));
+        aBuilder.Add(aMesh, BRepBuilderAPI_MakeEdge(aPnt[0], aPnt[1]));
       }
     }
 
@@ -564,5 +561,3 @@ void BRepMesh_DataStructureOfDelaun::Dump(Standard_CString theFileNameStr)
   Handle(BRepMesh_DataStructureOfDelaun) aMeshData (this);
   BRepMesh_Dump((void*)&aMeshData, theFileNameStr);
 }
-
-#endif

@@ -14,6 +14,7 @@
 
 #ifndef _WIN32
 
+
 #include <OSD_Function.hxx>
 #include <OSD_LoadMode.hxx>
 #include <OSD_SharedLibrary.hxx>
@@ -58,7 +59,7 @@ constexpr Standard_Boolean ToUseSharedLibrary =
 // Create and initialize a shared library object to NULL
 //
 // ----------------------------------------------------------------
-OSD_SharedLibrary::OSD_SharedLibrary() : myHandle(NULL), myName(NULL) {
+OSD_SharedLibrary::OSD_SharedLibrary():myHandle(NULL),myName(NULL){
 }
 // ----------------------------------------------------------------
 //
@@ -66,10 +67,11 @@ OSD_SharedLibrary::OSD_SharedLibrary() : myHandle(NULL), myName(NULL) {
 // name given as argument
 //
 // ----------------------------------------------------------------
-OSD_SharedLibrary::OSD_SharedLibrary(const Standard_CString aName) : myHandle(NULL) {
+OSD_SharedLibrary::OSD_SharedLibrary(const Standard_CString aName):myHandle(NULL)
+{
   if (aName != NULL) {
-    myName = new char[(strlen(aName) + 1)];
-    strcpy(myName, aName);
+    myName = new char [(strlen (aName) + 1 )];
+    strcpy (myName,aName);
   }
 }
 // ----------------------------------------------------------------
@@ -77,7 +79,7 @@ OSD_SharedLibrary::OSD_SharedLibrary(const Standard_CString aName) : myHandle(NU
 // Name: Returns the shared library name
 //
 // ----------------------------------------------------------------
-Standard_CString OSD_SharedLibrary::Name() const {
+Standard_CString  OSD_SharedLibrary::Name() const {
   return myName;
 }
 // ----------------------------------------------------------------
@@ -85,10 +87,10 @@ Standard_CString OSD_SharedLibrary::Name() const {
 // SetName: Sets a name to a shared library object
 //
 // ----------------------------------------------------------------
-void OSD_SharedLibrary::SetName(const Standard_CString aName) {
+void  OSD_SharedLibrary::SetName(const Standard_CString aName)  {
   if (aName != NULL) {
-    myName = new char[(strlen(aName) + 1)];
-    strcpy(myName, aName);
+    myName = new char [(strlen (aName) + 1 )];
+    strcpy (myName,aName);
   }
 }
 // ----------------------------------------------------------------
@@ -123,11 +125,12 @@ Standard_Boolean OSD_SharedLibrary::DlOpen(const OSD_LoadMode aMode) {
     }
   }
 
-  if (!BAD(myHandle)) {
-    return Standard_True;
-  } else {
-    return Standard_False;
-  }
+if (!BAD(myHandle)){
+  return Standard_True;
+ }
+else {
+  return Standard_False;
+ }
 }
 // ----------------------------------------------------------------
 //
@@ -180,9 +183,9 @@ Standard_CString OSD_SharedLibrary::DlError() const {
 // ----------------------------------------------------------------------------
 void OSD_SharedLibrary::Destroy() {
   if (myName != NULL) {
-    delete[] myName;
-    myName = NULL;
-    myHandle = NULL;
+     delete [] myName;
+     myName = NULL;
+     myHandle = NULL;
   }
 }
 

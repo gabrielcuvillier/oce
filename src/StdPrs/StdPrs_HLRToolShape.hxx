@@ -81,6 +81,12 @@ private:
 
 };
 
+
+
+
+
+
+
 #endif // _StdPrs_HLRToolShape_HeaderFile
 
 #endif

@@ -88,8 +88,8 @@
 #include <gp_Quaternion.hxx>
 #include <TopLoc_Location.hxx>
 
-#include <HLRBRep_Algo.hxx>
 #include <HLRAlgo_Projector.hxx>
+#include <HLRBRep_Algo.hxx>
 #include <HLRAlgo_BRepPolyAlgo.hxx>
 #include <HLRBRep_PolyHLRToShape.hxx>
 #include <HLRBRep_HLRToShape.hxx>

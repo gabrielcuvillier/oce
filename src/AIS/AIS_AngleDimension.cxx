@@ -17,7 +17,7 @@
 #include <AIS_AngleDimension.hxx>
 
 #include <AIS.hxx>
-#include <BRepLib_MakeFace.hxx>
+#include <BRepBuilderAPI_MakeFace.hxx>
 #include <BRepAdaptor_Curve.hxx>
 #include <BRepAdaptor_Surface.hxx>
 #include <BRepLib_MakeVertex.hxx>
@@ -1147,7 +1147,7 @@ Standard_Boolean AIS_AngleDimension::InitConeAngle()
       // Offset surface
       aOffsetSurf = new Geom_OffsetSurface (aSurf, anOffset);
       aSurf = aOffsetSurf->Surface();
-      BRepLib_MakeFace aMkFace(aSurf, Precision::Confusion());
+      BRepBuilderAPI_MakeFace aMkFace(aSurf, Precision::Confusion());
       aMkFace.Build();
       if (!aMkFace.IsDone())
         return Standard_False;

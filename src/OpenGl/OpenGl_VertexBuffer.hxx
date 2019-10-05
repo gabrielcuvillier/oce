@@ -316,6 +316,7 @@ private:
 
   //! Disable FFP color array pointer.
   Standard_EXPORT static void unbindFixedColor (const Handle(OpenGl_Context)& theCtx);
+
 #endif
 public: //! @name methods for interleaved attributes array
 

@@ -20,8 +20,8 @@
 #include <Bnd_Box.hxx>
 #include <BRep_Tool.hxx>
 #include <BRepAdaptor_Curve.hxx>
-#include <BRepLib_MakeEdge.hxx>
-#include <BRepLib_MakeVertex.hxx>
+#include <BRepBuilderAPI_MakeEdge.hxx>
+#include <BRepBuilderAPI_MakeVertex.hxx>
 #include <DsgPrs_EqualDistancePresentation.hxx>
 #include <ElCLib.hxx>
 #include <Geom_Circle.hxx>

@@ -317,6 +317,7 @@ Standard_Boolean OSD_Thread::Wait (const Standard_Integer theTimeMs,
         return Standard_False;
       }
     }
+
   #else
     // join the thread without timeout
     (void )theTimeMs;
@@ -325,7 +326,6 @@ Standard_Boolean OSD_Thread::Wait (const Standard_Integer theTimeMs,
         return Standard_False;
       }
     }
-
   #endif
     myThread   = 0;
     myThreadId = 0;

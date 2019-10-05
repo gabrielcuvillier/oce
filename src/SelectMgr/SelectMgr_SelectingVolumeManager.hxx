@@ -91,6 +91,7 @@ public:
   //! Updates window size in all selecting volumes
   Standard_EXPORT void SetWindowSize (const Standard_Integer theWidth, const Standard_Integer theHeight);
 
+
   //! Builds rectangular selecting frustum for point selection
   Standard_EXPORT void BuildSelectingVolume (const gp_Pnt2d& thePoint);
 

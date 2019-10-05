@@ -66,7 +66,7 @@ class _TerminateWithStandardFailure {
 
 #endif
 
-#define DEFINE_STANDARD_EXCEPTION(C1, C2) \
+#define DEFINE_STANDARD_EXCEPTION(C1,C2) \
  \
 class C1 : public C2 { \
   void Throw () const Standard_OVERRIDE { throw *this; } \

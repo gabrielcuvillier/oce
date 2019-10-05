@@ -81,7 +81,6 @@ n TopTools
 n TopoDS
 n gce
 t TKBRep
-t TKTopBase
 t TKG2d
 t TKG3d
 t TKGeomBase

@@ -1,8 +1,8 @@
 TKernel
 TKMath
 TKBRep
-TKTopBase
+TKTopAlgo
+TKShHealing
 TKGeomBase
 TKG3d
 TKG2d
-TKShHealing

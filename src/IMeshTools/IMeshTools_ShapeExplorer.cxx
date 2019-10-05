@@ -22,7 +22,6 @@
 #include <TopTools_ListOfShape.hxx>
 #include <BRepLib.hxx>
 #include <BRep_Tool.hxx>
-#include <BRepTools.hxx>
 #include <TopTools_MapOfShape.hxx>
 #include <Geom_Surface.hxx>
 
@@ -83,7 +82,7 @@ void IMeshTools_ShapeExplorer::Accept (
   // Explore all related to some face edges in shape.
   // make array of faces suitable for processing (excluding faces without surface)
   TopTools_ListOfShape aFaceList;
-  BRepTools::ReverseSortFaces (GetShape (), aFaceList);
+  BRepLib::ReverseSortFaces (GetShape (), aFaceList);
   TopTools_MapOfShape aFaceMap;
 
   TopLoc_Location aDummyLoc;

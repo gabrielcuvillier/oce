@@ -21,7 +21,7 @@
 #include <Bnd_Box.hxx>
 #include <BRep_Tool.hxx>
 #include <BRepAdaptor_Surface.hxx>
-#include <BRepLib_MakeFace.hxx>
+#include <BRepBuilderAPI_MakeFace.hxx>
 #include <DsgPrs_TangentPresentation.hxx>
 #include <ElCLib.hxx>
 #include <Geom_Circle.hxx>
@@ -262,7 +262,7 @@ void AIS_TangentRelation::ComputeTwoEdgesTangent(const Handle(Prs3d_Presentation
 
   aPresentation->SetInfiniteState(isInfinite1 || isInfinite2);
   // current face  
-  BRepLib_MakeFace makeface(myPlane->Pln());
+  BRepBuilderAPI_MakeFace makeface(myPlane->Pln());
   TopoDS_Face face(makeface.Face());  
   BRepAdaptor_Surface adp(makeface.Face());
     

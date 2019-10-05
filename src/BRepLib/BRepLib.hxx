@@ -239,6 +239,11 @@ public:
   //! (Plane,Cylinder,Cone,Sphere,Torus,other)
   Standard_EXPORT static void SortFaces (const TopoDS_Shape& S, TopTools_ListOfShape& LF);
 
+  //! Sorts in  LF  the   Faces  of S   on the reverse
+  //! complexity       of       their      surfaces
+  //! (other,Torus,Sphere,Cone,Cylinder,Plane)
+  Standard_EXPORT static void ReverseSortFaces (const TopoDS_Shape& S, TopTools_ListOfShape& LF);
+
   //! Corrects the normals in Poly_Triangulation of faces,
   //! in such way that normals at nodes lying along smooth
   //! edges have the same value on both adjacent triangulations.

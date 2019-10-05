@@ -73,7 +73,8 @@ private:
 //=======================================================================
 
 Standard_MMgrFactory::Standard_MMgrFactory()
-: myFMMgr (NULL) {
+: myFMMgr (NULL)
+{
 /*#if defined(_MSC_VER) && (_MSC_VER > 1400)
   // Turn ON thread-safe C locale globally to avoid side effects by setlocale() calls between threads.
   // After this call all following _configthreadlocale() will be ignored assuming
@@ -88,7 +89,7 @@ Standard_MMgrFactory::Standard_MMgrFactory()
 
   // Check basic assumption.
   // If assertion happens, then OCCT should be corrected for compatibility with such CPU architecture.
-  Standard_STATIC_ASSERT(sizeof(Standard_Utf8Char) == 1);
+  Standard_STATIC_ASSERT(sizeof(Standard_Utf8Char)  == 1);
   Standard_STATIC_ASSERT(sizeof(short) == 2);
   Standard_STATIC_ASSERT(sizeof(Standard_Utf16Char) == 2);
   Standard_STATIC_ASSERT(sizeof(Standard_Utf32Char) == 4);

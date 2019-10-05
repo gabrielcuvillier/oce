@@ -211,6 +211,7 @@ Handle(StdObjMgt_Persistent) StdLDrivers_DocumentRetrievalDriver::read (
     catch (Storage_StreamTypeMismatchError const&) { anError = Storage_VSTypeMismatch; }
     catch (Storage_StreamFormatError const&      ) { anError = Storage_VSFormatError;  }
     catch (Storage_StreamReadError const&        ) { anError = Storage_VSFormatError;  }
+
     raiseOnStorageError (anError);
   }
 

@@ -27,6 +27,7 @@
 static Standard_Character tc[1000];
 static Standard_PCharacter thePluginId = tc;
 
+
 //=======================================================================
 //function : Load
 //purpose  : 
@@ -34,6 +35,7 @@ static Standard_PCharacter thePluginId = tc;
 Handle(Standard_Transient) Plugin::Load (const Standard_GUID& aGUID,
                                          const Standard_Boolean theVerbose)
 {
+
   aGUID.ToCString(thePluginId);
   TCollection_AsciiString pid(thePluginId);
   static Plugin_MapOfFunctions theMapOfFunctions;
@@ -67,7 +69,6 @@ Handle(Standard_Transient) Plugin::Load (const Standard_GUID& aGUID,
 #else
     thePluginLibrary += ".so";
 #endif
-
     OSD_SharedLibrary theSharedLibrary(thePluginLibrary.ToCString());
     if(!theSharedLibrary.DlOpen(OSD_RTLD_LAZY)) {
       TCollection_AsciiString error(theSharedLibrary.DlError());
@@ -96,4 +97,5 @@ Handle(Standard_Transient) Plugin::Load (const Standard_GUID& aGUID,
   fp = (Standard_Transient* (*)(const Standard_GUID&)) f;
   Handle(Standard_Transient) theServiceFactory = (*fp) (aGUID);
   return theServiceFactory;
+
 }

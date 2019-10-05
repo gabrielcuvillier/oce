@@ -2,7 +2,6 @@ TKernel
 TKGeomBase
 TKBRep
 TKTopAlgo
-TKTopBase
 TKMath
 TKService
 TKG2d

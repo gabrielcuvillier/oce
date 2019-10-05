@@ -21,6 +21,7 @@
 #include <Prs3d_LineAspect.hxx>
 #include <Prs3d_Presentation.hxx>
 #include <Prs3d_Projector.hxx>
+#include <StdPrs_HLRShape.hxx>
 #include <StdPrs_HLRToolShape.hxx>
 #include <StdPrs_DeflectionCurve.hxx>
 #include <TopoDS_Shape.hxx>

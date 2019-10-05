@@ -16,8 +16,8 @@
 
 #include <BRep_Tool.hxx>
 #include <BRepTopAdaptor_FClass2d.hxx>
-#include <BRepLib_MakeFace.hxx>
-#include <BRepLib_MakeWire.hxx>
+#include <BRepBuilderAPI_MakeFace.hxx>
+#include <BRepBuilderAPI_MakeWire.hxx>
 #include <BRepLib_MakeEdge.hxx>
 #include <Font_FTLibrary.hxx>
 #include <Font_FontMgr.hxx>
@@ -440,7 +440,7 @@ Standard_Boolean Font_BRepFont::renderGlyph (const Standard_Utf32Char theChar,
       continue;
     }
 
-    BRepLib_MakeWire aWireMaker;
+    BRepBuilderAPI_MakeWire aWireMaker;
 
     gp_XY aPntPrev;
     gp_XY aPntCurr = readFTVec (aPntList[aPntsNb - 1], myScaleUnits, myWidthScaling);

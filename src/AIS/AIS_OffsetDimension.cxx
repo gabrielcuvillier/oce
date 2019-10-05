@@ -19,7 +19,7 @@
 #include <AIS_OffsetDimension.hxx>
 #include <BRep_Tool.hxx>
 #include <BRepAdaptor_Surface.hxx>
-#include <BRepLib_Transform.hxx>
+#include <BRepBuilderAPI_Transform.hxx>
 #include <DsgPrs_OffsetPresentation.hxx>
 #include <ElCLib.hxx>
 #include <ElSLib.hxx>
@@ -348,9 +348,9 @@ void AIS_OffsetDimension::ComputeTwoAxesOffset(const Handle(Prs3d_Presentation)&
 				     myTDirAttach2,
 				     Tcurpos);
   
-  BRepLib_Transform transform1 (myFShape, aTrsf, Standard_True);
+  BRepBuilderAPI_Transform transform1 (myFShape, aTrsf, Standard_True);
   TopoDS_Shape myTFShape = transform1.Shape();
-  BRepLib_Transform transform2 (mySShape, aTrsf, Standard_True);
+  BRepBuilderAPI_Transform transform2 (mySShape, aTrsf, Standard_True);
   TopoDS_Shape myTSShape = transform2.Shape();
 
   StdPrs_WFShape::Add (aprs, myTFShape, myDrawer);
@@ -457,11 +457,11 @@ void AIS_OffsetDimension::ComputeTwoFacesOffset(const Handle(Prs3d_Presentation)
 				 myTDirAttach,
 				 myTDirAttach2,
 				 Tcurpos);
+  
 
-
-  BRepLib_Transform transform1 (myFShape, aTrsf, Standard_True);
+  BRepBuilderAPI_Transform transform1 (myFShape, aTrsf, Standard_True);
   TopoDS_Shape myTFShape = transform1.Shape();
-  BRepLib_Transform transform2 (mySShape, aTrsf, Standard_True);
+  BRepBuilderAPI_Transform transform2 (mySShape, aTrsf, Standard_True);
   TopoDS_Shape myTSShape = transform2.Shape();
 
   StdPrs_WFShape::Add (aprs, myTFShape, myDrawer);
@@ -475,9 +475,9 @@ void AIS_OffsetDimension::ComputeTwoFacesOffset(const Handle(Prs3d_Presentation)
 void AIS_OffsetDimension::ComputeAxeFaceOffset(const Handle(Prs3d_Presentation)& aprs, 
 					       const gp_Trsf& aTrsf)
 {
-  BRepLib_Transform transform1 (myFShape, aTrsf, Standard_True);
+  BRepBuilderAPI_Transform transform1 (myFShape, aTrsf, Standard_True);
   TopoDS_Shape myTFShape = transform1.Shape();
-  BRepLib_Transform transform2 (mySShape, aTrsf, Standard_True);
+  BRepBuilderAPI_Transform transform2 (mySShape, aTrsf, Standard_True);
   TopoDS_Shape myTSShape = transform2.Shape();
 
   StdPrs_WFShape::Add (aprs, myTFShape, myDrawer);

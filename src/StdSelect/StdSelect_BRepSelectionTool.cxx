@@ -113,6 +113,7 @@ void StdSelect_BRepSelectionTool::Load (const Handle(SelectMgr_Selection)& theSe
                                         const Standard_Real theMaxParam)
 {
   Standard_Integer aPriority = (thePriority == -1) ? GetStandardPriority (theShape, theType) : thePriority;
+
   if( isAutoTriangulation && !BRepTools::Triangulation (theShape, Precision::Infinite()) )
   {
 #if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)

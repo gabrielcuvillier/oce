@@ -1670,7 +1670,6 @@ TCollection_AsciiString OpenGl_ShaderManager::prepareGeomMainSrc (OpenGl_ShaderO
         case 2: aSrcMainGeom += EOL"  EdgeDistance = vec3 (0.0, 0.0, aHeightABC[2]);"; break;
       }
     }
-
     aSrcMainGeom += TCollection_AsciiString()
      + EOL"  gl_Position = gl_in[" + aVertIndex + "].gl_Position;"
        EOL"  EmitVertex();";

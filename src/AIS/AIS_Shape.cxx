@@ -36,6 +36,7 @@
 #include <Graphic3d_Structure.hxx>
 #include <Message.hxx>
 #include <Message_Messenger.hxx>
+#include <HLRAlgo_BRepPolyAlgo.hxx>
 #include <OSD_Timer.hxx>
 #include <Precision.hxx>
 #include <Prs3d.hxx>
@@ -63,10 +64,6 @@
 #include <StdSelect_DisplayMode.hxx>
 #include <TColStd_ListIteratorOfListOfInteger.hxx>
 #include <TopExp.hxx>
-#include <TopExp_Explorer.hxx>
-#include <TopoDS_Iterator.hxx>
-#include <TopoDS_Shape.hxx>
-#include <HLRAlgo_BRepPolyAlgo.hxx>
 
 IMPLEMENT_STANDARD_RTTIEXT(AIS_Shape,AIS_InteractiveObject)
 
@@ -930,8 +927,8 @@ void AIS_Shape::SetHLRAngleAndDeviation ( const Standard_Real  anAngle )
   HLRAlgo_BRepPolyAlgo::PolyHLRAngleAndDeflection(anAngle,OutAngl,OutDefl);
   SetOwnHLRDeviationAngle( OutAngl );
   SetOwnHLRDeviationCoefficient(OutDefl);
-}
 
+}
 //=======================================================================
 //function : SetOwnHLRDeviationAngle
 //purpose  : 

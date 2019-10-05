@@ -18,7 +18,7 @@
 
 #include <AIS_InteractiveContext.hxx>
 #include <Aspect_TypeOfLine.hxx>
-#include <BRepLib_MakeVertex.hxx>
+#include <BRepBuilderAPI_MakeVertex.hxx>
 #include <Geom_Point.hxx>
 #include <Geom_Transformation.hxx>
 #include <Graphic3d_ArrayOfPoints.hxx>
@@ -157,7 +157,7 @@ void AIS_Point::UnsetColor()
 TopoDS_Vertex AIS_Point::Vertex() const
 {
   gp_Pnt P = myComponent->Pnt();
-  return BRepLib_MakeVertex(P);
+  return BRepBuilderAPI_MakeVertex(P);
 }
 
 

@@ -51,14 +51,14 @@ OSD_Host::OSD_Host(){}
 // =========================================================================
 
 TCollection_AsciiString OSD_Host::SystemVersion(){
-  struct utsname info;
-  TCollection_AsciiString result;
+struct utsname info;
+TCollection_AsciiString result;
 
-  uname (&info);
-  result  = info.sysname;
-  result += " ";
-  result += info.release;
-  return(result);
+ uname (&info);
+ result  = info.sysname;
+ result += " ";
+ result += info.release;
+ return(result);
 }
 
 // =========================================================================
