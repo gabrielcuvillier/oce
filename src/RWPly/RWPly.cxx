@@ -1,11 +1,19 @@
+// Copyright (c) 2019 Gabriel Cuvillier - Continuation Labs
+
 #include <RWPly.hxx>
+
+#if defined(HAVE_TINYPLY)
+
+// Be sure to include these files before tinyply header, due to possible throw/try/catch and constexpr being redefined
+#include <Standard_Macro.hxx>
+#include <Standard_DefineException.hxx>
 
 #include <Message_ProgressSentry.hxx>
 #include <NCollection_Vector.hxx>
 #include <OSD_File.hxx>
 #include <OSD_OpenFile.hxx>
 
-#include <RWPly_tinyply.hxx>
+#include <tinyply/tinyply.h>
 
 #include <vector>
 #include <sstream>
@@ -69,7 +77,7 @@ opencascade::handle<Poly_Triangulation> RWPly::ReadFile(const Standard_CString t
 
     file.parse_header(ss);
     vertices = file.request_properties_from_element("vertex", {"x", "y", "z"});
-    if constexpr(false) {
+    if Standard_IF_CONSTEXPR(false) {
       texcoords = file.request_properties_from_element("vertex", {"u", "v"});
     }
     faces = file.request_properties_from_element("face", {"vertex_indices"}, 3);
@@ -93,7 +101,7 @@ opencascade::handle<Poly_Triangulation> RWPly::ReadFile(const Standard_CString t
       }
     }
 
-    if constexpr(false && texcoords->count > 0) {
+    if Standard_IF_CONSTEXPR(false && texcoords->count > 0) {
       switch (texcoords->t) {
         case tinyply::Type::FLOAT32: {
           HandleTexCoords<float>(texcoords, aPoly);
@@ -145,3 +153,11 @@ opencascade::handle<Poly_Triangulation> RWPly::ReadFile(const Standard_CString t
     return nullptr;
   }
 }
+
+#else
+opencascade::handle<Poly_Triangulation> RWPly::ReadFile(const Standard_CString theFile,
+                                                        const opencascade::handle<Message_ProgressIndicator> &theProgress) {
+  std::cerr << "OCCT have not been compiled with TinyPly support" << std::endl;
+  return nullptr;
+}
+#endif

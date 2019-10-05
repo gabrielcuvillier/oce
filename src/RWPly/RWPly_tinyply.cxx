@@ -1,5 +1,10 @@
-// This file exists to create a nice static or shared library via cmake
-// but can otherwise be omitted if you prefer to compile tinyply
-// directly into your own project.
+// Copyright (c) 2019 Gabriel Cuvillier - Continuation Labs
+
+#if defined(HAVE_TINYPLY)
+// Be sure to include these files before tinyply header, due to possible throw/try/catch and constexpr being redefined
+#include <Standard_Macro.hxx>
+#include <Standard_DefineException.hxx>
+
 #define TINYPLY_IMPLEMENTATION
-#include "RWPly_tinyply.hxx"
+#include <tinyply/tinyply.h>
+#endif

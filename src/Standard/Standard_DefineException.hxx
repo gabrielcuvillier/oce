@@ -2,6 +2,8 @@
 //
 // This file is part of Open CASCADE Technology software library.
 //
+// Updates by: Copyright (c) 2019, Gabriel Cuvillier - Continuation-Labs
+//
 // This library is free software; you can redistribute it and/or modify it under
 // the terms of the GNU Lesser General Public License version 2.1 as published
 // by the Free Software Foundation, with special exception defined in the file

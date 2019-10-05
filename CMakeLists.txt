@@ -691,6 +691,29 @@ else()
   OCCT_CHECK_AND_UNSET ("INSTALL_RAPIDJSON")
 endif()
 
+
+# TinyPLY
+# search for CSF_TinyPly variable in EXTERNLIB of each being used toolkit
+OCCT_IS_PRODUCT_REQUIRED (CSF_TinyPly CAN_USE_TINYPLY)
+
+if (CAN_USE_TINYPLY)
+  set (USE_TINYPLY ON CACHE BOOL "${USE_TINYPLY_DESCR}")
+
+  if (USE_TINYPLY)
+    message (STATUS "Info: TinyPLY is used by OCCT")
+    add_definitions (-DHAVE_TINYPLY)
+    OCCT_INCLUDE_CMAKE_FILE ("adm/cmake/tinyply")
+  else()
+    OCCT_CHECK_AND_UNSET_GROUP ("3RDPARTY_TINYPLY")
+    OCCT_CHECK_AND_UNSET ("INSTALL_TINYPLY")
+  endif()
+else()
+  OCCT_CHECK_AND_UNSET ("USE_TINYPLY")
+
+  OCCT_CHECK_AND_UNSET_GROUP ("3RDPARTY_TINYPLY")
+  OCCT_CHECK_AND_UNSET ("INSTALL_TINYPLY")
+endif()
+
 # EIGEN
 if (CAN_USE_EIGEN)
   set (USE_EIGEN OFF CACHE BOOL "${USE_EIGEN_DESCR}")

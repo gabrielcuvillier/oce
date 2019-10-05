@@ -1,3 +1,5 @@
+// Copyright (c) 2019 Gabriel Cuvillier - Continuation Labs
+
 #ifndef _RWPly_HeaderFile
 #define _RWPly_HeaderFile
 
