@@ -1,5 +1,6 @@
 .idea
 cmake-build*
+/tmp-*
 
 # standard directories for derived files in CASROOT
 /.adm
@@ -39,7 +40,7 @@ Release
 *.aps
 /out
 /.vs
-CMakeSettings.json
+/CMakeSettings.json
 
 # test results
 /results*
