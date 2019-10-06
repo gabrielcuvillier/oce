@@ -28,6 +28,8 @@ MeshVS_DataMapOfIntegerVector.hxx
 MeshVS_DataMapOfTwoColorsMapOfInteger.hxx
 MeshVS_DataSource.cxx
 MeshVS_DataSource.hxx
+MeshVS_Triangulation_DataSource.cxx
+MeshVS_Triangulation_DataSource.hxx
 MeshVS_DataSource3D.cxx
 MeshVS_DataSource3D.hxx
 MeshVS_DeformedDataSource.cxx
