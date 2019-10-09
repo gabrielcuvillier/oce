@@ -143,8 +143,6 @@ Standard_MMgrFactory::Standard_MMgrFactory()
   }
 #endif
 
-  // Emscripten Warning: there is a random crash issue issue with malloc (uncleared memory). calloc will work (cleared memory)
-  // Hopefully, the default is to use calloc. But this have to be investigated
   aVar = getenv("MMGT_CLEAR");
   const Standard_Boolean toClear = (aVar ? (atoi(aVar) != 0) : Standard_True);
 
