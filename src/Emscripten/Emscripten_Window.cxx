@@ -14,7 +14,6 @@
 
 #include <emscripten.h>
 #include <emscripten/html5.h>
-#include <emscripten/val.h>
 #include <cstring>
 
 IMPLEMENT_STANDARD_RTTIEXT(Emscripten_Window, Aspect_Window)
@@ -24,7 +23,7 @@ IMPLEMENT_STANDARD_RTTIEXT(Emscripten_Window, Aspect_Window)
 // purpose  :
 // =======================================================================
 Emscripten_Window::Emscripten_Window ( Standard_CString theTargetCanvas,
-                                       emscripten::val theWindowInvalidateHandler )
+                                      std::function<void(void)> theWindowInvalidateHandler )
 : Aspect_Window(),
   myTargetCanvas(nullptr), // don't initialize it yet, we need to make a copy
   myWindowInvalidateHandler(theWindowInvalidateHandler)
@@ -46,7 +45,6 @@ Emscripten_Window::~Emscripten_Window()
     delete [] myTargetCanvas;
     myTargetCanvas = nullptr;
   }
-  myWindowInvalidateHandler = emscripten::val::undefined();
 }
 
 // =======================================================================
@@ -176,10 +174,7 @@ void Emscripten_Window::SetTitle (const TCollection_AsciiString& theTitle) {
 // =======================================================================
 void Emscripten_Window::InvalidateContent (const Handle(Aspect_DisplayConnection)& theDisp) {
   (void)theDisp;
-  if (myWindowInvalidateHandler != emscripten::val::undefined() &&
-      myWindowInvalidateHandler != emscripten::val::null()) {
-    myWindowInvalidateHandler();
-  }
+  myWindowInvalidateHandler();
 }
 
 #endif

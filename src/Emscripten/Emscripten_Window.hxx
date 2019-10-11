@@ -13,7 +13,7 @@
 
 #if defined(__EMSCRIPTEN__)
 
-#include <emscripten/val.h>
+#include <functional>
 
 #include <Aspect_Window.hxx>
 #include <Aspect_TypeOfResize.hxx>
@@ -29,7 +29,7 @@ public:
 
   //! Creates an Emscripten window defined by its target canvas id. nullptr means the default canvas (not recommended).
   Standard_EXPORT Emscripten_Window ( Standard_CString theTargetCanvas = nullptr,
-                                      emscripten::val theWindowInvalidateHandler = emscripten::val::undefined() );
+                                      std::function<void(void)> theWindowInvalidateHandler = []() -> void {});
 
   Standard_EXPORT virtual ~Emscripten_Window();
 
@@ -91,8 +91,8 @@ private:
   // Canvas Target Id
   Standard_Character* myTargetCanvas;
 
-  // Window invalidate handler
-  emscripten::val myWindowInvalidateHandler;
+  // Window redraw handler
+  std::function<void(void)> myWindowInvalidateHandler;
 
 public:
 
