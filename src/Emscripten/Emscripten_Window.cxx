@@ -159,7 +159,8 @@ void Emscripten_Window::Size (Standard_Integer& theWidth,
 // purpose  :
 // =======================================================================
 void Emscripten_Window::SetTitle (const TCollection_AsciiString& theTitle) {
-  std::cout << "Emscripten_Window::SetTitle" << std::endl;
+  // Use inline javascript there, because there is no emscripten API do directly set
+  // the title of a canvas
   EM_ASM_({
     var canvas = document.querySelector(UTF8ToString($0));
     if (canvas) {
@@ -174,6 +175,9 @@ void Emscripten_Window::SetTitle (const TCollection_AsciiString& theTitle) {
 // =======================================================================
 void Emscripten_Window::InvalidateContent (const Handle(Aspect_DisplayConnection)& theDisp) {
   (void)theDisp;
+  // There is no such thing as "InvalidateContent" on a Canvas. How the canvas is supposed to be
+  // redisplayed is very application specific (for example, requestAnimationFrame with a specific function)
+  // Let's stay neutral and call the opaque function handler provided to the Emscripten_Window class.
   myWindowInvalidateHandler();
 }
 
