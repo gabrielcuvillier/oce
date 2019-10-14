@@ -115,6 +115,8 @@ public:
   //! NULL can be passed instead otherwise.
   virtual void InvalidateContent (const Handle(Aspect_DisplayConnection)& theDisp) { (void )theDisp; }
 
+  virtual double GetDevicePixelRatio() const { return 1.0f; }
+
   DEFINE_STANDARD_RTTIEXT(Aspect_Window,Standard_Transient)
 
 protected:

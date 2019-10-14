@@ -181,4 +181,12 @@ void Emscripten_Window::InvalidateContent (const Handle(Aspect_DisplayConnection
   myWindowInvalidateHandler();
 }
 
+// =======================================================================
+// function : GetDevicePixelRatio
+// purpose  :
+// =======================================================================
+double Emscripten_Window::GetDevicePixelRatio() const {
+  return emscripten_get_device_pixel_ratio();
+}
+
 #endif

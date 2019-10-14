@@ -86,6 +86,8 @@ public:
     return myTargetCanvas;
   }
 
+  virtual double GetDevicePixelRatio() const Standard_OVERRIDE;
+
 private:
 
   // Canvas Target Id
