@@ -5,10 +5,13 @@
 
 #if defined(__EMSCRIPTEN__)
 
-#include <string>
-#include <iostream>
-#include <exception>
-#include <typeinfo>
+// std
+#include <string>       // std::string
+#include <exception>    // std::exception
+#include <typeinfo>     // typeid
+
+// emscripten
+#include <emscripten/html5.h> // emscripten_throw_string
 
 _TerminateWithStandardFailure::_TerminateWithStandardFailure(Standard_Failure const & next) noexcept :
     myFailureType(next.DynamicType()->Name()),
@@ -19,8 +22,8 @@ _TerminateWithStandardFailure::_TerminateWithStandardFailure(std::exception cons
     myMessage(next.what()) { }
 
 _TerminateWithStandardFailure::~_TerminateWithStandardFailure() noexcept {
-  std::cerr << myFailureType << ": " << myMessage << std::endl;
-  std::terminate(); // Ideally, std::set_terminate should be set by the main application
+  emscripten_throw_string( std::string(myFailureType + ": " + myMessage).c_str() );
+  std::terminate();
 };
 
 #endif
