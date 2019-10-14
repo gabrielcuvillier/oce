@@ -193,7 +193,7 @@ void OpenGl_View::Redraw()
     aFrameBuffer = aCtx->DefaultFrameBuffer().operator->();
   }
 
-  if (myHasFboBlit
+  if (myHasFboBlit && !aCtx->caps->fboDisable
    && (myTransientDrawToFront
     || aProjectType == Graphic3d_Camera::Projection_Stereo
     || aNbSamples != 0
