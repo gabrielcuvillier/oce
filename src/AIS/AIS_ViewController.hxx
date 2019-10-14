@@ -659,6 +659,7 @@ protected: //! @name multi-touch input variables
   Standard_ShortReal  myTouchPanThresholdPx;      //!< threshold for starting two-touch panning      gesture in pixels;  4 by default
   Standard_ShortReal  myTouchZoomThresholdPx;     //!< threshold for starting two-touch zoom (pitch) gesture in pixels;  6 by default
   Standard_ShortReal  myTouchZoomRatio;           //!< distance ratio for mapping two-touch zoom (pitch) gesture from pixels to zoom; 0.13 by default
+  Standard_Boolean    myTapDetectionStarted;
 
   Aspect_TouchMap     myTouchPoints;              //!< map of active touches
   Graphic3d_Vec2d     myStartPanCoord;            //!< touch coordinates at the moment of starting panning  gesture

@@ -78,6 +78,7 @@ AIS_ViewController::AIS_ViewController()
   myTouchPanThresholdPx      (4.0f),
   myTouchZoomThresholdPx     (6.0f),
   myTouchZoomRatio           (0.13f),
+  myTapDetectionStarted      (false),
   //
   myNbTouchesLast (0),
   myUpdateStartPointPan  (true),
@@ -277,6 +278,7 @@ void AIS_ViewController::flushGestures (const Handle(AIS_InteractiveContext)& ,
     myNbTouchesLast = aTouchNb;
     myGL.IsNewGesture = true;
   }
+
   if (aTouchNb == 1) // touch
   {
     Aspect_Touch& aTouch = myTouchPoints.ChangeFromIndex (1);
@@ -956,6 +958,14 @@ void AIS_ViewController::AddTouchPoint (Standard_Size theId,
     RemoveTouchPoint ((Standard_Size )-1);
   }
 
+  // If this is going to be the first touch, start the Tap detection
+  if (myTouchPoints.Extent() == 0) {
+    myTapDetectionStarted = true;
+  }
+  else {
+    myTapDetectionStarted = false;
+  }
+
   myTouchPoints.Add (theId, Aspect_Touch (thePnt, false));
   if (myTouchPoints.Extent() == 1)
   {
@@ -990,6 +1000,14 @@ bool AIS_ViewController::RemoveTouchPoint (Standard_Size theId,
   }
   else
   {
+    // If there is only one remaining touch point, and tap detection has started
+    if (myTouchPoints.Extent() == 1 && myTapDetectionStarted) {
+      // Ok, this is a Tap => Let's do a selection in Viewer
+      const Aspect_Touch& theLastTouch = myTouchPoints.FindFromIndex (1);
+      SelectInViewer(Graphic3d_Vec2i(theLastTouch.To.x(), theLastTouch.To.y()));
+      myTapDetectionStarted = false;
+    }
+
     const Standard_Integer anOldExtent = myTouchPoints.Extent();
     myTouchPoints.RemoveKey (theId);
     if (myTouchPoints.Extent() == anOldExtent)
@@ -1035,6 +1053,16 @@ void AIS_ViewController::UpdateTouchPoint (Standard_Size theId,
   if (Aspect_Touch* aTouch = myTouchPoints.ChangeSeek (theId))
   {
     aTouch->To = thePnt;
+
+    // If tap detection have started (only the case if there is only 1 touch point)
+    if (myTapDetectionStarted) {
+      // Detect if the move is enought to be considered as a rotation
+      const double aTol = myTouchToleranceScale * myTouchRotationThresholdPx;
+      if (Abs (aTouch->Delta().x()) + Abs(aTouch->Delta().y()) > aTol) {
+        // In that case, cancel the Tap detection
+        myTapDetectionStarted = false;
+      }
+    }
   }
   else
   {
