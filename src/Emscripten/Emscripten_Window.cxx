@@ -12,9 +12,13 @@
 
 #if defined(__EMSCRIPTEN__)
 
+// cstd
+#include <cstring>  // std::strcpy
+#include <cmath>    // std::round
+
+// emscripten
 #include <emscripten.h>
 #include <emscripten/html5.h>
-#include <cstring>
 
 IMPLEMENT_STANDARD_RTTIEXT(Emscripten_Window, Aspect_Window)
 
@@ -33,6 +37,38 @@ Emscripten_Window::Emscripten_Window ( Standard_CString theTargetCanvas,
     myTargetCanvas = new Standard_Character[ std::strlen(theTargetCanvas) + 1 ];
     std::strcpy(myTargetCanvas, theTargetCanvas);
   }
+
+  // Setup the resize callback => resize the canvas internal size to the canvas CSS size adjusted by the devicePixelRatio
+  auto resize_cb = [](int eventType, const EmscriptenUiEvent* /*uiEvent*/, void* userData) -> int {
+    if (eventType == EMSCRIPTEN_EVENT_RESIZE) {
+      const char* canvasId = static_cast<decltype(canvasId)>(userData);
+      // Get devicePixelRatio of the window
+      double devicePixelRatio = emscripten_get_device_pixel_ratio();
+      // Get the CSS dimensions of the canvas
+      double cssWidth = 0., cssHeight = 0.;
+      bool res = (emscripten_get_element_css_size(canvasId, &cssWidth, &cssHeight) == EMSCRIPTEN_RESULT_SUCCESS);
+      // Get the actual internal dimensions of the cavans
+      int internalWidth = 0, internalHeight = 0;
+      res = (emscripten_get_canvas_element_size(canvasId, &internalWidth, &internalHeight) == EMSCRIPTEN_RESULT_SUCCESS);
+      // Compute the final requested size = round(cssSize * devicePixelRatio)
+      int requestedWidth = std::round(cssWidth * devicePixelRatio);
+      int requestedHeight = std::round(cssHeight * devicePixelRatio);
+
+      // If there is a difference between actual and requested, resize the internal canvas dimensions
+      if (internalWidth != requestedWidth || internalHeight != requestedHeight) {
+        res = (emscripten_set_canvas_element_size(canvasId, requestedWidth, requestedHeight) == EMSCRIPTEN_RESULT_SUCCESS);
+      }
+      return 1;
+    } else {
+      return 0;
+    }
+  };
+
+  // Do a first initial resize, for the purpose of setting things up correctly
+  resize_cb(EMSCRIPTEN_EVENT_RESIZE, nullptr, myTargetCanvas);
+
+  // Register the resize callback to the window "resize" event
+  bool res = (emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, myTargetCanvas, false, resize_cb) == EMSCRIPTEN_RESULT_SUCCESS);
 }
 
 // =======================================================================
@@ -41,6 +77,8 @@ Emscripten_Window::Emscripten_Window ( Standard_CString theTargetCanvas,
 // =======================================================================
 Emscripten_Window::~Emscripten_Window()
 {
+  bool res = (emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, myTargetCanvas, false, NULL) == EMSCRIPTEN_RESULT_SUCCESS);
+
   if (myTargetCanvas != nullptr) {
     delete [] myTargetCanvas;
     myTargetCanvas = nullptr;
@@ -159,8 +197,7 @@ void Emscripten_Window::Size (Standard_Integer& theWidth,
 // purpose  :
 // =======================================================================
 void Emscripten_Window::SetTitle (const TCollection_AsciiString& theTitle) {
-  // Use inline javascript there, because there is no emscripten API do directly set
-  // the title of a canvas
+  // Use inline javascript there, because there is no emscripten API do directly set the title of a canvas
   EM_ASM_({
     var canvas = document.querySelector(UTF8ToString($0));
     if (canvas) {
