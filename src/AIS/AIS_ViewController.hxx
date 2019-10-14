@@ -383,6 +383,22 @@ public: //! @name multi-touch input
   //! Set scale factor for adjusting tolerances for starting multi-touch gestures.
   void SetTouchToleranceScale (float theTolerance) { myTouchToleranceScale = theTolerance; }
 
+  float TouchZoomRatio() const { return myTouchZoomRatio; }
+
+  void SetTouchZoomRatio (float theTolerance) { myTouchZoomRatio = theTolerance; }
+
+  float TouchRotationThresholdPx() const { return myTouchRotationThresholdPx; }
+
+  void SetTouchRotationThresholdPx (float theTolerance) { myTouchRotationThresholdPx = theTolerance; }
+
+  float TouchZoomThresholdPx() const { return myTouchZoomThresholdPx; }
+
+  void SetTouchZoomThresholdPx (float theTolerance) { myTouchZoomThresholdPx = theTolerance; }
+
+  float TouchPanThresholdPx() const { return myTouchPanThresholdPx; }
+
+  void SetTouchPanThresholdPx (float theTolerance) { myTouchPanThresholdPx = theTolerance; }
+
   //! Return TRUE if touches map is not empty.
   bool HasTouchPoints() const { return !myTouchPoints.IsEmpty(); }
 
