@@ -46,17 +46,20 @@ Emscripten_Window::Emscripten_Window ( Standard_CString theTargetCanvas,
       double devicePixelRatio = emscripten_get_device_pixel_ratio();
       // Get the CSS dimensions of the canvas
       double cssWidth = 0., cssHeight = 0.;
-      bool res = (emscripten_get_element_css_size(canvasId, &cssWidth, &cssHeight) == EMSCRIPTEN_RESULT_SUCCESS);
+      auto res1 = (emscripten_get_element_css_size(canvasId, &cssWidth, &cssHeight) == EMSCRIPTEN_RESULT_SUCCESS);
+      (void)res1;
       // Get the actual internal dimensions of the cavans
       int internalWidth = 0, internalHeight = 0;
-      res = (emscripten_get_canvas_element_size(canvasId, &internalWidth, &internalHeight) == EMSCRIPTEN_RESULT_SUCCESS);
+      auto res2 = (emscripten_get_canvas_element_size(canvasId, &internalWidth, &internalHeight) == EMSCRIPTEN_RESULT_SUCCESS);
+      (void)res2;
       // Compute the final requested size = round(cssSize * devicePixelRatio)
       int requestedWidth = std::round(cssWidth * devicePixelRatio);
       int requestedHeight = std::round(cssHeight * devicePixelRatio);
 
       // If there is a difference between actual and requested, resize the internal canvas dimensions
       if (internalWidth != requestedWidth || internalHeight != requestedHeight) {
-        res = (emscripten_set_canvas_element_size(canvasId, requestedWidth, requestedHeight) == EMSCRIPTEN_RESULT_SUCCESS);
+        auto res3 = (emscripten_set_canvas_element_size(canvasId, requestedWidth, requestedHeight) == EMSCRIPTEN_RESULT_SUCCESS);
+        (void)res3;
       }
       return 1;
     } else {
@@ -68,7 +71,8 @@ Emscripten_Window::Emscripten_Window ( Standard_CString theTargetCanvas,
   resize_cb(EMSCRIPTEN_EVENT_RESIZE, nullptr, myTargetCanvas);
 
   // Register the resize callback to the window "resize" event
-  bool res = (emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, myTargetCanvas, false, resize_cb) == EMSCRIPTEN_RESULT_SUCCESS);
+  auto res = (emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, myTargetCanvas, false, resize_cb) == EMSCRIPTEN_RESULT_SUCCESS);
+  (void)res;
 }
 
 // =======================================================================
@@ -77,7 +81,9 @@ Emscripten_Window::Emscripten_Window ( Standard_CString theTargetCanvas,
 // =======================================================================
 Emscripten_Window::~Emscripten_Window()
 {
-  bool res = (emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, myTargetCanvas, false, NULL) == EMSCRIPTEN_RESULT_SUCCESS);
+  // Unregister the resize callback assigned to the window "resize" event (NB: pass NULL as the callback function)
+  auto res = (emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, myTargetCanvas, false, NULL) == EMSCRIPTEN_RESULT_SUCCESS);
+  (void)res;
 
   if (myTargetCanvas != nullptr) {
     delete [] myTargetCanvas;
@@ -168,7 +174,7 @@ void Emscripten_Window::Position (Standard_Integer& X1, Standard_Integer& Y1,
 {
   int width = 0, height = 0;
   // Use the canvas internal size, because the values returned by this function might be be used for glViewport
-  const bool result = (emscripten_get_canvas_element_size(myTargetCanvas, &width, &height) == EMSCRIPTEN_RESULT_SUCCESS);
+  auto result = (emscripten_get_canvas_element_size(myTargetCanvas, &width, &height) == EMSCRIPTEN_RESULT_SUCCESS);
   (void)result;
   X1 = 0;
   Y1 = 0;
@@ -186,7 +192,7 @@ void Emscripten_Window::Size (Standard_Integer& theWidth,
   int width = 0, height = 0;
   // Use the canvas internal size, because the values returned by this function are expected to be used for glViewport
   // NB: might be buggy if the canvas internal size does not match with the WebGL drawing buffer size
-  const bool result = (emscripten_get_canvas_element_size(myTargetCanvas, &width, &height) == EMSCRIPTEN_RESULT_SUCCESS);
+  auto result = (emscripten_get_canvas_element_size(myTargetCanvas, &width, &height) == EMSCRIPTEN_RESULT_SUCCESS);
   (void)result;
   theWidth = width;
   theHeight = height;
