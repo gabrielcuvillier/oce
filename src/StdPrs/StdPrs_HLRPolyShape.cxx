@@ -16,7 +16,9 @@
 
 #include <StdPrs_HLRPolyShape.hxx>
 
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
 #include <BRepMesh_IncrementalMesh.hxx>
+#endif
 #include <Graphic3d_ArrayOfSegments.hxx>
 #include <Graphic3d_Group.hxx>
 #include <HLRAlgo_EdgeIterator.hxx>

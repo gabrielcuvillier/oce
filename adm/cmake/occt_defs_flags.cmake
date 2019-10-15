@@ -43,9 +43,8 @@ else()
     message (STATUS "Info: OCCT_DISABLE_UNICODE_CONVERSIONS is defined")
     add_definitions(-DOCCT_DISABLE_UNICODE_CONVERSIONS)
 
-    #Keep Meshing in Vizu for now
-    #message (STATUS "Info: OCCT_DISABLE_MESHING_IN_VISUALIZATION is defined")
-    #add_definitions(-DOCCT_DISABLE_MESHING_IN_VISUALIZATION)
+    message (STATUS "Info: OCCT_DISABLE_MESHING_IN_VISUALIZATION is defined")
+    add_definitions(-DOCCT_DISABLE_MESHING_IN_VISUALIZATION)
 
     message (STATUS "Info: OCCT_DISABLE_EXACTHLR_IN_VISUALIZATION is defined")
     add_definitions(-DOCCT_DISABLE_EXACTHLR_IN_VISUALIZATION)

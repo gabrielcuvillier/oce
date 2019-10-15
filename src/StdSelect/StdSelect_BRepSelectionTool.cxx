@@ -21,7 +21,9 @@
 #include <BRepAdaptor_Curve.hxx>
 #include <BRepAdaptor_Surface.hxx>
 #include <BRepBndLib.hxx>
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
 #include <BRepMesh_IncrementalMesh.hxx>
+#endif
 #include <BRepTools.hxx>
 #include <BRepTools_WireExplorer.hxx>
 #include <GCPnts_TangentialDeflection.hxx>

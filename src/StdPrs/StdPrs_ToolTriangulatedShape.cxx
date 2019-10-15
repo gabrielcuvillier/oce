@@ -16,8 +16,10 @@
 
 #include <StdPrs_ToolTriangulatedShape.hxx>
 
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
 #include <BRepMesh_DiscretFactory.hxx>
 #include <BRepMesh_DiscretRoot.hxx>
+#endif
 #include <BRepTools.hxx>
 #include <BRep_Tool.hxx>
 #include <GeomAbs_SurfaceType.hxx>

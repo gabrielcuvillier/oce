@@ -13,6 +13,8 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
+
 #include <BRepMesh_DataStructureOfDelaun.hxx>
 #include <BRepMesh_Delaun.hxx>
 #include <NCollection_IncAllocator.hxx>
@@ -244,3 +246,5 @@ void SelectMgr_TriangularFrustumSet::GetPlanes (NCollection_Vector<SelectMgr_Vec
 }
 
 #undef MEMORY_BLOCK_SIZE
+
+#endif

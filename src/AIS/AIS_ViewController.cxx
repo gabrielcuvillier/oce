@@ -2211,6 +2211,7 @@ void AIS_ViewController::handleSelectionPoly (const Handle(AIS_InteractiveContex
           }
           theCtx->MainSelector()->AllowOverlapDetection (false);
         }
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
         else if (aPoints.Length() >= 3)
         {
           TColgp_Array1OfPnt2d aPolyline (1, aPoints.Length());
@@ -2232,6 +2233,7 @@ void AIS_ViewController::handleSelectionPoly (const Handle(AIS_InteractiveContex
             theCtx->Select (aPolyline, theView, false);
           }
         }
+#endif
       }
 
       // selection affects all Views

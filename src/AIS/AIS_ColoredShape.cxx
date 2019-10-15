@@ -18,7 +18,9 @@
 #include <AIS_InteractiveContext.hxx>
 #include <BRep_Builder.hxx>
 #include <BRepTools.hxx>
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
 #include <BRepMesh_IncrementalMesh.hxx>
+#endif
 #include <gp_Pnt2d.hxx>
 #include <Graphic3d_AspectFillArea3d.hxx>
 #include <Graphic3d_AspectLine3d.hxx>
