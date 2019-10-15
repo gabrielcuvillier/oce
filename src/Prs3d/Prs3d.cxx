@@ -17,7 +17,11 @@
 #include <Prs3d.hxx>
 
 #include <Bnd_Box.hxx>
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
 #include <BRepBndLib.hxx>
+#else
+#include <BRepBndLibApprox.hxx>
+#endif
 #include <gp_Pnt.hxx>
 #include <Graphic3d_Group.hxx>
 #include <Prs3d_Drawer.hxx>
@@ -68,7 +72,11 @@ Standard_Real Prs3d::GetDeflection (const TopoDS_Shape&         theShape,
   }
 
   Bnd_Box aBndBox;
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
   BRepBndLib::Add (theShape, aBndBox, Standard_False);
+#else
+  BRepBndLibApprox::Add (theShape, aBndBox);
+#endif
   if (aBndBox.IsVoid())
   {
     return theDrawer->MaximalChordialDeviation();

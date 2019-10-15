@@ -20,7 +20,6 @@
 #include <BRep_Tool.hxx>
 #include <BRepAdaptor_Curve.hxx>
 #include <BRepAdaptor_Surface.hxx>
-#include <BRepBndLib.hxx>
 #if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
 #include <BRepMesh_IncrementalMesh.hxx>
 #endif

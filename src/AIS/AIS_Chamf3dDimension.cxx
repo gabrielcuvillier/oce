@@ -19,7 +19,6 @@
 #include <AIS_Chamf3dDimension.hxx>
 #include <Bnd_Box.hxx>
 #include <BRepAdaptor_Surface.hxx>
-#include <BRepBndLib.hxx>
 #include <BRepTools_WireExplorer.hxx>
 #include <DsgPrs_Chamf2dPresentation.hxx>
 #include <ElCLib.hxx>

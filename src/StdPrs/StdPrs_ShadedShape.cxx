@@ -18,7 +18,6 @@
 
 #include <Bnd_Box.hxx>
 #include <BRepTools.hxx>
-#include <BRepBndLib.hxx>
 #include <BRep_Builder.hxx>
 #include <BRep_Tool.hxx>
 #include <Graphic3d_ArrayOfSegments.hxx>

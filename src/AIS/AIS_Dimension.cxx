@@ -20,7 +20,11 @@
 #include <Adaptor3d_HCurve.hxx>
 #include <BRepAdaptor_Curve.hxx>
 #include <BRepAdaptor_Surface.hxx>
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
 #include <BRepBndLib.hxx>
+#else
+#include <BRepBndLibApprox.hxx>
+#endif
 #include <Bnd_Box.hxx>
 #include <ElCLib.hxx>
 #include <Font_BRepFont.hxx>
@@ -489,8 +493,11 @@ void AIS_Dimension::drawText (const Handle(Prs3d_Presentation)& thePresentation,
 
     // center shape in its bounding box (suppress border spacing added by FT_Font)
     Bnd_Box aShapeBnd;
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
     BRepBndLib::AddClose (aTextShape, aShapeBnd);
-
+#else
+    BRepBndLibApprox::Add(aTextShape, aShapeBnd);
+#endif
     Standard_Real aXmin, aYmin, aZmin, aXmax, aYmax, aZmax;
     aShapeBnd.Get (aXmin, aYmin, aZmin, aXmax, aYmax, aZmax);
 
