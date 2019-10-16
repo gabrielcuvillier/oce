@@ -35,64 +35,44 @@ Emscripten_Window::Emscripten_Window ( Standard_CString theTargetCanvas,
   myTargetCanvas(nullptr), // don't initialize it yet, we need to make a copy
   myRedrawHandler(theRedrawHandler),
   myRedrawRequestId(0),
-  myResizeHandler(theResizeHandler)
+  myResizeHandler(theResizeHandler),
+  myLocalDevicePixelRatio(1.),
+  myLocalWidth(0),
+  myLocalHeight(0),
+  myLocalCSSWidth(0.),
+  myLocalCSSHeight(0.),
+  myIsInit(false)
 {
-  // Do a copy of the input target canvas string, as it may come from Emscripten runtime which has temporary lifetime for the pointer
+  // Do a copy of the input target canvas string, as it may come from Emscripten runtime which has temporary lifetime
+  // for the pointer
   if (theTargetCanvas != nullptr) {
     myTargetCanvas = new Standard_Character[ std::strlen(theTargetCanvas) + 1 ];
     std::strcpy(myTargetCanvas, theTargetCanvas);
   }
 
-  // Setup the resize callback: resize the canvas internal size to the canvas CSS size adjusted by the devicePixelRatio
+  // Setup the Window Resize callback
   auto resize_cb = [](int eventType, const EmscriptenUiEvent* /*uiEvent*/, void* userData) -> int {
-    if (eventType == EMSCRIPTEN_EVENT_RESIZE) {
-      Emscripten_Window* pWindow = static_cast<decltype(pWindow)>( userData );
-      if ( pWindow ) {
-        const char* canvasId = pWindow->TargetCanvas();
-        // Get devicePixelRatio of the window
-        double devicePixelRatio = emscripten_get_device_pixel_ratio();
-        // Get the CSS dimensions of the canvas
-        double cssWidth = 0., cssHeight = 0.;
-        if(emscripten_get_element_css_size(canvasId, &cssWidth, &cssHeight) == EMSCRIPTEN_RESULT_SUCCESS) {
-          // Get the actual internal dimensions of the cavans
-          int internalWidth = 0, internalHeight = 0;
-          if (emscripten_get_canvas_element_size(canvasId, &internalWidth, &internalHeight) == EMSCRIPTEN_RESULT_SUCCESS) {
-            // Compute the final requested size = round(cssSize * devicePixelRatio)
-            int requestedWidth = std::round(cssWidth * devicePixelRatio);
-            int requestedHeight = std::round(cssHeight * devicePixelRatio);
-
-            // If there is a difference between actual and requested, resize the internal canvas dimensions
-            if (internalWidth != requestedWidth || internalHeight != requestedHeight) {
-              auto result = (emscripten_set_canvas_element_size(canvasId, requestedWidth, requestedHeight) == EMSCRIPTEN_RESULT_SUCCESS);
-              (void)result;
-            }
-          }
-        }
-        // In all cases, call the opaque Resize handler
-        pWindow->CallResizeHandler();
-
-        return 1;
-      } else {
-        return 0;
-      }
+    Emscripten_Window* pWindow = static_cast<decltype(pWindow)>( userData );
+    if (eventType == EMSCRIPTEN_EVENT_RESIZE && pWindow) {
+      pWindow->DoResize();
+      return 1;
     } else {
       return 0;
     }
   };
+  // Register the window resize callback to the Browser window "resize" event
+  auto result = (emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, this, false, resize_cb) == EMSCRIPTEN_RESULT_SUCCESS);
+  (void)result;
 
-  // Register the resize callback to the Browser window "resize" event
-  {
-    auto result = (emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, this, false, resize_cb) == EMSCRIPTEN_RESULT_SUCCESS);
-    (void)result;
-  }
+  // Do a first initial manual resize, for the purpose of setting things up correctly.
+  // Note that we are calling DoResize method in a ctor => but that's OK, as all class fields are properly initialized at
+  // this point, no called methods are virtual (except DoResize itself, but we care only about the locally defined one),
+  // and we use the "myIsInit" field (that is not yet "true") as a guard to prevent DoResize method call the opaque
+  // resize handler provided
+  DoResize();
 
-  // Do a first initial manual resize, for the purpose of setting things up correctly
-  // Note that the callback will call methods on this while we are in a ctor => that's OK, as all fields are properly
-  // initialized at this point, and no called methods is virtual (TargetCanvas, CallResizeHandler)
-  {
-    auto result = (resize_cb(EMSCRIPTEN_EVENT_RESIZE, nullptr, this) == 1);
-    (void)result;
-  };
+  // Ok, we're done now
+  myIsInit = true;
 }
 
 // =======================================================================
@@ -142,7 +122,7 @@ Standard_Boolean Emscripten_Window::IsMapped() const
 // =======================================================================
 void Emscripten_Window::Map() const
 {
-  // Not implemented
+  // Not implementable
 }
 
 // =======================================================================
@@ -151,7 +131,7 @@ void Emscripten_Window::Map() const
 // =======================================================================
 void Emscripten_Window::Unmap() const
 {
-  // Not implemented
+  // Not implementable
 }
 
 // =======================================================================
@@ -160,7 +140,39 @@ void Emscripten_Window::Unmap() const
 // =======================================================================
 Aspect_TypeOfResize Emscripten_Window::DoResize() const
 {
-  // Not implemented
+  // Resize the canvas internal size to the canvas CSS size adjusted by the devicePixelRatio
+
+  // Get devicePixelRatio of the window, and store the value
+  myLocalDevicePixelRatio = emscripten_get_device_pixel_ratio();
+
+  // Get the CSS dimensions of the canvas
+  if(emscripten_get_element_css_size(myTargetCanvas, &myLocalCSSWidth, &myLocalCSSHeight) == EMSCRIPTEN_RESULT_SUCCESS) {
+    // Compute the requested dimensions = round(cssSize * devicePixelRatio)
+    const int requestedWidth = std::round(myLocalCSSWidth * myLocalDevicePixelRatio);
+    const int requestedHeight = std::round(myLocalCSSHeight * myLocalDevicePixelRatio);
+
+    // Get the actual internal dimensions of the canvas
+    int internalWidth = 0, internalHeight = 0;
+    if (emscripten_get_canvas_element_size(myTargetCanvas, &internalWidth, &internalHeight) == EMSCRIPTEN_RESULT_SUCCESS) {
+      // If there is a difference between current dimensions and requested dimensions, resize the canvas internal size
+      if (internalWidth != requestedWidth || internalHeight != requestedHeight) {
+        auto result = (emscripten_set_canvas_element_size(myTargetCanvas, requestedWidth, requestedHeight) == EMSCRIPTEN_RESULT_SUCCESS);
+        (void)result;
+      }
+
+      // Store the requested dimensions
+      myLocalWidth = requestedWidth;
+      myLocalHeight = requestedHeight;
+    }
+  }
+
+  // Call the opaque Resize handler
+  // NB: guard against "myIsInit" field not being "true". This is the case when the Window is being constructed, the
+  // opaque Resize Handler have not to be called as the Window is not yet attached to anything on the Application side
+  if (myIsInit) {
+    myResizeHandler();
+  }
+
   return Aspect_TOR_UNKNOWN;
 }
 
@@ -180,13 +192,9 @@ Standard_Boolean Emscripten_Window::DoMapping() const
 // =======================================================================
 Standard_Real Emscripten_Window::Ratio() const
 {
-  double width = 0., height = 0.;
-
   // Use the CSS size for ratio (and not canvas internal size), in case the canvas might be stretched by CSS
-  if ((emscripten_get_element_css_size(myTargetCanvas, &width, &height) == EMSCRIPTEN_RESULT_SUCCESS)
-      && (height != 0.)) // protect against height eventually being 0
-  {
-    return (width / height);
+  if (myLocalCSSHeight != 0.) { // protect against height eventually being 0
+    return (myLocalCSSWidth / myLocalCSSHeight);
   } else {
     return 1;
   }
@@ -199,14 +207,10 @@ Standard_Real Emscripten_Window::Ratio() const
 void Emscripten_Window::Position (Standard_Integer& X1, Standard_Integer& Y1,
                           Standard_Integer& X2, Standard_Integer& Y2) const
 {
-  int width = 0, height = 0;
-  // Use the canvas internal size, because the values returned by this function might be be used for glViewport
-  auto result = (emscripten_get_canvas_element_size(myTargetCanvas, &width, &height) == EMSCRIPTEN_RESULT_SUCCESS);
-  (void)result;
   X1 = 0;
   Y1 = 0;
-  X2 = width;
-  Y2 = height;
+  X2 = myLocalWidth;
+  Y2 = myLocalHeight;
 }
 
 // =======================================================================
@@ -216,13 +220,8 @@ void Emscripten_Window::Position (Standard_Integer& X1, Standard_Integer& Y1,
 void Emscripten_Window::Size (Standard_Integer& theWidth,
                               Standard_Integer& theHeight) const
 {
-  int width = 0, height = 0;
-  // Use the canvas internal size, because the values returned by this function are expected to be used for glViewport
-  // NB: might be buggy if the canvas internal size does not match with the WebGL drawing buffer size
-  auto result = (emscripten_get_canvas_element_size(myTargetCanvas, &width, &height) == EMSCRIPTEN_RESULT_SUCCESS);
-  (void)result;
-  theWidth = width;
-  theHeight = height;
+  theWidth = myLocalWidth;
+  theHeight = myLocalHeight;
 }
 
 // =======================================================================
@@ -256,10 +255,7 @@ void Emscripten_Window::InvalidateContent (const Handle(Aspect_DisplayConnection
     myRedrawRequestId = emscripten_request_animation_frame( []( double /*time*/, void* userData ) -> int {
       Emscripten_Window* pWindow = static_cast<decltype(pWindow)>( userData );
       if ( pWindow ) {
-        // Cleanup the redraw request identifier
-        pWindow->SetRedrawRequestId( 0 );
-        // And do the redraw
-        pWindow->CallRedrawHandler();
+        pWindow->DoRedraw();
         return 1;
       } else {
         return 0;
@@ -273,7 +269,28 @@ void Emscripten_Window::InvalidateContent (const Handle(Aspect_DisplayConnection
 // purpose  :
 // =======================================================================
 double Emscripten_Window::GetDevicePixelRatio() const {
-  return emscripten_get_device_pixel_ratio();
+  return myLocalDevicePixelRatio;
+}
+
+// =======================================================================
+// function : TargetCanvas
+// purpose  :
+// =======================================================================
+Standard_CString Emscripten_Window::TargetCanvas() const {
+  return myTargetCanvas;
+}
+
+// =======================================================================
+// function : DoRedraw
+// purpose  :
+// =======================================================================
+void Emscripten_Window::DoRedraw() {
+  // Cleanup the redraw request identifier. For some reason this have to be done before calling the redraw handler
+  // (otherwise there might miss some redraws on corner cases with usage of InvalidateContent)
+  myRedrawRequestId = 0;
+  
+  // Call the redraw handler
+  myRedrawHandler();
 }
 
 #endif

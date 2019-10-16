@@ -87,28 +87,9 @@ public:
 
   // Class-local methods
 
-  Standard_EXPORT Standard_CString TargetCanvas() const {
-    return myTargetCanvas;
-  }
+  Standard_EXPORT Standard_CString TargetCanvas() const;
 
-  Standard_EXPORT int RedrawRequestId() const {
-    return myRedrawRequestId;
-  }
-
-  Standard_EXPORT void SetRedrawRequestId( int theId ) {
-    if (myRedrawRequestId) {
-      // There is already a request id => what to do ?
-    }
-    myRedrawRequestId = theId;
-  }
-
-  Standard_EXPORT void CallRedrawHandler() const {
-    myRedrawHandler();
-  }
-
-  Standard_EXPORT void CallResizeHandler() const {
-    myResizeHandler();
-  }
+  Standard_EXPORT void DoRedraw();
 
 private:
 
@@ -123,6 +104,14 @@ private:
 
   // Window Resize handler
   std::function<void(void)> myResizeHandler;
+
+  mutable double myLocalDevicePixelRatio;
+  mutable int myLocalWidth;
+  mutable int myLocalHeight;
+  mutable double myLocalCSSWidth;
+  mutable double myLocalCSSHeight;
+
+  bool myIsInit;
 
 public:
 
