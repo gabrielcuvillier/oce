@@ -226,6 +226,16 @@ public: //! @name highlighting management
     return myStyles[Prs3d_TypeOfHighlight_Dynamic];
   }
 
+  //! Returns current local dynamic highlight style settings (from decomposition)
+  //! By default:
+  //!   - the color of dynamic highlight is Quantity_NOC_CYAN1;
+  //!   - the presentation for dynamic highlight is completely opaque;
+  //!   - the type of highlight is Aspect_TOHM_COLOR.
+  const Handle(Prs3d_Drawer)& LocalHighlightStyle() const
+  {
+    return myStyles[Prs3d_TypeOfHighlight_LocalDynamic];
+  }
+
   //! Setup the style of dynamic highlighting.
   //! It is preferred modifying existing style returned by method HighlightStyle()
   //! instead of creating a new drawer.
@@ -245,6 +255,16 @@ public: //! @name highlighting management
   const Handle(Prs3d_Drawer)& SelectionStyle() const
   {
     return myStyles[Prs3d_TypeOfHighlight_Selected];
+  }
+
+  //! Returns current local selection style settings (from decomposition)
+  //! By default:
+  //!   - the color of selection is Quantity_NOC_GRAY80;
+  //!   - the presentation for selection is completely opaque;
+  //!   - the type of highlight is Aspect_TOHM_COLOR.
+  const Handle(Prs3d_Drawer)& LocalSelectionStyle() const
+  {
+    return myStyles[Prs3d_TypeOfHighlight_LocalSelected];
   }
 
   //! Setup the style of selection highlighting.
