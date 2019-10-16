@@ -17,8 +17,10 @@
 #include <cmath>    // std::round
 
 // emscripten
-#include <emscripten.h>
-#include <emscripten/html5.h>
+#include <emscripten.h>       // EM_ASM, emscripten_get_device_pixel_ratio
+#include <emscripten/html5.h> // emscripten_request_animation_frame, emscripten_cancel_animation_frame
+                              // emscripten_get_element_css_size, emscripten_get_canvas_element_size,
+                              // emscripten_set_canvas_element_size, emscripten_set_resize_callback
 
 IMPLEMENT_STANDARD_RTTIEXT(Emscripten_Window, Aspect_Window)
 
@@ -27,10 +29,11 @@ IMPLEMENT_STANDARD_RTTIEXT(Emscripten_Window, Aspect_Window)
 // purpose  :
 // =======================================================================
 Emscripten_Window::Emscripten_Window ( Standard_CString theTargetCanvas,
-                                      std::function<void(void)> theWindowInvalidateHandler )
+                                      std::function<void(void)> theRedrawHandler )
 : Aspect_Window(),
   myTargetCanvas(nullptr), // don't initialize it yet, we need to make a copy
-  myWindowInvalidateHandler(theWindowInvalidateHandler)
+  myRedrawHandler(theRedrawHandler),
+  myRedrawRequestId(0)
 {
   // Do a copy of the input target canvas string, as it may come from Emscripten runtime which has temporary lifetime for the pointer
   if (theTargetCanvas != nullptr) {
@@ -38,7 +41,7 @@ Emscripten_Window::Emscripten_Window ( Standard_CString theTargetCanvas,
     std::strcpy(myTargetCanvas, theTargetCanvas);
   }
 
-  // Setup the resize callback => resize the canvas internal size to the canvas CSS size adjusted by the devicePixelRatio
+  // Setup the resize callback: resize the canvas internal size to the canvas CSS size adjusted by the devicePixelRatio
   auto resize_cb = [](int eventType, const EmscriptenUiEvent* /*uiEvent*/, void* userData) -> int {
     if (eventType == EMSCRIPTEN_EVENT_RESIZE) {
       const char* canvasId = static_cast<decltype(canvasId)>(userData);
@@ -46,20 +49,20 @@ Emscripten_Window::Emscripten_Window ( Standard_CString theTargetCanvas,
       double devicePixelRatio = emscripten_get_device_pixel_ratio();
       // Get the CSS dimensions of the canvas
       double cssWidth = 0., cssHeight = 0.;
-      auto res1 = (emscripten_get_element_css_size(canvasId, &cssWidth, &cssHeight) == EMSCRIPTEN_RESULT_SUCCESS);
-      (void)res1;
-      // Get the actual internal dimensions of the cavans
-      int internalWidth = 0, internalHeight = 0;
-      auto res2 = (emscripten_get_canvas_element_size(canvasId, &internalWidth, &internalHeight) == EMSCRIPTEN_RESULT_SUCCESS);
-      (void)res2;
-      // Compute the final requested size = round(cssSize * devicePixelRatio)
-      int requestedWidth = std::round(cssWidth * devicePixelRatio);
-      int requestedHeight = std::round(cssHeight * devicePixelRatio);
+      if(emscripten_get_element_css_size(canvasId, &cssWidth, &cssHeight) == EMSCRIPTEN_RESULT_SUCCESS) {
+        // Get the actual internal dimensions of the cavans
+        int internalWidth = 0, internalHeight = 0;
+        if (emscripten_get_canvas_element_size(canvasId, &internalWidth, &internalHeight) == EMSCRIPTEN_RESULT_SUCCESS) {
+          // Compute the final requested size = round(cssSize * devicePixelRatio)
+          int requestedWidth = std::round(cssWidth * devicePixelRatio);
+          int requestedHeight = std::round(cssHeight * devicePixelRatio);
 
-      // If there is a difference between actual and requested, resize the internal canvas dimensions
-      if (internalWidth != requestedWidth || internalHeight != requestedHeight) {
-        auto res3 = (emscripten_set_canvas_element_size(canvasId, requestedWidth, requestedHeight) == EMSCRIPTEN_RESULT_SUCCESS);
-        (void)res3;
+          // If there is a difference between actual and requested, resize the internal canvas dimensions
+          if (internalWidth != requestedWidth || internalHeight != requestedHeight) {
+            auto result = (emscripten_set_canvas_element_size(canvasId, requestedWidth, requestedHeight) == EMSCRIPTEN_RESULT_SUCCESS);
+            (void)result;
+          }
+        }
       }
       return 1;
     } else {
@@ -67,12 +70,17 @@ Emscripten_Window::Emscripten_Window ( Standard_CString theTargetCanvas,
     }
   };
 
-  // Do a first initial resize, for the purpose of setting things up correctly
-  resize_cb(EMSCRIPTEN_EVENT_RESIZE, nullptr, myTargetCanvas);
+  // Register the resize callback to the Browser window "resize" event
+  {
+    auto result = (emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, myTargetCanvas, false, resize_cb) == EMSCRIPTEN_RESULT_SUCCESS);
+    (void)result;
+  }
 
-  // Register the resize callback to the window "resize" event
-  auto res = (emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, myTargetCanvas, false, resize_cb) == EMSCRIPTEN_RESULT_SUCCESS);
-  (void)res;
+  // Do a first initial manual resize, for the purpose of setting things up correctly
+  {
+    auto result = (resize_cb(EMSCRIPTEN_EVENT_RESIZE, nullptr, myTargetCanvas) == 1);
+    (void)result;
+  }
 }
 
 // =======================================================================
@@ -82,9 +90,18 @@ Emscripten_Window::Emscripten_Window ( Standard_CString theTargetCanvas,
 Emscripten_Window::~Emscripten_Window()
 {
   // Unregister the resize callback assigned to the window "resize" event (NB: pass NULL as the callback function)
-  auto res = (emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, myTargetCanvas, false, NULL) == EMSCRIPTEN_RESULT_SUCCESS);
-  (void)res;
+  {
+    auto result = (emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, myTargetCanvas, false, NULL) == EMSCRIPTEN_RESULT_SUCCESS);
+    (void)result;
+  }
 
+  // Cancel the request animation frame if there is one, to prevent race condition at callback time (Window is deleted)
+  if ( myRedrawRequestId ) {
+    emscripten_cancel_animation_frame( myRedrawRequestId );
+    myRedrawRequestId = 0;
+  }
+
+  // Delete the canvas id
   if (myTargetCanvas != nullptr) {
     delete [] myTargetCanvas;
     myTargetCanvas = nullptr;
@@ -218,10 +235,27 @@ void Emscripten_Window::SetTitle (const TCollection_AsciiString& theTitle) {
 // =======================================================================
 void Emscripten_Window::InvalidateContent (const Handle(Aspect_DisplayConnection)& theDisp) {
   (void)theDisp;
-  // There is no such thing as "InvalidateContent" on a Canvas. How the canvas is supposed to be
-  // redisplayed is very application specific (for example, requestAnimationFrame with a specific function)
-  // Let's stay neutral and call the opaque function handler provided to the Emscripten_Window class.
-  myWindowInvalidateHandler();
+  // There is no such thing as "InvalidateContent" on a Canvas.
+  // As a way to redraw the window, call the Browser requestAnimationFrame to schedule a redraw handler call at the
+  // most appropriate time
+
+  // Skip if there already have been a redraw request, to prevent unecessary redraws
+  if ( !myRedrawRequestId ) {
+    // Call emscripten_request_animation frame with the callback function that will do the Redraw, and store the redraw
+    // request identifier
+    myRedrawRequestId = emscripten_request_animation_frame( []( double /*time*/, void* userData ) -> int {
+      Emscripten_Window* pWindow = static_cast<decltype(pWindow)>( userData );
+      if ( pWindow ) {
+        // Cleanup the redraw request identifier
+        pWindow->SetRedrawRequestId( 0 );
+        // And do the redraw
+        pWindow->CallRedrawHandler();
+        return 1;
+      } else {
+        return 0;
+      }
+    }, this);
+  }
 }
 
 // =======================================================================

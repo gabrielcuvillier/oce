@@ -13,7 +13,7 @@
 
 #if defined(__EMSCRIPTEN__)
 
-#include <functional>
+#include <functional> // std::function
 
 #include <Aspect_Window.hxx>
 #include <Aspect_TypeOfResize.hxx>
@@ -27,9 +27,9 @@ class Emscripten_Window : public Aspect_Window
 
 public:
 
-  //! Creates an Emscripten window defined by its target canvas id. nullptr means the default canvas (not recommended).
-  Standard_EXPORT Emscripten_Window ( Standard_CString theTargetCanvas = nullptr,
-                                      std::function<void(void)> theWindowInvalidateHandler = []() -> void {});
+  //! Creates an Emscripten window defined by its target canvas id, and an opaque redraw handler function
+  Standard_EXPORT Emscripten_Window ( Standard_CString theTargetCanvas,
+                                      std::function<void(void)> theRedrawHandler = []() -> void {});
 
   Standard_EXPORT virtual ~Emscripten_Window();
 
@@ -81,20 +81,40 @@ public:
   //! Invalidate entire window content, through calling the window invalidate handler
   Standard_EXPORT virtual void InvalidateContent (const Handle(Aspect_DisplayConnection)& theDisp) Standard_OVERRIDE;
 
-  //! @return the Canvas Target Id
-  Standard_EXPORT Standard_NODISCARD Standard_CString TargetCanvas() const {
+  //! Get the device pixel ratio, used to map window pixels to device pixels
+  Standard_EXPORT virtual double GetDevicePixelRatio() const Standard_OVERRIDE;
+
+  // Class-local methods
+
+  Standard_EXPORT Standard_CString TargetCanvas() const {
     return myTargetCanvas;
   }
 
-  virtual double GetDevicePixelRatio() const Standard_OVERRIDE;
+  Standard_EXPORT int GetRedrawRequestId() const {
+    return myRedrawRequestId;
+  }
+
+  Standard_EXPORT void SetRedrawRequestId( int theId ) {
+    if (myRedrawRequestId) {
+      // There is already a request id => what to do ?
+    }
+    myRedrawRequestId = theId;
+  }
+
+  void CallRedrawHandler() const {
+    myRedrawHandler();
+  }
 
 private:
 
   // Canvas Target Id
   Standard_Character* myTargetCanvas;
 
-  // Window redraw handler
-  std::function<void(void)> myWindowInvalidateHandler;
+  // Window Redraw handler
+  std::function<void(void)> myRedrawHandler;
+
+  // Request Redraw Identifier
+  int myRedrawRequestId;
 
 public:
 

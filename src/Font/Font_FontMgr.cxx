@@ -606,7 +606,7 @@ void Font_FontMgr::InitFontDataBase()
         }
       }
 
-  #if !defined(__ANDROID__) && !defined(__APPLE__) &&!defined(__EMSCRIPTEN__)
+  #if !defined(__ANDROID__) && !defined(__APPLE__) && !defined(__EMSCRIPTEN__)
       continue;
     }
 
