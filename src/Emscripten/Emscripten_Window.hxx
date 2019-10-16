@@ -29,7 +29,8 @@ public:
 
   //! Creates an Emscripten window defined by its target canvas id, and an opaque redraw handler function
   Standard_EXPORT Emscripten_Window ( Standard_CString theTargetCanvas,
-                                      std::function<void(void)> theRedrawHandler = []() -> void {});
+                                      std::function<void(void)> theRedrawHandler = []() -> void {},
+                                      std::function<void(void)> theResizeHandler = []() -> void {});
 
   Standard_EXPORT virtual ~Emscripten_Window();
 
@@ -90,7 +91,7 @@ public:
     return myTargetCanvas;
   }
 
-  Standard_EXPORT int GetRedrawRequestId() const {
+  Standard_EXPORT int RedrawRequestId() const {
     return myRedrawRequestId;
   }
 
@@ -101,8 +102,12 @@ public:
     myRedrawRequestId = theId;
   }
 
-  void CallRedrawHandler() const {
+  Standard_EXPORT void CallRedrawHandler() const {
     myRedrawHandler();
+  }
+
+  Standard_EXPORT void CallResizeHandler() const {
+    myResizeHandler();
   }
 
 private:
@@ -115,6 +120,9 @@ private:
 
   // Request Redraw Identifier
   int myRedrawRequestId;
+
+  // Window Resize handler
+  std::function<void(void)> myResizeHandler;
 
 public:
 
