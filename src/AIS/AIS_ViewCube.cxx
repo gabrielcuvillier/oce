@@ -159,6 +159,7 @@ AIS_ViewCube::AIS_ViewCube()
 
   myDrawer->SetTextAspect  (new Prs3d_TextAspect());
   myDrawer->SetShadingAspect (new Prs3d_ShadingAspect());
+  myDrawer->SetDatumAspect (new Prs3d_DatumAspect());
 
   myDynHilightDrawer = new Prs3d_Drawer();
   myDynHilightDrawer->SetLink (myDrawer);

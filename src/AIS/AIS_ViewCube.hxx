@@ -22,6 +22,7 @@
 #include <Prs3d_DatumParts.hxx>
 #include <Prs3d_ShadingAspect.hxx>
 #include <Prs3d_TextAspect.hxx>
+#include <Prs3d_DatumAspect.hxx>
 #include <SelectMgr_EntityOwner.hxx>
 #include <V3d_TypeOfOrientation.hxx>
 
@@ -324,6 +325,12 @@ public: //! @name Style management API
     SynchronizeAspects();
   }
 
+  void SetDatumTextColor (const Quantity_Color& theColor)
+  {
+    myDrawer->DatumAspect()->TextAspect()->SetColor (theColor);
+    SynchronizeAspects();
+  }
+
   //! Return font name that is used for displaying of sides and axes text. Alias for:
   //! @code Attributes()->TextAspect()->Aspect()->SetFont() @endcode
   const TCollection_AsciiString& Font() const { return myDrawer->TextAspect()->Aspect()->Font(); }
@@ -333,6 +340,12 @@ public: //! @name Style management API
   void SetFont (const TCollection_AsciiString& theFont)
   {
     myDrawer->TextAspect()->Aspect()->SetFont (theFont);
+    SynchronizeAspects();
+  }
+
+  void SetDatumFont (Standard_CString theFont)
+  {
+    myDrawer->DatumAspect()->TextAspect()->SetFont (theFont);
     SynchronizeAspects();
   }
 
