@@ -66,6 +66,9 @@ public:
   //! Set view animation to be handled within handleViewRedraw().
   void SetViewAnimation (const Handle(AIS_AnimationCamera)& theAnimation) { myViewAnimation = theAnimation; }
 
+  //! Return Rubberband
+  const Handle(AIS_RubberBand)& RubberBand() const { return myRubberBand; }
+
   //! Interrupt active view animation.
   Standard_EXPORT void AbortViewAnimation();
 
