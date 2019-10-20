@@ -331,6 +331,12 @@ public: //! @name Style management API
     SynchronizeAspects();
   }
 
+  void SetDatumFontHeight (Standard_Real theHeight)
+  {
+    myDrawer->DatumAspect()->TextAspect()->SetHeight(theHeight);
+    SynchronizeAspects();
+  }
+
   //! Return font name that is used for displaying of sides and axes text. Alias for:
   //! @code Attributes()->TextAspect()->Aspect()->SetFont() @endcode
   const TCollection_AsciiString& Font() const { return myDrawer->TextAspect()->Aspect()->Font(); }
