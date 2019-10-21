@@ -97,13 +97,13 @@ private:
   Standard_Character* myTargetCanvas;
 
   // Window Redraw handler
-  std::function<void(void)> myRedrawHandler;
+  const std::function<void(void)> myRedrawHandler;
 
   // Request Redraw Identifier
   int myRedrawRequestId;
 
   // Window Resize handler
-  std::function<void(void)> myResizeHandler;
+  const std::function<void(void)> myResizeHandler;
 
   mutable double myLocalDevicePixelRatio;
   mutable int myLocalWidth;

@@ -21,26 +21,28 @@ Emscripten_ProgressIndicator::Emscripten_ProgressIndicator( emscripten::val theP
 : myPreviousProgress(0),
   myProgressFunc(theProgressFunc),
   myCheckCancelFunc(theCheckCancelFunc),
-  myToAllowYield(theToAllowYield && emscripten_get_compiler_setting("ASYNCIFY")) {
+  myToAllowYield(theToAllowYield && emscripten_get_compiler_setting("ASYNCIFY")),
+  myLastCheckedCancelProgress(0) {
 
 }
 
 Emscripten_ProgressIndicator::~Emscripten_ProgressIndicator() {}
 
 Standard_Boolean Emscripten_ProgressIndicator::Show( const Standard_Boolean /*force = Standard_True*/ ) {
-  const Standard_Integer aPosition = (int)GetPosition() * 100;
+  const Standard_Integer aPosition = (int)(GetPosition() * 100);
   if ( aPosition > myPreviousProgress ) {
     myPreviousProgress = aPosition;
-    myProgressFunc( myPreviousProgress );
+    myProgressFunc(myPreviousProgress);
   }
   return Standard_True;
 }
 
 Standard_Boolean Emscripten_ProgressIndicator::UserBreak( ) {
   // NB: Need to be compiled with ASYNCIFY=1 and RETAIN_COMPILER_SETTINGS=1 for this to work + ideally usage of ASYNCIFY_WHITELIST
-  if (myToAllowYield) {
+  if (myToAllowYield && (myLastCheckedCancelProgress != myPreviousProgress)) {
+    myLastCheckedCancelProgress = myPreviousProgress;
     emscripten_sleep(0);
-    return myCheckCancelFunc.call<bool>("Call");
+    return myCheckCancelFunc.call<bool>("call");
   } else {
     return Standard_False;
   }
