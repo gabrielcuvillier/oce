@@ -1782,6 +1782,15 @@ void AIS_ViewController::handleCameraActions (const Handle(AIS_InteractiveContex
 
   if (myNavigationMode != AIS_NavigationMode_FirstPersonWalk)
   {
+    if (myGL.Panning.ToStart && !myHasHlrOnBeforeRotation)
+    {
+      myHasHlrOnBeforeRotation = theView->ComputedMode();
+      if (myHasHlrOnBeforeRotation)
+      {
+        theView->SetComputedMode (false);
+      }
+    }
+
     if (myGL.Panning.ToStart
      && myToAllowPanning)
     {
@@ -1897,6 +1906,15 @@ void AIS_ViewController::handleCameraActions (const Handle(AIS_InteractiveContex
 
   if (!myGL.ZoomActions.IsEmpty())
   {
+    if (!myHasHlrOnBeforeRotation)
+    {
+      myHasHlrOnBeforeRotation = theView->ComputedMode();
+      if (myHasHlrOnBeforeRotation)
+      {
+        theView->SetComputedMode (false);
+      }
+    }
+
     for (NCollection_Sequence<Aspect_ScrollDelta>::Iterator aZoomIter (myGL.ZoomActions); aZoomIter.More(); aZoomIter.Next())
     {
       Aspect_ScrollDelta aZoomParams = aZoomIter.Value();
