@@ -55,8 +55,8 @@ else()
     message (STATUS "Info: OCCT_DISABLE_SHAREDLIBRARY is defined")
     add_definitions(-DOCCT_DISABLE_SHAREDLIBRARY)
 
-    message (STATUS "Info: OCCT_HANDLE_NOCAST is defined to prevent some unsafe methods with Handles")
-    add_definitions(-DOCCT_HANDLE_NOCAST)
+    #message (STATUS "Info: OCCT_HANDLE_NOCAST is defined to prevent some unsafe methods with Handles")
+    #add_definitions(-DOCCT_HANDLE_NOCAST)
 
     message (STATUS "Info: OCCT_IGNORE_NO_ATOMICS is defined due to unsupported atomics on Emscripten")
     add_definitions(-DOCCT_IGNORE_NO_ATOMICS)
