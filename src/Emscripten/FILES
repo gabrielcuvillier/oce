@@ -1,2 +1,4 @@
 Emscripten_Window.cxx
 Emscripten_Window.hxx
+Emscripten_ProgressIndicator.cxx
+Emscripten_ProgressIndicator.hxx
