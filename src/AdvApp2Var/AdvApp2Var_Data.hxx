@@ -106,5 +106,9 @@ class AdvApp2Var_Data {
 #define mmapgs0_ AdvApp2Var_Data::Getmmapgs0()
 #define mmapgs1_ AdvApp2Var_Data::Getmmapgs1()
 #define mmapgs2_ AdvApp2Var_Data::Getmmapgs2()
+
+#if defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
+void LoadApp2VarMatrixFromBinaryFile(const char* theMatName, doublereal** theMatrixPtr, int theCount );
+#endif
 //
 #endif

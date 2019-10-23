@@ -18,6 +18,7 @@
 //=======================================================================
 mmapgs0_1_& AdvApp2Var_Data::Getmmapgs0()
 {
+#if !defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
   static doublereal e_1[4810]={
      .339350899760562168358542462460598, 
 	    .219855506883882118158113854613575, 
@@ -4830,6 +4831,16 @@ mmapgs0_1_& AdvApp2Var_Data::Getmmapgs0()
 	    .0407680076017751906152705824117712, 
 	    -.0407672808617546723713899270255496
   };
-  
-    return *((mmapgs0_1_ *)&e_1);
+#else
+  static const int e_1_size = 4810;
+  static doublereal* e_1 = nullptr;
+#endif
+
+#if defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
+  if (!e_1) {
+    LoadApp2VarMatrixFromBinaryFile("mmapgs0", &e_1, e_1_size);
+  }
+#endif
+
+  return *((mmapgs0_1_ *)&e_1);
 }

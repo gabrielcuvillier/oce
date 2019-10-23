@@ -2077,7 +2077,7 @@ void InvMMatrix(const Standard_Integer classe,
 {
 #if defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
   if (!IMatrix) {
-    LoadMatrixFromBinaryFile("IMatrix", &IMatrix, IMatrixSize);
+    LoadAppContMatrixFromBinaryFile("IMatrix", &IMatrix, IMatrixSize);
   }
 #endif
 
@@ -2099,10 +2099,10 @@ void InvMMatrix(const Standard_Integer classe,
 #include <OSD_OpenFile.hxx>
 #include <string>
 
-void LoadMatrixFromBinaryFile(Standard_CString theMatName, double** theMatrixPtr, int theCount ) {
+void LoadAppContMatrixFromBinaryFile(Standard_CString theMatName, Standard_Real** theMatrixPtr, Standard_Integer theCount ) {
   if (*theMatrixPtr == nullptr) {
     std::cout << "Loading matrix " << theMatName << std::endl;
-    *theMatrixPtr = new double[theCount];
+    *theMatrixPtr = new Standard_Real[theCount];
 
     Standard_CString aDir = getenv("CSF_AppContMatrices") ? getenv("CSF_AppContMatrices") : ".";
     std::filebuf aBuf;
@@ -2110,7 +2110,7 @@ void LoadMatrixFromBinaryFile(Standard_CString theMatName, double** theMatrixPtr
     if (!aBuf.is_open())
       throw Standard_Failure("Unable to find matrix file");
     Standard_IStream aStream(&aBuf);
-    aStream.read ((char*)*theMatrixPtr, theCount*sizeof(double));
+    aStream.read ((char*)*theMatrixPtr, theCount*sizeof(Standard_Real));
   }
 }
 #endif

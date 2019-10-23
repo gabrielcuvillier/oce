@@ -18,6 +18,7 @@
 //=======================================================================
 mmjcobi_1_& AdvApp2Var_Data::Getmmjcobi()
 {
+#if !defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
   static doublereal s_e_1[7936]={
             .70710678118654752440084436210485, 
 	    -.79056941504209483299972338610818, 
@@ -7783,5 +7784,16 @@ mmjcobi_1_& AdvApp2Var_Data::Getmmjcobi()
 	    -6.3447289711637502796424532700377e-17, 
 	    -1.0284250949746758839876395691897e-18 
 	    };
+#else
+  static const int s_e_1_size = 7936;
+  static doublereal* s_e_1 = nullptr;
+#endif
+
+#if defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
+  if (!s_e_1) {
+    LoadApp2VarMatrixFromBinaryFile("mmjcobi", &s_e_1, s_e_1_size);
+  }
+#endif
+
   return *((mmjcobi_1_*)&s_e_1);
 }

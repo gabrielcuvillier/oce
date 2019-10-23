@@ -357,7 +357,7 @@ void IBTMatrix(const Standard_Integer classe, math_Matrix& IBTMa)
 {
 #if defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
   if (!IBT) {
-    LoadMatrixFromBinaryFile("IBT", &IBT, IBTSize);
+    LoadAppContMatrixFromBinaryFile("IBT", &IBT, IBTSize);
   }
 #endif
 

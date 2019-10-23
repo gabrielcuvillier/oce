@@ -170,3 +170,26 @@ maovpch_1_& AdvApp2Var_Data::Getmaovpch()
   };
   return s_maovpch_1_;
 }
+
+#if defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
+#include <Standard_IStream.hxx>
+#include <OSD_OpenFile.hxx>
+#include <Standard_Failure.hxx>
+#include <Standard_DefineException.hxx>
+#include <string>
+
+void LoadApp2VarMatrixFromBinaryFile(const char* theMatName, doublereal** theMatrixPtr, int theCount ) {
+  if (*theMatrixPtr == nullptr) {
+    std::cout << "Loading matrix " << theMatName << std::endl;
+    *theMatrixPtr = new doublereal[theCount];
+
+    Standard_CString aDir = getenv("CSF_AppContMatrices") ? getenv("CSF_AppContMatrices") : ".";
+    std::filebuf aBuf;
+    OSD_OpenStream(aBuf, (std::string(aDir) + "/" + theMatName).c_str(), std::ios::in | std::ios::binary);
+    if (!aBuf.is_open())
+      throw Standard_Failure("Unable to find matrix file");
+    Standard_IStream aStream(&aBuf);
+    aStream.read ((char*)*theMatrixPtr, theCount*sizeof(doublereal));
+  }
+}
+#endif

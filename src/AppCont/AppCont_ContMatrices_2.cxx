@@ -3283,7 +3283,7 @@ void MMatrix(const Standard_Integer classe,
 {
 #if defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
   if (!BBMatrix) {
-    LoadMatrixFromBinaryFile("BBMatrix", &BBMatrix, BBMatrixSize);
+    LoadAppContMatrixFromBinaryFile("BBMatrix", &BBMatrix, BBMatrixSize);
   }
 #endif
 

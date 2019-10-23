@@ -1240,7 +1240,7 @@ void VBernstein(const Standard_Integer classe,
 {
 #if defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
   if (!VBMatrix) {
-    LoadMatrixFromBinaryFile("VBMatrix", &VBMatrix, VBMatrixSize);
+    LoadAppContMatrixFromBinaryFile("VBMatrix", &VBMatrix, VBMatrixSize);
   }
 #endif
 

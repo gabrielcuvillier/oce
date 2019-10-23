@@ -19,6 +19,7 @@
 //=======================================================================
 mlgdrtl_1_& AdvApp2Var_Data::Getmlgdrtl()
 {
+#if !defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
   static doublereal s_e_1[1891]={
             .577350269189625764509148780501958, 
 	    .339981043584856264802665759103245, 
@@ -1910,6 +1911,16 @@ mlgdrtl_1_& AdvApp2Var_Data::Getmlgdrtl()
 	    .0527980126219896053956592277024162, 
 	    .0510811194407819869756124378422272 
 	    };
+#else
+  static const int s_e_1_size = 1891;
+  static doublereal* s_e_1 = nullptr;
+#endif
+
+#if defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
+  if (!s_e_1) {
+    LoadApp2VarMatrixFromBinaryFile("mlgdrtl", &s_e_1, s_e_1_size);
+  }
+#endif
 
   return *((mlgdrtl_1_*)&s_e_1);
 }

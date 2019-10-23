@@ -35,7 +35,7 @@ void VBernstein(const Standard_Integer classe,
 		math_Matrix&           M);
 
 #if defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
-void LoadMatrixFromBinaryFile(Standard_CString theMatName, double** theMatrixPtr, int theCount );
+void LoadAppContMatrixFromBinaryFile(Standard_CString theMatName, Standard_Real** theMatrixPtr, Standard_Integer theCount );
 #endif
 
 #endif

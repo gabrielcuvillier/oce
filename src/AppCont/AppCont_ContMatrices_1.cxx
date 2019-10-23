@@ -420,7 +420,7 @@ void IBPMatrix(const Standard_Integer classe, math_Matrix& IBPMa)
 {
 #if defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
   if (!IBP) {
-    LoadMatrixFromBinaryFile("IBP", &IBP, IBPSize);
+    LoadAppContMatrixFromBinaryFile("IBP", &IBP, IBPSize);
   }
 #endif
 
