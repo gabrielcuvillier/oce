@@ -24,6 +24,8 @@
 #include <math_Matrix.hxx>
 #include <Standard_DimensionError.hxx>
 
+
+#if !defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
 static const Standard_Real IMatrix[] = {
 4.0, -2.0,
 -2.0, 4.0,
@@ -2061,6 +2063,10 @@ static const Standard_Real IMatrix[] = {
 
 
 };
+#else
+static const Standard_Integer IMatrixSize = 6200;
+static Standard_Real* IMatrix = nullptr;
+#endif
 
 
 
@@ -2069,6 +2075,12 @@ static const Standard_Real IMatrix[] = {
 void InvMMatrix(const Standard_Integer classe,
 		math_Matrix&           InvM)
 {
+#if defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
+  if (!IMatrix) {
+    LoadMatrixFromBinaryFile("IMatrix", &IMatrix, IMatrixSize);
+  }
+#endif
+
   if (classe > 24) throw Standard_DimensionError("InvMMatrix: classe > 24");
   Standard_Integer i, j, k = 0, Som = 0;
   for (i = 2; i < classe; i++) {
@@ -2082,4 +2094,23 @@ void InvMMatrix(const Standard_Integer classe,
   }
 }
 
+#if defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
+#include <Standard_IStream.hxx>
+#include <OSD_OpenFile.hxx>
+#include <string>
 
+void LoadMatrixFromBinaryFile(Standard_CString theMatName, double** theMatrixPtr, int theCount ) {
+  if (*theMatrixPtr == nullptr) {
+    std::cout << "Loading matrix " << theMatName << std::endl;
+    *theMatrixPtr = new double[theCount];
+
+    Standard_CString aDir = getenv("CSF_AppContMatrices") ? getenv("CSF_AppContMatrices") : ".";
+    std::filebuf aBuf;
+    OSD_OpenStream(aBuf, (std::string(aDir) + "/" + theMatName).c_str(), std::ios::in | std::ios::binary);
+    if (!aBuf.is_open())
+      throw Standard_Failure("Unable to find matrix file");
+    Standard_IStream aStream(&aBuf);
+    aStream.read ((char*)*theMatrixPtr, theCount*sizeof(double));
+  }
+}
+#endif

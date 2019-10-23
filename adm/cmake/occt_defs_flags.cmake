@@ -52,6 +52,9 @@ else()
     message (STATUS "Info: OCCT_DISABLE_OPTIMIZED_MEMORY_ALLOCATOR is defined")
     add_definitions(-DOCCT_DISABLE_OPTIMIZED_MEMORY_ALLOCATOR)
 
+    message (STATUS "Info: OCCT_APPCONTMATRIX_FILE_STORAGE is defined")
+    add_definitions(-DOCCT_APPCONTMATRIX_FILE_STORAGE)
+
     message (STATUS "Info: OCCT_DISABLE_SHAREDLIBRARY is defined")
     add_definitions(-DOCCT_DISABLE_SHAREDLIBRARY)
 

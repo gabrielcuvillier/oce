@@ -23,6 +23,7 @@
 #include <math_Matrix.hxx>
 #include <Standard_DimensionError.hxx>
 
+#if !defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
 static const Standard_Real IBP[] = {
 
 26.47058823529411764705882,
@@ -407,13 +408,22 @@ static const Standard_Real IBP[] = {
 
 
 };
-
+#else
+static const Standard_Integer IBPSize = 4897;
+static Standard_Real* IBP = nullptr;
+#endif
 
 
 
 
 void IBPMatrix(const Standard_Integer classe, math_Matrix& IBPMa)
 {
+#if defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
+  if (!IBP) {
+    LoadMatrixFromBinaryFile("IBP", &IBP, IBPSize);
+  }
+#endif
+
   if (classe > 26) throw Standard_DimensionError("IBPMatrix: classe > 26");
 //  math_Matrix IBPMa(1, classe-2, 1, classe-2);
   Standard_Integer i, j, k = 0, Som = 0;

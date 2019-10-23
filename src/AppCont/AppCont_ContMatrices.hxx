@@ -22,7 +22,6 @@
 // pour IBPMatrix (contraintes de passage aux extremites) 
 // et IBTMatrix (contraintes de tangence aux extremites).
 
-
 void InvMMatrix(const Standard_Integer classe, math_Matrix& M);
 
 void MMatrix(const Standard_Integer classe, math_Matrix& M);
@@ -34,5 +33,9 @@ void IBTMatrix(const Standard_Integer classe, math_Matrix& M);
 void VBernstein(const Standard_Integer classe, 
 		const Standard_Integer nbpoints,
 		math_Matrix&           M);
+
+#if defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
+void LoadMatrixFromBinaryFile(Standard_CString theMatName, double** theMatrixPtr, int theCount );
+#endif
 
 #endif
