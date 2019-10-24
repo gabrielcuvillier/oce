@@ -500,6 +500,17 @@ void OpenGl_PrimitiveArray::drawArray (const Handle(OpenGl_Workspace)& theWorksp
 // =======================================================================
 void OpenGl_PrimitiveArray::drawEdges (const Handle(OpenGl_Workspace)& theWorkspace) const
 {
+#if defined(GL_ES_VERSION_2_0)
+  // Loosy hack to emulate glPolygonMode(GL_LINE) on GLES 2 by using GL_LINE_LOOP on each individual triangles of
+  // the VBO. This is really not good on the performance side, but at least, it works!
+
+  // For simplification, limit support to GL_TRIANGLES (though it is possible with STRIPS and FANS) and do not
+  // handle the case with myBounds
+  if ((myDrawMode != GL_TRIANGLES) || (!myBounds.IsNull())) {
+    return;
+  }
+#endif
+
   const Handle(OpenGl_Context)& aGlContext = theWorkspace->GetGlContext();
   if (myVboAttribs.IsNull())
   {
@@ -518,10 +529,15 @@ void OpenGl_PrimitiveArray::drawEdges (const Handle(OpenGl_Workspace)& theWorksp
                                                   anAspect->ShaderProgramRes (aGlContext));
   }
   aGlContext->SetSampleAlphaToCoverage (aGlContext->ShaderManager()->MaterialState().HasAlphaCutoff());
+#if !defined(GL_ES_VERSION_2_0)
   const GLenum aDrawMode = !aGlContext->ActiveProgram().IsNull()
-                         && aGlContext->ActiveProgram()->HasTessellationStage()
+                             && aGlContext->ActiveProgram()->HasTessellationStage()
                          ? GL_PATCHES
                          : myDrawMode;
+#else
+  const GLenum aDrawMode = GL_LINE_LOOP;
+#endif
+
 #if !defined(GL_ES_VERSION_2_0)
   if (aGlContext->ActiveProgram().IsNull()
    && aGlContext->core11 != NULL)
@@ -561,7 +577,17 @@ void OpenGl_PrimitiveArray::drawEdges (const Handle(OpenGl_Workspace)& theWorksp
     // draw one (or sequential) primitive by the indices
     else
     {
+#if !defined(GL_ES_VERSION_2_0)
       glDrawElements (aDrawMode, myVboIndices->GetElemsNb(), myVboIndices->GetDataType(), anOffset);
+#else
+      const size_t aStride = myVboIndices->GetDataType() == GL_UNSIGNED_SHORT ? sizeof(unsigned short) : sizeof(unsigned int);
+      const Standard_Integer aMax = myVboIndices->GetElemsNb() / 3;
+      for (Standard_Integer i = 0; i < aMax; ++i)
+      {
+        glDrawElements (aDrawMode, 3, myVboIndices->GetDataType(), anOffset);
+        anOffset += aStride * 3;
+      }
+#endif
     }
     myVboIndices->Unbind (aGlContext);
   }
@@ -577,7 +603,15 @@ void OpenGl_PrimitiveArray::drawEdges (const Handle(OpenGl_Workspace)& theWorksp
   }
   else
   {
+#if !defined(GL_ES_VERSION_2_0)
     glDrawArrays (aDrawMode, 0, !myVboAttribs.IsNull() ? myVboAttribs->GetElemsNb() : myAttribs->NbElements);
+#else
+    const Standard_Integer aMax = (!myVboAttribs.IsNull() ? myVboAttribs->GetElemsNb() : myAttribs->NbElements);
+    for (Standard_Integer i = 0; i < aMax; i+=3)
+    {
+      glDrawArrays (aDrawMode, i, 3);
+    }
+#endif
   }
 
   // unbind buffers
@@ -779,7 +813,7 @@ void OpenGl_PrimitiveArray::Render (const Handle(OpenGl_Workspace)& theWorkspace
   const bool toEnableEnvMap = !aCtx->ActiveTextures().IsNull()
                             && aCtx->ActiveTextures() == theWorkspace->EnvironmentTexture();
   bool toDrawArray = true;
-  int toDrawInteriorEdges = 0; // 0 - no edges, 1 - glsl edges, 2 - polygonMode
+  int toDrawInteriorEdges = 0; // 0 - no edges, 1 - glsl edges, 2 - polygonMode, 3 - line_loop hack
   if (myIsFillType)
   {
     toDrawArray = anAspectFace->Aspect()->InteriorStyle() != Aspect_IS_EMPTY;
@@ -805,6 +839,8 @@ void OpenGl_PrimitiveArray::Render (const Handle(OpenGl_Workspace)& theWorkspace
           }
         }
       }
+    #else
+      toDrawInteriorEdges = 3;
     #endif
     }
   }
@@ -975,6 +1011,11 @@ void OpenGl_PrimitiveArray::Render (const Handle(OpenGl_Workspace)& theWorkspace
     {
       drawEdges (theWorkspace);
     }
+  }
+#else
+  if (toDrawInteriorEdges == 3)
+  {
+    drawEdges(theWorkspace);
   }
 #endif
 }
