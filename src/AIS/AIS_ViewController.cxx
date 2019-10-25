@@ -2352,6 +2352,7 @@ void AIS_ViewController::handleViewRedraw (const Handle(AIS_InteractiveContext)&
     if (!myWasComputeModeBeforeAnimation && theView->ComputedMode()) {
       myWasComputeModeBeforeAnimation = Standard_True;
       theView->SetComputedMode(false);
+      theView->Invalidate();
     }
     myViewAnimation->UpdateTimer();
     ResetPreviousMoveTo();
@@ -2361,6 +2362,8 @@ void AIS_ViewController::handleViewRedraw (const Handle(AIS_InteractiveContext)&
     if (myWasComputeModeBeforeAnimation) {
       myWasComputeModeBeforeAnimation = Standard_False;
       theView->SetComputedMode(true);
+      theView->Invalidate();
+      setAskNextFrame();
     }
   }
 
