@@ -155,9 +155,14 @@ void OpenGl_View::Redraw()
   aCtx->FetchState();
 
   OpenGl_FrameBuffer* aFrameBuffer = myFBO.get();
+
+#if !defined(HAVE_WEBGL)
   bool toSwap = aCtx->IsRender()
             && !aCtx->caps->buffersNoSwap
             &&  aFrameBuffer == NULL;
+#else
+  const bool toSwap = false;
+#endif
 
   const Standard_Integer aSizeX = aFrameBuffer != NULL ? aFrameBuffer->GetVPSizeX() : myWindow->Width();
   const Standard_Integer aSizeY = aFrameBuffer != NULL ? aFrameBuffer->GetVPSizeY() : myWindow->Height();
@@ -244,7 +249,9 @@ void OpenGl_View::Redraw()
                          anImmFbo != aFrameBuffer ? myRenderParams.RenderResolutionScale : 1.0f);
     if (!redrawImmediate (aProjectType, aMainFbo, anImmFbo, NULL))
     {
+#if !defined(HAVE_WEBGL)
       toSwap = false;
+#endif
     }
 
     if (anImmFbo != NULL
@@ -278,7 +285,9 @@ void OpenGl_View::Redraw()
   }
   else
   {
+#if !defined(HAVE_WEBGL)
     aCtx->core11fwd->glFlush();
+#endif
   }
 
   // reset render mode state
@@ -317,16 +326,28 @@ void OpenGl_View::RedrawImmediate()
     aFrameBuffer = aCtx->DefaultFrameBuffer().operator->();
   }
 
+#if !defined(HAVE_WEBGL)
   bool toSwap = false;
+#else
+  const bool toSwap = false;
+#endif
   {
     OpenGl_FrameBuffer* aMainFbo = myMainSceneFbos[0]->IsValid() ? myMainSceneFbos[0].operator->() : NULL;
     OpenGl_FrameBuffer* anImmFbo = aFrameBuffer;
     aCtx->SetResolution (myRenderParams.Resolution, myRenderParams.ResolutionRatio(),
                          anImmFbo != aFrameBuffer ? myRenderParams.RenderResolutionScale : 1.0f);
+#if !defined(HAVE_WEBGL)
     toSwap = redrawImmediate (aProjectType,
                               aMainFbo,
                               anImmFbo,
                               NULL) || toSwap;
+#else
+    redrawImmediate ( aProjectType,
+                      aMainFbo,
+                      anImmFbo,
+                      NULL);
+#endif
+
     if (anImmFbo != NULL
      && anImmFbo != aFrameBuffer)
     {
@@ -345,7 +366,9 @@ void OpenGl_View::RedrawImmediate()
   }
   else
   {
+#if !defined(HAVE_WEBGL)
     aCtx->core11fwd->glFlush();
+#endif
   }
   aCtx->FrameStats()->FrameEnd (myWorkspace->View(), true);
 
@@ -420,11 +443,13 @@ bool OpenGl_View::redrawImmediate (const Graphic3d_Camera::Projection theProject
   }
   else if (theDrawFbo == NULL)
   {
+#if !defined(HAVE_WEBGL)
+    aCtx->core11fwd->glGetBooleanv (GL_DOUBLEBUFFER, &toCopyBackToFront);
     if (toCopyBackToFront
      && myTransientDrawToFront)
     {
       if (!HasImmediateStructures()
-       && !theIsPartialUpdate)
+        && !theIsPartialUpdate)
       {
         // prefer Swap Buffers within Redraw in compatibility mode (without FBO)
         return true;
@@ -440,6 +465,7 @@ bool OpenGl_View::redrawImmediate (const Graphic3d_Camera::Projection theProject
       toCopyBackToFront    = GL_FALSE;
       myBackBufferRestored = Standard_False;
     }
+#endif
   }
   else
   {
