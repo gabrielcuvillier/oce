@@ -580,12 +580,11 @@ void OpenGl_PrimitiveArray::drawEdges (const Handle(OpenGl_Workspace)& theWorksp
 #if !defined(GL_ES_VERSION_2_0)
       glDrawElements (aDrawMode, myVboIndices->GetElemsNb(), myVboIndices->GetDataType(), anOffset);
 #else
-      const size_t aStride = myVboIndices->GetDataType() == GL_UNSIGNED_SHORT ? sizeof(unsigned short) : sizeof(unsigned int);
+      const size_t aStride = myVboIndices->GetDataType() == (GL_UNSIGNED_SHORT ? sizeof(unsigned short) : sizeof(unsigned int)) * 3;
       const Standard_Integer aMax = myVboIndices->GetElemsNb() / 3;
-      for (Standard_Integer i = 0; i < aMax; ++i)
+      for (Standard_Integer i = 0; i < aMax; ++i, anOffset += aStride)
       {
         glDrawElements (aDrawMode, 3, myVboIndices->GetDataType(), anOffset);
-        anOffset += aStride * 3;
       }
 #endif
     }
