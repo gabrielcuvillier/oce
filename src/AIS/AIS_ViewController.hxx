@@ -648,6 +648,8 @@ protected:
   Graphic3d_Vec2i     myPrevMoveTo;               //!< previous position of MoveTo event in 3D viewer
   Standard_Boolean    myHasHlrOnBeforeRotation;   //!< flag for restoring Computed mode after rotation
 
+  Standard_Boolean    myWasComputeModeBeforeAnimation;
+
 protected: //! @name keyboard input variables
 
   Aspect_VKeySet      myKeys;                     //!< keyboard state

@@ -61,6 +61,7 @@ AIS_ViewController::AIS_ViewController()
   myViewAnimation (new AIS_AnimationCamera ("AIS_ViewController_ViewAnimation", Handle(V3d_View)())),
   myPrevMoveTo (-1, -1),
   myHasHlrOnBeforeRotation (false),
+  myWasComputeModeBeforeAnimation(false),
   //
   myMouseClickThreshold (3.0),
   myMouseDoubleClickInt (0.4),
@@ -2348,9 +2349,19 @@ void AIS_ViewController::handleViewRedraw (const Handle(AIS_InteractiveContext)&
   if (!myViewAnimation.IsNull()
    && !myViewAnimation->IsStopped())
   {
+    if (!myWasComputeModeBeforeAnimation && theView->ComputedMode()) {
+      myWasComputeModeBeforeAnimation = Standard_True;
+      theView->SetComputedMode(false);
+    }
     myViewAnimation->UpdateTimer();
     ResetPreviousMoveTo();
     setAskNextFrame();
+  }
+  else {
+    if (myWasComputeModeBeforeAnimation) {
+      myWasComputeModeBeforeAnimation = Standard_False;
+      theView->SetComputedMode(true);
+    }
   }
 
   for (V3d_ListOfViewIterator aViewIter (theView->Viewer()->ActiveViewIterator()); aViewIter.More(); aViewIter.Next())
