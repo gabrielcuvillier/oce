@@ -49,14 +49,17 @@ else()
     message (STATUS "Info: OCCT_DISABLE_EXACTHLR_IN_VISUALIZATION is defined")
     add_definitions(-DOCCT_DISABLE_EXACTHLR_IN_VISUALIZATION)
 
+    message (STATUS "Info: OCCT_DISABLE_VISUALIZATION_IN_XDE is defined")
+    add_definitions(-DOCCT_DISABLE_VISUALIZATION_IN_XDE)
+
     message (STATUS "Info: OCCT_DISABLE_OPTIMIZED_MEMORY_ALLOCATOR is defined")
     add_definitions(-DOCCT_DISABLE_OPTIMIZED_MEMORY_ALLOCATOR)
 
-    message (STATUS "Info: OCCT_APPCONTMATRIX_FILE_STORAGE is defined")
-    add_definitions(-DOCCT_APPCONTMATRIX_FILE_STORAGE)
-
     message (STATUS "Info: OCCT_DISABLE_SHAREDLIBRARY is defined")
     add_definitions(-DOCCT_DISABLE_SHAREDLIBRARY)
+
+    message (STATUS "Info: OCCT_ENABLE_APPCONTMATRIX_FILE_STORAGE is defined")
+    add_definitions(-DOCCT_ENABLE_APPCONTMATRIX_FILE_STORAGE)
 
     #message (STATUS "Info: OCCT_HANDLE_NOCAST is defined to prevent some unsafe methods with Handles")
     #add_definitions(-DOCCT_HANDLE_NOCAST)

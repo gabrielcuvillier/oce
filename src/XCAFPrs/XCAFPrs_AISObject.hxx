@@ -14,6 +14,8 @@
 #ifndef _XCAFPrs_AISObject_HeaderFile
 #define _XCAFPrs_AISObject_HeaderFile
 
+#if !defined(OCCT_DISABLE_VISUALIZATION_IN_XDE)
+
 #include <AIS_ColoredShape.hxx>
 
 #include <TDF_Label.hxx>
@@ -86,3 +88,5 @@ public:
 DEFINE_STANDARD_HANDLE(XCAFPrs_AISObject, AIS_ColoredShape)
 
 #endif // _XCAFPrs_AISObject_HeaderFile
+
+#endif

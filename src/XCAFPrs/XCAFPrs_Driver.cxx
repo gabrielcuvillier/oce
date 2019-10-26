@@ -13,6 +13,9 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
+#include <XCAFPrs_Driver.hxx>
+
+#if !defined(OCCT_DISABLE_VISUALIZATION_IN_XDE)
 
 #include <AIS_InteractiveObject.hxx>
 #include <Standard_GUID.hxx>
@@ -21,7 +24,6 @@
 #include <TDocStd_Document.hxx>
 #include <XCAFDoc_ShapeTool.hxx>
 #include <XCAFPrs_AISObject.hxx>
-#include <XCAFPrs_Driver.hxx>
 
 IMPLEMENT_STANDARD_RTTIEXT(XCAFPrs_Driver,TPrsStd_Driver)
 
@@ -40,9 +42,9 @@ Standard_Boolean XCAFPrs_Driver::Update (const TDF_Label& L,
 
   XCAFDoc_ShapeTool shapes;
   if ( ! shapes.IsShape(L) ) return Standard_False;
-  
+
   ais = new XCAFPrs_AISObject (L);
-  
+
   return Standard_True;
 }
 
@@ -56,3 +58,4 @@ const Standard_GUID& XCAFPrs_Driver::GetID()
   static Standard_GUID ID("5b896afc-3adf-11d4-b9b7-0060b0ee281b");
   return ID;
 }
+#endif

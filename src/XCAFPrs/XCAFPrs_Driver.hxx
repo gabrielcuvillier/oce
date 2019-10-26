@@ -16,6 +16,8 @@
 #ifndef _XCAFPrs_Driver_HeaderFile
 #define _XCAFPrs_Driver_HeaderFile
 
+#if !defined(OCCT_DISABLE_VISUALIZATION_IN_XDE)
+
 #include <Standard.hxx>
 #include <Standard_Type.hxx>
 
@@ -24,7 +26,6 @@
 class TDF_Label;
 class AIS_InteractiveObject;
 class Standard_GUID;
-
 
 class XCAFPrs_Driver;
 DEFINE_STANDARD_HANDLE(XCAFPrs_Driver, TPrsStd_Driver)
@@ -67,3 +68,4 @@ private:
 
 
 #endif // _XCAFPrs_Driver_HeaderFile
+#endif

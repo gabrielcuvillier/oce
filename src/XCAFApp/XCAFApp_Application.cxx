@@ -43,8 +43,10 @@ Handle(XCAFApp_Application) XCAFApp_Application::GetApplication()
 XCAFApp_Application::XCAFApp_Application()
 {
   // register driver for presentation
+#if !defined(OCCT_DISABLE_VISUALIZATION_IN_XDE)
   Handle(TPrsStd_DriverTable) table  = TPrsStd_DriverTable::Get();
   table->AddDriver (XCAFPrs_Driver::GetID(), new XCAFPrs_Driver);
+#endif
 }
 
 //=======================================================================
