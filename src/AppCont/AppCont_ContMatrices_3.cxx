@@ -24,7 +24,7 @@
 #include <Standard_DimensionError.hxx>
 
 
-#if !defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
+#if !defined(OCCT_ENABLE_APPCONTMATRIX_FILE_STORAGE)
 static const Standard_Real IBT[] = {
 
 111.9289340101522842639594,
@@ -355,7 +355,7 @@ static Standard_Real* IBT = nullptr;
 
 void IBTMatrix(const Standard_Integer classe, math_Matrix& IBTMa)
 {
-#if defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
+#if defined(OCCT_ENABLE_APPCONTMATRIX_FILE_STORAGE)
   if (!IBT) {
     LoadAppContMatrixFromBinaryFile("IBT", &IBT, IBTSize);
   }

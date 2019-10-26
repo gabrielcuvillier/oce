@@ -23,7 +23,7 @@
 #include <math_Matrix.hxx>
 #include <Standard_DimensionError.hxx>
 
-#if !defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
+#if !defined(OCCT_ENABLE_APPCONTMATRIX_FILE_STORAGE)
 static const Standard_Real IBP[] = {
 
 26.47058823529411764705882,
@@ -418,7 +418,7 @@ static Standard_Real* IBP = nullptr;
 
 void IBPMatrix(const Standard_Integer classe, math_Matrix& IBPMa)
 {
-#if defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
+#if defined(OCCT_ENABLE_APPCONTMATRIX_FILE_STORAGE)
   if (!IBP) {
     LoadAppContMatrixFromBinaryFile("IBP", &IBP, IBPSize);
   }

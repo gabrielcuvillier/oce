@@ -171,7 +171,7 @@ maovpch_1_& AdvApp2Var_Data::Getmaovpch()
   return s_maovpch_1_;
 }
 
-#if defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
+#if defined(OCCT_ENABLE_APPCONTMATRIX_FILE_STORAGE)
 #include <Standard_IStream.hxx>
 #include <OSD_OpenFile.hxx>
 #include <Standard_Failure.hxx>

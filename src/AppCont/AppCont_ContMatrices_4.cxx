@@ -23,7 +23,7 @@
 #include <math_Matrix.hxx>
 #include <Standard_DimensionError.hxx>
 
-#if !defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
+#if !defined(OCCT_ENABLE_APPCONTMATRIX_FILE_STORAGE)
 static const Standard_Real VBMatrix[] = {
 0.5, 0.5, 
 
@@ -1238,7 +1238,7 @@ void VBernstein(const Standard_Integer classe,
 		const Standard_Integer nbpoints,
 		math_Matrix&           M)
 {
-#if defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
+#if defined(OCCT_ENABLE_APPCONTMATRIX_FILE_STORAGE)
   if (!VBMatrix) {
     LoadAppContMatrixFromBinaryFile("VBMatrix", &VBMatrix, VBMatrixSize);
   }

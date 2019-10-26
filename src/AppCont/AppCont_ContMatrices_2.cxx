@@ -24,7 +24,7 @@
 #include <math_Matrix.hxx>
 #include <Standard_DimensionError.hxx>
 
-#if !defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
+#if !defined(OCCT_ENABLE_APPCONTMATRIX_FILE_STORAGE)
 static const Standard_Real BBMatrix[] = {
 
 0.3333333333333333333333333, 0.1666666666666666666666667,
@@ -3281,7 +3281,7 @@ static Standard_Real* BBMatrix = nullptr;
 void MMatrix(const Standard_Integer classe,
 	     math_Matrix&           M)
 {
-#if defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
+#if defined(OCCT_ENABLE_APPCONTMATRIX_FILE_STORAGE)
   if (!BBMatrix) {
     LoadAppContMatrixFromBinaryFile("BBMatrix", &BBMatrix, BBMatrixSize);
   }

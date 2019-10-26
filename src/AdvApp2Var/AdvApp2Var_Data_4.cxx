@@ -18,7 +18,7 @@
 //=======================================================================
 mmapgss_1_& AdvApp2Var_Data::Getmmapgss()
 {
-#if !defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
+#if !defined(OCCT_ENABLE_APPCONTMATRIX_FILE_STORAGE)
   static doublereal e_1[5069]={
      .256456162653232608756829902261057, 
 	    .221824096603540997006980731905364, 
@@ -5095,7 +5095,7 @@ mmapgss_1_& AdvApp2Var_Data::Getmmapgss()
   static doublereal* e_1 = nullptr;
 #endif
 
-#if defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
+#if defined(OCCT_ENABLE_APPCONTMATRIX_FILE_STORAGE)
   if (!e_1) {
     LoadApp2VarMatrixFromBinaryFile("mmapgss", &e_1, e_1_size);
   }

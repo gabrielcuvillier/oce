@@ -18,7 +18,7 @@
 //=======================================================================
 mmcmcnp_1_& AdvApp2Var_Data::Getmmcmcnp()
 {
-#if !defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
+#if !defined(OCCT_ENABLE_APPCONTMATRIX_FILE_STORAGE)
   static doublereal e_1[3721]={
             1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,
 	    1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 
@@ -729,7 +729,7 @@ mmcmcnp_1_& AdvApp2Var_Data::Getmmcmcnp()
   static doublereal* e_1 = nullptr;
 #endif
 
-#if defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
+#if defined(OCCT_ENABLE_APPCONTMATRIX_FILE_STORAGE)
   if (!e_1) {
     LoadApp2VarMatrixFromBinaryFile("mmcmcnp", &e_1, e_1_size);
   }

@@ -18,7 +18,7 @@
 //=======================================================================
 mmjcobi_1_& AdvApp2Var_Data::Getmmjcobi()
 {
-#if !defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
+#if !defined(OCCT_ENABLE_APPCONTMATRIX_FILE_STORAGE)
   static doublereal s_e_1[7936]={
             .70710678118654752440084436210485, 
 	    -.79056941504209483299972338610818, 
@@ -7789,7 +7789,7 @@ mmjcobi_1_& AdvApp2Var_Data::Getmmjcobi()
   static doublereal* s_e_1 = nullptr;
 #endif
 
-#if defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
+#if defined(OCCT_ENABLE_APPCONTMATRIX_FILE_STORAGE)
   if (!s_e_1) {
     LoadApp2VarMatrixFromBinaryFile("mmjcobi", &s_e_1, s_e_1_size);
   }

@@ -19,7 +19,7 @@
 //=======================================================================
 mlgdrtl_1_& AdvApp2Var_Data::Getmlgdrtl()
 {
-#if !defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
+#if !defined(OCCT_ENABLE_APPCONTMATRIX_FILE_STORAGE)
   static doublereal s_e_1[1891]={
             .577350269189625764509148780501958, 
 	    .339981043584856264802665759103245, 
@@ -1916,7 +1916,7 @@ mlgdrtl_1_& AdvApp2Var_Data::Getmlgdrtl()
   static doublereal* s_e_1 = nullptr;
 #endif
 
-#if defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
+#if defined(OCCT_ENABLE_APPCONTMATRIX_FILE_STORAGE)
   if (!s_e_1) {
     LoadApp2VarMatrixFromBinaryFile("mlgdrtl", &s_e_1, s_e_1_size);
   }

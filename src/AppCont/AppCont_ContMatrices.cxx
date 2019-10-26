@@ -25,7 +25,7 @@
 #include <Standard_DimensionError.hxx>
 
 
-#if !defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
+#if !defined(OCCT_ENABLE_APPCONTMATRIX_FILE_STORAGE)
 static const Standard_Real IMatrix[] = {
 4.0, -2.0,
 -2.0, 4.0,
@@ -2075,7 +2075,7 @@ static Standard_Real* IMatrix = nullptr;
 void InvMMatrix(const Standard_Integer classe,
 		math_Matrix&           InvM)
 {
-#if defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
+#if defined(OCCT_ENABLE_APPCONTMATRIX_FILE_STORAGE)
   if (!IMatrix) {
     LoadAppContMatrixFromBinaryFile("IMatrix", &IMatrix, IMatrixSize);
   }
@@ -2094,7 +2094,7 @@ void InvMMatrix(const Standard_Integer classe,
   }
 }
 
-#if defined(OCCT_APPCONTMATRIX_FILE_STORAGE)
+#if defined(OCCT_ENABLE_APPCONTMATRIX_FILE_STORAGE)
 #include <Standard_IStream.hxx>
 #include <OSD_OpenFile.hxx>
 #include <string>
