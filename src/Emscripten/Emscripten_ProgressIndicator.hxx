@@ -20,8 +20,9 @@
 class Emscripten_ProgressIndicator : public Message_ProgressIndicator {
  public:
   Emscripten_ProgressIndicator( emscripten::val theProgressFunc,
-                               emscripten::val theCheckCancelFunc,
-                               Standard_Boolean theToAllowYield = Standard_False );
+                                emscripten::val theCheckCancelFunc,
+                                Standard_Integer theMessageDepth = 1,
+                                Standard_Boolean theToAllowYield = Standard_False );
 
   ~Emscripten_ProgressIndicator();
 
@@ -30,10 +31,11 @@ class Emscripten_ProgressIndicator : public Message_ProgressIndicator {
 
  private:
   Standard_Integer myPreviousProgress;
+  Standard_Integer myLastCheckedCancelProgress;
   const emscripten::val myProgressFunc;
   const emscripten::val myCheckCancelFunc;
+  const Standard_Integer myMessageDepth;
   const Standard_Boolean myToAllowYield;
-  Standard_Integer myLastCheckedCancelProgress;
 };
 
 #endif

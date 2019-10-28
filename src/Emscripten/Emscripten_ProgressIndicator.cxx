@@ -12,30 +12,49 @@
 
 #if defined(__EMSCRIPTEN__)
 
+#include <string>      // std::string (used with emscripten::val)
+
 #include <emscripten.h>     // emscripten_sleep
 #include <emscripten/val.h> // emscripten::val
 
 Emscripten_ProgressIndicator::Emscripten_ProgressIndicator( emscripten::val theProgressFunc,
                                                             emscripten::val theCheckCancelFunc,
+                                                            Standard_Integer theMessageDepth,
                                                             Standard_Boolean theToAllowYield)
 : myPreviousProgress(0),
+  myLastCheckedCancelProgress(0),
   myProgressFunc(theProgressFunc),
   myCheckCancelFunc(theCheckCancelFunc),
-  myToAllowYield(theToAllowYield && emscripten_get_compiler_setting("ASYNCIFY")),
-  myLastCheckedCancelProgress(0) {
-
-}
+  myMessageDepth(theMessageDepth),
+  myToAllowYield(theToAllowYield && emscripten_get_compiler_setting("ASYNCIFY"))
+{}
 
 Emscripten_ProgressIndicator::~Emscripten_ProgressIndicator() {}
 
-Standard_Boolean Emscripten_ProgressIndicator::Show( const Standard_Boolean force ) {
-  const Standard_Integer aPosition = (int)(GetPosition() * 100);
-  if ( force || aPosition > myPreviousProgress ) {
+Standard_Boolean Emscripten_ProgressIndicator::Show( const Standard_Boolean theToForce ) {
+  const Standard_Integer aPosition = static_cast<Standard_Integer>(GetPosition() * 100);
+  if ( theToForce || aPosition > myPreviousProgress ) {
     myPreviousProgress = aPosition;
-    myProgressFunc(aPosition);
+    const Standard_Integer aMaxScope = GetNbScopes();
+    const Standard_Integer aMinScope = (aMaxScope - myMessageDepth) >= 1 ? (aMaxScope - myMessageDepth) : 1;
+    TCollection_AsciiString aMessage;
+    Standard_Boolean bFirst = Standard_True;
+    for (Standard_Integer i = GetNbScopes(); i >= aMinScope; i--) {
+      Handle(TCollection_HAsciiString) aScopeName = GetScope(i).GetName();
+      if (aScopeName.IsNull()) {
+        continue;
+      } else {
+        if (!bFirst) {
+          aMessage += " / ";
+        } else {
+          bFirst = Standard_False;
+        }
+        aMessage += aScopeName->ToCString();
+      }
+    }
+    myProgressFunc(aPosition, std::string(aMessage.ToCString()));
     return Standard_True;
-  }
-  else {
+  } else {
     return Standard_False;
   }
 }
