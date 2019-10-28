@@ -52,7 +52,7 @@ Standard_Boolean Emscripten_ProgressIndicator::Show( const Standard_Boolean theT
         aMessage += aScopeName->ToCString();
       }
     }
-    myProgressFunc(aPosition, std::string(aMessage.ToCString()));
+    myProgressFunc(std::string(aMessage.ToCString()), aPosition);
     return Standard_True;
   } else {
     return Standard_False;
