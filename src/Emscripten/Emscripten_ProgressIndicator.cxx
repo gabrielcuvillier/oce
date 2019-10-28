@@ -28,13 +28,16 @@ Emscripten_ProgressIndicator::Emscripten_ProgressIndicator( emscripten::val theP
 
 Emscripten_ProgressIndicator::~Emscripten_ProgressIndicator() {}
 
-Standard_Boolean Emscripten_ProgressIndicator::Show( const Standard_Boolean /*force = Standard_True*/ ) {
+Standard_Boolean Emscripten_ProgressIndicator::Show( const Standard_Boolean force ) {
   const Standard_Integer aPosition = (int)(GetPosition() * 100);
-  if ( aPosition > myPreviousProgress ) {
+  if ( force || aPosition > myPreviousProgress ) {
     myPreviousProgress = aPosition;
-    myProgressFunc(myPreviousProgress);
+    myProgressFunc(aPosition);
+    return Standard_True;
   }
-  return Standard_True;
+  else {
+    return Standard_False;
+  }
 }
 
 Standard_Boolean Emscripten_ProgressIndicator::UserBreak( ) {
