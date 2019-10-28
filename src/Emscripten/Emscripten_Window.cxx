@@ -20,7 +20,7 @@
 #include <emscripten.h>       // EM_ASM, emscripten_get_device_pixel_ratio
 #include <emscripten/html5.h> // emscripten_request_animation_frame, emscripten_cancel_animation_frame
                               // emscripten_get_element_css_size, emscripten_get_canvas_element_size,
-                              // emscripten_set_canvas_element_size, emscripten_set_resize_callback
+                              // emscripten_set_canvas_element_size, emscripten_set_resize_callback, EM_BOOL
 
 IMPLEMENT_STANDARD_RTTIEXT(Emscripten_Window, Aspect_Window)
 
@@ -51,8 +51,8 @@ Emscripten_Window::Emscripten_Window ( Standard_CString theTargetCanvas,
   }
 
   // Setup the Window Resize callback
-  auto resize_cb = [](int eventType, const EmscriptenUiEvent* /*uiEvent*/, void* userData) -> int {
-    Emscripten_Window* pWindow = static_cast<decltype(pWindow)>( userData );
+  auto resize_cb = [](int eventType, const EmscriptenUiEvent* /*uiEvent*/, void* userData) -> EM_BOOL {
+    Emscripten_Window* pWindow = static_cast<Emscripten_Window*>( userData );
     if (eventType == EMSCRIPTEN_EVENT_RESIZE && pWindow) {
       pWindow->DoResize();
       return 1;
@@ -61,7 +61,7 @@ Emscripten_Window::Emscripten_Window ( Standard_CString theTargetCanvas,
     }
   };
   // Register the window resize callback to the Browser window "resize" event
-  auto result = (emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, this, false, resize_cb) == EMSCRIPTEN_RESULT_SUCCESS);
+  EMSCRIPTEN_RESULT result = emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, this, false, resize_cb);
   (void)result;
 
   // Do a first initial manual resize, for the purpose of setting things up correctly.
@@ -82,7 +82,7 @@ Emscripten_Window::Emscripten_Window ( Standard_CString theTargetCanvas,
 Emscripten_Window::~Emscripten_Window()
 {
   // Unregister the resize callback assigned to the window "resize" event (NB: pass NULL as the callback function)
-  auto result = (emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, this, false, NULL) == EMSCRIPTEN_RESULT_SUCCESS);
+  EMSCRIPTEN_RESULT result = emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, this, false, NULL);
   (void)result;
 
   // Cancel the request animation frame if there is one, to prevent race condition at callback time (Window is deleted)
@@ -156,7 +156,7 @@ Aspect_TypeOfResize Emscripten_Window::DoResize() const
     if (emscripten_get_canvas_element_size(myTargetCanvas, &internalWidth, &internalHeight) == EMSCRIPTEN_RESULT_SUCCESS) {
       // If there is a difference between current dimensions and requested dimensions, resize the canvas internal size
       if (internalWidth != requestedWidth || internalHeight != requestedHeight) {
-        auto result = (emscripten_set_canvas_element_size(myTargetCanvas, requestedWidth, requestedHeight) == EMSCRIPTEN_RESULT_SUCCESS);
+        EMSCRIPTEN_RESULT result = emscripten_set_canvas_element_size(myTargetCanvas, requestedWidth, requestedHeight);
         (void)result;
       }
 
@@ -250,17 +250,19 @@ void Emscripten_Window::InvalidateContent (const Handle(Aspect_DisplayConnection
 
   // Skip if there already have been a redraw request, to prevent unecessary redraws
   if ( !myRedrawRequestId ) {
-    // Call emscripten_request_animation frame with the callback function that will do the Redraw, and store the redraw
-    // request identifier
-    myRedrawRequestId = emscripten_request_animation_frame( []( double /*time*/, void* userData ) -> int {
-      Emscripten_Window* pWindow = static_cast<decltype(pWindow)>( userData );
+    // Setup the request animation frame callback
+    auto request_animation_frame_cb = []( double /*time*/, void* userData ) -> EM_BOOL {
+      Emscripten_Window* pWindow = static_cast<Emscripten_Window*>( userData );
       if ( pWindow ) {
         pWindow->DoRedraw();
         return 1;
       } else {
         return 0;
       }
-    }, this);
+    };
+
+    // Call emscripten_request_animation frame with the callback, and store the redraw request identifier
+    myRedrawRequestId = emscripten_request_animation_frame( request_animation_frame_cb , this);
   }
 }
 
