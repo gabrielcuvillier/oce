@@ -11,7 +11,7 @@
 #include <typeinfo>     // typeid
 
 // emscripten
-#include <emscripten/html5.h> // emscripten_throw_string
+#include <emscripten.h>        // emscripten_log
 
 _TerminateWithStandardFailure::_TerminateWithStandardFailure(Standard_Failure const & next) noexcept :
     myFailureType(next.DynamicType()->Name()),
@@ -22,7 +22,7 @@ _TerminateWithStandardFailure::_TerminateWithStandardFailure(std::exception cons
     myMessage(next.what()) { }
 
 _TerminateWithStandardFailure::~_TerminateWithStandardFailure() noexcept {
-  emscripten_throw_string( std::string(myFailureType + ": " + myMessage).c_str() );
+  emscripten_log(EM_LOG_CONSOLE|EM_LOG_ERROR, "%s", std::string(myFailureType + ": " + myMessage).c_str() );
   std::terminate();
 };
 
