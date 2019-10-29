@@ -6,23 +6,21 @@
 #if defined(__EMSCRIPTEN__)
 
 // std
+#include <exception>    // std::exception, std::terminate
+#include <iostream>     // std::cerr
 #include <string>       // std::string
-#include <exception>    // std::exception
 #include <typeinfo>     // typeid
 
-// emscripten
-#include <emscripten.h>        // emscripten_log
+_TerminateWithStandardFailure::_TerminateWithStandardFailure(Standard_Failure const & theFailure) noexcept :
+    myFailureType(theFailure.DynamicType()->Name()),
+    myMessage(theFailure.GetMessageString()) { }
 
-_TerminateWithStandardFailure::_TerminateWithStandardFailure(Standard_Failure const & next) noexcept :
-    myFailureType(next.DynamicType()->Name()),
-    myMessage(next.GetMessageString()) { }
-
-_TerminateWithStandardFailure::_TerminateWithStandardFailure(std::exception const & next) noexcept :
-    myFailureType(typeid(next).name()),
-    myMessage(next.what()) { }
+_TerminateWithStandardFailure::_TerminateWithStandardFailure(std::exception const & theStdException) noexcept :
+    myFailureType(typeid(theStdException).name()),
+    myMessage(theStdException.what()) { }
 
 _TerminateWithStandardFailure::~_TerminateWithStandardFailure() noexcept {
-  emscripten_log(EM_LOG_CONSOLE|EM_LOG_ERROR, "%s", std::string(myFailureType + ": " + myMessage).c_str() );
+  std::cerr << "Exception thrown: " << myFailureType << ": \"" << myMessage << "\"" << std::endl;
   std::terminate();
 };
 
