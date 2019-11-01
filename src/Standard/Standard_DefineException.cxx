@@ -11,17 +11,21 @@
 #include <string>       // std::string
 #include <typeinfo>     // typeid
 
-_TerminateWithStandardFailure::_TerminateWithStandardFailure(Standard_Failure const & theFailure) noexcept :
-    myFailureType(theFailure.DynamicType()->Name()),
-    myMessage(theFailure.GetMessageString()) { }
+_TerminateWithStandardFailure::_TerminateWithStandardFailure(Standard_Failure const & theFailure)
+{
+  std::cerr << "Exception thrown: " << theFailure.DynamicType()->Name() << ": \"" << theFailure.GetMessageString()
+    << "\"" << std::endl;
+}
 
-_TerminateWithStandardFailure::_TerminateWithStandardFailure(std::exception const & theStdException) noexcept :
-    myFailureType(typeid(theStdException).name()),
-    myMessage(theStdException.what()) { }
+_TerminateWithStandardFailure::_TerminateWithStandardFailure(std::exception const & theStdException)
+{
+  std::cerr << "Exception thrown: " << typeid(theStdException).name() << ": \"" << theStdException.what()
+    << "\"" << std::endl;
+}
 
-_TerminateWithStandardFailure::~_TerminateWithStandardFailure() noexcept {
-  std::cerr << "Exception thrown: " << myFailureType << ": \"" << myMessage << "\"" << std::endl;
+_TerminateWithStandardFailure::~_TerminateWithStandardFailure() {
   std::terminate();
-};
+}
+
 
 #endif

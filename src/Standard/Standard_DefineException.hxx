@@ -33,21 +33,18 @@
 // redefine throw/try/catch to specific exception hijacking code
 #if defined(__EMSCRIPTEN__)
 
-#include <string>
 #include <exception>
 
 class _TerminateWithStandardFailure {
- private:
-  std::string myFailureType;
-  std::string myMessage;
  public:
   // Constructors
-  _TerminateWithStandardFailure(Standard_Failure const &) noexcept;
-  _TerminateWithStandardFailure(std::exception const &) noexcept;
+  _TerminateWithStandardFailure(Standard_Failure const &);
+  _TerminateWithStandardFailure(std::exception const &);
   // Destructor
-  [[noreturn]] ~_TerminateWithStandardFailure() noexcept; // [[noreturn]] attribute is crucial there
+  // NB: notice the [[noreturn]] attribute on destructor: it will never return by calling std::terminate()
+  [[noreturn]] ~_TerminateWithStandardFailure();
 
-  // Discared defaults
+  // Discarded defaults
   _TerminateWithStandardFailure(_TerminateWithStandardFailure const &) = delete;
   _TerminateWithStandardFailure(_TerminateWithStandardFailure &&) = delete;
   _TerminateWithStandardFailure & operator = (_TerminateWithStandardFailure const &) = delete;

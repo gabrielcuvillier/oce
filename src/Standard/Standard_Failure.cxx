@@ -192,3 +192,12 @@ Standard_CString Standard_Failure::GetMessageString () const
   return (myMessage ? myMessage+sizeof(Standard_Integer) : "");
 }
 
+//=======================================================================
+//function : what
+//purpose  :
+//=======================================================================
+Standard_CString Standard_Failure::what () const
+{
+  return GetMessageString();
+}
+

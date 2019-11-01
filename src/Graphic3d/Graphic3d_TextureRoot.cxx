@@ -61,9 +61,7 @@ TCollection_AsciiString Graphic3d_TextureRoot::TexturesFolder()
       std::cerr << "Both environment variables CSF_MDTVTexturesDirectory and CASROOT are undefined!\n"
                 << "At least one should be defined to use standard Textures.\n";
 #endif
-#if !defined(__EMSCRIPTEN__)  // Don't fail on emscripten. TODO: enable textures again
       throw Standard_Failure("CSF_MDTVTexturesDirectory and CASROOT are undefined");
-#endif
     }
 
     const OSD_Path aDirPath (VarName);

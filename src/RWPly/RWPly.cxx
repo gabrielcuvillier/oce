@@ -149,7 +149,7 @@ opencascade::handle<Poly_Triangulation> RWPly::ReadFile(const Standard_CString t
 
     return aPoly;
   }
-  catch (std::exception &exception) {
+  catch (std::exception & anException) {
     return nullptr;
   }
 }

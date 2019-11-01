@@ -65,6 +65,9 @@ public:
   
   //! Returns error message
   Standard_EXPORT virtual Standard_CString GetMessageString() const;
+
+  //! For compatibility with std::exception
+  Standard_EXPORT virtual Standard_CString what() const;
   
   //! Sets error message
   Standard_EXPORT virtual void SetMessageString (const Standard_CString aMessage);

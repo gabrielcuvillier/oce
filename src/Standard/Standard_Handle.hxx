@@ -24,7 +24,7 @@ class Standard_Transient;
 //! Namespace opencascade is intended for low-level template classes and functions
 namespace opencascade {
 
-  void debug_type(Standard_Transient const* theTransient) noexcept;
+  void debug_type(Standard_Transient const* theTransient);
 
   //! Intrusive smart pointer for use with Standard_Transient class and its descendants.
   //!
