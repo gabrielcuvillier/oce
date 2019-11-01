@@ -138,7 +138,7 @@ Standard_Type::~Standard_Type ()
   Standard::Free (myName);
 }
 
-void opencascade::debug_type(Standard_Transient const * theTransient) noexcept {
+void opencascade::debug_type(Standard_Transient const * theTransient) {
   if Standard_IF_CONSTEXPR(false) {
     if (theTransient) {
       theTransient->DynamicType();
