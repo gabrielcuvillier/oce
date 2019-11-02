@@ -59,6 +59,7 @@
 #include <Standard_Failure.hxx>
 #include <Standard_Type.hxx>
 #include <StdPrs_HLRPolyShape.hxx>
+#include <StdPrs_DeferredHLRShape.hxx>
 #include <StdPrs_HLRShape.hxx>
 #include <StdPrs_ShadedShape.hxx>
 #include <StdPrs_WFShape.hxx>
@@ -231,7 +232,8 @@ void AIS_Shape::Compute(const Handle(PrsMgr_PresentationManager3d)& /*aPresentat
 void AIS_Shape::computeHlrPresentation (const Handle(Prs3d_Projector)& theProjector,
                                         const Handle(Prs3d_Presentation)& thePrs,
                                         const TopoDS_Shape& theShape,
-                                        const Handle(Prs3d_Drawer)& theDrawer)
+                                        const Handle(Prs3d_Drawer)& theDrawer,
+                                        const Handle(AIS_InteractiveContext)& theContext)
 {
   if (theShape.IsNull())
   {
@@ -285,14 +287,21 @@ void AIS_Shape::computeHlrPresentation (const Handle(Prs3d_Projector)& theProjec
       OCC_CATCH_SIGNALS
       switch (theDrawer->TypeOfHLR())
       {
-        case Prs3d_TOH_Algo:
 #if !defined(OCCT_DISABLE_EXACTHLR_IN_VISUALIZATION)
+        case Prs3d_TOH_Algo:
           StdPrs_HLRShape::Add (thePrs, theShape, theDrawer, theProjector);
           break;
-#endif
         case Prs3d_TOH_PolyAlgo:
-        default:
           StdPrs_HLRPolyShape::Add (thePrs, theShape, theDrawer, theProjector);
+          break;
+#endif
+        case Prs3d_TOH_DeferredAlgo: {
+          if (theContext && theContext->GetDeferredHLRShape()) {
+            theContext->GetDeferredHLRShape()->Add( thePrs, theShape, theDrawer, theProjector);
+          }
+          break;
+        }
+        default:
           break;
       }
     }

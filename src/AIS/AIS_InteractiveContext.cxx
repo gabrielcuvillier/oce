@@ -56,6 +56,7 @@
 #include <UnitsAPI.hxx>
 #include <V3d_View.hxx>
 #include <V3d_Viewer.hxx>
+#include <StdPrs_DeferredHLRShape.hxx>
 
 IMPLEMENT_STANDARD_RTTIEXT(AIS_InteractiveContext, Standard_Transient)
 
@@ -2587,4 +2588,12 @@ void AIS_InteractiveContext::setObjectStatus (const Handle(AIS_InteractiveObject
 
     setObjectStatus (aChild, theStatus, theDispMode, theSelectionMode);
   }
+}
+
+void AIS_InteractiveContext::SetDeferredHLRShape(Handle(StdPrs_DeferredHLRShape) theDeferredHLRShape) {
+  myDeferredHLRShape = theDeferredHLRShape;
+}
+
+Handle(StdPrs_DeferredHLRShape) AIS_InteractiveContext::GetDeferredHLRShape() const {
+  return myDeferredHLRShape;
 }

@@ -55,6 +55,7 @@ class Prs3d_BasicAspect;
 class TopoDS_Shape;
 class SelectMgr_EntityOwner;
 class SelectMgr_Filter;
+class StdPrs_DeferredHLRShape;
 
 //! The Interactive Context allows you to manage graphic behavior and selection of Interactive Objects in one or more viewers.
 //! Class methods make this highly transparent.
@@ -1418,6 +1419,10 @@ protected: //! @name internal methods
                                         const Standard_Integer theDispyMode,
                                         const Standard_Integer theSelectionMode);
 
+ public:
+  Standard_EXPORT void SetDeferredHLRShape(Handle(StdPrs_DeferredHLRShape) theDeferredHLRShape);
+  Standard_EXPORT Handle(StdPrs_DeferredHLRShape) GetDeferredHLRShape() const;
+
 protected: //! @name internal fields
 
   AIS_DataMapOfIOStatus myObjects;
@@ -1439,6 +1444,7 @@ protected: //! @name internal fields
   Standard_Boolean myAutoHilight;
   Standard_Boolean myIsAutoActivateSelMode;
 
+  Handle(StdPrs_DeferredHLRShape) myDeferredHLRShape;
 };
 
 DEFINE_STANDARD_HANDLE(AIS_InteractiveContext, Standard_Transient)

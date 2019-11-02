@@ -166,7 +166,7 @@ void AIS_ConnectedInteractive::Compute (const Handle(Prs3d_Projector)& theProjec
                                         const Handle(Prs3d_Presentation)& thePrs,
                                         const TopoDS_Shape& theShape)
 {
-  AIS_Shape::computeHlrPresentation (theProjector, thePrs, theShape, myDrawer);
+  AIS_Shape::computeHlrPresentation (theProjector, thePrs, theShape, myDrawer, GetContext());
 }
 
 //=======================================================================

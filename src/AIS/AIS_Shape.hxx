@@ -285,7 +285,7 @@ protected:
   virtual void Compute (const Handle(Prs3d_Projector)& theProjector,
                         const Handle(Prs3d_Presentation)& thePrs) Standard_OVERRIDE
   {
-    computeHlrPresentation (theProjector, thePrs, myshape, myDrawer);
+    computeHlrPresentation (theProjector, thePrs, myshape, myDrawer, GetContext());
   }
 
   //! Compute projected presentation with transformation.
@@ -295,7 +295,7 @@ protected:
   {
     const TopLoc_Location& aLoc = myshape.Location();
     const TopoDS_Shape aShape = myshape.Located (TopLoc_Location (theTrsf->Trsf()) * aLoc);
-    computeHlrPresentation (theProjector, thePrs, aShape, myDrawer);
+    computeHlrPresentation (theProjector, thePrs, aShape, myDrawer, GetContext());
   }
 
   //! Compute selection.
@@ -323,7 +323,8 @@ public:
   Standard_EXPORT static void computeHlrPresentation (const Handle(Prs3d_Projector)& theProjector,
                                                       const Handle(Prs3d_Presentation)& thePrs,
                                                       const TopoDS_Shape& theShape,
-                                                      const Handle(Prs3d_Drawer)& theDrawer);
+                                                      const Handle(Prs3d_Drawer)& theDrawer,
+                                                      const Handle(AIS_InteractiveContext)& theContext);
 
 protected:
 
