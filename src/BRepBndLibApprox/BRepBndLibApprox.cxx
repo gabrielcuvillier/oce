@@ -12,13 +12,13 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
+// Updates by: Copyright (c) 2019 Gabriel Cuvillier - Continuation Labs
+//  Moved parts of TKTopAlgo/BRepBndLib to TKBRep/BRepBndLibApprox (bounding box using triangulation), to remove a
+//  dependency of TKVisualization to TKTopAlgo
 
 #include <Bnd_Box.hxx>
-#include <BRep_Polygon3D.hxx>
 #include <BRep_Tool.hxx>
 #include <BRepBndLibApprox.hxx>
-#include <Geom_Curve.hxx>
-#include <Geom_Surface.hxx>
 #include <Poly_Polygon3D.hxx>
 #include <Poly_PolygonOnTriangulation.hxx>
 #include <Poly_Triangulation.hxx>
@@ -29,15 +29,6 @@
 #include <TopLoc_Location.hxx>
 #include <TopoDS.hxx>
 #include <TopoDS_Shape.hxx>
-#include <Adaptor3d_HCurve.hxx>
-#include <Adaptor3d_HSurface.hxx>
-#include <Geom_BSplineSurface.hxx>
-#include <Geom_BezierSurface.hxx>
-#include <Bnd_Box2d.hxx>
-#include <ElSLib.hxx>
-#include <ElCLib.hxx>
-#include <Geom_Plane.hxx>
-#include <Extrema_ExtSS.hxx>
 
 //
 //=======================================================================
