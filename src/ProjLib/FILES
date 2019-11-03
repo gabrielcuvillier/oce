@@ -23,6 +23,8 @@ ProjLib_PrjResolve.cxx
 ProjLib_PrjResolve.hxx
 ProjLib_ProjectedCurve.cxx
 ProjLib_ProjectedCurve.hxx
+ProjLib_ProjectedCurveOnPlane.cxx
+ProjLib_ProjectedCurveOnPlane.hxx
 ProjLib_ProjectOnPlane.cxx
 ProjLib_ProjectOnPlane.hxx
 ProjLib_ProjectOnSurface.cxx

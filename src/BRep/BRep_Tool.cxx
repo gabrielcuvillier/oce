@@ -53,7 +53,7 @@
 #include <Poly_PolygonOnTriangulation.hxx>
 #include <Poly_Triangulation.hxx>
 #include <Precision.hxx>
-#include <ProjLib_ProjectedCurve.hxx>
+#include <ProjLib_ProjectedCurveOnPlane.hxx>
 #include <Standard_NoSuchObject.hxx>
 #include <Standard_NullObject.hxx>
 #include <TopExp.hxx>
@@ -292,7 +292,7 @@ Handle(Geom2d_Curve) BRep_Tool::CurveOnSurface(const TopoDS_Edge& E,
 
 static const Handle(Geom2d_Curve) nullPCurve;
 
-Handle(Geom2d_Curve) BRep_Tool::CurveOnSurface(const TopoDS_Edge& E, 
+Handle(Geom2d_Curve) BRep_Tool::CurveOnSurface(const TopoDS_Edge& E,
                                                const Handle(Geom_Surface)& S,
                                                const TopLoc_Location& L,
                                                Standard_Real& First,
@@ -383,7 +383,7 @@ Handle(Geom2d_Curve) BRep_Tool::CurveOnPlane(const TopoDS_Edge& E,
   Handle(GeomAdaptor_HSurface) HS = new GeomAdaptor_HSurface(GP);
   Handle(GeomAdaptor_HCurve)   HC = new GeomAdaptor_HCurve(ProjOnPlane);
 
-  ProjLib_ProjectedCurve Proj(HS, HC);
+  ProjLib_ProjectedCurveOnPlane Proj(HS, HC);
   Handle(Geom2d_Curve) pc = Geom2dAdaptor::MakeCurve(Proj);
 
   if (pc->DynamicType() == STANDARD_TYPE(Geom2d_TrimmedCurve)) {
