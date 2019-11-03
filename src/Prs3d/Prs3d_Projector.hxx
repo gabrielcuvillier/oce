@@ -20,7 +20,7 @@
 #include <Standard.hxx>
 #include <Standard_Type.hxx>
 
-#include <HLRAlgo_Projector.hxx>
+#include <HLRProjector_Projector.hxx>
 #include <Standard_Transient.hxx>
 #include <Standard_Boolean.hxx>
 
@@ -37,7 +37,7 @@ class Prs3d_Projector : public Standard_Transient
 public:
 
   
-  Standard_EXPORT Prs3d_Projector(const HLRAlgo_Projector& Pr);
+  Standard_EXPORT Prs3d_Projector(const HLRProjector_Projector& Pr);
   
   //! Constructs a projector framework from the following parameters
   //! -   Pers is true if the view is a perspective view and
@@ -51,13 +51,13 @@ public:
   Standard_EXPORT Prs3d_Projector(const Standard_Boolean Pers, const Standard_Real Focus, const Standard_Real DX, const Standard_Real DY, const Standard_Real DZ, const Standard_Real XAt, const Standard_Real YAt, const Standard_Real ZAt, const Standard_Real XUp, const Standard_Real YUp, const Standard_Real ZUp);
   
   //! Returns a projector object for use in a hidden line removal algorithm.
-  Standard_EXPORT HLRAlgo_Projector Projector() const;
+  Standard_EXPORT HLRProjector_Projector Projector() const;
 
   DEFINE_STANDARD_RTTIEXT(Prs3d_Projector,Standard_Transient)
 
 private:
 
-  HLRAlgo_Projector MyProjector;
+  HLRProjector_Projector MyProjector;
 
 };
 

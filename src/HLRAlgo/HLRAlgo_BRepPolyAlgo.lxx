@@ -37,7 +37,7 @@ inline void HLRAlgo_BRepPolyAlgo::Load (const TopoDS_Shape& S)
 //purpose  : 
 //=======================================================================
 
-inline const HLRAlgo_Projector & HLRAlgo_BRepPolyAlgo::Projector () const
+inline const HLRProjector_Projector & HLRAlgo_BRepPolyAlgo::Projector () const
 { return myProj; }
 
 //=======================================================================
@@ -45,7 +45,7 @@ inline const HLRAlgo_Projector & HLRAlgo_BRepPolyAlgo::Projector () const
 //purpose  : 
 //=======================================================================
 
-inline void HLRAlgo_BRepPolyAlgo::Projector (const HLRAlgo_Projector& P)
+inline void HLRAlgo_BRepPolyAlgo::Projector (const HLRProjector_Projector& P)
 { myProj = P; }
 
 //=======================================================================

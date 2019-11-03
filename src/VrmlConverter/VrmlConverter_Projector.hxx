@@ -20,7 +20,7 @@
 #include <Standard.hxx>
 #include <Standard_Type.hxx>
 
-#include <HLRAlgo_Projector.hxx>
+#include <HLRProjector_Projector.hxx>
 #include <Vrml_PerspectiveCamera.hxx>
 #include <Vrml_OrthographicCamera.hxx>
 #include <Vrml_DirectionalLight.hxx>
@@ -32,7 +32,7 @@
 #include <Standard_Transient.hxx>
 #include <TopTools_Array1OfShape.hxx>
 #include <Standard_OStream.hxx>
-class HLRAlgo_Projector;
+class HLRProjector_Projector;
 
 
 class VrmlConverter_Projector;
@@ -70,14 +70,14 @@ public:
   //! with  MatrixTransform  from VrmlConverter;
   Standard_EXPORT void Add (Standard_OStream& anOStream) const;
   
-  Standard_EXPORT HLRAlgo_Projector Projector() const;
+  Standard_EXPORT HLRProjector_Projector Projector() const;
 
   DEFINE_STANDARD_RTTIEXT(VrmlConverter_Projector,Standard_Transient)
 
 private:
 
 
-  HLRAlgo_Projector myProjector;
+  HLRProjector_Projector myProjector;
   Vrml_PerspectiveCamera myPerspectiveCamera;
   Vrml_OrthographicCamera myOrthographicCamera;
   Vrml_DirectionalLight myDirectionalLight;

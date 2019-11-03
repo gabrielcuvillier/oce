@@ -25,7 +25,7 @@
 #include <Standard.hxx>
 #include <Standard_Type.hxx>
 
-#include <HLRAlgo_Projector.hxx>
+#include <HLRProjector_Projector.hxx>
 #include <Standard_Real.hxx>
 #include <TopTools_SequenceOfShape.hxx>
 #include <TopTools_IndexedMapOfShape.hxx>
@@ -46,7 +46,7 @@ class HLRAlgo_PolyAlgo;
 class Geom_Surface;
 class Standard_OutOfRange;
 class TopoDS_Shape;
-class HLRAlgo_Projector;
+class HLRProjector_Projector;
 class TopoDS_Edge;
 class HLRAlgo_PolyInternalData;
 class HLRAlgo_EdgeStatus;
@@ -139,11 +139,11 @@ class HLRAlgo_BRepPolyAlgo : public Standard_Transient {
   Standard_EXPORT Handle(HLRAlgo_PolyAlgo) Algo() const;
 
   //! Sets the parameters of the view for this framework.
-  //! These parameters are defined by an HLRAlgo_Projector object,
+  //! These parameters are defined by an HLRProjector_Projector object,
   //! which is returned by the Projector function on a Prs3d_Projector object.
-  const HLRAlgo_Projector &Projector() const;
+  const HLRProjector_Projector &Projector() const;
 
-  void Projector(const HLRAlgo_Projector &P);
+  void Projector(const HLRProjector_Projector &P);
 
   Standard_Real Angle() const;
 
@@ -601,7 +601,7 @@ class HLRAlgo_BRepPolyAlgo : public Standard_Transient {
     TIMultiply(thePoint.ChangeCoord(1), thePoint.ChangeCoord(2), thePoint.ChangeCoord(3), VecPartOnly);
   }
 
-  HLRAlgo_Projector myProj;
+  HLRProjector_Projector myProj;
   Standard_Real TMat[3][3];
   Standard_Real TLoc[3];
   Standard_Real TTMa[3][3];

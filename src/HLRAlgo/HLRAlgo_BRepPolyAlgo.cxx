@@ -34,7 +34,7 @@
 #include <HLRAlgo_PolyInternalData.hxx>
 #include <HLRAlgo_PolyMask.hxx>
 #include <HLRAlgo_PolyShellData.hxx>
-#include <HLRAlgo_Projector.hxx>
+#include <HLRProjector_Projector.hxx>
 #include <HLRAlgo_BRepPolyAlgo.hxx>
 #include <Poly_Polygon3D.hxx>
 #include <Poly_PolygonOnTriangulation.hxx>

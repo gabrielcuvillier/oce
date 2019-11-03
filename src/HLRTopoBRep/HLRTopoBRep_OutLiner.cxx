@@ -22,7 +22,7 @@
 #include <gp_Dir.hxx>
 #include <gp_Pnt.hxx>
 #include <gp_Vec.hxx>
-#include <HLRAlgo_Projector.hxx>
+#include <HLRProjector_Projector.hxx>
 #include <HLRTopoBRep_Data.hxx>
 #include <HLRTopoBRep_DSFiller.hxx>
 #include <HLRTopoBRep_OutLiner.hxx>
@@ -72,7 +72,7 @@ HLRTopoBRep_OutLiner::HLRTopoBRep_OutLiner(const TopoDS_Shape& OriS,
 //purpose  : 
 //=======================================================================
 
-void HLRTopoBRep_OutLiner::Fill(const HLRAlgo_Projector& P,
+void HLRTopoBRep_OutLiner::Fill(const HLRProjector_Projector& P,
 				BRepTopAdaptor_MapOfShapeTool& MST,
 				const Standard_Integer nbIso)
 {

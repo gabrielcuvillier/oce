@@ -19,7 +19,7 @@
 //purpose  : 
 //=======================================================================
 
-inline const HLRAlgo_Projector & HLRTest_Projector::Projector () const 
+inline const HLRProjector_Projector & HLRTest_Projector::Projector () const
 {
   return myProjector;
 }

@@ -19,7 +19,7 @@
 #include <Draw.hxx>
 #include <Draw_Appli.hxx>
 #include <gp_Ax3.hxx>
-#include <HLRAlgo_Projector.hxx>
+#include <HLRProjector_Projector.hxx>
 #include <HLRAppli_ReflectLines.hxx>
 #include <HLRBRep_Algo.hxx>
 #include <HLRBRep_HLRToShape.hxx>
@@ -44,7 +44,7 @@ Standard_IMPORT Draw_Viewer dout;
 //purpose  : 
 //=======================================================================
 void HLRTest::Set (const Standard_CString Name,
-		   const HLRAlgo_Projector& P)
+		   const HLRProjector_Projector& P)
 {
   Draw::Set(Name,new HLRTest_Projector(P));
 }
@@ -54,7 +54,7 @@ void HLRTest::Set (const Standard_CString Name,
 //purpose  : 
 //=======================================================================
 Standard_Boolean HLRTest::GetProjector (Standard_CString& Name,
-					HLRAlgo_Projector& P)
+					HLRProjector_Projector& P)
 {
   Handle(HLRTest_Projector) HP = 
     Handle(HLRTest_Projector)::DownCast(Draw::Get(Name));
@@ -119,7 +119,7 @@ hprj (Draw_Interpretor& , Standard_Integer n, const char** a)
     anAx2 = gp_Ax2(anOrigin, aNormal, aDX);
   }
   
-  HLRAlgo_Projector P(anAx2);
+  HLRProjector_Projector P(anAx2);
   HLRTest::Set(a[1],P);
   return 0;
 }
@@ -161,7 +161,7 @@ hfil (Draw_Interpretor& di, Standard_Integer n, const char** a)
     return 1;
   }
   const char *name2 = a[2];
-  HLRAlgo_Projector P;
+  HLRProjector_Projector P;
   if (!HLRTest::GetProjector(name2,P)) {
     di << name2 << " is not a projector.\n";
     return 1;
@@ -289,7 +289,7 @@ sprj (Draw_Interpretor& di, Standard_Integer n, const char** a)
 {
   if (n < 2) return 1;
   const char *name = a[1];
-  HLRAlgo_Projector P;
+  HLRProjector_Projector P;
   if (!HLRTest::GetProjector(name,P)) {
     di << name << " is not a projector.\n";
     return 1;
@@ -615,7 +615,7 @@ static void ssave (const Handle(Draw_Drawable3D)&d, std::ostream& OS)
   Handle(HLRTest_Projector) HP =
     Handle(HLRTest_Projector)::DownCast(d);
 
-  const HLRAlgo_Projector& P = HP->Projector();
+  const HLRProjector_Projector& P = HP->Projector();
   OS << (P.Perspective() ? "1" : "0") << "\n";
   if (P.Perspective())
     OS << P.Focus() << "\n";
@@ -672,7 +672,7 @@ static Handle(Draw_Drawable3D) srestore (std::istream& IS)
 
   T.SetTranslationPart(gp_Vec(V[0],V[1],V[2]));
 
-  HLRAlgo_Projector P(T,pers,focus);
+  HLRProjector_Projector P(T,pers,focus);
   Handle(HLRTest_Projector) HP = new HLRTest_Projector(P);
   return HP;
 }

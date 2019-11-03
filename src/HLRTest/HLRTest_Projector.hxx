@@ -20,11 +20,11 @@
 #include <Standard.hxx>
 #include <Standard_Type.hxx>
 
-#include <HLRAlgo_Projector.hxx>
+#include <HLRProjector_Projector.hxx>
 #include <Draw_Drawable3D.hxx>
 #include <Standard_OStream.hxx>
 #include <Draw_Interpretor.hxx>
-class HLRAlgo_Projector;
+class HLRProjector_Projector;
 class Draw_Display;
 class Draw_Drawable3D;
 
@@ -39,9 +39,9 @@ class HLRTest_Projector : public Draw_Drawable3D
 public:
 
   
-  Standard_EXPORT HLRTest_Projector(const HLRAlgo_Projector& P);
+  Standard_EXPORT HLRTest_Projector(const HLRProjector_Projector& P);
   
-    const HLRAlgo_Projector& Projector() const;
+    const HLRProjector_Projector& Projector() const;
   
   //! Does nothhing,
   Standard_EXPORT void DrawOn (Draw_Display& dis) const Standard_OVERRIDE;
@@ -69,7 +69,7 @@ protected:
 private:
 
 
-  HLRAlgo_Projector myProjector;
+  HLRProjector_Projector myProjector;
 
 
 };

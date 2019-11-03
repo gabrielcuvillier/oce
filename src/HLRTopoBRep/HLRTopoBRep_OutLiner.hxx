@@ -27,7 +27,7 @@
 #include <Standard_Integer.hxx>
 class TopoDS_Shape;
 class HLRTopoBRep_Data;
-class HLRAlgo_Projector;
+class HLRProjector_Projector;
 class TopoDS_Face;
 
 
@@ -57,7 +57,7 @@ public:
   
     HLRTopoBRep_Data& DataStructure();
   
-  Standard_EXPORT void Fill (const HLRAlgo_Projector& P, BRepTopAdaptor_MapOfShapeTool& MST, const Standard_Integer nbIso);
+  Standard_EXPORT void Fill (const HLRProjector_Projector& P, BRepTopAdaptor_MapOfShapeTool& MST, const Standard_Integer nbIso);
 
 
 

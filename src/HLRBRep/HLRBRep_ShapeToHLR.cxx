@@ -22,7 +22,7 @@
 #include <BRep_Tool.hxx>
 #include <BRepTools.hxx>
 #include <BRepTopAdaptor_MapOfShapeTool.hxx>
-#include <HLRAlgo_Projector.hxx>
+#include <HLRProjector_Projector.hxx>
 #include <HLRBRep.hxx>
 #include <HLRBRep_Data.hxx>
 #include <HLRBRep_ShapeToHLR.hxx>
@@ -45,7 +45,7 @@
 //=======================================================================
 Handle(HLRBRep_Data) 
 HLRBRep_ShapeToHLR::Load(const Handle(HLRTopoBRep_OutLiner)& S,
-			 const HLRAlgo_Projector& P,
+			 const HLRProjector_Projector& P,
 			 BRepTopAdaptor_MapOfShapeTool& MST,
 			 const Standard_Integer nbIso)
 { 

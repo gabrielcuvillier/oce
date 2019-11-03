@@ -21,7 +21,7 @@
 #include <Standard_DefineAlloc.hxx>
 #include <Standard_Handle.hxx>
 
-#include <HLRAlgo_Projector.hxx>
+#include <HLRProjector_Projector.hxx>
 #include <HLRBRep_Algo.hxx>
 #include <HLRBRep_TypeOfResultingEdge.hxx>
 #include <TopoDS_Shape.hxx>
@@ -72,7 +72,7 @@ private:
 
 
 
-  HLRAlgo_Projector myProjector;
+  HLRProjector_Projector myProjector;
   Handle(HLRBRep_Algo) myHLRAlgo;
   TopoDS_Shape myShape;
   //TopoDS_Shape myCompound;

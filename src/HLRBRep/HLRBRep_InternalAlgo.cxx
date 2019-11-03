@@ -16,7 +16,7 @@
 
 
 #include <HLRAlgo.hxx>
-#include <HLRAlgo_Projector.hxx>
+#include <HLRProjector_Projector.hxx>
 #include <HLRBRep_Data.hxx>
 #include <HLRBRep_Hider.hxx>
 #include <HLRBRep_InternalAlgo.hxx>
@@ -73,7 +73,7 @@ HLRBRep_InternalAlgo (const Handle(HLRBRep_InternalAlgo)& A)
 //purpose  : 
 //=======================================================================
 
-void HLRBRep_InternalAlgo::Projector (const HLRAlgo_Projector& P)
+void HLRBRep_InternalAlgo::Projector (const HLRProjector_Projector& P)
 {
   myProj = P;
 }
@@ -83,7 +83,7 @@ void HLRBRep_InternalAlgo::Projector (const HLRAlgo_Projector& P)
 //purpose  : 
 //=======================================================================
 
-HLRAlgo_Projector & HLRBRep_InternalAlgo::Projector ()
+HLRProjector_Projector & HLRBRep_InternalAlgo::Projector ()
 { return myProj; }
 
 //=======================================================================

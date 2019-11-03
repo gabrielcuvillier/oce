@@ -29,7 +29,7 @@
 #include <Standard_Real.hxx>
 class HLRBRep_Data;
 class TopoDS_Shape;
-class HLRAlgo_Projector;
+class HLRProjector_Projector;
 class BRepAdaptor_Curve;
 
 
@@ -41,7 +41,7 @@ public:
   DEFINE_STANDARD_ALLOC
 
   
-  Standard_EXPORT StdPrs_HLRToolShape(const TopoDS_Shape& TheShape, const HLRAlgo_Projector& TheProjector);
+  Standard_EXPORT StdPrs_HLRToolShape(const TopoDS_Shape& TheShape, const HLRProjector_Projector& TheProjector);
   
   Standard_EXPORT Standard_Integer NbEdges() const;
   

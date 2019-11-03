@@ -26,7 +26,7 @@
 #include <HLRBRep_Array1OfFData.hxx>
 #include <TColStd_Array1OfInteger.hxx>
 #include <Standard_ShortReal.hxx>
-#include <HLRAlgo_Projector.hxx>
+#include <HLRProjector_Projector.hxx>
 #include <HLRBRep_CLProps.hxx>
 #include <HLRBRep_SLProps.hxx>
 #include <Standard_Real.hxx>
@@ -44,7 +44,7 @@
 #include <HLRAlgo_InterferenceList.hxx>
 class BRepTopAdaptor_TopolTool;
 class StdFail_UndefinedDerivative;
-class HLRAlgo_Projector;
+class HLRProjector_Projector;
 class HLRAlgo_Interference;
 class gp_Dir2d;
 class HLRBRep_EdgeData;
@@ -85,9 +85,9 @@ public:
   
   //! end of building  of the Data and updating
   //! all the informations linked to the projection.
-  Standard_EXPORT void Update (const HLRAlgo_Projector& P);
+  Standard_EXPORT void Update (const HLRProjector_Projector& P);
   
-    HLRAlgo_Projector& Projector();
+    HLRProjector_Projector& Projector();
   
     Standard_Integer NbVertices() const;
   
@@ -221,7 +221,7 @@ private:
   HLRBRep_Array1OfFData myFData;
   TColStd_Array1OfInteger myEdgeIndices;
   Standard_ShortReal myToler;
-  HLRAlgo_Projector myProj;
+  HLRProjector_Projector myProj;
   HLRBRep_CLProps myLLProps;
   HLRBRep_CLProps myFLProps;
   HLRBRep_SLProps mySLProps;

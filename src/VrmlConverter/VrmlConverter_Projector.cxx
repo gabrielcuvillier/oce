@@ -19,7 +19,7 @@
 #include <gp_Pnt.hxx>
 #include <gp_Trsf.hxx>
 #include <gp_Vec.hxx>
-#include <HLRAlgo_Projector.hxx>
+#include <HLRProjector_Projector.hxx>
 #include <Precision.hxx>
 #include <Standard_Type.hxx>
 #include <TColgp_Array1OfPnt.hxx>
@@ -135,7 +135,7 @@ VrmlConverter_Projector::VrmlConverter_Projector (const TopTools_Array1OfShape& 
   if (Camera == VrmlConverter_PerspectiveCamera) Pers = Standard_True;
 
 //build a Projector with automatic minmax directions
-  myProjector = HLRAlgo_Projector(T,Pers,Focus);
+  myProjector = HLRProjector_Projector(T,Pers,Focus);
 
   gp_Trsf T3;
   T3 = T.Inverted();
@@ -362,7 +362,7 @@ VrmlConverter_TypeOfLight VrmlConverter_Projector::Light() const
  return myTypeOfLight;
 }
 
-HLRAlgo_Projector VrmlConverter_Projector::Projector () const 
+HLRProjector_Projector VrmlConverter_Projector::Projector () const
 {
   return myProjector;
 }

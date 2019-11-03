@@ -70,7 +70,7 @@
 #include <TopoDS_CompSolid.hxx>
 #include <StdSelect_ShapeTypeFilter.hxx>
 #include <Prs3d_Projector.hxx>
-#include <HLRAlgo_Projector.hxx>
+#include <HLRProjector_Projector.hxx>
 #include <Standard_ErrorHandler.hxx>
 #include <Font_NameOfFont.hxx>
 

@@ -88,7 +88,7 @@
 #include <gp_Quaternion.hxx>
 #include <TopLoc_Location.hxx>
 
-#include <HLRAlgo_Projector.hxx>
+#include <HLRProjector_Projector.hxx>
 #include <HLRBRep_Algo.hxx>
 #include <HLRAlgo_BRepPolyAlgo.hxx>
 #include <HLRBRep_PolyHLRToShape.hxx>
@@ -3157,7 +3157,7 @@ static int VComputeHLR (Draw_Interpretor& ,
     return 1;
   }
 
-  HLRAlgo_Projector aProjector (aProjAx);
+  HLRProjector_Projector aProjector (aProjAx);
   TopoDS_Shape aVisible[6];
   TopoDS_Shape aHidden[6];
   if (anAlgoType == Prs3d_TOH_PolyAlgo)

@@ -20,7 +20,7 @@
 #include <Standard.hxx>
 #include <Standard_Type.hxx>
 
-#include <HLRAlgo_Projector.hxx>
+#include <HLRProjector_Projector.hxx>
 #include <HLRBRep_SeqOfShapeBounds.hxx>
 #include <BRepTopAdaptor_MapOfShapeTool.hxx>
 #include <Standard_Boolean.hxx>
@@ -28,7 +28,7 @@
 #include <Standard_Integer.hxx>
 class HLRBRep_Data;
 class Standard_OutOfRange;
-class HLRAlgo_Projector;
+class HLRProjector_Projector;
 class HLRTopoBRep_OutLiner;
 class HLRBRep_ShapeBounds;
 
@@ -48,10 +48,10 @@ public:
   Standard_EXPORT HLRBRep_InternalAlgo(const Handle(HLRBRep_InternalAlgo)& A);
   
   //! set the projector.
-  Standard_EXPORT void Projector (const HLRAlgo_Projector& P);
+  Standard_EXPORT void Projector (const HLRProjector_Projector& P);
   
   //! set the projector.
-  Standard_EXPORT HLRAlgo_Projector& Projector();
+  Standard_EXPORT HLRProjector_Projector& Projector();
   
   //! update the DataStructure.
   Standard_EXPORT void Update();
@@ -144,7 +144,7 @@ private:
   Standard_EXPORT void HideSelected (const Standard_Integer I, const Standard_Boolean SideFace);
 
   Handle(HLRBRep_Data) myDS;
-  HLRAlgo_Projector myProj;
+  HLRProjector_Projector myProj;
   HLRBRep_SeqOfShapeBounds myShapes;
   BRepTopAdaptor_MapOfShapeTool myMapOfShapeTool;
   Standard_Boolean myDebug;

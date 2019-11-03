@@ -23,7 +23,7 @@
 #include <gp_Pnt.hxx>
 #include <gp_Vec.hxx>
 #include <GProp_PEquation.hxx>
-#include <HLRAlgo_Projector.hxx>
+#include <HLRProjector_Projector.hxx>
 #include <HLRBRep_BSurfaceTool.hxx>
 #include <HLRBRep_Curve.hxx>
 #include <HLRBRep_Surface.hxx>

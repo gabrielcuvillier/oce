@@ -60,7 +60,7 @@ void HLRAppli_ReflectLines::SetAxes(const Standard_Real Nx,
   T.SetTransformation(Axe);
 
   //myProjector = aPrs3dProjector.Projector();
-  myProjector = HLRAlgo_Projector(T,IsPerspective,aFocus);
+  myProjector = HLRProjector_Projector(T,IsPerspective,aFocus);
 }
 
 //=======================================================================

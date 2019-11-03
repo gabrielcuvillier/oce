@@ -27,7 +27,7 @@
 #include <Standard_Boolean.hxx>
 class HLRBRep_Data;
 class HLRTopoBRep_OutLiner;
-class HLRAlgo_Projector;
+class HLRProjector_Projector;
 class TopoDS_Face;
 
 
@@ -43,7 +43,7 @@ public:
   
   //! Creates  a DataStructure   containing the OutLiner
   //! <S> depending on the projector <P> and nbIso.
-  Standard_EXPORT static Handle(HLRBRep_Data) Load (const Handle(HLRTopoBRep_OutLiner)& S, const HLRAlgo_Projector& P, BRepTopAdaptor_MapOfShapeTool& MST, const Standard_Integer nbIso = 0);
+  Standard_EXPORT static Handle(HLRBRep_Data) Load (const Handle(HLRTopoBRep_OutLiner)& S, const HLRProjector_Projector& P, BRepTopAdaptor_MapOfShapeTool& MST, const Standard_Integer nbIso = 0);
 
 
 

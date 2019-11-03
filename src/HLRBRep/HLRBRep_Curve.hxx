@@ -49,7 +49,7 @@ class gp_Elips2d;
 class gp_Hypr2d;
 class gp_Parab2d;
 class Geom_BSplineCurve;
-class HLRAlgo_Projector;
+class HLRProjector_Projector;
 
 
 //! Defines a 2d curve by projection of  a 3D curve on
@@ -65,7 +65,7 @@ public:
   //! Creates an undefined Curve.
   Standard_EXPORT HLRBRep_Curve();
   
-    void Projector (const HLRAlgo_Projector* Proj)
+    void Projector (const HLRProjector_Projector* Proj)
     {myProj = Proj;}
   
   //! Returns the 3D curve.
@@ -222,7 +222,7 @@ private:
 
   BRepAdaptor_Curve myCurve;
   GeomAbs_CurveType myType;
-  const HLRAlgo_Projector* myProj;
+  const HLRProjector_Projector* myProj;
   Standard_Real myOX;
   Standard_Real myOZ;
   Standard_Real myVX;

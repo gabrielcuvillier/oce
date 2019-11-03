@@ -27,7 +27,7 @@
 #include <HLRAlgo.hxx>
 #include <HLRAlgo_Interference.hxx>
 #include <HLRAlgo_ListIteratorOfInterferenceList.hxx>
-#include <HLRAlgo_Projector.hxx>
+#include <HLRProjector_Projector.hxx>
 #include <HLRBRep_Data.hxx>
 #include <HLRBRep_EdgeData.hxx>
 #include <HLRBRep_EdgeFaceTool.hxx>
@@ -487,7 +487,7 @@ void HLRBRep_Data::Write (const Handle(HLRBRep_Data)& DS,
 //purpose  : 
 //=======================================================================
 
-void HLRBRep_Data::Update (const HLRAlgo_Projector& P)
+void HLRBRep_Data::Update (const HLRProjector_Projector& P)
 {
   myProj = P;
   const gp_Trsf& T = myProj.Transformation();

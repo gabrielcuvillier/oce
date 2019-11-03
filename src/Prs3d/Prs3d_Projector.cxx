@@ -17,13 +17,13 @@
 #include <gp_Dir.hxx>
 #include <gp_Pnt.hxx>
 #include <gp_Trsf.hxx>
-#include <HLRAlgo_Projector.hxx>
+#include <HLRProjector_Projector.hxx>
 #include <Prs3d_Projector.hxx>
 #include <Standard_Type.hxx>
 
 IMPLEMENT_STANDARD_RTTIEXT(Prs3d_Projector,Standard_Transient)
 
-Prs3d_Projector::Prs3d_Projector (const HLRAlgo_Projector& HLPr): MyProjector(HLPr)
+Prs3d_Projector::Prs3d_Projector (const HLRProjector_Projector& HLPr): MyProjector(HLPr)
 {}
 
 
@@ -47,11 +47,11 @@ Prs3d_Projector::Prs3d_Projector (const Standard_Boolean Pers,
   gp_Ax3 Axe (At, Zpers, Xpers);
   gp_Trsf T;
   T.SetTransformation(Axe);
-  MyProjector = HLRAlgo_Projector(T,Pers,Focus);
+  MyProjector = HLRProjector_Projector(T,Pers,Focus);
 }
 
 
-HLRAlgo_Projector Prs3d_Projector::Projector () const 
+HLRProjector_Projector Prs3d_Projector::Projector () const
 {
   return MyProjector;
 }

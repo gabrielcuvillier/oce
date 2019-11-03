@@ -14,7 +14,7 @@
 
 
 #include <BRepAdaptor_Curve.hxx>
-#include <HLRAlgo_Projector.hxx>
+#include <HLRProjector_Projector.hxx>
 #include <HLRBRep_Algo.hxx>
 #include <HLRBRep_Data.hxx>
 #include <StdPrs_HLRToolShape.hxx>
@@ -24,7 +24,7 @@
 
 StdPrs_HLRToolShape::StdPrs_HLRToolShape (
 		  const TopoDS_Shape& TheShape,
-                  const HLRAlgo_Projector& TheProjector)
+                  const HLRProjector_Projector& TheProjector)
 {
   Handle(HLRBRep_Algo) Hider = new HLRBRep_Algo();
   Standard_Integer nbIso = 0; // 5;

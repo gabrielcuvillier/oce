@@ -51,7 +51,7 @@ inline Standard_ShortReal HLRBRep_Data::Tolerance () const
 //purpose  : 
 //=======================================================================
 
-inline HLRAlgo_Projector & HLRBRep_Data::Projector ()
+inline HLRProjector_Projector & HLRBRep_Data::Projector ()
 { return myProj; }
 
 //=======================================================================

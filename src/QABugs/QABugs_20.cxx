@@ -2244,7 +2244,7 @@ static Standard_Integer OCC28784(Draw_Interpretor&, Standard_Integer argc, const
     return 1;
 
   gp_Ax2 aPlane (gp::Origin(), gp::DX(), -gp::DZ());
-  HLRAlgo_Projector aProjector(aPlane);
+  HLRProjector_Projector aProjector(aPlane);
 
   Handle(HLRAlgo_BRepPolyAlgo) aHLR = new HLRAlgo_BRepPolyAlgo(aShape);
   aHLR->Projector(aProjector);

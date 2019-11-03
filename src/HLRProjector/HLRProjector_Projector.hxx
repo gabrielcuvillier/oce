@@ -14,8 +14,8 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
-#ifndef _HLRAlgo_Projector_HeaderFile
-#define _HLRAlgo_Projector_HeaderFile
+#ifndef _HLRProjector_Projector_HeaderFile
+#define _HLRProjector_Projector_HeaderFile
 
 #include <Standard.hxx>
 #include <Standard_DefineAlloc.hxx>
@@ -48,28 +48,28 @@ class gp_Lin;
 //! The choice depends on the algorithm, which you are using.
 //! The parameters of the view are defined at the
 //! time of construction of a Prs3d_Projector object.
-class HLRAlgo_Projector 
+class HLRProjector_Projector
 {
 public:
 
   DEFINE_STANDARD_ALLOC
 
   
-  Standard_EXPORT HLRAlgo_Projector();
+  Standard_EXPORT HLRProjector_Projector();
   
   //! Creates   an axonometric  projector.   <CS> is the
   //! viewing coordinate system.
-  Standard_EXPORT HLRAlgo_Projector(const gp_Ax2& CS);
+  Standard_EXPORT HLRProjector_Projector(const gp_Ax2& CS);
   
   //! Creates  a  perspective  projector.   <CS>  is the
   //! viewing coordinate system.
-  Standard_EXPORT HLRAlgo_Projector(const gp_Ax2& CS, const Standard_Real Focus);
+  Standard_EXPORT HLRProjector_Projector(const gp_Ax2& CS, const Standard_Real Focus);
   
   //! build a Projector with automatic minmax directions.
-  Standard_EXPORT HLRAlgo_Projector(const gp_Trsf& T, const Standard_Boolean Persp, const Standard_Real Focus);
+  Standard_EXPORT HLRProjector_Projector(const gp_Trsf& T, const Standard_Boolean Persp, const Standard_Real Focus);
   
   //! build a Projector with given minmax directions.
-  Standard_EXPORT HLRAlgo_Projector(const gp_Trsf& T, const Standard_Boolean Persp, const Standard_Real Focus, const gp_Vec2d& v1, const gp_Vec2d& v2, const gp_Vec2d& v3);
+  Standard_EXPORT HLRProjector_Projector(const gp_Trsf& T, const Standard_Boolean Persp, const Standard_Real Focus, const gp_Vec2d& v1, const gp_Vec2d& v2, const gp_Vec2d& v3);
   
   Standard_EXPORT void Set (const gp_Trsf& T, const Standard_Boolean Persp, const Standard_Real Focus);
   
@@ -139,10 +139,10 @@ private:
 };
 
 
-#include <HLRAlgo_Projector.lxx>
+#include <HLRProjector_Projector.lxx>
 
 
 
 
 
-#endif // _HLRAlgo_Projector_HeaderFile
+#endif // _HLRProjector_Projector_HeaderFile

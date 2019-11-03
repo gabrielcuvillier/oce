@@ -58,7 +58,7 @@ void DBRep_HideData::Set(const Standard_Integer viewID,
 
   Handle(HLRAlgo_BRepPolyAlgo) hider = new HLRAlgo_BRepPolyAlgo(S);
   hider->Angle(ang);
-  hider->Projector(HLRAlgo_Projector(myTrsf,myFocal > 0.,myFocal));
+  hider->Projector(HLRProjector_Projector(myTrsf,myFocal > 0.,myFocal));
   hider->Update();
 
   Standard_Real sta,end,dx,dy,dz;

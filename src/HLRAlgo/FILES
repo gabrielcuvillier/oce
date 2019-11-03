@@ -47,9 +47,6 @@ HLRAlgo_PolyMask.hxx
 HLRAlgo_PolyShellData.cxx
 HLRAlgo_PolyShellData.hxx
 HLRAlgo_PolyShellData.lxx
-HLRAlgo_Projector.cxx
-HLRAlgo_Projector.hxx
-HLRAlgo_Projector.lxx
 HLRAlgo_TriangleData.hxx
 HLRAlgo_WiresBlock.cxx
 HLRAlgo_WiresBlock.hxx
