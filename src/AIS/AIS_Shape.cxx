@@ -59,7 +59,7 @@
 #include <Standard_Failure.hxx>
 #include <Standard_Type.hxx>
 #include <StdPrs_HLRPolyShape.hxx>
-#include <StdPrs_DeferredHLRShape.hxx>
+#include <StdPrs_DeferredHLRShapeHandler.hxx>
 #include <StdPrs_HLRShape.hxx>
 #include <StdPrs_ShadedShape.hxx>
 #include <StdPrs_WFShape.hxx>
@@ -296,8 +296,12 @@ void AIS_Shape::computeHlrPresentation (const Handle(Prs3d_Projector)& theProjec
           break;
 #endif
         case Prs3d_TOH_DeferredAlgo: {
-          if (theContext && theContext->GetDeferredHLRShape()) {
-            theContext->GetDeferredHLRShape()->Add( thePrs, theShape, theDrawer, theProjector);
+          // Build the Wireframe presentation by default
+          StdPrs_WFShape::Add (thePrs, theShape, theDrawer);
+
+          // It will be replaced by the deferred HLR presentation later on
+          if (theContext && theContext->GetDeferredHLRShapeHandler()) {
+            theContext->GetDeferredHLRShapeHandler()->Add( thePrs, theShape, theDrawer, theProjector );
           }
           break;
         }

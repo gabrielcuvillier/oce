@@ -6,8 +6,8 @@ StdPrs_DeflectionCurve.cxx
 StdPrs_DeflectionCurve.hxx
 StdPrs_HLRPolyShape.cxx
 StdPrs_HLRPolyShape.hxx
-StdPrs_DeferredHLRShape.hxx
-StdPrs_DeferredHLRShape.cxx
+StdPrs_DeferredHLRShapeHandler.hxx
+StdPrs_DeferredHLRShapeHandler.cxx
 StdPrs_HLRShape.cxx
 StdPrs_HLRShape.hxx
 StdPrs_HLRToolShape.cxx
