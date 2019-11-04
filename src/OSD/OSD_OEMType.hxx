@@ -31,7 +31,7 @@ OSD_IBM,
 OSD_VAX,
 OSD_LIN,
 OSD_AIX,
-OSD_WEB
+OSD_WASM
 };
 
 #endif // _OSD_OEMType_HeaderFile

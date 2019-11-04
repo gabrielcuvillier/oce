@@ -144,7 +144,7 @@ TCollection_AsciiString OSD_Host::InternetAddress(){
 // =========================================================================
 OSD_OEMType OSD_Host::MachineType(){
 #if defined(__EMSCRIPTEN__)
-  return (OSD_WEB);
+  return (OSD_WASM);
 #else
   struct utsname info;
 
