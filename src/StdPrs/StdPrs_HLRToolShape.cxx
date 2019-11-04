@@ -20,8 +20,6 @@
 #include <StdPrs_HLRToolShape.hxx>
 #include <TopoDS_Shape.hxx>
 
-#if !defined(OCCT_DISABLE_EXACTHLR_IN_VISUALIZATION)
-
 StdPrs_HLRToolShape::StdPrs_HLRToolShape (
 		  const TopoDS_Shape& TheShape,
                   const HLRProjector_Projector& TheProjector)

@@ -14,8 +14,6 @@
 #ifndef _StdPrs_HLRFace_H__
 #define _StdPrs_HLRFace_H__
 
-#if !defined(OCCT_DISABLE_EXACTHLR_IN_VISUALIZATION)
-
 #include <Prs3d_Root.hxx>
 #include <Prs3d_Presentation.hxx>
 #include <Prs3d_Drawer.hxx>
@@ -39,7 +37,5 @@ public:
                         const Handle(Prs3d_Projector)&    theProjector);
 
 };
-
-#endif
 
 #endif

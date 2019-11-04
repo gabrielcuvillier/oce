@@ -13,8 +13,6 @@
 
 #include <StdPrs_HLRShape.hxx>
 
-#if !defined(OCCT_DISABLE_EXACTHLR_IN_VISUALIZATION)
-
 #include <BRepAdaptor_Curve.hxx>
 #include <Graphic3d_Group.hxx>
 #include <Prs3d_Drawer.hxx>
@@ -74,5 +72,3 @@ void StdPrs_HLRShape::Add (const Handle(Prs3d_Presentation)& thePresentation,
     }
   }
 } 
-
-#endif

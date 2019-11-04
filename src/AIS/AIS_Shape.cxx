@@ -287,7 +287,7 @@ void AIS_Shape::computeHlrPresentation (const Handle(Prs3d_Projector)& theProjec
       OCC_CATCH_SIGNALS
       switch (theDrawer->TypeOfHLR())
       {
-#if !defined(OCCT_DISABLE_EXACTHLR_IN_VISUALIZATION)
+#if !defined(OCCT_DISABLE_HLR_IN_VISUALIZATION)
         case Prs3d_TOH_Algo:
           StdPrs_HLRShape::Add (thePrs, theShape, theDrawer, theProjector);
           break;

@@ -17,7 +17,7 @@
 #ifndef _VrmlConverter_WFShape_HeaderFile
 #define _VrmlConverter_WFShape_HeaderFile
 
-#if !defined(OCCT_DISABLE_EXACTHLR_IN_VISUALIZATION)
+#if !defined(OCCT_DISABLE_VRML1_EXPORT)
 
 #include <Standard.hxx>
 #include <Standard_DefineAlloc.hxx>

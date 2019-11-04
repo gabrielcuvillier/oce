@@ -32,47 +32,52 @@ if (MSVC)
   add_definitions (-D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_DEPRECATE)
 else()
   if (EMSCRIPTEN)
-    message (STATUS "Info: Exceptions are disabled")
+    message (STATUS "Info: Exceptions and PIC are disabled")
     add_compile_options(-fno-exceptions)
-
     add_compile_options(-fno-PIC)
 
-    message (STATUS "Info: OCCT_DISABLE_THREADS is defined due to unsupported on Browsers")
-    add_definitions(-DOCCT_DISABLE_THREADS)
-
-    message (STATUS "Info: OCCT_DISABLE_UNICODE_CONVERSIONS is defined")
-    add_definitions(-DOCCT_DISABLE_UNICODE_CONVERSIONS)
-
-    message (STATUS "Info: OCCT_DISABLE_MESHING_IN_VISUALIZATION is defined")
-    add_definitions(-DOCCT_DISABLE_MESHING_IN_VISUALIZATION)
-
-    message (STATUS "Info: OCCT_DISABLE_EXACTHLR_IN_VISUALIZATION is defined")
-    add_definitions(-DOCCT_DISABLE_EXACTHLR_IN_VISUALIZATION)
-
-    message (STATUS "Info: OCCT_DISABLE_VISUALIZATION_IN_XDE is defined")
-    add_definitions(-DOCCT_DISABLE_VISUALIZATION_IN_XDE)
-
-    message (STATUS "Info: OCCT_DISABLE_OPTIMIZED_MEMORY_ALLOCATOR is defined")
-    add_definitions(-DOCCT_DISABLE_OPTIMIZED_MEMORY_ALLOCATOR)
-
-    message (STATUS "Info: OCCT_DISABLE_SHAREDLIBRARY is defined")
-    add_definitions(-DOCCT_DISABLE_SHAREDLIBRARY)
-
-    message (STATUS "Info: OCCT_ENABLE_APPCONTMATRIX_FILE_STORAGE is defined")
-    add_definitions(-DOCCT_ENABLE_APPCONTMATRIX_FILE_STORAGE)
-
-    #message (STATUS "Info: OCCT_HANDLE_NOCAST is defined to prevent some unsafe methods with Handles")
+    message (STATUS "Info: [TKernel] OCCT_HANDLE_NOCAST is NOT defined")
     #add_definitions(-DOCCT_HANDLE_NOCAST)
 
-    message (STATUS "Info: OCCT_IGNORE_NO_ATOMICS is defined due to unsupported atomics on Emscripten")
+    message (STATUS "Info: [TKernel] OCCT_CONVERT_SIGNALS is NOT defined")
+    #add_definitions(-DOCCT_CONVERT_SIGNALS)
+
+    message (STATUS "Info: [TKernel] OCCT_IGNORE_NO_ATOMICS is defined")
     add_definitions(-DOCCT_IGNORE_NO_ATOMICS)
 
-    message (STATUS "Info: OCCT_CONVERT_SIGNALS is NOT defined")
+    message (STATUS "Info: [TKernel] OCCT_DISABLE_THREADS is defined")
+    add_definitions(-DOCCT_DISABLE_THREADS)
+
+    message (STATUS "Info: [TKernel] OCCT_DISABLE_UNICODE_CONVERSIONS is defined")
+    add_definitions(-DOCCT_DISABLE_UNICODE_CONVERSIONS)
+
+    message (STATUS "Info: [TKernel] OCCT_DISABLE_OPTIMIZED_MEMORY_ALLOCATOR is defined")
+    add_definitions(-DOCCT_DISABLE_OPTIMIZED_MEMORY_ALLOCATOR)
+
+    message (STATUS "Info: [TKernel] OCCT_DISABLE_SHAREDLIBRARY is defined")
+    add_definitions(-DOCCT_DISABLE_SHAREDLIBRARY)
+
+    message (STATUS "Info: [TKGeomBase] OCCT_DISABLE_APPROX_FIT_AND_DIVIDE is defined")
+    add_definitions(-DOCCT_DISABLE_APPROX_FIT_AND_DIVIDE)
+
+    #message (STATUS "Info: [TKGeomBase] OCCT_ENABLE_APPCONTMATRIX_FILE_STORAGE is defined")
+    #add_definitions(-DOCCT_ENABLE_APPCONTMATRIX_FILE_STORAGE)
+
+    message (STATUS "Info: [TKV3d] OCCT_DISABLE_MESHING_IN_VISUALIZATION is defined")
+    add_definitions(-DOCCT_DISABLE_MESHING_IN_VISUALIZATION)
+
+    message (STATUS "Info: [TKV3d] OCCT_DISABLE_HLR_IN_VISUALIZATION is defined")
+    add_definitions(-DOCCT_DISABLE_HLR_IN_VISUALIZATION)
+
+    message (STATUS "Info: [TKVRML] OCCT_DISABLE_VRML1_EXPORT is defined")
+    add_definitions(-DOCCT_DISABLE_VRML1_EXPORT)
+
+    message (STATUS "Info: [TKXCAF] OCCT_DISABLE_VISUALIZATION_IN_XDE is defined")
+    add_definitions(-DOCCT_DISABLE_VISUALIZATION_IN_XDE)
   else()
     if (MINGW)
       set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions")
       set (CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fexceptions")
-      message (STATUS "Info: OCCT_CONVERT_SIGNALS is NOT defined")
     else()
       set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions -fPIC")
       set (CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fexceptions -fPIC")

@@ -11,7 +11,7 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
-#if !defined(OCCT_DISABLE_EXACTHLR_IN_VISUALIZATION)
+#if !defined(OCCT_DISABLE_VRML1_EXPORT)
 
 #include <Adaptor2d_Curve2d.hxx>
 #include <Adaptor3d_IsoCurve.hxx>

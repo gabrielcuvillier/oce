@@ -236,7 +236,7 @@ Standard_Boolean VrmlAPI_Writer::Write(const TopoDS_Shape& aShape,const Standard
   return Standard_False;
 }
 
-#if !defined(OCCT_DISABLE_EXACTHLR_IN_VISUALIZATION)
+#if !defined(OCCT_DISABLE_VRML1_EXPORT)
 Standard_Boolean VrmlAPI_Writer::write_v1(const TopoDS_Shape& aShape,const Standard_CString aFile) const
 {
   OSD_Path thePath(aFile);
