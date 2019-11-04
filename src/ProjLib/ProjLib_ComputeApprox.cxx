@@ -1154,7 +1154,7 @@ void ProjLib_ComputeApprox::Perform
     const Standard_Real aTolV = ComputeTolV(S, myTolerance);
     const Standard_Real aTol2d = Max(Sqrt(aTolU*aTolU + aTolV*aTolV), Precision::PConfusion());
 
-#if defined(OCCT_DISABLE_APPROX_FIT_AND_DIVIDE)
+#if !defined(OCCT_DISABLE_APPROX_FIT_AND_DIVIDE)
     Approx_FitAndDivide2d Fit(Deg1, Deg2, myTolerance, aTol2d, Standard_True, aFistC, aLastC);
     Fit.SetMaxSegments(aMaxSegments);
     Fit.Perform(F);

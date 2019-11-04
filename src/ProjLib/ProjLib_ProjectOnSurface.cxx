@@ -176,7 +176,7 @@ void ProjLib_ProjectOnSurface::Load(const Handle(Adaptor3d_HCurve)& C,
     Standard_Integer Deg1, Deg2;
     Deg1 = 8; Deg2 = 8;
 
-#if defined(OCCT_DISABLE_APPROX_FIT_AND_DIVIDE)
+#if !defined(OCCT_DISABLE_APPROX_FIT_AND_DIVIDE)
     Approx_FitAndDivide Fit(F,Deg1,Deg2,Precision::Approximation(),
 			    Precision::PApproximation(),Standard_True);
     Standard_Integer i;

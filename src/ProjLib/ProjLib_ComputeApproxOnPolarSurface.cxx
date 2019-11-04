@@ -1897,7 +1897,7 @@ Handle(Geom2d_BSplineCurve)
     aLastC = AppParCurves_PassPoint;
   }
 
-#if defined(OCCT_DISABLE_APPROX_FIT_AND_DIVIDE)
+#if !defined(OCCT_DISABLE_APPROX_FIT_AND_DIVIDE)
   Approx_FitAndDivide2d Fit(Deg1, Deg2, Tol3d, Tol2d, Standard_True, aFistC, aLastC);
   Fit.SetMaxSegments(aMaxSegments);
   if (InitCurve2d->GetType() == GeomAbs_Line)
