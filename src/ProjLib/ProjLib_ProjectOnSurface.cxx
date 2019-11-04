@@ -42,10 +42,10 @@ static gp_Pnt OnSurface_Value(const Standard_Real U,
 {
   // on essaie de rendre le point solution le plus proche.
   myExtPS->Perform(myCurve->Value(U));
-  
+
   Standard_Real Dist2Min = RealLast();
   Standard_Integer Index = 0;
-  
+
   for ( Standard_Integer i = 1; i <= myExtPS->NbExt(); i++) {
     if ( myExtPS->SquareDistance(i) < Dist2Min) {
       Index = i;
@@ -63,7 +63,7 @@ static gp_Pnt OnSurface_Value(const Standard_Real U,
 
 //=======================================================================
 //function : OnSurface_D1
-//purpose  : 
+//purpose  :
 //=======================================================================
 
 static Standard_Boolean OnSurface_D1(const Standard_Real , // U,
@@ -86,7 +86,7 @@ class ProjLib_OnSurface : public AppCont_Function
 {
 public:
 
-  ProjLib_OnSurface(const Handle(Adaptor3d_HCurve)   & C, 
+  ProjLib_OnSurface(const Handle(Adaptor3d_HCurve)   & C,
                     const Handle(Adaptor3d_HSurface) & S)
  : myCurve(C)
   {
@@ -134,7 +134,7 @@ private:
 
 //=====================================================================//
 //                                                                     //
-//  D E S C R I P T I O N   O F   T H E   C L A S S  :                 // 
+//  D E S C R I P T I O N   O F   T H E   C L A S S  :                 //
 //                                                                     //
 //         P r o j L i b _ A p p r o x P r o j e c t O n P l a n e     //
 //                                                                     //
@@ -143,46 +143,47 @@ private:
 
 //=======================================================================
 //function : ProjLib_ProjectOnSurface
-//purpose  : 
+//purpose  :
 //=======================================================================
 
 ProjLib_ProjectOnSurface::ProjLib_ProjectOnSurface() :
-myIsDone(Standard_False) 
+myIsDone(Standard_False)
 {
 }
 
 //=======================================================================
 //function : ProjLib_ProjectOnSurface
-//purpose  : 
+//purpose  :
 //=======================================================================
 
 ProjLib_ProjectOnSurface::ProjLib_ProjectOnSurface
 (const Handle(Adaptor3d_HSurface)& S ) :
-myIsDone(Standard_False) 
+myIsDone(Standard_False)
 {
   mySurface = S;
 }
 
 void ProjLib_ProjectOnSurface::Load(const Handle(Adaptor3d_HCurve)& C,
-				    const Standard_Real  Tolerance) 
+				    const Standard_Real  Tolerance)
 {
   myTolerance = Tolerance ;
   myCurve = C;
-  myIsDone = Standard_False ; 
-  if (!mySurface.IsNull()) { 
-      
+  myIsDone = Standard_False ;
+  if (!mySurface.IsNull()) {
+
     ProjLib_OnSurface F(myCurve, mySurface);
 
     Standard_Integer Deg1, Deg2;
     Deg1 = 8; Deg2 = 8;
-    
+
+#if defined(OCCT_DISABLE_APPROX_FIT_AND_DIVIDE)
     Approx_FitAndDivide Fit(F,Deg1,Deg2,Precision::Approximation(),
 			    Precision::PApproximation(),Standard_True);
     Standard_Integer i;
     Standard_Integer NbCurves = Fit.NbMultiCurves();
     Standard_Integer MaxDeg = 0;
-    
-    // Pour transformer la MultiCurve en BSpline, il faut que toutes 
+
+    // Pour transformer la MultiCurve en BSpline, il faut que toutes
     // les Bezier la constituant aient le meme degre -> Calcul de MaxDeg
     Standard_Integer NbPoles  = 1;
     for (i = 1; i <= NbCurves; i++) {
@@ -191,19 +192,19 @@ void ProjLib_ProjectOnSurface::Load(const Handle(Adaptor3d_HCurve)& C,
     }
     NbPoles = MaxDeg * NbCurves + 1;               //Poles sur la BSpline
     TColgp_Array1OfPnt  Poles( 1, NbPoles);
-    
+
     TColgp_Array1OfPnt TempPoles( 1, MaxDeg + 1);  //pour augmentation du degre
-    
+
     TColStd_Array1OfReal Knots( 1, NbCurves + 1);  //Noeuds de la BSpline
-    
+
     Standard_Integer Compt = 1;
     for (i = 1; i <= Fit.NbMultiCurves(); i++) {
-      Fit.Parameters(i, Knots(i), Knots(i+1)); 
-      
+      Fit.Parameters(i, Knots(i), Knots(i+1));
+
       AppParCurves_MultiCurve MC = Fit.Value( i);   //Charge la Ieme Curve
       TColgp_Array1OfPnt LocalPoles( 1, MC.Degree() + 1);//Recupere les poles
       MC.Curve(1, Poles);
-      
+
       //Augmentation eventuelle du degre
       Standard_Integer Inc = MaxDeg - MC.Degree();
       if ( Inc > 0) {
@@ -221,34 +222,37 @@ void ProjLib_ProjectOnSurface::Load(const Handle(Adaptor3d_HCurve)& C,
 	  Poles.SetValue( Compt, LocalPoles( j));
 	  Compt++;
 	}
-      } 
-      
+      }
+
       Compt--;
     }
-    
+
     //mise a jour des fields de ProjLib_Approx
-    
+
     Standard_Integer NbKnots = NbCurves + 1;
-    
+
     TColStd_Array1OfInteger  Mults( 1, NbKnots);
     Mults.SetValue( 1, MaxDeg + 1);
     for ( i = 2; i <= NbCurves; i++) {
       Mults.SetValue( i, MaxDeg);
     }
     Mults.SetValue(NbKnots, MaxDeg + 1);
-    myResult = 
+    myResult =
       new Geom_BSplineCurve(Poles,
 			    Knots,
 			    Mults,
 			    MaxDeg,
 			    Standard_False) ;
     myIsDone = Standard_True ;
+#else
+  throw Standard_Failure("ProjLib_ProjectOnSurface: FitAndDivide not available");
+#endif
   }
 }
 
 //=======================================================================
 //function : ~ProjLib_ProjectOnSurface
-//purpose  : 
+//purpose  :
 //=======================================================================
 
 ProjLib_ProjectOnSurface::~ProjLib_ProjectOnSurface()
@@ -256,10 +260,10 @@ ProjLib_ProjectOnSurface::~ProjLib_ProjectOnSurface()
 
 //=======================================================================
 //function : BSpline
-//purpose  : 
+//purpose  :
 //=======================================================================
 
-Handle(Geom_BSplineCurve) ProjLib_ProjectOnSurface::BSpline() const 
+Handle(Geom_BSplineCurve) ProjLib_ProjectOnSurface::BSpline() const
 {
   Standard_NoSuchObject_Raise_if
     (!myIsDone,
@@ -269,10 +273,10 @@ Handle(Geom_BSplineCurve) ProjLib_ProjectOnSurface::BSpline() const
 
 //=======================================================================
 //function : IsDone
-//purpose  : 
+//purpose  :
 //=======================================================================
 
-Standard_Boolean ProjLib_ProjectOnSurface::IsDone() const 
+Standard_Boolean ProjLib_ProjectOnSurface::IsDone() const
 {
   return myIsDone;
 }
