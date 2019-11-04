@@ -16,15 +16,15 @@
 
 
 #include <NCollection_UtfString.hxx>
-#include <Resource_Big5.h>
 #include <Resource_ConvertUnicode.hxx>
-#include <Resource_GBK.h>
 #include <Resource_Manager.hxx>
 #include <Resource_Unicode.hxx>
 #include <TCollection_AsciiString.hxx>
 #include <TCollection_ExtendedString.hxx>
 
 #if !defined(OCCT_DISABLE_UNICODE_CONVERSIONS)
+#include <Resource_Big5.h>
+#include <Resource_GBK.h>
 
 #define isjis(c) (((c)>=0x21 && (c)<=0x7e))
 #define iseuc(c) (((c)>=0xa1 && (c)<=0xfe))
@@ -320,6 +320,29 @@ Standard_Boolean Resource_Unicode::ConvertBig5ToUnicode(const Standard_CString f
   }
   return Standard_True;
 }
+#else
+
+void Resource_Unicode::ConvertSJISToUnicode(const Standard_CString fromstr, TCollection_ExtendedString &tostr) {
+  throw Standard_Failure("ConvertSJISToUnicode: not available");
+}
+
+void Resource_Unicode::ConvertEUCToUnicode(const Standard_CString fromstr, TCollection_ExtendedString &tostr) {
+  throw Standard_Failure("ConvertEUCToUnicode: not available");
+}
+
+void Resource_Unicode::ConvertGBToUnicode(const Standard_CString fromstr, TCollection_ExtendedString &tostr) {
+  throw Standard_Failure("ConvertGBToUnicode: not available");
+}
+
+Standard_Boolean Resource_Unicode::ConvertGBKToUnicode(const Standard_CString fromstr,
+                                                               TCollection_ExtendedString &tostr) {
+  throw Standard_Failure("ConvertGBKToUnicode: not available");
+};
+
+Standard_Boolean Resource_Unicode::ConvertBig5ToUnicode(const Standard_CString fromstr,
+                                                        TCollection_ExtendedString &tostr) {
+  throw Standard_Failure("ConvertBig5ToUnicode: not available");
+}
 #endif
 
 void Resource_Unicode::ConvertANSIToUnicode(const Standard_CString fromstr, TCollection_ExtendedString &tostr) {
@@ -465,6 +488,24 @@ Standard_Boolean Resource_Unicode::ConvertUnicodeToGB(const TCollection_Extended
   }
   return Standard_True;
 }
+#else
+Standard_Boolean Resource_Unicode::ConvertUnicodeToSJIS(const TCollection_ExtendedString &fromstr,
+                                                        Standard_PCharacter &tostr,
+                                                        const Standard_Integer maxsize) {
+  throw Standard_Failure("ConvertUnicodeToSJIS: not available");
+}
+
+Standard_Boolean Resource_Unicode::ConvertUnicodeToEUC(const TCollection_ExtendedString &fromstr,
+                                                         Standard_PCharacter &tostr,
+                                                         const Standard_Integer maxsize) {
+  throw Standard_Failure("ConvertUnicodeToEUC: not available");
+}
+
+Standard_Boolean Resource_Unicode::ConvertUnicodeToGB(const TCollection_ExtendedString &fromstr,
+                                                      Standard_PCharacter &tostr,
+                                                      const Standard_Integer maxsize) {
+  throw Standard_Failure("ConvertUnicodeToGB: not available");
+}
 #endif
 
 Standard_Boolean Resource_Unicode::ConvertUnicodeToANSI(const TCollection_ExtendedString &fromstr,
@@ -546,7 +587,6 @@ void Resource_Unicode::ConvertFormatToUnicode(const Resource_FormatType theForma
                                               const Standard_CString theFromStr,
                                               TCollection_ExtendedString &theToStr) {
   switch (theFormat) {
-#if !defined(OCCT_DISABLE_UNICODE_CONVERSIONS)
     case Resource_FormatType_SJIS: {
       ConvertSJISToUnicode(theFromStr, theToStr);
       break;
@@ -559,7 +599,6 @@ void Resource_Unicode::ConvertFormatToUnicode(const Resource_FormatType theForma
       ConvertGBToUnicode(theFromStr, theToStr);
       break;
     }
-#endif
     case Resource_FormatType_ANSI:
     case Resource_FormatType_UTF8: {
       theToStr = TCollection_ExtendedString(theFromStr, theFormat == Resource_FormatType_UTF8);
@@ -571,11 +610,6 @@ void Resource_Unicode::ConvertFormatToUnicode(const Resource_FormatType theForma
       theToStr = TCollection_ExtendedString(aString.ToCString());
       break;
     }
-#if defined(OCCT_DISABLE_UNICODE_CONVERSIONS)
-    default: {
-      break;
-    }
-#endif
   }
 }
 
@@ -584,7 +618,6 @@ Standard_Boolean Resource_Unicode::ConvertUnicodeToFormat(const Resource_FormatT
                                                           Standard_PCharacter &theToStr,
                                                           const Standard_Integer theMaxSize) {
   switch (theFormat) {
-#if !defined(OCCT_DISABLE_UNICODE_CONVERSIONS)
     case Resource_FormatType_SJIS: {
       return ConvertUnicodeToSJIS(theFromStr, theToStr, theMaxSize);
     }
@@ -594,7 +627,6 @@ Standard_Boolean Resource_Unicode::ConvertUnicodeToFormat(const Resource_FormatT
     case Resource_FormatType_GB: {
       return ConvertUnicodeToGB(theFromStr, theToStr, theMaxSize);
     }
-#endif
     case Resource_FormatType_ANSI: {
       return ConvertUnicodeToANSI(theFromStr, theToStr, theMaxSize);
     }
@@ -609,9 +641,6 @@ Standard_Boolean Resource_Unicode::ConvertUnicodeToFormat(const Resource_FormatT
       const NCollection_Utf16String aString(theFromStr.ToExtString());
       return aString.ToLocale(theToStr, theMaxSize);
     }
-#if defined(OCCT_DISABLE_UNICODE_CONVERSIONS)
-    default: {}
-#endif
   }
   return Standard_False;
 }

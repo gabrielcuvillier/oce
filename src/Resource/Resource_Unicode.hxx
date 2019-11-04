@@ -38,7 +38,6 @@ public:
 
   DEFINE_STANDARD_ALLOC
 
-#if !defined(OCCT_DISABLE_UNICODE_CONVERSIONS)
   //! Converts non-ASCII CString <fromstr> in SJIS format
   //! to Unicode ExtendedString <tostr>.
   Standard_EXPORT static void ConvertSJISToUnicode (const Standard_CString fromstr, TCollection_ExtendedString& tostr);
@@ -58,13 +57,11 @@ public:
   //! Converts non-ASCII CString <fromstr> in Big5 format
   //! to Unicode ExtendedString <tostr>.
   Standard_EXPORT static Standard_Boolean ConvertBig5ToUnicode (const Standard_CString fromstr, TCollection_ExtendedString& tostr);
-#endif
 
   //! Converts non-ASCII CString <fromstr> in ANSI format
   //! to Unicode ExtendedString <tostr>.
   Standard_EXPORT static void ConvertANSIToUnicode (const Standard_CString fromstr, TCollection_ExtendedString& tostr);
 
-#if !defined(OCCT_DISABLE_UNICODE_CONVERSIONS)
   //! Converts Unicode ExtendedString <fromstr> to non-ASCII
   //! CString <tostr> in SJIS format, limited to <maxsize>
   //! characters. To translate the whole <fromstr>, use more
@@ -85,7 +82,6 @@ public:
   //! than twice the length of <fromstr>. Returns true if
   //! <maxsize> has not been reached before end of conversion.
   Standard_EXPORT static Standard_Boolean ConvertUnicodeToGB (const TCollection_ExtendedString& fromstr, Standard_PCharacter& tostr, const Standard_Integer maxsize);
-#endif
 
   //! Converts Unicode ExtendedString <fromstr> to non-ASCII
   //! CString <tostr> in ANSI format, limited to <maxsize>

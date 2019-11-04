@@ -13,8 +13,6 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
-#if !defined(OCCT_DISABLE_UNICODE_CONVERSIONS)
-
 static unsigned short gbkuni [23940] = {
 0x4E02, 0x4E04, 0x4E05, 0x4E06,
 0x4E0F, 0x4E12, 0x4E17, 0x4E1F,
@@ -6002,5 +6000,3 @@ static unsigned short gbkuni [23940] = {
 0xE4BE, 0xE4BF, 0xE4C0, 0xE4C1,
 0xE4C2, 0xE4C3, 0xE4C4, 0xE4C5
 } ;
-
-#endif
