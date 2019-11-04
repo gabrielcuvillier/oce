@@ -82,4 +82,3 @@ void StdPrs_HLRToolShape::Hidden (BRepAdaptor_Curve& TheEdge,
   myEdgeIterator.Hidden(U1,t1,U2,t2);
 }
 
-#endif
