@@ -20,11 +20,7 @@
 #include <AIS_InteractiveContext.hxx>
 #include <Aspect_TypeOfLine.hxx>
 #include <BRep_Builder.hxx>
-#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
 #include <BRepBndLib.hxx>
-#else
-#include <BRepBndLibApprox.hxx>
-#endif
 #include <BRepTools.hxx>
 #include <BRepTools_ShapeSet.hxx>
 #include <Geom_Transformation.hxx>
@@ -812,11 +808,7 @@ const Bnd_Box& AIS_Shape::BoundingBox()
   }
 
   if(myCompBB) {
-#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
     BRepBndLib::Add (myshape, myBB, false);
-#else
-    BRepBndLibApprox::Add (myshape, myBB);
-#endif
     myCompBB = Standard_False;
   }
   return myBB;
