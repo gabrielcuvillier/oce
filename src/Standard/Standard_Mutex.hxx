@@ -32,11 +32,7 @@
   #include <unistd.h>
   #include <time.h>
 
-#if !defined(OCCT_DISABLE_THREADS)
 typedef pthread_mutex_t Standard_PMutex;
-#else
-typedef pthread_mutex_t Standard_PMutex; // Can't use Standard_Size hack like does OSD_PThread
-#endif
 
 #endif
 

@@ -26,11 +26,7 @@ typedef HANDLE OSD_PThread;
 #else
 
 #include <pthread.h>
-#if !defined(OCCT_DISABLE_THREADS)
 typedef pthread_t OSD_PThread;
-#else
-typedef Standard_Size OSD_PThread;
-#endif
 
 #endif
 
