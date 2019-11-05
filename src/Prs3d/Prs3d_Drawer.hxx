@@ -347,7 +347,6 @@ public:
     return HasOwnIsAutoTriangulation() || myLink.IsNull()
          ? myIsAutoTriangulated
          : myLink->IsAutoTriangulation();
-    return false;
   }
 
   //! Returns true if the drawer has IsoOnPlane setting active.
