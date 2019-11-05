@@ -110,7 +110,7 @@ if (IS_BUILTIN_SEARCH_REQUIRED)
     set (ENV{FREETYPE_DIR} "${3RDPARTY_FREETYPE_DIR}")
   endif()
 
-  find_package(Freetype)
+  find_package(Freetype QUIET)
 
   # restore ENV{FREETYPE_DIR}
   if (3RDPARTY_FREETYPE_DIR AND EXISTS "${3RDPARTY_FREETYPE_DIR}")

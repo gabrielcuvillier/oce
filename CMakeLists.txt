@@ -527,10 +527,7 @@ endif()
 
 if (USE_FREETYPE)
   message (STATUS "Info: Freetype is used by OCCT")
-  if (NOT EMSCRIPTEN)
-    OCCT_INCLUDE_CMAKE_FILE ("adm/cmake/freetype")
-  endif()
-  # Freetype library link is handled differently on Emscripten (using "Emscripten ports"). See TKService/CMakeList.cmake
+  OCCT_INCLUDE_CMAKE_FILE ("adm/cmake/freetype")
 else()
   OCCT_CHECK_AND_UNSET_GROUP ("3RDPARTY_FREETYPE")
   OCCT_CHECK_AND_UNSET ("3RDPARTY_FREETYPE_INCLUDE_DIR_freetype2")
