@@ -29,6 +29,8 @@ SelectMgr_SelectingVolumeManager::SelectMgr_SelectingVolumeManager (Standard_Boo
     mySelectingVolumes[Frustum] = new SelectMgr_RectangularFrustum();
 #if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
     mySelectingVolumes[FrustumSet] = new SelectMgr_TriangularFrustumSet();
+#else
+    mySelectingVolumes[FrustumSet] = nullptr;
 #endif
   }
 }
@@ -259,7 +261,6 @@ void SelectMgr_SelectingVolumeManager::BuildSelectingVolume (const gp_Pnt2d& the
   mySelectingVolumes[Frustum]->Build (theMinPt, theMaxPt);
 }
 
-#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
 //=======================================================================
 // function : BuildSelectingVolume
 // purpose  : Builds set of triangular selecting frustums for polyline
@@ -267,12 +268,15 @@ void SelectMgr_SelectingVolumeManager::BuildSelectingVolume (const gp_Pnt2d& the
 //=======================================================================
 void SelectMgr_SelectingVolumeManager::BuildSelectingVolume (const TColgp_Array1OfPnt2d& thePoints)
 {
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
   if (myActiveSelectionType != Polyline)
     return;
 
   mySelectingVolumes[FrustumSet]->Build (thePoints);
-}
+#else
+  (void)thePoints;
 #endif
+}
 
 //=======================================================================
 // function : Overlaps

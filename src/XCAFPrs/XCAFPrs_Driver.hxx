@@ -16,8 +16,6 @@
 #ifndef _XCAFPrs_Driver_HeaderFile
 #define _XCAFPrs_Driver_HeaderFile
 
-#if !defined(OCCT_DISABLE_VISUALIZATION_IN_XDE)
-
 #include <Standard.hxx>
 #include <Standard_Type.hxx>
 
@@ -68,4 +66,3 @@ private:
 
 
 #endif // _XCAFPrs_Driver_HeaderFile
-#endif

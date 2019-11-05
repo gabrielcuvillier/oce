@@ -165,7 +165,6 @@ void StdSelect_ViewerSelector3d::Pick (const Standard_Integer theXPMin,
   TraverseSensitives();
 }
 
-#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
 //=======================================================================
 // Function: Pick
 // Purpose : Selection using a polyline
@@ -173,6 +172,7 @@ void StdSelect_ViewerSelector3d::Pick (const Standard_Integer theXPMin,
 void StdSelect_ViewerSelector3d::Pick (const TColgp_Array1OfPnt2d& thePolyline,
                                        const Handle(V3d_View)& theView)
 {
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
   updateZLayers (theView);
   mySelectingVolumeMgr.SetCamera (theView->Camera());
   mySelectingVolumeMgr.SetActiveSelectionType (SelectMgr_SelectingVolumeManager::Polyline);
@@ -184,8 +184,11 @@ void StdSelect_ViewerSelector3d::Pick (const TColgp_Array1OfPnt2d& thePolyline,
   mySelectingVolumeMgr.SetViewClipping (theView->ClipPlanes(), Handle(Graphic3d_SequenceOfHClipPlane)());
 
   TraverseSensitives();
-}
+#else
+  (void)thePolyline;
+  (void)theView;
 #endif
+}
 
 //=======================================================================
 // Function: DisplaySensitive.

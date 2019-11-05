@@ -14,9 +14,10 @@
 // commercial license or contractual agreement.
 
 #if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
-
 #include <BRepMesh_DataStructureOfDelaun.hxx>
 #include <BRepMesh_Delaun.hxx>
+#endif
+
 #include <NCollection_IncAllocator.hxx>
 
 #include <SelectMgr_TriangularFrustumSet.hxx>
@@ -33,6 +34,7 @@
 // =======================================================================
 void SelectMgr_TriangularFrustumSet::Build (const TColgp_Array1OfPnt2d& thePoints)
 {
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
   myFrustums.Clear();
 
   Handle(NCollection_IncAllocator) anAllocator = new NCollection_IncAllocator (MEMORY_BLOCK_SIZE);
@@ -97,6 +99,9 @@ void SelectMgr_TriangularFrustumSet::Build (const TColgp_Array1OfPnt2d& thePoint
 
   aMeshStructure.Nullify();
   anAllocator.Nullify();
+#else
+  (void)thePoints;
+#endif
 }
 
 // =======================================================================
@@ -246,5 +251,3 @@ void SelectMgr_TriangularFrustumSet::GetPlanes (NCollection_Vector<SelectMgr_Vec
 }
 
 #undef MEMORY_BLOCK_SIZE
-
-#endif

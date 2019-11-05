@@ -15,8 +15,6 @@
 
 #include <XCAFPrs_AISObject.hxx>
 
-#if !defined(OCCT_DISABLE_VISUALIZATION_IN_XDE)
-
 #include <AIS_DisplayMode.hxx>
 #include <BRep_Builder.hxx>
 #include <BRepBndLib.hxx>
@@ -357,5 +355,3 @@ void XCAFPrs_AISObject::SetMaterial (const Graphic3d_MaterialAspect& theMaterial
   }
   SynchronizeAspects();
 }
-
-#endif

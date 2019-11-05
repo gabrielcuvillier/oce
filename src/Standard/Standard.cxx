@@ -67,6 +67,15 @@ private:
   Standard_MMgrRoot* myFMMgr;
 };
 
+namespace {
+  const Standard_Boolean ToUseOptMemAlloc =
+#if !defined(OCCT_DISABLE_OPTIMIZED_MEMORY_ALLOCATOR)
+    Standard_True;
+#else
+    Standard_False;
+#endif
+}
+
 //=======================================================================
 //function : Standard_MMgrFactory
 //purpose  : Check environment variables and create appropriate memory manager
@@ -99,13 +108,6 @@ Standard_MMgrFactory::Standard_MMgrFactory()
 
   char *aVar = nullptr;
   Standard_Integer anAllocId = 0;
-
-  const Standard_Boolean ToUseOptMemAlloc =
-  #if !defined(OCCT_DISABLE_OPTIMIZED_MEMORY_ALLOCATOR)
-    Standard_True;
-  #else
-    Standard_False;
-  #endif
 
   if Standard_IF_CONSTEXPR(ToUseOptMemAlloc) {
     aVar = getenv("MMGT_OPT");

@@ -322,26 +322,48 @@ Standard_Boolean Resource_Unicode::ConvertBig5ToUnicode(const Standard_CString f
 }
 #else
 
-void Resource_Unicode::ConvertSJISToUnicode(const Standard_CString fromstr, TCollection_ExtendedString &tostr) {
-  throw Standard_Failure("ConvertSJISToUnicode: not available");
+void Resource_Unicode::ConvertSJISToUnicode(const Standard_CString, TCollection_ExtendedString &) {
+  static Standard_Boolean WarnOnce_UnavailableUnicodeConversion = Standard_True;
+  if (WarnOnce_UnavailableUnicodeConversion) {
+    std::cerr << "ConvertSJISToUnicode: not available" << std::endl;
+    WarnOnce_UnavailableUnicodeConversion = Standard_False;
+  }
 }
 
-void Resource_Unicode::ConvertEUCToUnicode(const Standard_CString fromstr, TCollection_ExtendedString &tostr) {
-  throw Standard_Failure("ConvertEUCToUnicode: not available");
+void Resource_Unicode::ConvertEUCToUnicode(const Standard_CString, TCollection_ExtendedString &) {
+  static Standard_Boolean WarnOnce_UnavailableUnicodeConversion = Standard_True;
+  if (WarnOnce_UnavailableUnicodeConversion) {
+    std::cerr << "ConvertEUCToUnicode: not available" << std::endl;
+    WarnOnce_UnavailableUnicodeConversion = Standard_False;
+  }
 }
 
-void Resource_Unicode::ConvertGBToUnicode(const Standard_CString fromstr, TCollection_ExtendedString &tostr) {
-  throw Standard_Failure("ConvertGBToUnicode: not available");
+void Resource_Unicode::ConvertGBToUnicode(const Standard_CString, TCollection_ExtendedString &) {
+  static Standard_Boolean WarnOnce_UnavailableUnicodeConversion = Standard_True;
+  if (WarnOnce_UnavailableUnicodeConversion) {
+    std::cerr << "ConvertGBToUnicode: not available" << std::endl;
+    WarnOnce_UnavailableUnicodeConversion = Standard_False;
+  }
 }
 
-Standard_Boolean Resource_Unicode::ConvertGBKToUnicode(const Standard_CString fromstr,
-                                                               TCollection_ExtendedString &tostr) {
-  throw Standard_Failure("ConvertGBKToUnicode: not available");
+Standard_Boolean Resource_Unicode::ConvertGBKToUnicode(const Standard_CString,
+                                                               TCollection_ExtendedString &) {
+  static Standard_Boolean WarnOnce_UnavailableUnicodeConversion = Standard_True;
+  if (WarnOnce_UnavailableUnicodeConversion) {
+    std::cerr << "ConvertGBKToUnicode: not available" << std::endl;
+    WarnOnce_UnavailableUnicodeConversion = Standard_False;
+  }
+  return Standard_False;
 };
 
-Standard_Boolean Resource_Unicode::ConvertBig5ToUnicode(const Standard_CString fromstr,
-                                                        TCollection_ExtendedString &tostr) {
-  throw Standard_Failure("ConvertBig5ToUnicode: not available");
+Standard_Boolean Resource_Unicode::ConvertBig5ToUnicode(const Standard_CString,
+                                                        TCollection_ExtendedString &) {
+  static Standard_Boolean WarnOnce_UnavailableUnicodeConversion = Standard_True;
+  if (WarnOnce_UnavailableUnicodeConversion) {
+    std::cerr << "ConvertGBKToUnicode: not available" << std::endl;
+    WarnOnce_UnavailableUnicodeConversion = Standard_False;
+  }
+  return Standard_False;
 }
 #endif
 
@@ -353,7 +375,6 @@ void Resource_Unicode::ConvertANSIToUnicode(const Standard_CString fromstr, TCol
 }
 
 #if !defined(OCCT_DISABLE_UNICODE_CONVERSIONS)
-
 Standard_Boolean Resource_Unicode::ConvertUnicodeToSJIS(const TCollection_ExtendedString &fromstr,
                                                         Standard_PCharacter &tostr,
                                                         const Standard_Integer maxsize) {
@@ -489,22 +510,37 @@ Standard_Boolean Resource_Unicode::ConvertUnicodeToGB(const TCollection_Extended
   return Standard_True;
 }
 #else
-Standard_Boolean Resource_Unicode::ConvertUnicodeToSJIS(const TCollection_ExtendedString &fromstr,
-                                                        Standard_PCharacter &tostr,
-                                                        const Standard_Integer maxsize) {
-  throw Standard_Failure("ConvertUnicodeToSJIS: not available");
+Standard_Boolean Resource_Unicode::ConvertUnicodeToSJIS(const TCollection_ExtendedString &,
+                                                        Standard_PCharacter &,
+                                                        const Standard_Integer) {
+  static Standard_Boolean WarnOnce_UnavailableUnicodeConversion = Standard_True;
+  if (WarnOnce_UnavailableUnicodeConversion) {
+    std::cerr << "ConvertUnicodeToSJIS: not available" << std::endl;
+    WarnOnce_UnavailableUnicodeConversion = Standard_False;
+  }
+  return Standard_False;
 }
 
-Standard_Boolean Resource_Unicode::ConvertUnicodeToEUC(const TCollection_ExtendedString &fromstr,
-                                                         Standard_PCharacter &tostr,
-                                                         const Standard_Integer maxsize) {
-  throw Standard_Failure("ConvertUnicodeToEUC: not available");
+Standard_Boolean Resource_Unicode::ConvertUnicodeToEUC(const TCollection_ExtendedString &,
+                                                         Standard_PCharacter &,
+                                                         const Standard_Integer) {
+  static Standard_Boolean WarnOnce_UnavailableUnicodeConversion = Standard_True;
+  if (WarnOnce_UnavailableUnicodeConversion) {
+    std::cerr << "ConvertUnicodeToEUC: not available" << std::endl;
+    WarnOnce_UnavailableUnicodeConversion = Standard_False;
+  }
+  return Standard_False;
 }
 
-Standard_Boolean Resource_Unicode::ConvertUnicodeToGB(const TCollection_ExtendedString &fromstr,
-                                                      Standard_PCharacter &tostr,
-                                                      const Standard_Integer maxsize) {
-  throw Standard_Failure("ConvertUnicodeToGB: not available");
+Standard_Boolean Resource_Unicode::ConvertUnicodeToGB(const TCollection_ExtendedString &,
+                                                      Standard_PCharacter &,
+                                                      const Standard_Integer) {
+  static Standard_Boolean WarnOnce_UnavailableUnicodeConversion = Standard_True;
+  if (WarnOnce_UnavailableUnicodeConversion) {
+    std::cerr << "ConvertUnicodeToGB: not available" << std::endl;
+    WarnOnce_UnavailableUnicodeConversion = Standard_False;
+  }
+  return Standard_False;
 }
 #endif
 

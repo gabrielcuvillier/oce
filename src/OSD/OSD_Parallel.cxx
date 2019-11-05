@@ -34,156 +34,158 @@
 namespace {
 
 #if defined(_WIN32) && !defined(OCCT_UWP)
-  //! For a 64-bit app running under 64-bit Windows, this is FALSE.
-  static bool isWow64()
-  {
-    typedef BOOL (WINAPI *LPFN_ISWOW64PROCESS) (HANDLE , PBOOL);
-    BOOL bIsWow64 = FALSE;
+//! For a 64-bit app running under 64-bit Windows, this is FALSE.
+static bool isWow64()
+{
+  typedef BOOL (WINAPI *LPFN_ISWOW64PROCESS) (HANDLE , PBOOL);
+  BOOL bIsWow64 = FALSE;
 
-    HMODULE aKern32Module = GetModuleHandleW(L"kernel32");
-    LPFN_ISWOW64PROCESS aFunIsWow64 = (aKern32Module == NULL) ? (LPFN_ISWOW64PROCESS )NULL
-      : (LPFN_ISWOW64PROCESS)GetProcAddress(aKern32Module, "IsWow64Process");
+  HMODULE aKern32Module = GetModuleHandleW(L"kernel32");
+  LPFN_ISWOW64PROCESS aFunIsWow64 = (aKern32Module == NULL) ? (LPFN_ISWOW64PROCESS )NULL
+    : (LPFN_ISWOW64PROCESS)GetProcAddress(aKern32Module, "IsWow64Process");
 
-    return aFunIsWow64 != NULL &&
-           aFunIsWow64(GetCurrentProcess(), &bIsWow64) &&
-           bIsWow64 != FALSE;
-  }
+  return aFunIsWow64 != NULL &&
+         aFunIsWow64(GetCurrentProcess(), &bIsWow64) &&
+         bIsWow64 != FALSE;
+}
 
 #elif defined(__ANDROID__)
 
-  //! Simple number parser.
-  static const char* parseNumber (int&        theResult,
-                                  const char* theInput,
-                                  const char* theLimit,
-                                  const int   theBase = 10)
+//! Simple number parser.
+static const char* parseNumber (int&        theResult,
+                                const char* theInput,
+                                const char* theLimit,
+                                const int   theBase = 10)
+{
+  const char* aCharIter = theInput;
+  int aValue = 0;
+  while (aCharIter < theLimit)
   {
-    const char* aCharIter = theInput;
-    int aValue = 0;
-    while (aCharIter < theLimit)
+    int aDigit = (*aCharIter - '0');
+    if ((unsigned int )aDigit >= 10U)
     {
-      int aDigit = (*aCharIter - '0');
-      if ((unsigned int )aDigit >= 10U)
+      aDigit = (*aCharIter - 'a');
+      if ((unsigned int )aDigit >= 6U)
       {
-        aDigit = (*aCharIter - 'a');
-        if ((unsigned int )aDigit >= 6U)
-        {
-          aDigit = (*aCharIter - 'A');
-        }
-        if ((unsigned int )aDigit >= 6U)
-        {
-          break;
-        }
-        aDigit += 10;
+        aDigit = (*aCharIter - 'A');
       }
-      if (aDigit >= theBase)
+      if ((unsigned int )aDigit >= 6U)
       {
         break;
       }
-      aValue = aValue * theBase + aDigit;
-      ++aCharIter;
+      aDigit += 10;
     }
-    if (aCharIter == theInput)
+    if (aDigit >= theBase)
     {
-      return NULL;
+      break;
     }
-
-    theResult = aValue;
-    return aCharIter;
+    aValue = aValue * theBase + aDigit;
+    ++aCharIter;
+  }
+  if (aCharIter == theInput)
+  {
+    return NULL;
   }
 
-  //! Read CPUs mask from sysfs.
-  static uint32_t readCpuMask (const char* thePath)
+  theResult = aValue;
+  return aCharIter;
+}
+
+//! Read CPUs mask from sysfs.
+static uint32_t readCpuMask (const char* thePath)
+{
+  FILE* aFileHandle = fopen (thePath, "rb");
+  if (aFileHandle == NULL)
   {
-    FILE* aFileHandle = fopen (thePath, "rb");
-    if (aFileHandle == NULL)
-    {
-      return 0;
-    }
+    return 0;
+  }
 
-    fseek (aFileHandle, 0, SEEK_END);
-    long aFileLen = ftell (aFileHandle);
-    if (aFileLen <= 0L)
-    {
-      fclose (aFileHandle);
-      return 0;
-    }
-
-    char* aBuffer = (char* )Standard::Allocate (aFileLen);
-    if (aBuffer == NULL)
-    {
-      return 0;
-    }
-
-    fseek (aFileHandle, 0, SEEK_SET);
-    size_t aCountRead = fread (aBuffer, 1, aFileLen, aFileHandle);
-    (void )aCountRead;
+  fseek (aFileHandle, 0, SEEK_END);
+  long aFileLen = ftell (aFileHandle);
+  if (aFileLen <= 0L)
+  {
     fclose (aFileHandle);
+    return 0;
+  }
 
-    uint32_t aCpuMask = 0;
-    const char* anEnd = aBuffer + aFileLen;
-    for (const char* aCharIter = aBuffer; aCharIter < anEnd && *aCharIter != '\n';)
+  char* aBuffer = (char* )Standard::Allocate (aFileLen);
+  if (aBuffer == NULL)
+  {
+    return 0;
+  }
+
+  fseek (aFileHandle, 0, SEEK_SET);
+  size_t aCountRead = fread (aBuffer, 1, aFileLen, aFileHandle);
+  (void )aCountRead;
+  fclose (aFileHandle);
+
+  uint32_t aCpuMask = 0;
+  const char* anEnd = aBuffer + aFileLen;
+  for (const char* aCharIter = aBuffer; aCharIter < anEnd && *aCharIter != '\n';)
+  {
+    const char* aChunkEnd = (const char* )::memchr (aCharIter, ',', anEnd - aCharIter);
+    if (aChunkEnd == NULL)
     {
-      const char* aChunkEnd = (const char* )::memchr (aCharIter, ',', anEnd - aCharIter);
-      if (aChunkEnd == NULL)
-      {
-        aChunkEnd = anEnd;
-      }
+      aChunkEnd = anEnd;
+    }
 
-      // get first value
-      int anIndexLower = 0;
-      aCharIter = parseNumber (anIndexLower, aCharIter, aChunkEnd);
+    // get first value
+    int anIndexLower = 0;
+    aCharIter = parseNumber (anIndexLower, aCharIter, aChunkEnd);
+    if (aCharIter == NULL)
+    {
+      Standard::Free (aBuffer);
+      return aCpuMask;
+    }
+
+    // if we're not at the end of the item, expect a dash and and integer; extract end value.
+    int anIndexUpper = anIndexLower;
+    if (aCharIter < aChunkEnd && *aCharIter == '-')
+    {
+      aCharIter = parseNumber (anIndexUpper, aCharIter + 1, aChunkEnd);
       if (aCharIter == NULL)
       {
         Standard::Free (aBuffer);
         return aCpuMask;
       }
+    }
 
-      // if we're not at the end of the item, expect a dash and and integer; extract end value.
-      int anIndexUpper = anIndexLower;
-      if (aCharIter < aChunkEnd && *aCharIter == '-')
+    // set bits CPU list
+    for (int aCpuIndex = anIndexLower; aCpuIndex <= anIndexUpper; ++aCpuIndex)
+    {
+      if ((unsigned int )aCpuIndex < 32)
       {
-        aCharIter = parseNumber (anIndexUpper, aCharIter + 1, aChunkEnd);
-        if (aCharIter == NULL)
-        {
-          Standard::Free (aBuffer);
-          return aCpuMask;
-        }
-      }
-
-      // set bits CPU list
-      for (int aCpuIndex = anIndexLower; aCpuIndex <= anIndexUpper; ++aCpuIndex)
-      {
-        if ((unsigned int )aCpuIndex < 32)
-        {
-          aCpuMask |= (uint32_t )(1U << aCpuIndex);
-        }
-      }
-
-      aCharIter = aChunkEnd;
-      if (aCharIter < anEnd)
-      {
-        ++aCharIter;
+        aCpuMask |= (uint32_t )(1U << aCpuIndex);
       }
     }
 
-    Standard::Free (aBuffer);
-    return aCpuMask;
+    aCharIter = aChunkEnd;
+    if (aCharIter < anEnd)
+    {
+      ++aCharIter;
+    }
   }
-#endif
 
-const Standard_Boolean OSD_Parallel_ToUseThreads =
+  Standard::Free (aBuffer);
+  return aCpuMask;
+}
+#endif
+}
+
+namespace {
+  const Standard_Boolean ToUseThreads =
 #if !defined(OCCT_DISABLE_THREADS)
-  Standard_True;
+    Standard_True;
 #else
-  Standard_False;
+    Standard_False;
 #endif
 
-static Standard_Boolean OSD_Parallel_ToUseOcctThreads =
-#ifdef HAVE_TBB
-  Standard_False;
-#else
-  OSD_Parallel_ToUseThreads;
-#endif
+  const Standard_Boolean OSD_Parallel_ToUseOcctThreads =
+  #ifdef HAVE_TBB
+    Standard_False;
+  #else
+    ToUseThreads;
+  #endif
 }
 
 //=======================================================================

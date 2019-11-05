@@ -16,8 +16,6 @@
 #ifndef _SelectMgr_TriangularFrustumSet_HeaderFile
 #define _SelectMgr_TriangularFrustumSet_HeaderFile
 
-#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
-
 #include <NCollection_Handle.hxx>
 #include <NCollection_List.hxx>
 
@@ -92,4 +90,4 @@ private:
 };
 
 #endif // _SelectMgr_TriangularFrustumSet_HeaderFile
-#endif
+

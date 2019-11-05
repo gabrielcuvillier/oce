@@ -924,6 +924,7 @@ class ProjLib_Function : public AppCont_Function
   }
 };
 
+#if !defined(OCCT_DISABLE_APPROX_FIT_AND_DIVIDE)
 //=======================================================================
 //function : ComputeTolU
 //purpose  : 
@@ -957,6 +958,8 @@ static Standard_Real ComputeTolV(const Handle(Adaptor3d_HSurface)& theSurf,
 
   return aTolV;
 }
+#endif
+
 //=======================================================================
 //function : ProjLib_ComputeApprox
 //purpose  : 
@@ -1150,11 +1153,10 @@ void ProjLib_ComputeApprox::Perform
     }
   
 //-------------
+#if !defined(OCCT_DISABLE_APPROX_FIT_AND_DIVIDE)
     const Standard_Real aTolU = ComputeTolU(S, myTolerance);
     const Standard_Real aTolV = ComputeTolV(S, myTolerance);
     const Standard_Real aTol2d = Max(Sqrt(aTolU*aTolU + aTolV*aTolV), Precision::PConfusion());
-
-#if !defined(OCCT_DISABLE_APPROX_FIT_AND_DIVIDE)
     Approx_FitAndDivide2d Fit(Deg1, Deg2, myTolerance, aTol2d, Standard_True, aFistC, aLastC);
     Fit.SetMaxSegments(aMaxSegments);
     Fit.Perform(F);
@@ -1318,7 +1320,11 @@ void ProjLib_ComputeApprox::Perform
       }
     }
 #else
-    throw Standard_Failure("ProjLib_ComputeApprox: FitAndDivide not available");
+    static Standard_Boolean WarnOnce_UnavailableApproxFitAndDivide = Standard_True;
+    if (WarnOnce_UnavailableApproxFitAndDivide) {
+      std::cerr << "ProjLib_ComputeApprox: FitAndDivide not available" << std::endl;
+      WarnOnce_UnavailableApproxFitAndDivide = Standard_False;
+    }
 #endif
   }
 }

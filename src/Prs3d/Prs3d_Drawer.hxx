@@ -344,13 +344,10 @@ public:
   //! Returns True if automatic triangulation is enabled.
   Standard_Boolean IsAutoTriangulation() const
   {
-#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
     return HasOwnIsAutoTriangulation() || myLink.IsNull()
          ? myIsAutoTriangulated
          : myLink->IsAutoTriangulation();
-#else
     return false;
-#endif
   }
 
   //! Returns true if the drawer has IsoOnPlane setting active.

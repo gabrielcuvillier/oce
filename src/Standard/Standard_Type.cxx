@@ -19,6 +19,10 @@
 
 #include <NCollection_DataMap.hxx>
 
+namespace {
+  const Standard_Boolean ToDebugDynamicType = Standard_False;
+}
+
 IMPLEMENT_STANDARD_RTTIEXT(Standard_Type,Standard_Transient)
 
 //============================================================================
@@ -120,7 +124,7 @@ Standard_Type* Standard_Type::Register (const char* theSystemName, const char* t
   // then add it to registry and return (the reference to the handle stored in the registry)
   aRegistry.Bind (aType->mySystemName, aType);
 
-  if Standard_IF_CONSTEXPR(false) {
+  if Standard_IF_CONSTEXPR(ToDebugDynamicType) {
     std::cout << "Registering " << theName << " (" << theSystemName << ")" << std::endl;
   }
 
@@ -139,7 +143,7 @@ Standard_Type::~Standard_Type ()
 }
 
 void opencascade::debug_type(Standard_Transient const * theTransient) {
-  if Standard_IF_CONSTEXPR(false) {
+  if Standard_IF_CONSTEXPR(ToDebugDynamicType) {
     if (theTransient) {
       theTransient->DynamicType();
     }

@@ -224,13 +224,9 @@ Handle(Vrml_Material) VrmlAPI_Writer::GetUnfreeBoundsMaterial() const
 
 Standard_Boolean VrmlAPI_Writer::Write(const TopoDS_Shape& aShape,const Standard_CString aFile, const Standard_Integer aVersion) const
 {
-  // VRML 1.0 is such an outdated format, let's disable this
-#if 0
   if (aVersion == 1)
     return write_v1 (aShape, aFile);
-  else
-#endif
-  if (aVersion == 2)
+  else if (aVersion == 2)
     return write_v2 (aShape, aFile);
 
   return Standard_False;
@@ -368,6 +364,11 @@ Standard_Boolean VrmlAPI_Writer::write_v1(const TopoDS_Shape& aShape,const Stand
 
   outfile.close();
   return outfile.good();
+}
+#else
+Standard_Boolean VrmlAPI_Writer::write_v1(const TopoDS_Shape&,const Standard_CString) const
+{
+  return Standard_False;
 }
 #endif
 

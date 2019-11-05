@@ -16,11 +16,11 @@
 #include <OSD_Thread.hxx>
 
 namespace {
-const Standard_Boolean ToUseThreads =
+  const Standard_Boolean ToUseThreads =
 #if !defined(OCCT_DISABLE_THREADS)
-  Standard_True;
+    Standard_True;
 #else
-  Standard_False;
+    Standard_False;
 #endif
 }
 

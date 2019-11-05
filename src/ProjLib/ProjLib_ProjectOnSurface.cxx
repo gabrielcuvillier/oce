@@ -245,7 +245,11 @@ void ProjLib_ProjectOnSurface::Load(const Handle(Adaptor3d_HCurve)& C,
 			    Standard_False) ;
     myIsDone = Standard_True ;
 #else
-  throw Standard_Failure("ProjLib_ProjectOnSurface: FitAndDivide not available");
+  static Standard_Boolean WarnOnce_UnavailableApproxFitAndDivide = Standard_True;
+  if (WarnOnce_UnavailableApproxFitAndDivide) {
+    std::cerr << "ProjLib_ProjectOnSurface: FitAndDivide not available" << std::endl;
+    WarnOnce_UnavailableApproxFitAndDivide = Standard_False;
+  }
 #endif
   }
 }

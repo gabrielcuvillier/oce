@@ -1578,7 +1578,6 @@ Handle(Geom2d_BSplineCurve)
   }
   Standard_Real DistTol3d2 = DistTol3d * DistTol3d;
   Standard_Real TolU = Surf->UResolution(Tol3d), TolV = Surf->VResolution(Tol3d);
-  Standard_Real Tol2d = Max(Sqrt(TolU*TolU + TolV*TolV), Precision::PConfusion());
 
   Standard_Integer i;
   GeomAbs_SurfaceType TheTypeS = Surf->GetType();
@@ -1898,6 +1897,7 @@ Handle(Geom2d_BSplineCurve)
   }
 
 #if !defined(OCCT_DISABLE_APPROX_FIT_AND_DIVIDE)
+  Standard_Real Tol2d = Max(Sqrt(TolU*TolU + TolV*TolV), Precision::PConfusion());
   Approx_FitAndDivide2d Fit(Deg1, Deg2, Tol3d, Tol2d, Standard_True, aFistC, aLastC);
   Fit.SetMaxSegments(aMaxSegments);
   if (InitCurve2d->GetType() == GeomAbs_Line)
@@ -1991,7 +1991,11 @@ Handle(Geom2d_BSplineCurve)
     return Dummy;
   }
 #else
-  throw Standard_Failure("ProjLib_ComputeApproxOnPolarSurface: FitAndDivide not available");
+  static Standard_Boolean WarnOnce_UnavailableApproxFitAndDivide = Standard_True;
+  if (WarnOnce_UnavailableApproxFitAndDivide) {
+    std::cerr << "ProjLib_ComputeApproxOnPolarSurface: FitAndDivide not available" << std::endl;
+    WarnOnce_UnavailableApproxFitAndDivide = Standard_False;
+  }
 #endif
   return Handle(Geom2d_BSplineCurve)();
 }

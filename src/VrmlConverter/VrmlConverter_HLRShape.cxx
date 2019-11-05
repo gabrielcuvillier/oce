@@ -11,8 +11,6 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
-#if !defined(OCCT_DISABLE_VRML1_EXPORT)
-
 #include <Bnd_Box.hxx>
 #include <BRepAdaptor_Curve.hxx>
 #include <BRepBndLib.hxx>
@@ -159,5 +157,3 @@ void VrmlConverter_HLRShape::Add(Standard_OStream&                          anOS
   
   aDrawer->SetLineAspect(latmp);
 }   
-
-#endif

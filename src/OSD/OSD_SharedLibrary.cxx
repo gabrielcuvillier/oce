@@ -46,11 +46,11 @@ extern "C" {void    *dlerror (void);}
 #define BAD(X)  ((X) == NULL)
 
 namespace {
-const Standard_Boolean ToUseSharedLibrary =
+  const Standard_Boolean ToUseSharedLibrary =
 #if !defined(OCCT_DISABLE_SHAREDLIBRARY)
-  Standard_True;
+    Standard_True;
 #else
-  Standard_False;
+    Standard_False;
 #endif
 }
 

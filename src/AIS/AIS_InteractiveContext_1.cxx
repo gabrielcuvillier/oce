@@ -524,7 +524,6 @@ AIS_StatusOfPick AIS_InteractiveContext::Select (const Standard_Integer  theXPMi
   
 }
 
-#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
 //=======================================================================
 //function : Select
 //purpose  : Selection by polyline
@@ -533,6 +532,7 @@ AIS_StatusOfPick AIS_InteractiveContext::Select (const TColgp_Array1OfPnt2d& the
                                                  const Handle(V3d_View)&     theView,
                                                  const Standard_Boolean      toUpdateViewer)
 {
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
   if (theView->Viewer() != myMainVwr)
   {
     throw Standard_ProgramError ("AIS_InteractiveContext::Select() - invalid argument");
@@ -562,9 +562,14 @@ AIS_StatusOfPick AIS_InteractiveContext::Select (const TColgp_Array1OfPnt2d& the
   return (aSelNum == 0) ? AIS_SOP_NothingSelected
                         : (aSelNum == 1) ? AIS_SOP_OneSelected
                                          : AIS_SOP_SeveralSelected;
-  
-}
+
+#else
+  (void)thePolyline;
+  (void)theView;
+  (void)toUpdateViewer;
+  return AIS_SOP_NothingSelected;
 #endif
+}
 
 //=======================================================================
 //function : Select
@@ -678,7 +683,6 @@ AIS_StatusOfPick AIS_InteractiveContext::ShiftSelect (const Standard_Integer the
 
 }
 
-#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
 //=======================================================================
 //function : ShiftSelect
 //purpose  : 
@@ -687,6 +691,7 @@ AIS_StatusOfPick AIS_InteractiveContext::ShiftSelect (const TColgp_Array1OfPnt2d
                                                       const Handle(V3d_View)& theView,
                                                       const Standard_Boolean toUpdateViewer)
 {
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
   if (theView->Viewer() != myMainVwr)
   {
     throw Standard_ProgramError ("AIS_InteractiveContext::ShiftSelect() - invalid argument");
@@ -717,8 +722,13 @@ AIS_StatusOfPick AIS_InteractiveContext::ShiftSelect (const TColgp_Array1OfPnt2d
   return (aSelNum == 0) ? AIS_SOP_NothingSelected
                         : (aSelNum == 1) ? AIS_SOP_OneSelected
                                          : AIS_SOP_SeveralSelected;
-}
+#else
+  (void)thePolyline;
+  (void)theView;
+  (void)toUpdateViewer;
+  return AIS_SOP_NothingSelected;
 #endif
+}
 
 //=======================================================================
 //function : HilightSelected

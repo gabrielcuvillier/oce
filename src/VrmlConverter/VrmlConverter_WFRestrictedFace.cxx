@@ -11,8 +11,6 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
-#if !defined(OCCT_DISABLE_VRML1_EXPORT)
-
 #include <Adaptor3d_IsoCurve.hxx>
 #include <Bnd_Box2d.hxx>
 #include <BndLib_Add2dCurve.hxx>
@@ -351,5 +349,4 @@ void VrmlConverter_WFRestrictedFace::AddVIso
 		      finv,
 		      aDrawer);
 }
-#endif
 

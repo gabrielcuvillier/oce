@@ -15,15 +15,15 @@
 
 #include <XCAFPrs_Driver.hxx>
 
-#if !defined(OCCT_DISABLE_VISUALIZATION_IN_XDE)
-
 #include <AIS_InteractiveObject.hxx>
 #include <Standard_GUID.hxx>
 #include <Standard_Type.hxx>
 #include <TDF_Label.hxx>
 #include <TDocStd_Document.hxx>
 #include <XCAFDoc_ShapeTool.hxx>
+#if !defined(OCCT_DISABLE_VISUALIZATION_IN_XDE)
 #include <XCAFPrs_AISObject.hxx>
+#endif
 
 IMPLEMENT_STANDARD_RTTIEXT(XCAFPrs_Driver,TPrsStd_Driver)
 
@@ -35,7 +35,8 @@ Standard_Boolean XCAFPrs_Driver::Update (const TDF_Label& L,
 					 Handle(AIS_InteractiveObject)& ais)
 
 {
-//  std::cout << "XCAFPrs_Driver::Update" << std::endl;
+#if !defined(OCCT_DISABLE_VISUALIZATION_IN_XDE)
+  //  std::cout << "XCAFPrs_Driver::Update" << std::endl;
 // WARNING! The label L can be out of any document 
 // (this is a case for reading from the file)
 //  Handle(TDocStd_Document) DOC = TDocStd_Document::Get(L);
@@ -46,6 +47,11 @@ Standard_Boolean XCAFPrs_Driver::Update (const TDF_Label& L,
   ais = new XCAFPrs_AISObject (L);
 
   return Standard_True;
+#else
+  (void)L;
+  (void)ais;
+  return Standard_False;
+#endif
 }
 
 //=======================================================================
@@ -58,4 +64,3 @@ const Standard_GUID& XCAFPrs_Driver::GetID()
   static Standard_GUID ID("5b896afc-3adf-11d4-b9b7-0060b0ee281b");
   return ID;
 }
-#endif

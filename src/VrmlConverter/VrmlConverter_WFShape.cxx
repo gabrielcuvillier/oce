@@ -11,8 +11,6 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
-#if !defined(OCCT_DISABLE_VRML1_EXPORT)
-
 #include <Bnd_Box.hxx>
 #include <BRep_Tool.hxx>
 #include <BRepAdaptor_Curve.hxx>
@@ -246,4 +244,3 @@ void VrmlConverter_WFShape::Add(Standard_OStream&                    anOStream,
       }
 
 }
-#endif
