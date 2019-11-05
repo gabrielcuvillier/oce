@@ -115,7 +115,11 @@ void OSD_MemInfo::Update()
     if(hinfo._useflag == _USEDENTRY)
       myCounters[MemHeapUsage] += hinfo._size;
   }
-
+#elif defined(__EMSCRIPTEN__)
+  struct mallinfo aMI = mallinfo();
+  myCounters[MemHeapUsage] = aMI.uordblks;
+  myCounters[MemWorkingSet] = aMI.uordblks;
+  myCounters[MemWorkingSetPeak] = aMI.usmblks;
 #elif (defined(__linux__) || defined(__linux))
   // use procfs on Linux
   char aBuff[4096];
