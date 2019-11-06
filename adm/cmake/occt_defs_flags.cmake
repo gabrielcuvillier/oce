@@ -35,6 +35,8 @@ else()
     message (STATUS "Info: Exceptions and PIC are disabled")
     add_compile_options(-fno-exceptions)
     add_compile_options(-fno-PIC)
+    #add_compile_options(-fno-c++-static-destructors)
+    #add_compile_options(-fno-jump-tables)
 
     #message (STATUS "Info: OCCT_HANDLE_NOCAST is defined")
     #add_definitions(-DOCCT_HANDLE_NOCAST)
