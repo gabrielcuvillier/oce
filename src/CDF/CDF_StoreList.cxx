@@ -32,10 +32,17 @@
 
 IMPLEMENT_STANDARD_RTTIEXT(CDF_StoreList,Standard_Transient)
 
+#if defined(__EMSCRIPTEN__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunneeded-internal-declaration"
+#endif
 static void CAUGHT(const Standard_Failure& theException,TCollection_ExtendedString& status,const TCollection_ExtendedString& what) {
   status += what;
   status += theException.GetMessageString();
 }
+#if defined(__EMSCRIPTEN__)
+#pragma clang diagnostic pop
+#endif
 
 CDF_StoreList::CDF_StoreList(const Handle(CDM_Document)& aDocument) {
   myMainDocument = aDocument;

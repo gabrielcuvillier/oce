@@ -465,6 +465,8 @@ bool OpenGl_View::redrawImmediate (const Graphic3d_Camera::Projection theProject
       toCopyBackToFront    = GL_FALSE;
       myBackBufferRestored = Standard_False;
     }
+#else
+    (void)theIsPartialUpdate;
 #endif
   }
   else

@@ -41,7 +41,10 @@
 
 static int errh = 1;
 
-
+#if defined(__EMSCRIPTEN__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunneeded-internal-declaration"
+#endif
 static void raisecheck (Standard_Failure& theException,Handle(Interface_Check)& ach)
 {
   char mess[100];
@@ -57,7 +60,9 @@ static void raisecheck (Standard_Failure& theException,Handle(Interface_Check)& 
     throw theException;
   }
 }
-
+#if defined(__EMSCRIPTEN__)
+#pragma clang diagnostic pop
+#endif
 
   //  thestat : evite a CheckSuccess de refaire un calcul prealablement fait :
   //  bit valeur 1 : Verify  fait, valeur 4 : et ilya des erreurs
