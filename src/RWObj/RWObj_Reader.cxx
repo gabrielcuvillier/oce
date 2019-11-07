@@ -517,6 +517,7 @@ void RWObj_Reader::pushIndices (const char* thePos)
   }
   else
   {
+#if !defined(OCCT_DISABLE_MESHING_IN_RWOBJ)
     const NCollection_Array1<Standard_Integer> aCurrElemArray1 (myCurrElem[0], 1, aNbElemNodes);
     const Standard_Integer aNbAdded = triangulatePolygon (aCurrElemArray1);
     if (aNbAdded < 1)
@@ -525,6 +526,7 @@ void RWObj_Reader::pushIndices (const char* thePos)
     }
     ++myNbElemsBig;
     myMemEstim += sizeof(Graphic3d_Vec4i) * aNbAdded;
+#endif
   }
 }
 
