@@ -164,18 +164,22 @@ Standard_Boolean Standard_ErrorHandler::IsInTryBlock()
 
 void Standard_ErrorHandler::Abort (const Handle(Standard_Failure)& theError)
 {
+  //==== Check if can do the "longjmp" =======================================
+#if defined(OCCT_CONVERT_SIGNALS)
   Standard_ErrorHandler* anActive = FindHandler(Standard_HandlerVoid, Standard_True);
 
-  //==== Check if can do the "longjmp" =======================================
   if(anActive == NULL) {
+#endif
     std::cerr << "*** Abort *** an exception was raised, but no catch was found." << std::endl;
     if (!theError.IsNull())
       std::cerr << "\t... The exception is:" << theError->GetMessageString() << std::endl;
     exit(1);
+#if defined(OCCT_CONVERT_SIGNALS)
   }
 
   anActive->myStatus = Standard_HandlerJumped;
   longjmp(anActive->myLabel, Standard_True);
+#endif
 }
 
 
