@@ -21,7 +21,9 @@
 #include <TopExp_Explorer.hxx>
 #include <BRep_Tool.hxx>
 #include <BRep_Builder.hxx>
+#if !defined(OCCT_DISABLE_SHAPEANALYSIS_IN_MESHING)
 #include <ShapeAnalysis_Edge.hxx>
+#endif
 #include <BRepAdaptor_Curve.hxx>
 #include <Precision.hxx>
 #include <Bnd_Box.hxx>
@@ -346,11 +348,21 @@ Standard_Boolean BRepMesh_ShapeTool::Range (
   Standard_Real&          theLastParam,
   const Standard_Boolean  isConsiderOrientation)
 {
+  TopLoc_Location L;
+  const Handle(Geom_Surface)& S = BRep_Tool::Surface(theFace, L);
 
+  thePCurve = BRep_Tool::CurveOnSurface (theEdge, S, L, theFirstParam, theLastParam);
+  if ( isConsiderOrientation && theEdge.Orientation() == TopAbs_REVERSED ) {
+    Standard_Real tmp = theFirstParam; theFirstParam = theLastParam; theLastParam = tmp;
+  }
+  return !thePCurve.IsNull();
+
+#if !defined(OCCT_DISABLE_SHAPEANALYSIS_IN_MESHING)
   ShapeAnalysis_Edge aEdge;
   return aEdge.PCurve (theEdge, theFace, thePCurve,
     theFirstParam, theLastParam,
     isConsiderOrientation);
+#endif
 }
 
 //=======================================================================
@@ -364,9 +376,24 @@ Standard_Boolean BRepMesh_ShapeTool::Range (
   Standard_Real&          theLastParam,
   const Standard_Boolean  isConsiderOrientation)
 {
+  TopLoc_Location L;
+  theCurve = BRep_Tool::Curve (theEdge, L, theFirstParam, theLastParam);
+  if( !theCurve.IsNull() && !L.IsIdentity() ) {
+    theCurve = Handle(Geom_Curve)::DownCast(theCurve->Transformed(L.Transformation()));
+    theFirstParam = theCurve->TransformedParameter(theFirstParam, L.Transformation());
+    theLastParam = theCurve->TransformedParameter(theLastParam, L.Transformation());
+  }
+  if (isConsiderOrientation) {
+    if (theEdge.Orientation() == TopAbs_REVERSED) {
+      Standard_Real tmp = theFirstParam; theFirstParam = theLastParam; theLastParam = tmp;
+    }
+  }
+  return !theCurve.IsNull();
 
+#if 0
   ShapeAnalysis_Edge aEdge;
   return aEdge.Curve3d (theEdge, theCurve,
     theFirstParam, theLastParam,
     isConsiderOrientation);
+#endif
 }

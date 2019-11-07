@@ -15,9 +15,12 @@
 
 #include <BRepMesh_ModelBuilder.hxx>
 #include <BRepMeshData_Model.hxx>
+#if !defined(OCCT_DISABLE_SHAPEANALYSIS_IN_MESHING)
 #include <BRepMesh_ShapeVisitor.hxx>
+#endif
 #include <BRepMesh_ShapeTool.hxx>
 #include <IMeshTools_ShapeExplorer.hxx>
+#include <IMeshTools_Parameters.hxx>
 
 #include <Bnd_Box.hxx>
 #include <BRepBndLib.hxx>
@@ -68,11 +71,13 @@ Handle (IMeshData_Model) BRepMesh_ModelBuilder::performInternal (
                              theParameters.DeflectionInterior));
     }
 
+#if !defined(OCCT_DISABLE_SHAPEANALYSIS_IN_MESHING)
     Handle (IMeshTools_ShapeVisitor) aVisitor =
       new BRepMesh_ShapeVisitor (aModel);
 
     IMeshTools_ShapeExplorer aExplorer (theShape);
     aExplorer.Accept (aVisitor);
+#endif
     SetStatus (Message_Done1);
   }
   else
