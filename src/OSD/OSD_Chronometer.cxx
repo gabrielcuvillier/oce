@@ -51,7 +51,11 @@
 void OSD_Chronometer::GetProcessCPU (Standard_Real& theUserSeconds,
                                      Standard_Real& theSystemSeconds)
 {
-#if defined(__linux__) || defined(__FreeBSD__) || defined(__ANDROID__) || defined(__QNX__) || defined(__EMSCRIPTEN__)
+#if defined(__EMSCRIPTEN__)
+  theUserSeconds = theSystemSeconds = 0.0;
+  return;
+#else
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__ANDROID__) || defined(__QNX__)
   static const long aCLK_TCK = sysconf(_SC_CLK_TCK);
 #else
   static const long aCLK_TCK = CLK_TCK;
@@ -62,6 +66,7 @@ void OSD_Chronometer::GetProcessCPU (Standard_Real& theUserSeconds,
 
   theUserSeconds   = (Standard_Real)aCurrentTMS.tms_utime / aCLK_TCK;
   theSystemSeconds = (Standard_Real)aCurrentTMS.tms_stime / aCLK_TCK;
+#endif
 }
 
 //=======================================================================
@@ -71,6 +76,10 @@ void OSD_Chronometer::GetProcessCPU (Standard_Real& theUserSeconds,
 void OSD_Chronometer::GetThreadCPU (Standard_Real& theUserSeconds,
                                     Standard_Real& theSystemSeconds)
 {
+#if defined(__EMSCRIPTEN__)
+  theUserSeconds = theSystemSeconds = 0.0;
+  return;
+#else
   theUserSeconds = theSystemSeconds = 0.0;
 #if (defined(__APPLE__))
   struct task_thread_times_info aTaskInfo;
@@ -98,6 +107,7 @@ void OSD_Chronometer::GetThreadCPU (Standard_Real& theUserSeconds,
   }
 #else
   #pragma error "OS is not supported yet; code to be ported"
+#endif
 #endif
 }
 

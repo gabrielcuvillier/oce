@@ -12,6 +12,10 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
+#if defined(__EMSCRIPTEN__)
+#include <emscripten.h>
+#endif
+
 #ifdef _WIN32
   #include <windows.h>
 #else
@@ -34,6 +38,10 @@ namespace
     gettimeofday (&aTime, NULL);
     theTime.tv_sec  = aTime.tv_sec;
     theTime.tv_nsec = aTime.tv_usec * 1000;
+  #elif defined(__EMSCRIPTEN__)
+    const double aNow = emscripten_get_now();
+    theTime.tv_sec = aNow/1000;
+    theTime.tv_nsec = (((Standard_Integer)aNow) % 1000)*1000*1000;
   #else
     clock_gettime (CLOCK_REALTIME, &theTime);
   #endif

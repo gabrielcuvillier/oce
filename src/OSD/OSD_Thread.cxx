@@ -301,10 +301,15 @@ Standard_Boolean OSD_Thread::Wait (const Standard_Integer theTimeMs,
 
   #ifdef HAS_TIMED_NP
     struct timespec aTimeout;
-    if (clock_gettime (CLOCK_REALTIME, &aTimeout) == -1)
-    {
+  #if defined(__EMSCRIPTEN__)
+    const double aNow = emscripten_get_now();
+    aTimeout.tv_sec = aNow/1000;
+    aTimeout.tv_nsec = (((Standard_Integer)aNow) % 1000)*1000*1000;
+  #else
+    if (clock_gettime (CLOCK_REALTIME, &aTimeout) == -1) {
       return Standard_False;
     }
+  #endif
 
     time_t aSeconds      = (theTimeMs / 1000);
     long   aMicroseconds = (theTimeMs - aSeconds * 1000) * 1000;

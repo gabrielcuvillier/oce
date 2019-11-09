@@ -71,8 +71,8 @@ Quantity_Date  OSD_Process::SystemDate(){
 Quantity_Date result;
 Standard_Integer month=0,day=0,year=0,hh=0,mn=0,ss=0;
 struct tm transfert;
-struct timeval tval;
-struct timezone tzone;
+  struct timeval tval;
+  struct timezone tzone;
 int status;
 
  status = gettimeofday( &tval, &tzone );
@@ -99,17 +99,25 @@ Standard_Integer OSD_Process::ProcessId(){
 
 TCollection_AsciiString OSD_Process::UserName()
 {
+#if defined(__EMSCRIPTEN__)
+  return "web_user";
+#else
   struct passwd *anInfos = getpwuid (getuid());
   return TCollection_AsciiString (anInfos ? anInfos->pw_name : "");
+#endif
 }
 
 Standard_Boolean OSD_Process::IsSuperUser (){
+#if defined(__EMSCRIPTEN__)
+  return Standard_False;
+#else
   if (getuid()) {
     return Standard_False;
   }
   else {
     return Standard_True;
   }
+#endif
 }
 
 

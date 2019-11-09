@@ -173,7 +173,11 @@ void Standard_ErrorHandler::Abort (const Handle(Standard_Failure)& theError)
     std::cerr << "*** Abort *** an exception was raised, but no catch was found." << std::endl;
     if (!theError.IsNull())
       std::cerr << "\t... The exception is:" << theError->GetMessageString() << std::endl;
+#if defined(__EMSCRIPTEN__)
+    std::terminate();
+#else
     exit(1);
+#endif
 #if defined(OCCT_CONVERT_SIGNALS)
   }
 

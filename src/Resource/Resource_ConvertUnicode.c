@@ -14,11 +14,11 @@
  commercial license or contractual agreement.
 */
 
+#if !defined(OCCT_DISABLE_UNICODE_CONVERSIONS)
+
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
-
-#if !defined(OCCT_DISABLE_UNICODE_CONVERSIONS)
 
 typedef unsigned short char16 ;
 
