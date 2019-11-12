@@ -381,13 +381,13 @@ namespace opencascade {
       entity = thePtr;
       BeginScope();
 
-#if defined(__EMSCRIPTEN__)
-      static bool once = false;
-      if (!once) {
-        once = true;
-        opencascade::debug_type(entity);
-      }
-#endif
+//#if defined(__EMSCRIPTEN__)
+//      static bool once = false;
+//      if (!once) {
+//        once = true;
+//        opencascade::debug_type(entity);
+//      }
+//#endif
     }
   
     //! Increment reference counter of referred object 
