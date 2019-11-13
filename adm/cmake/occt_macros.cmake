@@ -620,7 +620,7 @@ macro (OCCT_INSERT_CODE_FOR_TARGET)
   elseif (\"\${CMAKE_INSTALL_CONFIG_NAME}\" MATCHES \"^([Dd][Ee][Bb][Uu][Gg])$\")
     set (OCCT_INSTALL_BIN_LETTER \"d\")
   elseif (\"\${CMAKE_INSTALL_CONFIG_NAME}\" MATCHES \"^([Mm][Ii][Nn][Ss][Ii][Zz][Ee][Rr][Ee][Ll])$\")
-    set (OCCT_INSTALL_BIN_LETTER \"z\")
+    set (OCCT_INSTALL_BIN_LETTER \"s\")
   endif()")
 endmacro()
 

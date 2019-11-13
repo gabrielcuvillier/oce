@@ -2,7 +2,7 @@ project(TKernel)
 
 OCCT_INCLUDE_CMAKE_FILE (adm/cmake/occt_toolkit)
 
-if (EMSCRIPTEN)
+if (LIGHT_BUILD)
   message (STATUS "Info: [TKernel] OCCT_DISABLE_THREADS is defined")
   target_compile_definitions(TKernel PRIVATE -DOCCT_DISABLE_THREADS)
 

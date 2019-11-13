@@ -252,6 +252,9 @@ macro (THIRDPARTY_PRODUCT PRODUCT_NAME HEADER_NAME LIBRARY_CSF_NAME LIBRARY_NAME
             install (FILES "${3RDPARTY_${PRODUCT_NAME}_DLL_${LIBRARY_NAME_SUFFIX}}"
                      CONFIGURATIONS Debug
                      DESTINATION "${INSTALL_DIR_BIN}d")
+            install (FILES "${3RDPARTY_${PRODUCT_NAME}_DLL_${LIBRARY_NAME_SUFFIX}}"
+                     CONFIGURATIONS MinSizeRel
+                     DESTINATION "${INSTALL_DIR_BIN}s")
           endif()
         else()
           get_filename_component(ABS_PATH ${3RDPARTY_${PRODUCT_NAME}_LIBRARY_${LIBRARY_NAME_SUFFIX}} REALPATH)
