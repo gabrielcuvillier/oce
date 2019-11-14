@@ -31,7 +31,7 @@
 
 // As Exceptions are disabled on Emscripten (-fno-exceptions + DISABLE_EXCEPTION_CATCHING=1) due to being too slow,
 // redefine throw/try/catch to specific exception hijacking code
-#if defined(__EMSCRIPTEN__)
+#if defined(OCCT_DISABLE_EXCEPTIONS)
 
 #include <exception>
 

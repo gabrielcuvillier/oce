@@ -3,7 +3,7 @@
 #include <Standard_DefineException.hxx>
 #include <Standard_Failure.hxx>
 
-#if defined(__EMSCRIPTEN__)
+#if defined(OCCT_DISABLE_EXCEPTIONS)
 
 // std
 #include <exception>    // std::exception, std::terminate
@@ -26,6 +26,5 @@ _TerminateWithStandardFailure::_TerminateWithStandardFailure(std::exception cons
 _TerminateWithStandardFailure::~_TerminateWithStandardFailure() {
   std::terminate();
 }
-
 
 #endif
