@@ -5,4 +5,5 @@ BRep
 BRepLProp
 BRepAdaptor
 BRepTools
+BRepBndLibApprox
 BinTools

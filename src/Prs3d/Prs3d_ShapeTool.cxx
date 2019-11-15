@@ -19,7 +19,11 @@
 #include <BRep_Tool.hxx>
 #include <BRepAdaptor_Curve.hxx>
 #include <BRepAdaptor_Surface.hxx>
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
 #include <BRepBndLib.hxx>
+#else
+#include <BRepBndLibApprox.hxx>
+#endif
 #include <BRepTools.hxx>
 #include <Geom_Plane.hxx>
 #include <Geom_RectangularTrimmedSurface.hxx>
@@ -133,7 +137,11 @@ Bnd_Box Prs3d_ShapeTool::FaceBound() const
 {
   const TopoDS_Face& F = TopoDS::Face(myFaceExplorer.Current());
   Bnd_Box B;
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
   BRepBndLib::Add(F, B);
+#else
+  BRepBndLibApprox::Add(F, B);
+#endif
 
   return B;
 }
@@ -213,7 +221,11 @@ Bnd_Box Prs3d_ShapeTool::CurveBound () const
 {
   const TopoDS_Edge& E = TopoDS::Edge(myEdgeMap.FindKey(myEdge));
   Bnd_Box B;
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
   BRepBndLib::Add(E, B);
+#else
+  BRepBndLibApprox::Add(E, B);
+#endif
 
   return B;
 }

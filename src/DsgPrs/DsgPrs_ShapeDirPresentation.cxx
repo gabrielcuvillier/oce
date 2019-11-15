@@ -17,7 +17,11 @@
 
 #include <Bnd_Box.hxx>
 #include <BRep_Tool.hxx>
+#if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
 #include <BRepBndLib.hxx>
+#else
+#include <BRepBndLibApprox.hxx>
+#endif
 #include <BRepClass_Edge.hxx>
 #include <BRepClass_FaceClassifier.hxx>
 #include <BRepTools_WireExplorer.hxx>
@@ -196,12 +200,20 @@ void DsgPrs_ShapeDirPresentation::Add(const Handle(Prs3d_Presentation)& prs,
 
   if (shape.ShapeType() == TopAbs_EDGE) {
     ComputeDir(shape, pt, dir, mode);
+    #if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
     BRepBndLib::Add(shape, box);
+    #else
+    BRepBndLibApprox::Add(shape, box);
+    #endif
   }
   else if (shape.ShapeType() == TopAbs_FACE) {
     ComputeDir(shape, pt, dir, mode);
+    #if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
     BRepBndLib::Add(shape, box);
-  }
+    #else
+    BRepBndLibApprox::Add(shape, box);
+    #endif
+  }    
   else if (shape.ShapeType() == TopAbs_WIRE) {
     TopTools_ListOfShape aList;
     Standard_Integer nb = 0;
@@ -210,7 +222,11 @@ void DsgPrs_ShapeDirPresentation::Add(const Handle(Prs3d_Presentation)& prs,
       const TopoDS_Edge& edge = anExp.Current();
       nb++;
       if (nb <=3)
+        #if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
         BRepBndLib::Add(edge, box);
+        #else
+        BRepBndLibApprox::Add(edge, box);
+        #endif
       aList.Append(edge);
     }
 
@@ -232,7 +248,11 @@ void DsgPrs_ShapeDirPresentation::Add(const Handle(Prs3d_Presentation)& prs,
       nb++;
       const TopoDS_Face& face = TopoDS::Face(faceExp.Current());
       aList.Append(face);
+      #if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
       BRepBndLib::Add(face, box);
+      #else
+      BRepBndLibApprox::Add(face, box);
+      #endif
 
       if (nb > 3) break;
     }

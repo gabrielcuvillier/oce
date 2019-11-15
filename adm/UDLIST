@@ -92,6 +92,7 @@ n BRepAlgoAPI
 n BRepApprox
 n BRepBlend
 n BRepBndLib
+n BRepBndLibApprox
 n BRepBuilderAPI
 n BRepCheck
 n BRepClass
