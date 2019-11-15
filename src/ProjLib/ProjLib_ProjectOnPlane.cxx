@@ -45,8 +45,6 @@
 #include <Geom_Hyperbola.hxx>
 #include <Geom_Ellipse.hxx>
 
-
-
 //=======================================================================
 //function : OnPlane_Value
 //purpose  : Evaluate current point of the projected curve
@@ -240,6 +238,8 @@ static Standard_Boolean OnPlane_D3(const Standard_Real U,
   return Standard_True;
 }
 
+#if !defined(OCCT_DISABLE_APPROX_FIT_AND_DIVIDE)
+
 //=======================================================================
 //  class  : ProjLib_OnPlane
 //purpose  : Use to approximate the projection on a plane
@@ -287,7 +287,7 @@ public :
     return OnPlane_D1(theT, aDummyPnt, theVec(1),myCurve,myPlane,myDirection);
   }
 };
-
+#endif
 
 
 
@@ -312,12 +312,12 @@ static void  PerformApprox (const Handle(Adaptor3d_HCurve)& C,
 			    Handle(Geom_BSplineCurve) &BSplineCurvePtr)
 
 {
+#if !defined(OCCT_DISABLE_APPROX_FIT_AND_DIVIDE)
   ProjLib_OnPlane F(C,Pl,D);
 
   Standard_Integer Deg1, Deg2;
   Deg1 = 8; Deg2 = 8;
 
-#if !defined(OCCT_DISABLE_APPROX_FIT_AND_DIVIDE)
   Approx_FitAndDivide Fit(Deg1,Deg2,Precision::Approximation(),
 			  Precision::PApproximation(),Standard_True);
   Fit.SetMaxSegments(100);
@@ -394,6 +394,9 @@ static void  PerformApprox (const Handle(Adaptor3d_HCurve)& C,
     std::cerr << "ProjLib_ProjectOnPlane: FitAndDivide not available" << std::endl;
     WarnOnce_UnavailableApproxFitAndDivide = Standard_False;
   }
+  (void)C;
+  (void)Pl;
+  (void)D;
   (void)BSplineCurvePtr;
 #endif
 }

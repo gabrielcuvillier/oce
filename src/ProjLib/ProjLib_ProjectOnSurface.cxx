@@ -32,6 +32,8 @@
 #include <TColStd_Array1OfInteger.hxx>
 #include <TColStd_Array1OfReal.hxx>
 
+#if !defined(OCCT_DISABLE_APPROX_FIT_AND_DIVIDE)
+
 //=======================================================================
 //function : OnSurface_Value
 //purpose  : Evaluate current point of the projected curve
@@ -130,7 +132,7 @@ private:
   Handle(Adaptor3d_HCurve)       myCurve;
   Extrema_ExtPS*                 myExtPS;
 };
-
+#endif
 
 //=====================================================================//
 //                                                                     //
@@ -166,17 +168,16 @@ myIsDone(Standard_False)
 void ProjLib_ProjectOnSurface::Load(const Handle(Adaptor3d_HCurve)& C,
 				    const Standard_Real  Tolerance)
 {
+#if !defined(OCCT_DISABLE_APPROX_FIT_AND_DIVIDE)
   myTolerance = Tolerance ;
   myCurve = C;
   myIsDone = Standard_False ;
   if (!mySurface.IsNull()) {
-
     ProjLib_OnSurface F(myCurve, mySurface);
 
     Standard_Integer Deg1, Deg2;
     Deg1 = 8; Deg2 = 8;
 
-#if !defined(OCCT_DISABLE_APPROX_FIT_AND_DIVIDE)
     Approx_FitAndDivide Fit(F,Deg1,Deg2,Precision::Approximation(),
 			    Precision::PApproximation(),Standard_True);
     Standard_Integer i;
@@ -244,14 +245,16 @@ void ProjLib_ProjectOnSurface::Load(const Handle(Adaptor3d_HCurve)& C,
 			    MaxDeg,
 			    Standard_False) ;
     myIsDone = Standard_True ;
+  }
 #else
   static Standard_Boolean WarnOnce_UnavailableApproxFitAndDivide = Standard_True;
   if (WarnOnce_UnavailableApproxFitAndDivide) {
     std::cerr << "ProjLib_ProjectOnSurface: FitAndDivide not available" << std::endl;
     WarnOnce_UnavailableApproxFitAndDivide = Standard_False;
   }
+  (void)C;
+  (void)Tolerance;
 #endif
-  }
 }
 
 //=======================================================================

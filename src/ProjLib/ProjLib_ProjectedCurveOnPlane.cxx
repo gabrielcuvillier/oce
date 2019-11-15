@@ -249,7 +249,6 @@ void ProjLib_ProjectedCurveOnPlane::Perform(const Handle(Adaptor3d_HCurve)& C)
   Standard_Real LastPar  = C->LastParameter();
   GeomAbs_SurfaceType SType = mySurface->GetType();
   GeomAbs_CurveType   CType = myCurve->GetType();
-  Standard_Boolean isAnalyticalSurf = Standard_True;
   Standard_Boolean IsTrimmed[2] = { Standard_False, Standard_False };
   Standard_Integer SingularCase[2];
   const Standard_Real eps = 0.01;
@@ -270,10 +269,10 @@ void ProjLib_ProjectedCurveOnPlane::Perform(const Handle(Adaptor3d_HCurve)& C)
       }
       break;
     default:
-      break;
+      return;
   }
 
-  if ( !myResult.IsDone() && isAnalyticalSurf)
+  if ( !myResult.IsDone() )
   {
     // Use advanced analytical projector if base analytical projection failed.
     ProjLib_ComputeApprox Comp;
@@ -340,95 +339,7 @@ void ProjLib_ProjectedCurveOnPlane::Perform(const Handle(Adaptor3d_HCurve)& C)
     myTolerance = Comp.Tolerance();
   }
 
-  Standard_Boolean isPeriodic[] = {mySurface->IsUPeriodic(),
-                                   mySurface->IsVPeriodic()};
-  if (myResult.IsDone() &&
-     (isPeriodic[0] || isPeriodic[1]))
-  {
-    // Check result curve to be in params space.
-
-    // U and V parameters space correspondingly.
-    const Standard_Real aSurfFirstPar[2] = {mySurface->FirstUParameter(),
-                                            mySurface->FirstVParameter()};
-    Standard_Real aSurfPeriod[2] = {0.0, 0.0};
-    if (isPeriodic[0])
-      aSurfPeriod[0] = mySurface->UPeriod();
-    if (isPeriodic[1])
-      aSurfPeriod[1] = mySurface->VPeriod();
-
-    for(Standard_Integer anIdx = 1; anIdx <= 2; anIdx++)
-    {
-      if (!isPeriodic[anIdx - 1])
-        continue;
-
-      if (myResult.GetType() == GeomAbs_BSplineCurve)
-      {
-        NCollection_DataMap<Standard_Integer, Standard_Integer> aMap;
-        Handle(Geom2d_BSplineCurve) aRes = myResult.BSpline();
-        const Standard_Integer aDeg = aRes->Degree();
-
-        for(Standard_Integer aKnotIdx = aRes->FirstUKnotIndex();
-                             aKnotIdx < aRes->LastUKnotIndex();
-                             aKnotIdx++)
-        {
-          const Standard_Real aFirstParam = aRes->Knot(aKnotIdx);
-          const Standard_Real aLastParam  = aRes->Knot(aKnotIdx + 1);
-
-          for(Standard_Integer anIntIdx = 0; anIntIdx <= aDeg; anIntIdx++)
-          {
-            const Standard_Real aCurrParam = aFirstParam + (aLastParam - aFirstParam) * anIntIdx / (aDeg + 1.0);
-            gp_Pnt2d aPnt2d;
-            aRes->D0(aCurrParam, aPnt2d);
-
-            Standard_Integer aMapKey = Standard_Integer ((aPnt2d.Coord(anIdx) - aSurfFirstPar[anIdx - 1]) / aSurfPeriod[anIdx - 1]);
-
-            if (aPnt2d.Coord(anIdx) - aSurfFirstPar[anIdx - 1] < 0.0)
-              aMapKey--;
-
-            if (aMap.IsBound(aMapKey))
-              aMap.ChangeFind(aMapKey)++;
-            else
-              aMap.Bind(aMapKey, 1);
-          }
-        }
-
-        Standard_Integer aMaxPoints = 0, aMaxIdx = 0;
-        NCollection_DataMap<Standard_Integer, Standard_Integer>::Iterator aMapIter(aMap);
-        for( ; aMapIter.More(); aMapIter.Next())
-        {
-          if (aMapIter.Value() > aMaxPoints)
-          {
-            aMaxPoints = aMapIter.Value();
-            aMaxIdx = aMapIter.Key();
-          }
-        }
-        if (aMaxIdx != 0)
-        {
-          gp_Pnt2d aFirstPnt = aRes->Value(aRes->FirstParameter());
-          gp_Pnt2d aSecondPnt = aFirstPnt;
-          aSecondPnt.SetCoord(anIdx, aFirstPnt.Coord(anIdx) - aSurfPeriod[anIdx - 1] * aMaxIdx);
-          aRes->Translate(gp_Vec2d(aFirstPnt, aSecondPnt));
-        }
-      }
-
-      if (myResult.GetType() == GeomAbs_Line)
-      {
-        Standard_Real aT1 = myCurve->FirstParameter();
-        Standard_Real aT2 = myCurve->LastParameter();
-
-        if (anIdx == 1)
-        {
-          // U param space.
-          myResult.UFrame(aT1, aT2, aSurfFirstPar[anIdx - 1], aSurfPeriod[anIdx - 1]);
-        }
-        else
-        {
-          // V param space.
-          myResult.VFrame(aT1, aT2, aSurfFirstPar[anIdx - 1], aSurfPeriod[anIdx - 1]);
-        }
-      }
-    }
-  }
+  // Planes are never periodic, so don't check result curve to be in params space
 }
 
 //=======================================================================

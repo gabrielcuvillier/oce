@@ -51,8 +51,9 @@
 #endif
 #ifdef OCCT_DEBUG
 //static Standard_Boolean AffichValue = Standard_False;
-#endif    
+#endif
 
+#if !defined(OCCT_DISABLE_APPROX_FIT_AND_DIVIDE)
 //=======================================================================
 //function : IsEqual
 //purpose  : 
@@ -924,7 +925,6 @@ class ProjLib_Function : public AppCont_Function
   }
 };
 
-#if !defined(OCCT_DISABLE_APPROX_FIT_AND_DIVIDE)
 //=======================================================================
 //function : ComputeTolU
 //purpose  : 
@@ -1093,6 +1093,7 @@ void ProjLib_ComputeApprox::Perform
     }
   }
   else {
+#if !defined(OCCT_DISABLE_APPROX_FIT_AND_DIVIDE)
     ProjLib_Function F( C, S);
 
 #ifdef OCCT_DEBUG
@@ -1153,7 +1154,6 @@ void ProjLib_ComputeApprox::Perform
     }
   
 //-------------
-#if !defined(OCCT_DISABLE_APPROX_FIT_AND_DIVIDE)
     const Standard_Real aTolU = ComputeTolU(S, myTolerance);
     const Standard_Real aTolV = ComputeTolV(S, myTolerance);
     const Standard_Real aTol2d = Max(Sqrt(aTolU*aTolU + aTolV*aTolV), Precision::PConfusion());

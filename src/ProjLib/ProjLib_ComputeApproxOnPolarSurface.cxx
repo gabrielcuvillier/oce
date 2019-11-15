@@ -152,6 +152,8 @@ static void computePeriodicity(const Handle(Adaptor3d_HSurface)& theSurf,
   }
 }
 
+#if !defined(OCCT_DISABLE_APPROX_FIT_AND_DIVIDE)
+
 //=======================================================================
 //function : aFuncValue
 //purpose  : compute functional value in (theU,theV) point
@@ -469,6 +471,7 @@ class ProjLib_PolarFunction : public AppCont_Function
                       NCollection_Array1<gp_Vec>&   /*theVec*/) const
     {return Standard_False;}
 };
+#endif
 
 //=======================================================================
 //function : ProjLib_ComputeApproxOnPolarSurface
@@ -1829,6 +1832,8 @@ Handle(Geom2d_BSplineCurve)
     }
   }
 
+#if !defined(OCCT_DISABLE_APPROX_FIT_AND_DIVIDE)
+
   ProjLib_PolarFunction F(Curve, Surf, InitCurve2d, Tol3d) ;
 
 #ifdef OCCT_DEBUG
@@ -1896,7 +1901,6 @@ Handle(Geom2d_BSplineCurve)
     aLastC = AppParCurves_PassPoint;
   }
 
-#if !defined(OCCT_DISABLE_APPROX_FIT_AND_DIVIDE)
   Standard_Real Tol2d = Max(Sqrt(TolU*TolU + TolV*TolV), Precision::PConfusion());
   Approx_FitAndDivide2d Fit(Deg1, Deg2, Tol3d, Tol2d, Standard_True, aFistC, aLastC);
   Fit.SetMaxSegments(aMaxSegments);
@@ -1996,6 +2000,7 @@ Handle(Geom2d_BSplineCurve)
     std::cerr << "ProjLib_ComputeApproxOnPolarSurface: FitAndDivide not available" << std::endl;
     WarnOnce_UnavailableApproxFitAndDivide = Standard_False;
   }
+  (void)InitCurve2d;
 #endif
   return Handle(Geom2d_BSplineCurve)();
 }
