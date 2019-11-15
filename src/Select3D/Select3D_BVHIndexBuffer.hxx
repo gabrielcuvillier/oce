@@ -91,7 +91,7 @@ private:
   
 public:
 
-  DEFINE_STANDARD_RTTI_INLINE(Select3D_BVHIndexBuffer,Graphic3d_Buffer)
+  DEFINE_STANDARD_RTTIEXT(Select3D_BVHIndexBuffer,Graphic3d_Buffer)
 
 };
 

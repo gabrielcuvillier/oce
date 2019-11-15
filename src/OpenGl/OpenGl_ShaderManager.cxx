@@ -26,6 +26,7 @@
 #include <TCollection_ExtendedString.hxx>
 
 IMPLEMENT_STANDARD_RTTIEXT(OpenGl_ShaderManager,Standard_Transient)
+IMPLEMENT_STANDARD_RTTIEXT(OpenGl_ShaderManager::OpenGl_ShaderProgramFFP, OpenGl_ShaderProgram)
 
 namespace
 {

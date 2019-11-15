@@ -1,0 +1,4 @@
+#include <OpenGl_SetOfShaderPrograms.hxx>
+
+IMPLEMENT_STANDARD_RTTIEXT(OpenGl_SetOfShaderPrograms, Standard_Transient)
+IMPLEMENT_STANDARD_RTTIEXT(OpenGl_SetOfPrograms, Standard_Transient)

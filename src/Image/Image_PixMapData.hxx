@@ -137,7 +137,7 @@ public:
 
 public:
 
-  DEFINE_STANDARD_RTTI_INLINE(Image_PixMapData,NCollection_Buffer) // Type definition
+  DEFINE_STANDARD_RTTIEXT(Image_PixMapData,NCollection_Buffer) // Type definition
 
 };
 

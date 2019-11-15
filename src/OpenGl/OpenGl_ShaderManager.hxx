@@ -752,7 +752,7 @@ protected:
   //! Fake OpenGL program for tracking FFP state in the way consistent to programmable pipeline.
   class OpenGl_ShaderProgramFFP : public OpenGl_ShaderProgram
   {
-    DEFINE_STANDARD_RTTI_INLINE(OpenGl_ShaderProgramFFP, OpenGl_ShaderProgram)
+    DEFINE_STANDARD_RTTIEXT(OpenGl_ShaderProgramFFP, OpenGl_ShaderProgram)
     friend class OpenGl_ShaderManager;
   protected:
     OpenGl_ShaderProgramFFP() {}

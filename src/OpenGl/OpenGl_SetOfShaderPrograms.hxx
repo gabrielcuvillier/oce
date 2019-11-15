@@ -47,7 +47,7 @@ enum OpenGl_ProgramOptions
 //! Alias to programs array of predefined length
 class OpenGl_SetOfPrograms : public Standard_Transient
 {
-  DEFINE_STANDARD_RTTI_INLINE(OpenGl_SetOfPrograms, Standard_Transient)
+  DEFINE_STANDARD_RTTIEXT(OpenGl_SetOfPrograms, Standard_Transient)
 public:
 
   //! Empty constructor
@@ -63,7 +63,7 @@ protected:
 //! Alias to 2D programs array of predefined length
 class OpenGl_SetOfShaderPrograms : public Standard_Transient
 {
-  DEFINE_STANDARD_RTTI_INLINE(OpenGl_SetOfShaderPrograms, Standard_Transient)
+  DEFINE_STANDARD_RTTIEXT(OpenGl_SetOfShaderPrograms, Standard_Transient)
 public:
 
   //! Empty constructor

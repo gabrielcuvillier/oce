@@ -1,0 +1,3 @@
+#include <Select3D_BVHIndexBuffer.hxx>
+
+IMPLEMENT_STANDARD_RTTIEXT(Select3D_BVHIndexBuffer,Graphic3d_Buffer)

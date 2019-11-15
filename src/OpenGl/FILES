@@ -110,6 +110,7 @@ OpenGl_Sampler.hxx
 OpenGl_SceneGeometry.cxx
 OpenGl_SceneGeometry.hxx
 OpenGl_SetOfShaderPrograms.hxx
+OpenGl_SetOfShaderPrograms.cxx
 OpenGl_ShaderManager.cxx
 OpenGl_ShaderManager.hxx
 OpenGl_ShaderObject.cxx

@@ -7,6 +7,7 @@ Image_Format.hxx
 Image_PixMap.cxx
 Image_PixMap.hxx
 Image_PixMapData.hxx
+Image_PixMapData.cxx
 Image_PixMapTypedData.hxx
 Image_Texture.cxx
 Image_Texture.hxx
