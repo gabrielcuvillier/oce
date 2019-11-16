@@ -172,6 +172,12 @@ set(CMAKE_EXE_LINKER_FLAGS_MINSIZEREL "${CMAKE_EXE_LINKER_FLAGS_MINSIZEREL} ${LI
 
 set (ENABLE_OZ OFF CACHE BOOL "Enable Oz build for MinSizeRel")
 if (ENABLE_OZ)
+  if (EMSCRIPTEN)
+    # save up a couple of additional KBs (static destructors generally not usefull on emscripten, as the program does not
+    # 'quits')
+    add_compile_options(-fno-c++-static-destructors)
+    # add_compile_options(-fno-jump-tables) # unsure about this one
+  endif()
   # Use 'Oz' optimization level (instead of Os)
   string (REGEX MATCH "-Os" IS_Os_CXX "${CMAKE_CXX_FLAGS_MINSIZEREL}")
   if (IS_Os_CXX)
