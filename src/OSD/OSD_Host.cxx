@@ -64,9 +64,6 @@ TCollection_AsciiString result;
 // =========================================================================
 
 OSD_SysType OSD_Host::SystemId()const{
-#if defined(__EMSCRIPTEN__)
-  return (OSD_Emscripten);
-#else
   struct utsname info;
 
   uname(&info);
@@ -75,6 +72,7 @@ OSD_SysType OSD_Host::SystemId()const{
   if (!strcmp(info.sysname, "ULTRIX")) return (OSD_UnixBSD);
   if (!strcmp(info.sysname, "FreeBSD")) return (OSD_UnixBSD);
   if (!strncmp(info.sysname, "Linux", 5)) return (OSD_LinuxREDHAT);
+  if (!strcmp(info.sysname, "Emscripten")) return (OSD_Emscripten);
   if (!strncmp(info.sysname, "IRIX", 4)) return (OSD_UnixSystemV);
   if (!strncmp(info.sysname, "OSF", 3)) return (OSD_OSF);
   if (!strcmp(info.sysname, "AIX")) return (OSD_Aix);
@@ -82,7 +80,6 @@ OSD_SysType OSD_Host::SystemId()const{
   if (!strcmp(info.sysname, "VMS_POSIX")) return (OSD_VMS);
   if (!strcmp(info.sysname, "Darwin")) return (OSD_MacOs);
   return (OSD_Unknown);
-#endif
 }
 
 // =========================================================================
@@ -143,9 +140,6 @@ TCollection_AsciiString OSD_Host::InternetAddress(){
 
 // =========================================================================
 OSD_OEMType OSD_Host::MachineType(){
-#if defined(__EMSCRIPTEN__)
-  return (OSD_WASM);
-#else
   struct utsname info;
 
   uname(&info);
@@ -158,11 +152,11 @@ OSD_OEMType OSD_Host::MachineType(){
   if (!strcmp(info.sysname, "VMS_POSIX")) return (OSD_VAX);
   if (!strncmp(info.sysname, "OSF", 3)) return (OSD_DEC);
   if (!strncmp(info.sysname, "Linux", 5)) return (OSD_LIN);
+  if (!strcmp(info.sysname, "Emscripten")) return (OSD_WASM);
   if (!strcmp(info.sysname, "FreeBSD")) return (OSD_LIN);
   if (!strncmp(info.sysname, "AIX", 3)) return (OSD_AIX);
   if (!strcmp(info.sysname, "Darwin")) return (OSD_MAC);
   return (OSD_Unavailable);
-#endif
 }
 
 void OSD_Host::Reset(){
