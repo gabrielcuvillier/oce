@@ -207,7 +207,9 @@ static Handle(Font_SystemFont) checkFont (const Handle(Font_FTLibrary)& theFTLib
   }
 
   FT_Done_Face (aFontFace);
+#if defined(__EMSCRIPTEN__)
   delete[] file_data_buffer;
+#endif
 
   return aResult;
 }
