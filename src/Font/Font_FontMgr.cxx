@@ -70,6 +70,7 @@ IMPLEMENT_STANDARD_RTTIEXT(Font_FontMgr,Standard_Transient)
     static Standard_CString Font_FontMgr_Extensions[] =
     {
       "ttf",
+#if !defined(__EMSCRIPTEN__)
       "otf",
       "ttc",
       "pfa",
@@ -78,6 +79,7 @@ IMPLEMENT_STANDARD_RTTIEXT(Font_FontMgr,Standard_Transient)
       // Datafork TrueType (OS X), obsolete
       //"dfont",
     #endif
+#endif
       NULL
     };
 
@@ -152,11 +154,33 @@ static Handle(Font_SystemFont) checkFont (const Handle(Font_FTLibrary)& theFTLib
                                           const Standard_CString        theFontPath)
 {
   FT_Face aFontFace;
+#if !defined(__EMSCRIPTEN__)
   FT_Error aFaceError = FT_New_Face (theFTLib->Instance(), theFontPath, 0, &aFontFace);
-  if (aFaceError != FT_Err_Ok)
-  {
+  if (aFaceError != FT_Err_Ok) {
     return NULL;
   }
+#else
+  FT_Error aFaceError = 1;
+  Standard_Byte* file_data_buffer = nullptr;
+  std::ifstream aDataStream(theFontPath, std::ios::in | std::ios::ate | std::ios::binary);
+  if (aDataStream) {
+    auto aFileSize = aDataStream.tellg();
+    aDataStream.seekg(0);
+    if(aDataStream) {
+      file_data_buffer = new Standard_Byte[aFileSize+decltype(aFileSize)(1)];
+      file_data_buffer[aFileSize] = 0;
+      aDataStream.read((char*)file_data_buffer,aFileSize);
+      if (aDataStream) {
+        aFaceError = FT_New_Memory_Face (theFTLib->Instance(), file_data_buffer, (FT_Long )aFileSize, 0, &aFontFace);
+      }
+    }
+    aDataStream.close();
+  }
+  if (aFaceError != FT_Err_Ok) {
+    delete[] file_data_buffer;
+    return NULL;
+  }
+#endif
 
   Font_FontAspect anAspect = Font_FA_Regular;
   if (aFontFace->style_flags == (FT_STYLE_FLAG_ITALIC | FT_STYLE_FLAG_BOLD))
@@ -183,6 +207,7 @@ static Handle(Font_SystemFont) checkFont (const Handle(Font_FTLibrary)& theFTLib
   }
 
   FT_Done_Face (aFontFace);
+  delete[] file_data_buffer;
 
   return aResult;
 }

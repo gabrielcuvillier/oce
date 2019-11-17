@@ -103,6 +103,7 @@ bool Font_FTFont::Init (const Handle(NCollection_Buffer)& theData,
       return false;
     }
   }
+#if !defined(__EMSCRIPTEN__)
   else
   {
     if (FT_New_Face (myFTLib->Instance(), myFontPath.ToCString(), 0, &myFTFace) != 0)
@@ -112,6 +113,12 @@ bool Font_FTFont::Init (const Handle(NCollection_Buffer)& theData,
       return false;
     }
   }
+#else
+  else {
+    Release();
+    return false;
+  }
+#endif
 
   if (FT_Select_Charmap (myFTFace, ft_encoding_unicode) != 0)
   {
@@ -571,4 +578,38 @@ Font_Rect Font_FTFont::BoundingBox (const NCollection_String&               theS
   Font_Rect aBndBox;
   aFormatter.BndBox (aBndBox);
   return aBndBox;
+}
+
+//! Initialize the font from the given file path.
+//! @param theFontPath path to the font
+//! @param theParams   initialization parameters
+//! @return true on success
+bool Font_FTFont::Init (const TCollection_AsciiString& theFontPath,
+           const Font_FTFontParams& theParams)
+{
+#if !defined(__EMSCRIPTEN__)
+  return Init (Handle(NCollection_Buffer)(), theFontPath, theParams);
+#else
+  Standard_Boolean aResult = Standard_False;
+  Standard_Byte* file_data_buffer = nullptr;
+  std::ifstream aDataStream(theFontPath.ToCString(), std::ios::in | std::ios::ate | std::ios::binary);
+  if (aDataStream) {
+    auto aFileSize = aDataStream.tellg();
+    aDataStream.seekg(0);
+    if(aDataStream) {
+      file_data_buffer = new Standard_Byte[aFileSize+decltype(aFileSize)(1)];
+      file_data_buffer[aFileSize] = 0;
+      aDataStream.read((char*)file_data_buffer,aFileSize);
+      if (aDataStream) {
+        Handle(NCollection_Buffer) aBuffer = new NCollection_Buffer (Handle(NCollection_BaseAllocator)(),
+                                                                     aFileSize,
+                                                                     file_data_buffer);
+        aResult = Init(aBuffer, theFontPath, theParams);
+      }
+    }
+    aDataStream.close();
+  }
+
+  return aResult;
+#endif
 }

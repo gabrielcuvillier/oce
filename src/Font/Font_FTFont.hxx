@@ -157,10 +157,7 @@ public:
   //! @param theParams   initialization parameters
   //! @return true on success
   bool Init (const TCollection_AsciiString& theFontPath,
-             const Font_FTFontParams& theParams)
-  {
-    return Init (Handle(NCollection_Buffer)(), theFontPath, theParams);
-  }
+             const Font_FTFontParams& theParams);
 
   //! Initialize the font from the given file path or memory buffer.
   //! @param theData     memory to read from, should NOT be freed after initialization!
