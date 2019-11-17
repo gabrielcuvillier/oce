@@ -35,6 +35,7 @@ if (MSVC)
   add_definitions (-D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_DEPRECATE)
 else()
   if (EMSCRIPTEN)
+    # Fully disable exceptions
     add_compile_options(-fno-exceptions)
     message (STATUS "Info: OCCT_DISABLE_EXCEPTIONS is defined")
     add_definitions(-DOCCT_DISABLE_EXCEPTIONS)
@@ -42,6 +43,8 @@ else()
     add_definitions(-DOCCT_NO_RVALUE_REFERENCE)
     message (STATUS "Info: OCCT_IGNORE_NO_ATOMICS is defined")
     add_definitions(-DOCCT_IGNORE_NO_ATOMICS)
+    # save up a couple of additional KBs: static destructors are not usefull, as the program never really 'quits'
+    add_compile_options(-fno-c++-static-destructors)
   else()
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions -fPIC")
     set (CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fexceptions -fPIC")
@@ -172,12 +175,6 @@ set(CMAKE_EXE_LINKER_FLAGS_MINSIZEREL "${CMAKE_EXE_LINKER_FLAGS_MINSIZEREL} ${LI
 
 set (ENABLE_OZ OFF CACHE BOOL "Enable Oz build for MinSizeRel")
 if (ENABLE_OZ)
-  if (EMSCRIPTEN)
-    # save up a couple of additional KBs (static destructors generally not usefull on emscripten, as the program does not
-    # 'quits')
-    add_compile_options(-fno-c++-static-destructors)
-    # add_compile_options(-fno-jump-tables) # unsure about this one
-  endif()
   # Use 'Oz' optimization level (instead of Os)
   string (REGEX MATCH "-Os" IS_Os_CXX "${CMAKE_CXX_FLAGS_MINSIZEREL}")
   if (IS_Os_CXX)
