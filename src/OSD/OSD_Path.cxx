@@ -21,6 +21,10 @@
 #include <Standard_ProgramError.hxx>
 #include <TCollection_AsciiString.hxx>
 
+#if defined(__CYGWIN__)
+#include <sys/utsname.h>
+#endif
+
 static OSD_SysType whereAmI()
 {
 #if defined(__digital__) || defined(__FreeBSD__) || defined(SUNOS) || defined(__APPLE__) || defined(__QNX__) || defined(__FreeBSD_kernel__)
