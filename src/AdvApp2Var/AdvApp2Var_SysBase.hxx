@@ -17,8 +17,11 @@
 
 #include <Standard_Macro.hxx>
 #include <AdvApp2Var_Data_f2c.hxx>
-#if _MSC_VER
+#if defined(_MSC_VER)
 #include <stddef.h>
+#if defined(__clang__)
+#include <stdint.h>
+#endif
 #else
 #include <stdint.h>
 #endif
