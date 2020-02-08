@@ -352,13 +352,15 @@ Standard_Integer AppDef_LinearCriteria::QualityValues(const Standard_Real J1min,
 //   (2) Test l'amelioration des estimations
 //       (critere sureleve => Non minimisation )
 
-  for(i = 0; i <= 2; i++)
-    if((ValCri[i] < 0.8 * myEstimation[i]) && (myEstimation[i] > JEsMin[i])) {
-      if(ICDANA < 1) ICDANA = 1;
-      if(ValCri[i] < 0.1 * myEstimation[i]) ICDANA = 2;
-      myEstimation[i] = Max(1.05*ValCri[i], JEsMin[i]); 
+  for(i = 0; i <= 2; i++) {
+    if ((ValCri[i] < 0.8 * myEstimation[i]) && (myEstimation[i] > JEsMin[i])) {
+      if (ICDANA < 1)
+        ICDANA = 1;
+      if (ValCri[i] < 0.1 * myEstimation[i])
+        ICDANA = 2;
+      myEstimation[i] = Max(1.05 * ValCri[i], JEsMin[i]);
     }
-  
+  }
 
 //  (3) Mise a jours des Estimation
 //     (critere sous-estimer => mauvais conditionement)
