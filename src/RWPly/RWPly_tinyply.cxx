@@ -6,5 +6,5 @@
 #include <Standard_DefineException.hxx>
 
 #define TINYPLY_IMPLEMENTATION
-#include <tinyply/tinyply.h>
+#include <tinyply.h>
 #endif

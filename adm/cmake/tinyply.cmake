@@ -25,19 +25,19 @@ endif()
 
 if (NOT 3RDPARTY_TINYPLY_INCLUDE_DIR OR NOT EXISTS "${3RDPARTY_TINYPLY_INCLUDE_DIR}")
 
-  set (HEADER_NAMES tinyply/tinyply.h)
+  set (HEADER_NAMES tinyply.h)
 
   set (3RDPARTY_TINYPLY_INCLUDE_DIR "3RDPARTY_TINYPLY_INCLUDE_DIR-NOTFOUND" CACHE PATH "the path to TinyPly header file" FORCE)
 
   if (3RDPARTY_TINYPLY_DIR AND EXISTS "${3RDPARTY_TINYPLY_DIR}")
     find_path (3RDPARTY_TINYPLY_INCLUDE_DIR NAMES ${HEADER_NAMES}
                                               PATHS ${3RDPARTY_TINYPLY_DIR}
-                                              PATH_SUFFIXES include tinyply
+                                              PATH_SUFFIXES source
                                               CMAKE_FIND_ROOT_PATH_BOTH
                                               NO_DEFAULT_PATH)
   else()
     find_path (3RDPARTY_TINYPLY_INCLUDE_DIR NAMES ${HEADER_NAMES}
-                                              PATH_SUFFIXES include tinyply
+                                              PATH_SUFFIXES source
                                               CMAKE_FIND_ROOT_PATH_BOTH)
   endif()
 

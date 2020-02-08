@@ -13,7 +13,7 @@
 #include <OSD_File.hxx>
 #include <OSD_OpenFile.hxx>
 
-#include <tinyply/tinyply.h>
+#include <tinyply.h>
 
 #include <vector>
 #include <sstream>
