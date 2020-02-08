@@ -154,12 +154,6 @@ static Handle(Font_SystemFont) checkFont (const Handle(Font_FTLibrary)& theFTLib
                                           const Standard_CString        theFontPath)
 {
   FT_Face aFontFace;
-#if !defined(__EMSCRIPTEN__)
-  FT_Error aFaceError = FT_New_Face (theFTLib->Instance(), theFontPath, 0, &aFontFace);
-  if (aFaceError != FT_Err_Ok) {
-    return NULL;
-  }
-#else
   FT_Error aFaceError = 1;
   Standard_Byte* file_data_buffer = nullptr;
   std::ifstream aDataStream(theFontPath, std::ios::in | std::ios::ate | std::ios::binary);
@@ -180,7 +174,6 @@ static Handle(Font_SystemFont) checkFont (const Handle(Font_FTLibrary)& theFTLib
     delete[] file_data_buffer;
     return NULL;
   }
-#endif
 
   Font_FontAspect anAspect = Font_FA_Regular;
   if (aFontFace->style_flags == (FT_STYLE_FLAG_ITALIC | FT_STYLE_FLAG_BOLD))
@@ -207,9 +200,7 @@ static Handle(Font_SystemFont) checkFont (const Handle(Font_FTLibrary)& theFTLib
   }
 
   FT_Done_Face (aFontFace);
-#if defined(__EMSCRIPTEN__)
   delete[] file_data_buffer;
-#endif
 
   return aResult;
 }
