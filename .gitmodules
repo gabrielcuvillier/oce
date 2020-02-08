@@ -1,0 +1,6 @@
+[submodule "deps/tinyply"]
+	path = deps/tinyply
+	url = https://github.com/ddiakopoulos/tinyply
+[submodule "deps/rapidjson"]
+	path = deps/rapidjson
+	url = https://github.com/Tencent/rapidjson
