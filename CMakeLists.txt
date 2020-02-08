@@ -535,7 +535,28 @@ else ()
 endif ()
 
 if (USE_FREETYPE)
-  message(STATUS "Info: Freetype is used by OCCT")
+  message(STATUS "Info: Freetype Minimal is used by OCCT")
+  file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/freetype-emscripten-minimal)
+  execute_process(COMMAND ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/freetype-emscripten-minimal/install/freetype2 -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} -G "${CMAKE_GENERATOR}" ${CMAKE_SOURCE_DIR}/deps/freetype-emscripten-minimal
+          RESULT_VARIABLE result
+          WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/freetype-emscripten-minimal)
+  if (NOT MSVC)
+    execute_process(COMMAND ${CMAKE_COMMAND} --build .
+            RESULT_VARIABLE result
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/freetype-emscripten-minimal)
+    execute_process(COMMAND ${CMAKE_COMMAND} --build . --target install
+            RESULT_VARIABLE result
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/freetype-emscripten-minimal)
+  else()
+    execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE}
+            RESULT_VARIABLE result
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/freetype-emscripten-minimal)
+    execute_process(COMMAND ${CMAKE_COMMAND} --build . --target install --config ${CMAKE_BUILD_TYPE}
+            RESULT_VARIABLE result
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/freetype-emscripten-minimal)
+  endif()
+  set(3RDPARTY_FREETYPE_DIR "${CMAKE_BINARY_DIR}/freetype-emscripten-minimal/install/freetype2" CACHE PATH "The directory containing Freetype2")
+  set(INSTALL_FREETYPE 1)
   OCCT_INCLUDE_CMAKE_FILE("adm/cmake/freetype")
 else ()
   OCCT_CHECK_AND_UNSET_GROUP("3RDPARTY_FREETYPE")

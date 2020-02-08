@@ -300,39 +300,37 @@ endif()
 
     if (WIN32)
       if (SINGLE_GENERATOR)
-        install (FILES "${3RDPARTY_FREETYPE_DLL}" DESTINATION "${INSTALL_DIR_BIN}")
+        install (FILES "${3RDPARTY_FREETYPE_LIBRARY}" DESTINATION "${INSTALL_DIR_LIB}")
       else()
-        install (FILES "${3RDPARTY_FREETYPE_DLL}"
+        install (FILES "${3RDPARTY_FREETYPE_LIBRARY}"
                  CONFIGURATIONS Release
-                 DESTINATION "${INSTALL_DIR_BIN}")
-        install (FILES "${3RDPARTY_FREETYPE_DLL}"
+                 DESTINATION "${INSTALL_DIR_LIB}")
+        install (FILES "${3RDPARTY_FREETYPE_LIBRARY}"
                  CONFIGURATIONS RelWithDebInfo
-                 DESTINATION "${INSTALL_DIR_BIN}i")
-        install (FILES "${3RDPARTY_FREETYPE_DLL}"
+                 DESTINATION "${INSTALL_DIR_LIB}i")
+        install (FILES "${3RDPARTY_FREETYPE_LIBRARY}"
+                CONFIGURATIONS MinSizeRel
+                DESTINATION "${INSTALL_DIR_LIB}s")
+        install (FILES "${3RDPARTY_FREETYPE_LIBRARY}"
                  CONFIGURATIONS Debug
-                 DESTINATION "${INSTALL_DIR_BIN}d")
+                 DESTINATION "${INSTALL_DIR_LIB}d")
       endif()
     else()
-      get_filename_component(3RDPARTY_FREETYPE_LIBRARY_ABS ${3RDPARTY_FREETYPE_LIBRARY} REALPATH)
-      get_filename_component(3RDPARTY_FREETYPE_LIBRARY_NAME ${3RDPARTY_FREETYPE_LIBRARY} NAME)
-
       if (SINGLE_GENERATOR)
-        install (FILES "${3RDPARTY_FREETYPE_LIBRARY_ABS}"
-                 DESTINATION "${INSTALL_DIR_LIB}"
-                 RENAME ${3RDPARTY_FREETYPE_LIBRARY_NAME}.6)
+        install (FILES "${3RDPARTY_FREETYPE_LIBRARY}" DESTINATION "${INSTALL_DIR_LIB}")
       else()
-        install (FILES "${3RDPARTY_FREETYPE_LIBRARY_ABS}"
-                 CONFIGURATIONS Release
-                 DESTINATION "${INSTALL_DIR_LIB}"
-                 RENAME ${3RDPARTY_FREETYPE_LIBRARY_NAME}.6)
-        install (FILES "${3RDPARTY_FREETYPE_LIBRARY_ABS}"
-                 CONFIGURATIONS RelWithDebInfo
-                 DESTINATION "${INSTALL_DIR_LIB}i"
-                 RENAME ${3RDPARTY_FREETYPE_LIBRARY_NAME}.6)
-        install (FILES "${3RDPARTY_FREETYPE_LIBRARY_ABS}"
-                 CONFIGURATIONS Debug
-                 DESTINATION "${INSTALL_DIR_LIB}d"
-                 RENAME ${3RDPARTY_FREETYPE_LIBRARY_NAME}.6)
+        install (FILES "${3RDPARTY_FREETYPE_LIBRARY}"
+                CONFIGURATIONS Release
+                DESTINATION "${INSTALL_DIR_BIN}")
+        install (FILES "${3RDPARTY_FREETYPE_LIBRARY}"
+                CONFIGURATIONS RelWithDebInfo
+                DESTINATION "${INSTALL_DIR_BIN}i")
+        install (FILES "${3RDPARTY_FREETYPE_LIBRARY}"
+                CONFIGURATIONS MinSizeRel
+                DESTINATION "${INSTALL_DIR_BIN}s")
+        install (FILES "${3RDPARTY_FREETYPE_LIBRARY}"
+                CONFIGURATIONS Debug
+                DESTINATION "${INSTALL_DIR_BIN}d")
       endif()
     endif()
 
