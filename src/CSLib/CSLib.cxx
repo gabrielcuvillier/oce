@@ -430,114 +430,109 @@ gp_Vec CSLib::DNNUV(const Standard_Integer Nu,
 }
 
 //
-// Calculate the derivatives of the normed normal vector depending on the  derivatives
-// of the non-normed normal vector
+// Calculate the derivatives of the normed normal vector depending on the
+// derivatives of the non-normed normal vector
 //
-gp_Vec CSLib::DNNormal(const Standard_Integer Nu,
-		       const Standard_Integer Nv,
-		       const TColgp_Array2OfVec& DerNUV,
-		       const Standard_Integer Iduref,
-		       const Standard_Integer Idvref)
-{
-Standard_Integer Kderiv;
-Kderiv=Nu+Nv;
-TColgp_Array2OfVec DerVecNor(0,Kderiv,0,Kderiv);
-TColStd_Array2OfReal TabScal(0,Kderiv,0,Kderiv);
-TColStd_Array2OfReal TabNorm(0,Kderiv,0,Kderiv);
-Standard_Integer Ideriv,Jderiv,Mderiv,Pderiv,Qderiv;
-Standard_Real Scal,Dnorm;
-gp_Vec DerNor;
-DerNor=(DerNUV.Value(Iduref,Idvref)).Normalized();
-DerVecNor.SetValue(0,0,DerNor);
-Dnorm=DerNUV.Value(Iduref,Idvref)*DerVecNor.Value(0,0);
-TabNorm.SetValue(0,0,Dnorm);
-TabScal.SetValue(0,0,0.);
-for ( Mderiv = 1;Mderiv <= Kderiv; Mderiv++)
-    for ( Pderiv = 0 ; Pderiv <= Mderiv ; Pderiv++)
-        {
-          Qderiv = Mderiv - Pderiv;
-          if (Pderiv <= Nu && Qderiv <= Nv)
-            {
-//
-//  Compute n . derivee(p,q) of n
-          Scal = 0.;
-          if ( Pderiv > Qderiv )
-             { 
-                   for (Jderiv=1 ; Jderiv <=Qderiv;Jderiv++)
-                         Scal=Scal
-                             -PLib::Bin(Qderiv,Jderiv)*
-                             (DerVecNor.Value(0,Jderiv)*DerVecNor.Value(Pderiv,Qderiv-Jderiv));
-                                
-                   for (Jderiv=0 ; Jderiv < Qderiv ; Jderiv++)
-                         Scal=Scal
-                             -PLib::Bin(Qderiv,Jderiv)*
-                             (DerVecNor.Value(Pderiv,Jderiv)*DerVecNor.Value(0,Qderiv-Jderiv));
-                            
-                   for (Ideriv=1 ; Ideriv < Pderiv;Ideriv++)
-                       for (Jderiv =0 ; Jderiv <=Qderiv ; Jderiv++)
-                           Scal=  Scal  
-                                - PLib::Bin(Pderiv,Ideriv)
-                                 *PLib::Bin(Qderiv,Jderiv)
-                                 *(DerVecNor.Value(Ideriv,Jderiv)
-                                 *DerVecNor.Value(Pderiv-Ideriv,Qderiv-Jderiv));
-             }
-           else
-             {
-                   for (Ideriv = 1 ; Ideriv <= Pderiv ; Ideriv++)
-                         Scal = Scal - PLib::Bin(Pderiv,Ideriv)*
-                                DerVecNor.Value(Ideriv,0)*DerVecNor.Value(Pderiv-Ideriv,Qderiv);
-                   for (Ideriv = 0 ; Ideriv < Pderiv ; Ideriv++)
-                         Scal = Scal - PLib::Bin(Pderiv,Ideriv)*
-                                DerVecNor.Value(Ideriv,Qderiv)*DerVecNor.Value(Pderiv-Ideriv,0);  
- 
-                   for (Ideriv=0 ; Ideriv <= Pderiv;Ideriv++)
-                      for (Jderiv =1 ; Jderiv <Qderiv ; Jderiv++)
-                           Scal=  Scal  
-                                - PLib::Bin(Pderiv,Ideriv)
-                                 *PLib::Bin(Qderiv,Jderiv)
-                                 *(DerVecNor.Value(Ideriv,Jderiv)
-                                 *DerVecNor.Value(Pderiv-Ideriv,Qderiv-Jderiv));
-             }  
-          TabScal.SetValue(Pderiv,Qderiv,Scal/2.); 
-//
-//        Compute the derivative (n,p) of NUV Length
-//
-          Dnorm=(DerNUV.Value(Pderiv+Iduref,Qderiv+Idvref))*DerVecNor.Value(0,0);
-             for (Jderiv = 0 ; Jderiv < Qderiv ; Jderiv++)
-                 Dnorm = Dnorm - PLib::Bin(Qderiv+Idvref,Jderiv+Idvref) 
-                                *TabNorm.Value(Pderiv,Jderiv)
-                                *TabScal.Value(0,Qderiv-Jderiv);                     
+gp_Vec CSLib::DNNormal(const Standard_Integer Nu, const Standard_Integer Nv,
+                       const TColgp_Array2OfVec &DerNUV,
+                       const Standard_Integer Iduref,
+                       const Standard_Integer Idvref) {
+  Standard_Integer Kderiv;
+  Kderiv = Nu + Nv;
+  TColgp_Array2OfVec DerVecNor(0, Kderiv, 0, Kderiv);
+  TColStd_Array2OfReal TabScal(0, Kderiv, 0, Kderiv);
+  TColStd_Array2OfReal TabNorm(0, Kderiv, 0, Kderiv);
+  Standard_Integer Ideriv, Jderiv, Mderiv, Pderiv, Qderiv;
+  Standard_Real Scal, Dnorm;
+  gp_Vec DerNor;
+  DerNor = (DerNUV.Value(Iduref, Idvref)).Normalized();
+  DerVecNor.SetValue(0, 0, DerNor);
+  Dnorm = DerNUV.Value(Iduref, Idvref) * DerVecNor.Value(0, 0);
+  TabNorm.SetValue(0, 0, Dnorm);
+  TabScal.SetValue(0, 0, 0.);
+  for (Mderiv = 1; Mderiv <= Kderiv; Mderiv++) {
+    for (Pderiv = 0; Pderiv <= Mderiv; Pderiv++) {
+      Qderiv = Mderiv - Pderiv;
+      if (Pderiv <= Nu && Qderiv <= Nv) {
+        //
+        //  Compute n . derivee(p,q) of n
+        Scal = 0.;
+        if (Pderiv > Qderiv) {
+          for (Jderiv = 1; Jderiv <= Qderiv; Jderiv++)
+            Scal = Scal - PLib::Bin(Qderiv, Jderiv) *
+                              (DerVecNor.Value(0, Jderiv) *
+                               DerVecNor.Value(Pderiv, Qderiv - Jderiv));
 
-             for (Ideriv = 0 ; Ideriv < Pderiv ; Ideriv++)
-               for (Jderiv = 0 ; Jderiv <= Qderiv ; Jderiv++)
-                 Dnorm = Dnorm - PLib::Bin(Pderiv+Iduref,Ideriv+Iduref)
-                                *PLib::Bin(Qderiv+Idvref,Jderiv+Idvref) 
-                                *TabNorm.Value(Ideriv,Jderiv)
-                                *TabScal.Value(Pderiv-Ideriv,Qderiv-Jderiv);  
-          TabNorm.SetValue(Pderiv,Qderiv,Dnorm);
-//
-//   Compute derivative (p,q) of n
-//
-          DerNor = DerNUV.Value(Pderiv+Iduref,Qderiv+Idvref);
-              for (Jderiv = 1 ; Jderiv <= Qderiv ; Jderiv++)
-                DerNor = DerNor - PLib::Bin(Pderiv+Iduref,Iduref)
-                                 *PLib::Bin(Qderiv+Idvref,Jderiv+Idvref)
-                                 *TabNorm.Value(0,Jderiv)
-                                 *DerVecNor.Value(Pderiv,Qderiv-Jderiv);
+          for (Jderiv = 0; Jderiv < Qderiv; Jderiv++)
+            Scal = Scal - PLib::Bin(Qderiv, Jderiv) *
+                              (DerVecNor.Value(Pderiv, Jderiv) *
+                               DerVecNor.Value(0, Qderiv - Jderiv));
 
-              for (Ideriv = 1 ; Ideriv <= Pderiv ; Ideriv++)
-                   for (Jderiv = 0 ; Jderiv <= Qderiv ; Jderiv++)
-                       DerNor = DerNor - PLib::Bin(Pderiv+Iduref,Ideriv+Iduref)
-                                        *PLib::Bin(Qderiv+Idvref,Jderiv+Idvref)
-                                        *TabNorm.Value(Ideriv,Jderiv)
-                                        *DerVecNor.Value(Pderiv-Ideriv,Qderiv-Jderiv); 
-          DerNor = DerNor / PLib::Bin(Pderiv+Iduref,Iduref)
-                          / PLib::Bin(Qderiv+Idvref,Idvref) 
-                          / TabNorm.Value(0,0);
-          DerVecNor.SetValue(Pderiv,Qderiv,DerNor);
-         }                       
+          for (Ideriv = 1; Ideriv < Pderiv; Ideriv++)
+            for (Jderiv = 0; Jderiv <= Qderiv; Jderiv++)
+              Scal = Scal -
+                     PLib::Bin(Pderiv, Ideriv) * PLib::Bin(Qderiv, Jderiv) *
+                         (DerVecNor.Value(Ideriv, Jderiv) *
+                          DerVecNor.Value(Pderiv - Ideriv, Qderiv - Jderiv));
+        } else {
+          for (Ideriv = 1; Ideriv <= Pderiv; Ideriv++)
+            Scal = Scal - PLib::Bin(Pderiv, Ideriv) *
+                              DerVecNor.Value(Ideriv, 0) *
+                              DerVecNor.Value(Pderiv - Ideriv, Qderiv);
+          for (Ideriv = 0; Ideriv < Pderiv; Ideriv++)
+            Scal = Scal - PLib::Bin(Pderiv, Ideriv) *
+                              DerVecNor.Value(Ideriv, Qderiv) *
+                              DerVecNor.Value(Pderiv - Ideriv, 0);
+
+          for (Ideriv = 0; Ideriv <= Pderiv; Ideriv++)
+            for (Jderiv = 1; Jderiv < Qderiv; Jderiv++)
+              Scal = Scal -
+                     PLib::Bin(Pderiv, Ideriv) * PLib::Bin(Qderiv, Jderiv) *
+                         (DerVecNor.Value(Ideriv, Jderiv) *
+                          DerVecNor.Value(Pderiv - Ideriv, Qderiv - Jderiv));
         }
-    return DerVecNor.Value(Nu,Nv);
+        TabScal.SetValue(Pderiv, Qderiv, Scal / 2.);
+        //
+        //        Compute the derivative (n,p) of NUV Length
+        //
+        Dnorm = (DerNUV.Value(Pderiv + Iduref, Qderiv + Idvref)) *
+                DerVecNor.Value(0, 0);
+        for (Jderiv = 0; Jderiv < Qderiv; Jderiv++)
+          Dnorm = Dnorm - PLib::Bin(Qderiv + Idvref, Jderiv + Idvref) *
+                              TabNorm.Value(Pderiv, Jderiv) *
+                              TabScal.Value(0, Qderiv - Jderiv);
+
+        for (Ideriv = 0; Ideriv < Pderiv; Ideriv++)
+          for (Jderiv = 0; Jderiv <= Qderiv; Jderiv++)
+            Dnorm = Dnorm - PLib::Bin(Pderiv + Iduref, Ideriv + Iduref) *
+                                PLib::Bin(Qderiv + Idvref, Jderiv + Idvref) *
+                                TabNorm.Value(Ideriv, Jderiv) *
+                                TabScal.Value(Pderiv - Ideriv, Qderiv - Jderiv);
+        TabNorm.SetValue(Pderiv, Qderiv, Dnorm);
+        //
+        //   Compute derivative (p,q) of n
+        //
+        DerNor = DerNUV.Value(Pderiv + Iduref, Qderiv + Idvref);
+        for (Jderiv = 1; Jderiv <= Qderiv; Jderiv++)
+          DerNor = DerNor - PLib::Bin(Pderiv + Iduref, Iduref) *
+                                PLib::Bin(Qderiv + Idvref, Jderiv + Idvref) *
+                                TabNorm.Value(0, Jderiv) *
+                                DerVecNor.Value(Pderiv, Qderiv - Jderiv);
+
+        for (Ideriv = 1; Ideriv <= Pderiv; Ideriv++)
+          for (Jderiv = 0; Jderiv <= Qderiv; Jderiv++)
+            DerNor =
+                DerNor - PLib::Bin(Pderiv + Iduref, Ideriv + Iduref) *
+                             PLib::Bin(Qderiv + Idvref, Jderiv + Idvref) *
+                             TabNorm.Value(Ideriv, Jderiv) *
+                             DerVecNor.Value(Pderiv - Ideriv, Qderiv - Jderiv);
+        DerNor = DerNor / PLib::Bin(Pderiv + Iduref, Iduref) /
+                 PLib::Bin(Qderiv + Idvref, Idvref) / TabNorm.Value(0, 0);
+        DerVecNor.SetValue(Pderiv, Qderiv, DerNor);
+      }
+    }
+  }
+  return DerVecNor.Value(Nu, Nv);
 }
 
 #undef D1uD1vRatioIsNull

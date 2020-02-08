@@ -524,6 +524,6 @@ TopoDS_Shape BRepTools_Quilt::Shells() const
       B.Add(result,aSh);
     }
   }
-  return result;
+  return TopoDS_Shape(result);
 }
 

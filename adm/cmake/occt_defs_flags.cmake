@@ -35,16 +35,21 @@ if (MSVC)
   add_definitions (-D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_DEPRECATE)
 else()
   if (EMSCRIPTEN)
+    # Target C++ 17
+    set(CMAKE_CXX_STANDARD 17)
     # Fully disable exceptions
     add_compile_options(-fno-exceptions)
+    # Emscripten Strict Mode
+    add_compile_options(-s STRICT=1)
+    # save up a couple of additional KBs: static destructors are not usefull, as the program never really 'quits'
+    add_compile_options(-fno-c++-static-destructors)
+
     message (STATUS "Info: OCCT_DISABLE_EXCEPTIONS is defined")
     add_definitions(-DOCCT_DISABLE_EXCEPTIONS)
     message (STATUS "Info: OCCT_NO_RVALUE_REFERENCE is defined")
     add_definitions(-DOCCT_NO_RVALUE_REFERENCE)
     message (STATUS "Info: OCCT_IGNORE_NO_ATOMICS is defined")
     add_definitions(-DOCCT_IGNORE_NO_ATOMICS)
-    # save up a couple of additional KBs: static destructors are not usefull, as the program never really 'quits'
-    add_compile_options(-fno-c++-static-destructors)
   else()
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions")
     set (CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -fexceptions")
@@ -129,7 +134,7 @@ if (MSVC)
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
   endif()
 elseif (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
   if (BUILD_SHARED_LIBS)
     if (APPLE)
       set (CMAKE_SHARED_LINKER_FLAGS "-lm ${CMAKE_SHARED_LINKER_FLAGS}")
@@ -138,9 +143,6 @@ elseif (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMP
     endif()
   endif()
 endif()
-
-# Now enforce C++ 17 on all platforms
-set(CMAKE_CXX_STANDARD 17)
 
 # Optimize size of binaries
 if (NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
