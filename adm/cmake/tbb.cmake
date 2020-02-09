@@ -244,10 +244,10 @@ macro (TBB_PRODUCT_SEARCH PRODUCT_LIBRARY_NAME)
                  DESTINATION "${INSTALL_DIR_BIN}")
         install (FILES ${3RDPARTY_${upper_PRODUCT_LIBRARY_NAME}_DLL}
                  CONFIGURATIONS RelWithDebInfo
-                 DESTINATION "${INSTALL_DIR_BIN}i")
+                 DESTINATION "${INSTALL_DIR_BIN}")
         install (FILES ${3RDPARTY_${upper_PRODUCT_LIBRARY_NAME}_DLL}
                  CONFIGURATIONS Debug
-                 DESTINATION "${INSTALL_DIR_BIN}d")
+                 DESTINATION "${INSTALL_DIR_BIN}")
       endif()
     else()
       get_filename_component (PRODUCT_LIBRARY_NAME ${3RDPARTY_${upper_PRODUCT_LIBRARY_NAME}_LIBRARY} NAME)
@@ -263,11 +263,11 @@ macro (TBB_PRODUCT_SEARCH PRODUCT_LIBRARY_NAME)
                  RENAME ${PRODUCT_LIBRARY_NAME}.2)
         install (FILES ${3RDPARTY_${upper_PRODUCT_LIBRARY_NAME}_LIBRARY}.2
                  CONFIGURATIONS RelWithDebInfo
-                 DESTINATION "${INSTALL_DIR_LIB}i"
+                 DESTINATION "${INSTALL_DIR_LIB}"
                  RENAME ${PRODUCT_LIBRARY_NAME}.2)
         install (FILES ${3RDPARTY_${upper_PRODUCT_LIBRARY_NAME}_LIBRARY}.2
                  CONFIGURATIONS Debug
-                 DESTINATION "${INSTALL_DIR_LIB}d"
+                 DESTINATION "${INSTALL_DIR_LIB}"
                  RENAME ${PRODUCT_LIBRARY_NAME}.2)
       endif()
     endif()

@@ -307,13 +307,13 @@ endif()
                  DESTINATION "${INSTALL_DIR_LIB}")
         install (FILES "${3RDPARTY_FREETYPE_LIBRARY}"
                  CONFIGURATIONS RelWithDebInfo
-                 DESTINATION "${INSTALL_DIR_LIB}i")
+                 DESTINATION "${INSTALL_DIR_LIB}")
         install (FILES "${3RDPARTY_FREETYPE_LIBRARY}"
                 CONFIGURATIONS MinSizeRel
-                DESTINATION "${INSTALL_DIR_LIB}s")
+                DESTINATION "${INSTALL_DIR_LIB}")
         install (FILES "${3RDPARTY_FREETYPE_LIBRARY}"
                  CONFIGURATIONS Debug
-                 DESTINATION "${INSTALL_DIR_LIB}d")
+                 DESTINATION "${INSTALL_DIR_LIB}")
       endif()
     else()
       if (SINGLE_GENERATOR)
@@ -321,16 +321,16 @@ endif()
       else()
         install (FILES "${3RDPARTY_FREETYPE_LIBRARY}"
                 CONFIGURATIONS Release
-                DESTINATION "${INSTALL_DIR_BIN}")
+                DESTINATION "${INSTALL_DIR_LIB}")
         install (FILES "${3RDPARTY_FREETYPE_LIBRARY}"
                 CONFIGURATIONS RelWithDebInfo
-                DESTINATION "${INSTALL_DIR_BIN}i")
+                DESTINATION "${INSTALL_DIR_LIB}")
         install (FILES "${3RDPARTY_FREETYPE_LIBRARY}"
                 CONFIGURATIONS MinSizeRel
-                DESTINATION "${INSTALL_DIR_BIN}s")
+                DESTINATION "${INSTALL_DIR_LIB}")
         install (FILES "${3RDPARTY_FREETYPE_LIBRARY}"
                 CONFIGURATIONS Debug
-                DESTINATION "${INSTALL_DIR_BIN}d")
+                DESTINATION "${INSTALL_DIR_LIB}")
       endif()
     endif()
 

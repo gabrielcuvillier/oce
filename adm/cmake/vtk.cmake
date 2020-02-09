@@ -240,10 +240,10 @@ macro (OCCT_INSTALL_VTK VTK_LIBRARY_NAME)
                  DESTINATION "${INSTALL_DIR_BIN}")
         install (FILES "${VTK_LIBRARY_PATH}"
                  CONFIGURATIONS RelWithDebInfo
-                 DESTINATION "${INSTALL_DIR_BIN}i")
+                 DESTINATION "${INSTALL_DIR_BIN}")
         install (FILES "${VTK_LIBRARY_PATH}"
                  CONFIGURATIONS Debug
-                 DESTINATION "${INSTALL_DIR_BIN}d")
+                 DESTINATION "${INSTALL_DIR_BIN}")
       endif()
     else()
       get_filename_component(3RDPARTY_VTK_LIBRARY_ABS ${VTK_LIBRARY_PATH} REALPATH)
@@ -257,10 +257,10 @@ macro (OCCT_INSTALL_VTK VTK_LIBRARY_NAME)
                  DESTINATION "${INSTALL_DIR_LIB}")
         install (FILES "${3RDPARTY_VTK_LIBRARY_ABS}"
                  CONFIGURATIONS RelWithDebInfo
-                 DESTINATION "${INSTALL_DIR_LIB}i")
+                 DESTINATION "${INSTALL_DIR_LIB}")
         install (FILES "${3RDPARTY_VTK_LIBRARY_ABS}"
                  CONFIGURATIONS Debug
-                 DESTINATION "${INSTALL_DIR_LIB}d")
+                 DESTINATION "${INSTALL_DIR_LIB}")
       endif()
     endif()
 

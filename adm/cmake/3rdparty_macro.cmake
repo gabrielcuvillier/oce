@@ -248,13 +248,13 @@ macro (THIRDPARTY_PRODUCT PRODUCT_NAME HEADER_NAME LIBRARY_CSF_NAME LIBRARY_NAME
                      DESTINATION "${INSTALL_DIR_BIN}")
             install (FILES "${3RDPARTY_${PRODUCT_NAME}_DLL_${LIBRARY_NAME_SUFFIX}}"
                      CONFIGURATIONS RelWithDebInfo
-                     DESTINATION "${INSTALL_DIR_BIN}i")
+                     DESTINATION "${INSTALL_DIR_BIN}")
             install (FILES "${3RDPARTY_${PRODUCT_NAME}_DLL_${LIBRARY_NAME_SUFFIX}}"
                      CONFIGURATIONS Debug
-                     DESTINATION "${INSTALL_DIR_BIN}d")
+                     DESTINATION "${INSTALL_DIR_BIN}")
             install (FILES "${3RDPARTY_${PRODUCT_NAME}_DLL_${LIBRARY_NAME_SUFFIX}}"
                      CONFIGURATIONS MinSizeRel
-                     DESTINATION "${INSTALL_DIR_BIN}s")
+                     DESTINATION "${INSTALL_DIR_BIN}")
           endif()
         else()
           get_filename_component(ABS_PATH ${3RDPARTY_${PRODUCT_NAME}_LIBRARY_${LIBRARY_NAME_SUFFIX}} REALPATH)
@@ -271,11 +271,11 @@ macro (THIRDPARTY_PRODUCT PRODUCT_NAME HEADER_NAME LIBRARY_CSF_NAME LIBRARY_NAME
                        RENAME ${FREEIMLIB}.3)
               install (FILES "${ABS_PATH}"
                        CONFIGURATIONS RelWithDebInfo
-                       DESTINATION "${INSTALL_DIR_LIB}i"
+                       DESTINATION "${INSTALL_DIR_LIB}"
                        RENAME ${FREEIMLIB}.3)
               install (FILES "${ABS_PATH}"
                        CONFIGURATIONS Debug
-                       DESTINATION "${INSTALL_DIR_LIB}d"
+                       DESTINATION "${INSTALL_DIR_LIB}"
                        RENAME ${FREEIMLIB}.3)
             endif()
           endif()

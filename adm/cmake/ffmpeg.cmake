@@ -194,10 +194,10 @@ foreach (LIBRARY_NAME ${CSF_FFmpeg})
                  DESTINATION "${INSTALL_DIR}/${OS_WITH_BIT}/${COMPILER}/bin")
         install (FILES "${3RDPARTY_FFMPEG_DLL_${LIBRARY_NAME}}"
                  CONFIGURATIONS RelWithDebInfo
-                 DESTINATION "${INSTALL_DIR}/${OS_WITH_BIT}/${COMPILER}/bini")
+                 DESTINATION "${INSTALL_DIR}/${OS_WITH_BIT}/${COMPILER}/bin")
         install (FILES "${3RDPARTY_FFMPEG_DLL_${LIBRARY_NAME}}"
                  CONFIGURATIONS Debug
-                 DESTINATION "${INSTALL_DIR}/${OS_WITH_BIT}/${COMPILER}/bind")
+                 DESTINATION "${INSTALL_DIR}/${OS_WITH_BIT}/${COMPILER}/bin")
       endif()
     else()
       get_filename_component(3RDPARTY_FFMPEG_LIBRARY_ABS ${3RDPARTY_FFMPEG_LIBRARY_${LIBRARY_NAME}} REALPATH)
@@ -214,11 +214,11 @@ foreach (LIBRARY_NAME ${CSF_FFmpeg})
                  RENAME ${3RDPARTY_FFMPEG_LIBRARY_NAME}.6)
         install (FILES "${3RDPARTY_FFMPEG_LIBRARY_ABS}"
                  CONFIGURATIONS RelWithDebInfo
-                 DESTINATION "${INSTALL_DIR}/${OS_WITH_BIT}/${COMPILER}/libi"
+                 DESTINATION "${INSTALL_DIR}/${OS_WITH_BIT}/${COMPILER}/lib"
                  RENAME ${3RDPARTY_FFMPEG_LIBRARY_NAME}.6)
         install (FILES "${3RDPARTY_FFMPEG_LIBRARY_ABS}"
                  CONFIGURATIONS Debug
-                 DESTINATION "${INSTALL_DIR}/${OS_WITH_BIT}/${COMPILER}/libd"
+                 DESTINATION "${INSTALL_DIR}/${OS_WITH_BIT}/${COMPILER}/lib"
                  RENAME ${3RDPARTY_FFMPEG_LIBRARY_NAME}.6)
       endif()
     endif()

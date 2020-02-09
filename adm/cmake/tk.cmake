@@ -223,10 +223,10 @@ if (BUILD_SHARED_LIBS)
                  DESTINATION "${INSTALL_DIR_BIN}")
         install (FILES ${TK_DLLS}
                  CONFIGURATIONS RelWithDebInfo
-                 DESTINATION "${INSTALL_DIR_BIN}i")
+                 DESTINATION "${INSTALL_DIR_BIN}")
         install (FILES ${TK_DLLS}
                  CONFIGURATIONS Debug
-                 DESTINATION "${INSTALL_DIR_BIN}d")
+                 DESTINATION "${INSTALL_DIR_BIN}")
       endif()
     else()
       get_filename_component(3RDPARTY_TK_LIBRARY_REALPATH ${3RDPARTY_TK_LIBRARY} REALPATH)
@@ -239,10 +239,10 @@ if (BUILD_SHARED_LIBS)
                  DESTINATION "${INSTALL_DIR_LIB}/")
         install (FILES ${3RDPARTY_TK_LIBRARY_REALPATH}
                  CONFIGURATIONS RelWithDebInfo
-                 DESTINATION "${INSTALL_DIR_LIB}/i")
+                 DESTINATION "${INSTALL_DIR_LIB}/")
         install (FILES ${3RDPARTY_TK_LIBRARY_REALPATH}
                  CONFIGURATIONS Debug
-                 DESTINATION "${INSTALL_DIR_LIB}d")
+                 DESTINATION "${INSTALL_DIR_LIB}")
       endif()
     endif()
 
