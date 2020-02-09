@@ -593,7 +593,7 @@ endmacro()
 # for install target files (see https://cmake.org/Bug/view.php?id=14317)
 macro (OCCT_UPDATE_TARGET_FILE)
   if (MSVC)
-    #OCCT_INSERT_CODE_FOR_TARGET ()
+    OCCT_INSERT_CODE_FOR_TARGET ()
   endif()
 
   install (CODE
