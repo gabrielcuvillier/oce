@@ -84,12 +84,12 @@
 //! Expands to C++17 attribute statement "[[nodiscard]]" on compilers that
 //! declare support of this attribute, or equivalent attribute on GCC.
 #if defined(__has_cpp_attribute)
-  #if __has_cpp_attribute(nodiscard)
+  #if __has_cpp_attribute(nodiscard) && !( defined(_MSC_VER) && defined( __clang__ ) )
     #define Standard_NODISCARD [[nodiscard]]
   #else
     #define Standard_NODISCARD
   #endif
-#elif defined(__GNUC__) && ! defined(INTEL_COMPILER)
+#elif defined(__GNUC__) && !defined(INTEL_COMPILER)
   // According to available documentation, GCC-style __attribute__ ((warn_unused_result))
   // should be available in GCC since version 3.4, and in CLang since 3.9;
   // Intel compiler does not seem to support this
