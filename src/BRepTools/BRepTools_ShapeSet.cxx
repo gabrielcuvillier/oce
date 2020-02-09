@@ -56,14 +56,6 @@
 #include <TopoDS_Shape.hxx>
 #include <TopoDS_Vertex.hxx>
 
-#ifdef MacOS
-#define strcasecmp(p,q) strcmp(p,q)
-#elif _WIN32
-#define strcasecmp strcmp
-#elif AIX
-#include <string.h>
-#endif
-
 // Modified:    02 Nov 2000: BUC60769. JMB, PTV.  In order to be able to read BRep 
 //              files that came from a platform different from where CasCade 
 //              is run, we need the following modifications.
