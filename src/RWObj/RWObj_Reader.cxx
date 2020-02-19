@@ -16,8 +16,10 @@
 
 #include <RWObj_MtlReader.hxx>
 
+#if !defined(OCCT_DISABLE_MESHING_IN_RWOBJ)
 #include <BRepMesh_DataStructureOfDelaun.hxx>
 #include <BRepMesh_Delaun.hxx>
+#endif
 #include <gp_XY.hxx>
 #include <Message.hxx>
 #include <Message_Messenger.hxx>
@@ -137,6 +139,7 @@ namespace
 
   };
 
+#if !defined(OCCT_DISABLE_MESHING_IN_RWOBJ)
   //! Return TRUE if given polygon has clockwise node order.
   static bool isClockwisePolygon (const Handle(BRepMesh_DataStructureOfDelaun)& theMesh,
                                   const IMeshData::VectorOfInteger& theIndexes)
@@ -153,6 +156,7 @@ namespace
     }
     return aPtSum < 0.0;
   }
+#endif
 }
 
 // ================================================================
@@ -612,6 +616,7 @@ gp_XYZ RWObj_Reader::polygonNormal (const NCollection_Array1<Standard_Integer>& 
   return aNormal;
 }
 
+#if !defined(OCCT_DISABLE_MESHING_IN_RWOBJ)
 //================================================================
 // Function : triangulatePolygon
 // Purpose  :
@@ -703,6 +708,7 @@ Standard_Integer RWObj_Reader::triangulatePolygon (const NCollection_Array1<Stan
   }
   return triangulatePolygonFan (theIndices);
 }
+#endif
 
 // =======================================================================
 // function : pushObject
