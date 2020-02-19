@@ -39,10 +39,13 @@ else()
     set(CMAKE_CXX_STANDARD 17)
     # Fully disable exceptions
     add_compile_options(-fno-exceptions)
+    # Disable a couple of warnings
+    add_compile_options(-Wno-return-std-move)
+    add_compile_options(-Wno-misleading-indentation)
     # Emscripten Strict Mode
     add_compile_options(-s STRICT=1)
     # save up a couple of additional KBs: static destructors are not usefull, as the program never really 'quits'
-    add_compile_options(-fno-c++-static-destructors)
+    #add_compile_options(-fno-c++-static-destructors)
 
     message (STATUS "Info: OCCT_DISABLE_EXCEPTIONS is defined")
     add_definitions(-DOCCT_DISABLE_EXCEPTIONS)
