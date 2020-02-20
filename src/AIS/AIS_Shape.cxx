@@ -291,10 +291,11 @@ void AIS_Shape::computeHlrPresentation (const Handle(Prs3d_Projector)& theProjec
         case Prs3d_TOH_Algo:
           StdPrs_HLRShape::Add (thePrs, theShape, theDrawer, theProjector);
           break;
+#endif
         case Prs3d_TOH_PolyAlgo:
           StdPrs_HLRPolyShape::Add (thePrs, theShape, theDrawer, theProjector);
           break;
-#endif
+#if 0
         case Prs3d_TOH_DeferredAlgo: {
           // Build the Wireframe presentation by default
           StdPrs_WFShape::Add (thePrs, theShape, theDrawer);
@@ -305,6 +306,7 @@ void AIS_Shape::computeHlrPresentation (const Handle(Prs3d_Projector)& theProjec
           }
           break;
         }
+#endif
         default:
           break;
       }
