@@ -233,7 +233,7 @@ void AIS_Shape::computeHlrPresentation (const Handle(Prs3d_Projector)& theProjec
                                         const Handle(Prs3d_Presentation)& thePrs,
                                         const TopoDS_Shape& theShape,
                                         const Handle(Prs3d_Drawer)& theDrawer,
-                                        const Handle(AIS_InteractiveContext)& theContext)
+                                        const Handle(AIS_InteractiveContext)& /*theContext*/)
 {
   if (theShape.IsNull())
   {

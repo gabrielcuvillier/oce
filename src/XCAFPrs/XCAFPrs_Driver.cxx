@@ -21,9 +21,7 @@
 #include <TDF_Label.hxx>
 #include <TDocStd_Document.hxx>
 #include <XCAFDoc_ShapeTool.hxx>
-#if !defined(OCCT_DISABLE_VISUALIZATION_IN_XDE)
 #include <XCAFPrs_AISObject.hxx>
-#endif
 
 IMPLEMENT_STANDARD_RTTIEXT(XCAFPrs_Driver,TPrsStd_Driver)
 
@@ -35,7 +33,6 @@ Standard_Boolean XCAFPrs_Driver::Update (const TDF_Label& L,
 					 Handle(AIS_InteractiveObject)& ais)
 
 {
-#if !defined(OCCT_DISABLE_VISUALIZATION_IN_XDE)
   //  std::cout << "XCAFPrs_Driver::Update" << std::endl;
 // WARNING! The label L can be out of any document 
 // (this is a case for reading from the file)
@@ -47,11 +44,6 @@ Standard_Boolean XCAFPrs_Driver::Update (const TDF_Label& L,
   ais = new XCAFPrs_AISObject (L);
 
   return Standard_True;
-#else
-  (void)L;
-  (void)ais;
-  return Standard_False;
-#endif
 }
 
 //=======================================================================

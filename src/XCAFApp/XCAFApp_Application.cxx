@@ -17,10 +17,8 @@
 #include <Resource_Manager.hxx>
 #include <TDF_Label.hxx>
 #include <TDocStd_Document.hxx>
-#include <TPrsStd_DriverTable.hxx>
 #include <XCAFApp_Application.hxx>
 #include <XCAFDoc_DocumentTool.hxx>
-#include <XCAFPrs_Driver.hxx>
 
 IMPLEMENT_STANDARD_RTTIEXT(XCAFApp_Application,TDocStd_Application)
 
@@ -42,11 +40,11 @@ Handle(XCAFApp_Application) XCAFApp_Application::GetApplication()
 
 XCAFApp_Application::XCAFApp_Application()
 {
-  // register driver for presentation
-#if !defined(OCCT_DISABLE_VISUALIZATION_IN_XDE)
-  Handle(TPrsStd_DriverTable) table  = TPrsStd_DriverTable::Get();
-  table->AddDriver (XCAFPrs_Driver::GetID(), new XCAFPrs_Driver);
-#endif
+  // NB: Registration of XCAFPrs drivers is NO more done in an XCAFApp_Application, to remove dependency to TKVCAF, TKXCAFPrs, and TKV3d
+  // This have to be done separately for any kind of application that want to use XCAFPrs_Driver. See for example XDEDRAW::Init
+  //
+  //Handle(TPrsStd_DriverTable) table  = TPrsStd_DriverTable::Get();
+  //table->AddDriver (XCAFPrs_Driver::GetID(), new XCAFPrs_Driver);
 }
 
 //=======================================================================

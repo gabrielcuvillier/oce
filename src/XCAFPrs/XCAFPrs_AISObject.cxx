@@ -29,7 +29,6 @@
 #include <Prs3d_Text.hxx>
 #include <TDataStd_Name.hxx>
 #include <TDF_LabelSequence.hxx>
-#include <TPrsStd_AISPresentation.hxx>
 #include <TopoDS_Iterator.hxx>
 #include <XCAFDoc_ShapeTool.hxx>
 #include <XCAFPrs.hxx>
