@@ -449,7 +449,6 @@ VrmlData_ErrorStatus VrmlData_Group::openFile
     aStatus = VrmlData_CannotOpenFile;
   return aStatus;
 }
-
 //=======================================================================
 //function : Write
 //purpose  : 
@@ -464,9 +463,20 @@ VrmlData_ErrorStatus VrmlData_Group::Write (const char * thePrefix) const
     if (isTransform && myTrsf.Form() == gp_Identity)
       isTransform = Standard_False;
     static const char * header[2] = { "Group {" , "Transform {" };
-    if (OK (aStatus, aScene.WriteLine (thePrefix, header[isTransform ? 1 : 0],
-                                       GlobalIndent())))
+    static const char * headerX3D[2] = { "<Group" , "<Transform" };
+    if (OK (aStatus, Scene().isX3D() ?
+    aScene.WriteLine (headerX3D[isTransform ? 1 : 0], 0L, GlobalIndent(), true, false):
+    aScene.WriteLine (thePrefix,header[isTransform ? 1 : 0], GlobalIndent())))
     {
+      // Attributes
+
+      // Def/Use
+      if (Scene().isX3D()) {
+        if (Scene().WriteDefUse(this) == VrmlData_Use) {
+          aStatus = WriteClosing();
+          return VrmlData_StatusOK;
+        }
+      }
       char buf[240];
       if (OK(aStatus) && aScene.IsDummyWrite() == Standard_False)
       {
@@ -476,17 +486,17 @@ VrmlData_ErrorStatus VrmlData_Group::Write (const char * thePrefix) const
         };
         // Check that the box is not void
         if (aBoxCorner[0].X() < aBoxCorner[1].X() + Precision::Confusion()) {
-          Sprintf (buf, "bboxCenter  %.9g %.9g %.9g",
+          Sprintf (buf, Scene().isX3D() ? " bboxCenter='%.9g %.9g %.9g'" : "bboxCenter  %.9g %.9g %.9g",
                    0.5 * (aBoxCorner[0].X() + aBoxCorner[1].X()),
                    0.5 * (aBoxCorner[0].Y() + aBoxCorner[1].Y()),
                    0.5 * (aBoxCorner[0].Z() + aBoxCorner[1].Z()));
-          aStatus = aScene.WriteLine (buf);
+          aStatus = aScene.WriteLine (buf, 0L, 0, !Scene().isX3D(),!Scene().isX3D() );
           if (OK(aStatus)) {
-            Sprintf (buf, "bboxSize    %.9g %.9g %.9g",
+            Sprintf (buf, Scene().isX3D() ? " bboxSize='%.9g %.9g %.9g'" : "bboxSize    %.9g %.9g %.9g",
                      aBoxCorner[1].X() - aBoxCorner[0].X(),
                      aBoxCorner[1].Y() - aBoxCorner[0].Y(),
                      aBoxCorner[1].Z() - aBoxCorner[0].Z());
-            aStatus = aScene.WriteLine (buf);
+            aStatus = aScene.WriteLine (buf, 0L, 0, !Scene().isX3D());
           }
         }
       }
@@ -497,17 +507,17 @@ VrmlData_ErrorStatus VrmlData_Group::Write (const char * thePrefix) const
         if ((aScaleFactor - 1.)*(aScaleFactor - 1.) >
             0.0001*Precision::Confusion())
         {
-          Sprintf (buf, "scale       %.12g %.12g %.12g",
+          Sprintf (buf, Scene().isX3D() ? " scale='%.12g %.12g %.12g'" : "scale       %.12g %.12g %.12g",
                    aScaleFactor, aScaleFactor, aScaleFactor);
-          aStatus = aScene.WriteLine (buf);
+          aStatus = aScene.WriteLine (buf, 0L, 0, !Scene().isX3D(), !Scene().isX3D());
         }
 
         // Output the Translation
         const gp_XYZ& aTrans = myTrsf.TranslationPart();
         if (aTrans.SquareModulus() > 0.0001*Precision::Confusion()) {
-          Sprintf (buf, "translation %.12g %.12g %.12g",
+          Sprintf (buf, Scene().isX3D() ? " translation='%.12g %.12g %.12g'" : "translation %.12g %.12g %.12g",
                    aTrans.X(), aTrans.Y(), aTrans.Z());
-          aStatus = aScene.WriteLine (buf);
+          aStatus = aScene.WriteLine (buf, 0L, 0, !Scene().isX3D(), !Scene().isX3D());
         }
 
         // Output the Rotation
@@ -515,15 +525,21 @@ VrmlData_ErrorStatus VrmlData_Group::Write (const char * thePrefix) const
         Standard_Real anAngle;
         if (myTrsf.GetRotation (anAxis, anAngle)) {
           // output the Rotation
-          Sprintf (buf, "rotation    %.12g %.12g %.12g %.9g",
+          Sprintf (buf, Scene().isX3D() ? " rotation='%.12g %.12g %.12g %.9g'" : "rotation    %.12g %.12g %.12g %.9g",
                    anAxis.X(), anAxis.Y(), anAxis.Z(), anAngle);
-          aStatus = aScene.WriteLine (buf);
+          aStatus = aScene.WriteLine (buf, 0L, 0, !Scene().isX3D(), !Scene().isX3D());
         }
       }
 
-      if (OK(aStatus)) {
+      if (Scene().isX3D()) {
+          aStatus = aScene.WriteLine(">", 0L, 0, false, true);
+      }
 
-        aStatus = aScene.WriteLine ("children [", 0L, GlobalIndent());
+      // Child Nodes
+      if (OK(aStatus)) {
+        if (!Scene().isX3D()) {
+          aStatus = aScene.WriteLine("children [", 0L, GlobalIndent());
+        }
 
         VrmlData_ListOfNode::Iterator anIterChild (myNodes);
         for (; anIterChild.More() && OK(aStatus); anIterChild.Next()) {
@@ -532,10 +548,12 @@ VrmlData_ErrorStatus VrmlData_Group::Write (const char * thePrefix) const
         }
 
         if (OK(aStatus)) {
-          aStatus = aScene.WriteLine ("]", 0L, -GlobalIndent());
+          if (!Scene().isX3D()) {
+            aStatus = aScene.WriteLine("]", 0L, -GlobalIndent());
+          }
         }
       }
-      aStatus = WriteClosing();
+      aStatus = WriteClosing(!isTransform ? "Group" : "Transform");
     }
   }
   return aStatus;

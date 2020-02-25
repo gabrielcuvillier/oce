@@ -384,49 +384,59 @@ VrmlData_ErrorStatus VrmlData_IndexedFaceSet::Write
                                                 (const char * thePrefix) const
 {
   static char header[] = "IndexedFaceSet {";
+  static char headerX3D[] = "<IndexedFaceSet";
   const VrmlData_Scene& aScene = Scene();
   VrmlData_ErrorStatus aStatus;
-  if (OK (aStatus, aScene.WriteLine (thePrefix, header, GlobalIndent()))) {
+
+  if (OK(aStatus, aScene.isX3D() ?
+                  aScene.WriteLine (headerX3D, 0L, GlobalIndent(), true, false) :
+                  aScene.WriteLine (thePrefix, header, GlobalIndent())))
+  {
+    // Attributes
+    if (Scene().isX3D()) {
+      if (Scene().WriteDefUse(this) == VrmlData_Use) {
+        aStatus = WriteClosing();
+        return VrmlData_StatusOK;
+      }
+    }
 
     // Write the attributes of interface "VrmlData_Faceted"
     if (IsCCW() == Standard_False)
-      aStatus = aScene.WriteLine ("ccw         FALSE");
+      aStatus = aScene.WriteLine (Scene().isX3D() ? " ccw='false'" : "ccw         FALSE", 0, 0, !Scene().isX3D(), !Scene().isX3D());
     if (OK(aStatus) && IsSolid() == Standard_False)
-      aStatus = aScene.WriteLine ("solid       FALSE");
+      aStatus = aScene.WriteLine (Scene().isX3D() ? " solid='false'" : "solid       FALSE", 0, 0, !Scene().isX3D(), !Scene().isX3D());
     if (OK(aStatus) && IsConvex() == Standard_False)
-      aStatus = aScene.WriteLine ("convex      FALSE");
+      aStatus = aScene.WriteLine (Scene().isX3D() ? " convex='false'" : "convex      FALSE", 0, 0, !Scene().isX3D(), !Scene().isX3D());
     if (OK(aStatus) && CreaseAngle() > Precision::Confusion()) {
       char buf[64];
-      Sprintf (buf, "%.9g", CreaseAngle());
-      aStatus = aScene.WriteLine ("creaseAngle", buf);
+      Sprintf (buf, Scene().isX3D() ? "'%.9g'" : "%.9g", CreaseAngle());
+      aStatus = aScene.WriteLine (Scene().isX3D() ? " creaseAngle=" : "creaseAngle", buf, 0, !Scene().isX3D(), !Scene().isX3D());
     }
-
-    if (OK(aStatus) && myCoords.IsNull() == Standard_False)
-      aStatus = aScene.WriteNode ("coord", myCoords);
     if (OK(aStatus))
       aStatus = aScene.WriteArrIndex ("coordIndex", myArrPolygons,myNbPolygons);
-
     if (OK(aStatus) && myNormalPerVertex == Standard_False)
-      aStatus = aScene.WriteLine ("normalPerVertex FALSE");
-    if (OK(aStatus) && myNormals.IsNull() == Standard_False)
-      aStatus = aScene.WriteNode ("normal", myNormals);
+      aStatus = aScene.WriteLine (Scene().isX3D() ? " normalPerVertex='false'" : "normalPerVertex FALSE", 0, 0, !Scene().isX3D(), !Scene().isX3D());
     if (OK(aStatus))
       aStatus = aScene.WriteArrIndex ("normalIndex",myArrNormalInd,myNbNormals);
-
-    if (OK(aStatus) && myColorPerVertex == Standard_False)
-      aStatus = aScene.WriteLine ("colorPerVertex  FALSE");
-    if (OK(aStatus) && myColors.IsNull() == Standard_False)
-      aStatus = aScene.WriteNode ("color", myColors);
     if (OK(aStatus))
       aStatus = aScene.WriteArrIndex ("colorIndex", myArrColorInd, myNbColors);
-
-    if (OK(aStatus) && myTxCoords.IsNull() == Standard_False)
-      aStatus = aScene.WriteNode ("texCoord", myTxCoords);
     if (OK(aStatus))
       aStatus = aScene.WriteArrIndex ("texCoordIndex", myArrTextureInd,
                                       myNbTextures);
 
-    aStatus = WriteClosing();
+    if (Scene().isX3D()) {
+      aStatus = aScene.WriteLine(">", 0L, 0, false, true);
+    }
+
+    if (OK(aStatus) && myCoords.IsNull() == Standard_False)
+      aStatus = aScene.WriteNode ("coord", myCoords);
+    if (OK(aStatus) && myNormals.IsNull() == Standard_False)
+      aStatus = aScene.WriteNode ("normal", myNormals);
+    if (OK(aStatus) && myColors.IsNull() == Standard_False)
+      aStatus = aScene.WriteNode ("color", myColors);
+    if (OK(aStatus) && myTxCoords.IsNull() == Standard_False)
+      aStatus = aScene.WriteNode ("texCoord", myTxCoords);
+    aStatus = WriteClosing("IndexedFaceSet");
   }
   return aStatus;
 }

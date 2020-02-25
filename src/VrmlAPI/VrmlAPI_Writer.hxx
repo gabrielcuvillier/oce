@@ -125,6 +125,10 @@ protected:
   //! to the file identified by aFileName using default parameters.
   Standard_EXPORT Standard_Boolean write_v2 (const TopoDS_Shape& aShape, const Standard_CString aFileName) const;
 
+  //! Converts the shape aShape to VRML format of version 3.0 (X3D) and writes it
+  //! to the file identified by aFileName using default parameters.
+  Standard_EXPORT Standard_Boolean write_v3 (const TopoDS_Shape& aShape, const Standard_CString aFileName) const;
+
 private:
 
   VrmlAPI_RepresentationOfShape myRepresentation;

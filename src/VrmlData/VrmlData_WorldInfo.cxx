@@ -144,29 +144,58 @@ VrmlData_ErrorStatus VrmlData_WorldInfo::Write (const char * thePrefix) const
   VrmlData_ErrorStatus aStatus (VrmlData_StatusOK);
   const VrmlData_Scene& aScene = Scene();
   static char header[] = "WorldInfo {";
+  static char headerX3D[] = "<WorldInfo";
   if (aScene.IsDummyWrite() == Standard_False &&
-      OK (aStatus, aScene.WriteLine (thePrefix, header, GlobalIndent())))
+      OK (aStatus, Scene().isX3D() ?
+      aScene.WriteLine (headerX3D, 0L, GlobalIndent(), true, false) :
+      aScene.WriteLine (thePrefix, header, GlobalIndent())))
   {
+    // Attributes
+
+    // Def/Use
+    if (Scene().isX3D()) {
+      if (Scene().WriteDefUse(this) == VrmlData_Use) {
+        aStatus = WriteClosing();
+        return VrmlData_StatusOK;
+      }
+    }
+
     char buf[4096];
     if (myTitle) {
-      Sprintf (buf, "title \"%s\"", myTitle);
-      aStatus = aScene.WriteLine (buf);
+      Sprintf (buf, Scene().isX3D() ? " title='%s'" : "title \"%s\"", myTitle);
+      if (Scene().isX3D()) {
+        aStatus = aScene.WriteLine (buf, 0L, 0, false, false);
+      }
+      else {
+        aStatus = aScene.WriteLine (buf);
+      }
     }
 
     if (myInfo.IsEmpty() == Standard_False && OK(aStatus)) {
-      if (OK (aStatus, aScene.WriteLine ("info [", 0L, GlobalIndent()))) {
-        NCollection_List<const char *>::Iterator anIter (myInfo);
+      if (OK (aStatus,  Scene().isX3D() ?
+      aScene.WriteLine (" info='", 0L, 0, false, false) :
+      aScene.WriteLine ("info [", 0L, GlobalIndent()))) {
+          NCollection_List<const char *>::Iterator anIter (myInfo);
         while (anIter.More()) {
           Sprintf (buf, "\"%s\"", anIter.Value());
           anIter.Next();
           if (anIter.More())
-            aStatus = aScene.WriteLine (buf, ",");
+            aStatus = Scene().isX3D() ?
+                aScene.WriteLine (buf, " ", 0, false, false) :
+                aScene.WriteLine (buf, ",", 0);
           else
-            aStatus = aScene.WriteLine (buf);
+            aStatus = Scene().isX3D() ?
+                aScene.WriteLine (buf, "'", 0, false, false) :
+                aScene.WriteLine (buf, 0L, 0);
         }
       }
-      aStatus = aScene.WriteLine ("]", 0L, -GlobalIndent());
+      aStatus = Scene().isX3D() ?
+          VrmlData_StatusOK :
+          aScene.WriteLine ("]", 0L, -GlobalIndent());
     }
+
+    // Child Nodes
+    // None
 
     aStatus = WriteClosing();
   }

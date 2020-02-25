@@ -228,6 +228,8 @@ Standard_Boolean VrmlAPI_Writer::Write(const TopoDS_Shape& aShape,const Standard
     return write_v1 (aShape, aFile);
   else if (aVersion == 2)
     return write_v2 (aShape, aFile);
+  else if (aVersion == 3)
+    return write_v3 (aShape, aFile);
 
   return Standard_False;
 }
@@ -386,6 +388,35 @@ Standard_Boolean VrmlAPI_Writer::write_v2(const TopoDS_Shape& aShape,const Stand
   VrmlData_ShapeConvert aConv(aScene);
   aConv.AddShape(aShape);
   aConv.Convert(anExtFace, anExtEdge);
+
+  std::ofstream anOutStream;
+  OSD_OpenStream(anOutStream, aFile, std::ios::out);
+  if (anOutStream)
+  {
+    anOutStream << aScene;
+    anOutStream.close();
+    return anOutStream.good();
+  }
+
+  return Standard_False;
+}
+
+Standard_Boolean VrmlAPI_Writer::write_v3(const TopoDS_Shape& aShape,const Standard_CString aFile) const
+{
+  Standard_Boolean anExtFace = Standard_False;
+  if(myRepresentation == VrmlAPI_ShadedRepresentation || myRepresentation == VrmlAPI_BothRepresentation)
+    anExtFace = Standard_True;
+
+  Standard_Boolean anExtEdge = Standard_False;
+  if(myRepresentation == VrmlAPI_WireFrameRepresentation || myRepresentation == VrmlAPI_BothRepresentation)
+    anExtEdge = Standard_True;
+
+  VrmlData_Scene aScene;
+  VrmlData_ShapeConvert aConv(aScene);
+  aConv.AddShape(aShape);
+  aConv.Convert(anExtFace, anExtEdge);
+
+  aScene.setX3D(true);
 
   std::ofstream anOutStream;
   OSD_OpenStream(anOutStream, aFile, std::ios::out);

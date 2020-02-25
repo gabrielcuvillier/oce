@@ -37,7 +37,8 @@
     VrmlData_ReadUnknownNode,
     VrmlData_NonSupportedFeature,
     VrmlData_OutputStreamUndefined,
-    VrmlData_NotImplemented
+    VrmlData_NotImplemented,
+    VrmlData_Use,
   };
 
 #endif

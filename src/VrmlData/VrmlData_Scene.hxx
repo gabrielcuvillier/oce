@@ -311,8 +311,11 @@ class VrmlData_Scene
   Standard_EXPORT VrmlData_ErrorStatus
                                 WriteLine   (const char           * theLine0,
                                              const char           * theLine1=0L,
-                                             const Standard_Integer theIndent
-                                                                     = 0) const;
+                                             const Standard_Integer theIndent= 0,
+                                             const Standard_Boolean theToIndent=true,
+                                             const Standard_Boolean theToCarriageReturn=true) const;
+
+  VrmlData_ErrorStatus WriteDefUse(const Handle(VrmlData_Node)& theNode) const;
 
   /**
    * Write the given node to output stream 'myOutput'.
@@ -328,7 +331,13 @@ class VrmlData_Scene
   inline Standard_Boolean       IsDummyWrite() const
   { return myOutput == 0L; }
 
- private:
+
+  inline void  setX3D(Standard_Boolean theToX3D) { myX3D = theToX3D; }
+
+  inline Standard_Boolean isX3D() const { return myX3D; }
+
+
+private:
   // ---------- PRIVATE METHODS (PROHIBITED) ----------
   VrmlData_Scene (const VrmlData_Scene&);
   VrmlData_Scene& operator = (const VrmlData_Scene&);
@@ -369,7 +378,6 @@ class VrmlData_Scene
                                              const VrmlData_ListOfNode&,
                                              VrmlData_DataMapOfShapeAppearance*);
 
-
  private:
   // ---------- PRIVATE FIELDS ----------
   Standard_Real                                 myLinearScale;
@@ -402,6 +410,7 @@ class VrmlData_Scene
    */
   NCollection_Map<Standard_Address>             myUnnamedNodesOut;
   Standard_Integer                              myAutoNameCounter;
+  Standard_Boolean                              myX3D;
   friend class VrmlData_Group;
   friend class VrmlData_Node;
 };

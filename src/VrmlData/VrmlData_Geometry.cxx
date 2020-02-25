@@ -129,12 +129,22 @@ VrmlData_ErrorStatus VrmlData_Box::Read (VrmlData_InBuffer& theBuffer)
 VrmlData_ErrorStatus VrmlData_Box::Write (const char * thePrefix) const
 {
   static char header[] = "Box {";
+  static char headerX3D[] = "<Box";
   VrmlData_ErrorStatus aStatus;
-  if (OK (aStatus, Scene().WriteLine (thePrefix, header, GlobalIndent())))
+  if (OK (aStatus, Scene().isX3D() ?
+  Scene().WriteLine (headerX3D, 0L, GlobalIndent(), true, false):
+  Scene().WriteLine (thePrefix, header, GlobalIndent())))
   {
+    if (Scene().isX3D()) {
+      if (Scene().WriteDefUse(this) == VrmlData_Use) {
+        aStatus = WriteClosing();
+        return VrmlData_StatusOK;
+      }
+    }
+
     char buf[128];
-    Sprintf (buf, "size %.12g %.12g %.12g", mySize.X(), mySize.Y(), mySize.Z());
-    Scene().WriteLine (buf);
+    Sprintf (buf, Scene().isX3D() ? " size='%.12g %.12g %.12g'" : "size %.12g %.12g %.12g", mySize.X(), mySize.Y(), mySize.Z());
+    Scene().WriteLine (buf, 0L, 0, !Scene().isX3D(), !Scene().isX3D() );
     aStatus = WriteClosing();
   }
   return aStatus;
@@ -230,23 +240,33 @@ VrmlData_ErrorStatus VrmlData_Cone::Read (VrmlData_InBuffer& theBuffer)
 VrmlData_ErrorStatus VrmlData_Cone::Write (const char * thePrefix) const
 {
   static char header[] = "Cone {";
+  static char headerX3D[] = "<Cone";
   VrmlData_ErrorStatus aStatus;
-  if (OK (aStatus, Scene().WriteLine (thePrefix, header, GlobalIndent())))
+  if (OK (aStatus, Scene().isX3D() ?
+                   Scene().WriteLine (headerX3D, 0L, GlobalIndent(), true, false):
+                   Scene().WriteLine (thePrefix, header, GlobalIndent())))
   {
+    if (Scene().isX3D()) {
+      if (Scene().WriteDefUse(this) == VrmlData_Use) {
+        aStatus = WriteClosing();
+        return VrmlData_StatusOK;
+      }
+    }
+
     char buf[128];
     if ((myBottomRadius - 1.)*(myBottomRadius - 1.) > Precision::Confusion()) {
-      Sprintf (buf, "bottomRadius %.12g", myBottomRadius);
-      aStatus = Scene().WriteLine (buf);
+      Sprintf (buf, Scene().isX3D() ? " bottomRadius='%.12g'" : "bottomRadius %.12g", myBottomRadius);
+      aStatus = Scene().WriteLine (buf, 0L, 0, !Scene().isX3D(), !Scene().isX3D());
     }
     if (OK(aStatus) &&
         (myHeight - 2.)*(myHeight - 2.) > Precision::Confusion()) {
-      Sprintf (buf, "height       %.12g", myHeight);
-      aStatus = Scene().WriteLine (buf);
+      Sprintf (buf, Scene().isX3D() ? " height='%.12g'" : "height       %.12g", myHeight);
+      aStatus = Scene().WriteLine (buf, 0L, 0, !Scene().isX3D(), !Scene().isX3D());
     }
     if (OK(aStatus) && myHasBottom == Standard_False)
-      aStatus = Scene().WriteLine ("bottom   FALSE");
+      aStatus = Scene().WriteLine (Scene().isX3D() ? " bottom='false'" : "bottom   FALSE", 0L, 0, !Scene().isX3D(), !Scene().isX3D());
     if (OK(aStatus) && myHasSide == Standard_False)
-      aStatus = Scene().WriteLine ("side     FALSE");
+      aStatus = Scene().WriteLine (Scene().isX3D() ? " side='false'" : "side     FALSE", 0L, 0, !Scene().isX3D(), !Scene().isX3D());
 
     aStatus = WriteClosing();
   }
@@ -364,25 +384,35 @@ VrmlData_ErrorStatus VrmlData_Cylinder::Read (VrmlData_InBuffer& theBuffer)
 VrmlData_ErrorStatus VrmlData_Cylinder::Write (const char * thePrefix) const
 {
   static char header[] = "Cylinder {";
+  static char headerX3D[] = "<Cylinder";
   VrmlData_ErrorStatus aStatus;
-  if (OK (aStatus, Scene().WriteLine (thePrefix, header, GlobalIndent())))
+  if (OK (aStatus, Scene().isX3D() ?
+                   Scene().WriteLine (headerX3D, 0L, GlobalIndent(), true, false):
+                   Scene().WriteLine (thePrefix, header, GlobalIndent())))
   {
+    if (Scene().isX3D()) {
+      if (Scene().WriteDefUse(this) == VrmlData_Use) {
+        aStatus = WriteClosing();
+        return VrmlData_StatusOK;
+      }
+    }
+
     char buf[128];
     if ((myRadius - 1.)*(myRadius - 1.) > Precision::Confusion()) {
-      Sprintf (buf, "radius   %.12g", myRadius);
-      aStatus = Scene().WriteLine (buf);
+      Sprintf (buf,  Scene().isX3D() ? " radius='%.12g'" : "radius   %.12g", myRadius);
+      aStatus = Scene().WriteLine (buf, 0L, 0, !Scene().isX3D(), !Scene().isX3D());
     }
     if (OK(aStatus) &&
         (myHeight - 2.)*(myHeight - 2.) > Precision::Confusion()) {
-      Sprintf (buf, "height   %.12g", myHeight);
-      aStatus = Scene().WriteLine (buf);
+      Sprintf (buf, Scene().isX3D() ? " height=%.12g'" : "height   %.12g", myHeight);
+      aStatus = Scene().WriteLine (buf, 0L, 0, !Scene().isX3D(), !Scene().isX3D());
     }
     if (OK(aStatus) && myHasBottom == Standard_False)
-      aStatus = Scene().WriteLine ("bottom   FALSE");
+      aStatus = Scene().WriteLine (Scene().isX3D() ? " bottom='false'" : "bottom   FALSE", 0L, 0, !Scene().isX3D(), !Scene().isX3D());
     if (OK(aStatus) && myHasSide == Standard_False)
-      aStatus = Scene().WriteLine ("side     FALSE");
+      aStatus = Scene().WriteLine (Scene().isX3D() ? " side='false'" : "side     FALSE", 0L, 0, !Scene().isX3D(), !Scene().isX3D());
     if (OK(aStatus) && myHasTop == Standard_False)
-      aStatus = Scene().WriteLine ("top      FALSE");
+      aStatus = Scene().WriteLine (Scene().isX3D() ? " top='false'" : "top      FALSE", 0L, 0, !Scene().isX3D(), !Scene().isX3D());
 
     aStatus = WriteClosing();
   }
@@ -466,12 +496,22 @@ VrmlData_ErrorStatus VrmlData_Sphere::Read (VrmlData_InBuffer& theBuffer)
 VrmlData_ErrorStatus VrmlData_Sphere::Write (const char * thePrefix) const
 {
   static char header[] = "Sphere {";
+  static char headerX3D[] = "<Sphere";
   VrmlData_ErrorStatus aStatus;
-  if (OK (aStatus, Scene().WriteLine (thePrefix, header, GlobalIndent())))
+  if (OK (aStatus, Scene().isX3D() ?
+                   Scene().WriteLine (headerX3D, 0L, GlobalIndent(), true, false):
+                   Scene().WriteLine (thePrefix, header, GlobalIndent())))
   {
+    if (Scene().isX3D()) {
+      if (Scene().WriteDefUse(this) == VrmlData_Use) {
+        aStatus = WriteClosing();
+        return VrmlData_StatusOK;
+      }
+    }
+
     char buf[128];
-    Sprintf (buf, "radius   %.12g", myRadius);
-    Scene().WriteLine (buf);
+    Sprintf (buf, Scene().isX3D() ? " radius='%.12g'" : "radius   %.12g", myRadius);
+    Scene().WriteLine (buf, 0L, 0, !Scene().isX3D(), !Scene().isX3D());
     aStatus = WriteClosing();
   }
   return aStatus;
@@ -691,16 +731,16 @@ VrmlData_ErrorStatus VrmlData_ArrayVec3d::WriteArray
 {
   VrmlData_ErrorStatus aStatus (VrmlData_StatusOK);
   if (myLength > 0) {
-    aStatus = Scene().WriteLine (theName, "[", 2*GlobalIndent());
+    aStatus = Scene().WriteLine (theName, Scene().isX3D() ? "='" : "[", 2*GlobalIndent(), !Scene().isX3D(), !Scene().isX3D());
     if (OK(aStatus)) {
       for (Standard_Size i = 0; i < myLength-1; i++)
-        if (!OK (aStatus, Scene().WriteXYZ (myArray[i], isScale, ",")))
+        if (!OK (aStatus, Scene().WriteXYZ (myArray[i], isScale, Scene().isX3D() ? " " : ",")))
           break;
       if (OK(aStatus))
-        aStatus = Scene().WriteXYZ (myArray[myLength-1], isScale);
+        aStatus = Scene().WriteXYZ (myArray[myLength-1], isScale );
     }
     if (aStatus == VrmlData_StatusOK)
-      aStatus = Scene().WriteLine ("]", 0L, -2*GlobalIndent());
+      aStatus = Scene().WriteLine (Scene().isX3D() ? "'" : "]", 0L, -2*GlobalIndent(), !Scene().isX3D(), !Scene().isX3D());
   }
   return aStatus;
 }
@@ -756,10 +796,20 @@ VrmlData_ErrorStatus VrmlData_Coordinate::Read (VrmlData_InBuffer& theBuffer)
 VrmlData_ErrorStatus VrmlData_Coordinate::Write (const char * thePrefix) const
 {
   static char header[] = "Coordinate {";
+  static char headerX3D[] = "<Coordinate";
   VrmlData_ErrorStatus aStatus;
-  if (OK (aStatus, Scene().WriteLine (thePrefix, header, GlobalIndent())))
+  if (OK (aStatus, Scene().isX3D() ?
+                   Scene().WriteLine (headerX3D, 0L, GlobalIndent(), true, false):
+                   Scene().WriteLine (thePrefix, header, GlobalIndent())))
   {
-    WriteArray ("point", Standard_True);
+    if (Scene().isX3D()) {
+      if (Scene().WriteDefUse(this) == VrmlData_Use) {
+        aStatus = WriteClosing();
+        return VrmlData_StatusOK;
+      }
+    }
+
+    WriteArray (Scene().isX3D() ? " point" : "point", Standard_True);
     aStatus = WriteClosing();
   }
   return aStatus;
@@ -806,10 +856,20 @@ VrmlData_ErrorStatus VrmlData_Color::Read (VrmlData_InBuffer& theBuffer)
 VrmlData_ErrorStatus VrmlData_Color::Write (const char * thePrefix) const
 {
   static char header[] = "Color {";
+  static char headerX3D[] = "<Color";
   VrmlData_ErrorStatus aStatus;
-  if (OK (aStatus, Scene().WriteLine (thePrefix, header, GlobalIndent())))
+  if (OK (aStatus, Scene().isX3D() ?
+                   Scene().WriteLine (headerX3D, 0L, GlobalIndent(), true, false):
+                   Scene().WriteLine (thePrefix, header, GlobalIndent())))
   {
-    WriteArray ("color", Standard_False);
+    if (Scene().isX3D()) {
+      if (Scene().WriteDefUse(this) == VrmlData_Use) {
+        aStatus = WriteClosing();
+        return VrmlData_StatusOK;
+      }
+    }
+
+    WriteArray (Scene().isX3D() ? " color" : "color", Standard_False);
     aStatus = WriteClosing();
   }
   return aStatus;
@@ -856,10 +916,20 @@ VrmlData_ErrorStatus VrmlData_Normal::Read (VrmlData_InBuffer& theBuffer)
 VrmlData_ErrorStatus VrmlData_Normal::Write (const char * thePrefix) const
 {
   static char header[] = "Normal {";
+  static char headerX3D[] = "<Normal";
   VrmlData_ErrorStatus aStatus;
-  if (OK (aStatus, Scene().WriteLine (thePrefix, header, GlobalIndent())))
+  if (OK (aStatus, Scene().isX3D() ?
+                   Scene().WriteLine (headerX3D, 0L, GlobalIndent(), true, false):
+                   Scene().WriteLine (thePrefix, header, GlobalIndent())))
   {
-    WriteArray ("vector", Standard_False);
+    if (Scene().isX3D()) {
+      if (Scene().WriteDefUse(this) == VrmlData_Use) {
+        aStatus = WriteClosing();
+        return VrmlData_StatusOK;
+      }
+    }
+
+    WriteArray (Scene().isX3D() ? " vector" : "vector", Standard_False);
     aStatus = WriteClosing();
   }
   return aStatus;

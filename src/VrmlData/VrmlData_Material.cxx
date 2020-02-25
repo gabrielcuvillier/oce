@@ -188,17 +188,30 @@ VrmlData_ErrorStatus VrmlData_Material::Write (const char * thePrefix) const
   VrmlData_ErrorStatus aStatus = VrmlData_StatusOK;
   const VrmlData_Scene& aScene = Scene();
   static char header[] = "Material {";
+  static char headerX3D[] = "<Material";
   if (aScene.IsDummyWrite() == Standard_False &&
-      OK (aStatus, aScene.WriteLine (thePrefix, header, GlobalIndent())))
+      OK (aStatus, aScene.isX3D() ?
+      aScene.WriteLine (headerX3D, 0L, GlobalIndent(), true, false) :
+      aScene.WriteLine (thePrefix, header, GlobalIndent())))
   {
+    // Attributes
+
+    // Def/Use
+    if (Scene().isX3D()) {
+      if (Scene().WriteDefUse(this) == VrmlData_Use) {
+        aStatus = WriteClosing();
+        return VrmlData_StatusOK;
+      }
+    }
+
     char buf[128];
     Standard_Real val[3];
     Quantity_TypeOfColor bidType (Quantity_TOC_RGB);
     const Standard_Real aConf (0.001 * Precision::Confusion());
 
     if (OK(aStatus) && fabs(myAmbientIntensity - 0.2) > aConf) {
-      Sprintf (buf, "%.6g", myAmbientIntensity);
-      aStatus = aScene.WriteLine ("ambientIntensity ", buf);
+      Sprintf (buf, Scene().isX3D() ? "'%.6g'" : "%.6g", myAmbientIntensity);
+      aStatus = aScene.WriteLine (Scene().isX3D() ? " ambientIntensity=" : "ambientIntensity ", buf, 0, !Scene().isX3D(), !Scene().isX3D() );
     }
     if (OK(aStatus)) {
       myDiffuseColor.Values  (val[0], val[1], val[2], bidType);
@@ -206,32 +219,35 @@ VrmlData_ErrorStatus VrmlData_Material::Write (const char * thePrefix) const
           (val[1] - 0.8) * (val[1] - 0.8) +
           (val[2] - 0.8) * (val[2] - 0.8) > 1e-7)
       {
-        Sprintf (buf, "%.6g %.6g %.6g", val[0], val[1], val[2]);
-        aStatus = aScene.WriteLine ("diffuseColor     ", buf);
+        Sprintf (buf, Scene().isX3D() ? "'%.6g %.6g %.6g'" : "%.6g %.6g %.6g", val[0], val[1], val[2]);
+        aStatus = aScene.WriteLine (Scene().isX3D() ? " diffuseColor=" : "diffuseColor     ", buf, 0, !Scene().isX3D(), !Scene().isX3D() );
       }
     }
     if (OK(aStatus)) {
       myEmissiveColor.Values  (val[0], val[1], val[2], bidType);
       if (val[0] * val[0] + val[1] * val[1] + val[2] * val[2] > 1e-7) {      
-        Sprintf (buf, "%.6g %.6g %.6g", val[0], val[1], val[2]);
-        aStatus = aScene.WriteLine ("emissiveColor    ", buf);
+        Sprintf (buf, Scene().isX3D() ? "'%.6g %.6g %.6g'" : "%.6g %.6g %.6g", val[0], val[1], val[2]);
+        aStatus = aScene.WriteLine (Scene().isX3D() ? " emissiveColor=" : "emissiveColor     ", buf, 0, !Scene().isX3D(), !Scene().isX3D() );
       }
     }
     if (OK(aStatus) && fabs(myShininess - 0.2) > aConf) {
-      Sprintf (buf, "%.6g", myShininess);
-      aStatus = aScene.WriteLine ("shininess        ", buf);
+      Sprintf (buf,  Scene().isX3D() ? "'%.6g'" : "%.6g", myShininess);
+      aStatus = aScene.WriteLine (Scene().isX3D() ? " shininess=" : "shininess     ", buf, 0, !Scene().isX3D(), !Scene().isX3D() );
     }
     if (OK(aStatus)) {
       mySpecularColor.Values  (val[0], val[1], val[2], bidType);
-      if (val[0] * val[0] + val[1] * val[1] + val[2] * val[2] > 1e-7) {      
-        Sprintf (buf, "%.6g %.6g %.6g", val[0], val[1], val[2]);
-        aStatus = aScene.WriteLine ("specularColor    ", buf);
+      if (val[0] * val[0] + val[1] * val[1] + val[2] * val[2] > 1e-7) {
+        Sprintf (buf, Scene().isX3D() ? "'%.6g %.6g %.6g'" : "%.6g %.6g %.6g", val[0], val[1], val[2]);
+        aStatus = aScene.WriteLine (Scene().isX3D() ? " specularColor=" : "specularColor     ", buf, 0, !Scene().isX3D(), !Scene().isX3D());
       }
     }
     if (OK(aStatus) && myTransparency > aConf) {
-      Sprintf (buf, "%.6g", myTransparency);
-      aStatus = aScene.WriteLine ("transparency     ", buf);
+      Sprintf (buf,  Scene().isX3D() ? "'%.6g'" : "%.6g", myTransparency);
+      aStatus = aScene.WriteLine (Scene().isX3D() ? " transparency=" : "transparency     ", buf, 0, !Scene().isX3D(), !Scene().isX3D() );
     }
+
+    // Child Nodes
+    // None
 
     aStatus = WriteClosing();
   }

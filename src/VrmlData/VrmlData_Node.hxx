@@ -100,7 +100,7 @@ class VrmlData_Node : public Standard_Transient
    * Write the closing brace in the end of a node output.
    */
   Standard_EXPORT VrmlData_ErrorStatus
-                                WriteClosing () const;
+                                WriteClosing (const char* theNodeType = 0L) const;
 
   /**
    * Create a copy of this node.
@@ -186,6 +186,7 @@ class VrmlData_Node : public Standard_Transient
 
   const VrmlData_Scene  * myScene; 
   const char            * myName;       ///< name of the node
+
 #ifdef OCCT_DEBUG
   Standard_Integer      myLineCount;
 #endif

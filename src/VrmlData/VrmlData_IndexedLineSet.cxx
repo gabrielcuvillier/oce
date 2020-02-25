@@ -180,23 +180,40 @@ VrmlData_ErrorStatus VrmlData_IndexedLineSet::Write
                                         (const char * thePrefix) const
 {
   static char header[] = "IndexedLineSet {";
+  static char headerX3D[] = "<IndexedLineSet";
   const VrmlData_Scene& aScene = Scene();
   VrmlData_ErrorStatus aStatus;
-  if (OK (aStatus, aScene.WriteLine (thePrefix, header, GlobalIndent()))) {
-
-    if (OK(aStatus) && myCoords.IsNull() == Standard_False)
-      aStatus = aScene.WriteNode ("coord", myCoords);
+  if (OK(aStatus, aScene.isX3D() ?
+               aScene.WriteLine (headerX3D, 0L, GlobalIndent(), true, false) :
+               aScene.WriteLine (thePrefix, header, GlobalIndent())))
+  {
+    // Attributes
+    if (Scene().isX3D()) {
+      if (Scene().WriteDefUse(this) == VrmlData_Use) {
+        aStatus = WriteClosing();
+        return VrmlData_StatusOK;
+      }
+    }
     if (OK(aStatus))
       aStatus = aScene.WriteArrIndex ("coordIndex", myArrPolygons,myNbPolygons);
-
-    if (OK(aStatus) && myColorPerVertex == Standard_False)
-      aStatus = aScene.WriteLine ("colorPerVertex  FALSE");
-    if (OK(aStatus) && myColors.IsNull() == Standard_False)
-      aStatus = aScene.WriteNode ("color", myColors);
     if (OK(aStatus))
       aStatus = aScene.WriteArrIndex ("colorIndex", myArrColorInd, myNbColors);
 
-    aStatus = WriteClosing();
+    if (OK(aStatus) && myColorPerVertex == Standard_False)
+      aStatus = aScene.WriteLine (Scene().isX3D() ? " colorPerVertex='false'" : "colorPerVertex  FALSE", 0L, 0, !Scene().isX3D(), !Scene().isX3D());
+
+    if (Scene().isX3D()) {
+      aStatus = aScene.WriteLine(">", 0L, 0, false, true);
+    }
+
+    // ChildNodes
+
+    if (OK(aStatus) && myCoords.IsNull() == Standard_False)
+      aStatus = aScene.WriteNode ("coord", myCoords);
+    if (OK(aStatus) && myColors.IsNull() == Standard_False)
+      aStatus = aScene.WriteNode ("color", myColors);
+
+    aStatus = WriteClosing("IndexedLineSet");
   }
   return aStatus;
 }
