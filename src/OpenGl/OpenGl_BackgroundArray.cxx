@@ -34,9 +34,6 @@ OpenGl_BackgroundArray::OpenGl_BackgroundArray (const Graphic3d_TypeOfBackground
   myViewHeight (0),
   myToUpdate (Standard_False)
 {
-  Handle(NCollection_AlignedAllocator) anAlloc = new NCollection_AlignedAllocator (16);
-  myAttribs = new Graphic3d_Buffer (anAlloc);
-
   myDrawMode = GL_TRIANGLE_STRIP;
   myIsFillType = true;
 
@@ -140,11 +137,12 @@ void OpenGl_BackgroundArray::invalidateData()
 // =======================================================================
 Standard_Boolean OpenGl_BackgroundArray::init (const Handle(OpenGl_Workspace)& theWorkspace) const
 {
+  const Handle(OpenGl_Context)& aCtx = theWorkspace->GetGlContext();
   switch (myType)
   {
     case Graphic3d_TOB_GRADIENT:
     {
-      if (!createGradientArray())
+      if (!createGradientArray (aCtx))
       {
         return Standard_False;
       }
@@ -174,7 +172,6 @@ Standard_Boolean OpenGl_BackgroundArray::init (const Handle(OpenGl_Workspace)& t
   }
 
   // Init VBO
-  const Handle(OpenGl_Context)& aCtx = theWorkspace->GetGlContext();
   if (myIsVboInit)
   {
     clearMemoryGL (aCtx);
@@ -191,7 +188,7 @@ Standard_Boolean OpenGl_BackgroundArray::init (const Handle(OpenGl_Workspace)& t
 // method  : createGradientArray
 // purpose :
 // =======================================================================
-Standard_Boolean OpenGl_BackgroundArray::createGradientArray() const
+Standard_Boolean OpenGl_BackgroundArray::createGradientArray (const Handle(OpenGl_Context)& theCtx) const
 {
   // Initialize data for primitive array
   Graphic3d_Attribute aGragientAttribInfo[] =
@@ -200,6 +197,11 @@ Standard_Boolean OpenGl_BackgroundArray::createGradientArray() const
     { Graphic3d_TOA_COLOR, Graphic3d_TOD_VEC3 }
   };
 
+  if (myAttribs.IsNull())
+  {
+    Handle(NCollection_AlignedAllocator) anAlloc = new NCollection_AlignedAllocator (16);
+    myAttribs = new Graphic3d_Buffer (anAlloc);
+  }
   if (!myAttribs->Init (4, aGragientAttribInfo, 2))
   {
     return Standard_False;
@@ -311,7 +313,7 @@ Standard_Boolean OpenGl_BackgroundArray::createGradientArray() const
     *aVertData = aVertices[anIt];
 
     OpenGl_Vec3* aColorData = reinterpret_cast<OpenGl_Vec3* >(myAttribs->changeValue (anIt) + myAttribs->AttributeOffset (1));
-    *aColorData = OpenGl_Vec3(aCorners[anIt][0], aCorners[anIt][1], aCorners[anIt][2]);
+    *aColorData = theCtx->Vec4FromQuantityColor (OpenGl_Vec4(aCorners[anIt][0], aCorners[anIt][1], aCorners[anIt][2], 1.0f)).rgb();
   }
 
   return Standard_True;
@@ -329,6 +331,11 @@ Standard_Boolean OpenGl_BackgroundArray::createTextureArray (const Handle(OpenGl
     { Graphic3d_TOA_UV,  Graphic3d_TOD_VEC2 }
   };
 
+  if (myAttribs.IsNull())
+  {
+    Handle(NCollection_AlignedAllocator) anAlloc = new NCollection_AlignedAllocator (16);
+    myAttribs = new Graphic3d_Buffer (anAlloc);
+  }
   if (!myAttribs->Init (4, aTextureAttribInfo, 2))
   {
     return Standard_False;
@@ -397,6 +404,11 @@ Standard_Boolean OpenGl_BackgroundArray::createCubeMapArray() const
     { Graphic3d_TOA_POS, Graphic3d_TOD_VEC2}
   };
 
+  if (myAttribs.IsNull())
+  {
+    Handle(NCollection_AlignedAllocator) anAlloc = new NCollection_AlignedAllocator (16);
+    myAttribs = new Graphic3d_Buffer (anAlloc);
+  }
   if (!myAttribs->Init(4, aCubeMapAttribInfo, 1))
   {
     return Standard_False;
@@ -421,14 +433,21 @@ void OpenGl_BackgroundArray::Render (const Handle(OpenGl_Workspace)& theWorkspac
   const Handle(OpenGl_Context)& aCtx = theWorkspace->GetGlContext();
   Standard_Integer aViewSizeX = aCtx->Viewport()[2];
   Standard_Integer aViewSizeY = aCtx->Viewport()[3];
+  Graphic3d_Vec2i aTileOffset, aTileSize;
+
   if (theWorkspace->View()->Camera()->Tile().IsValid())
   {
     aViewSizeX = theWorkspace->View()->Camera()->Tile().TotalSize.x();
     aViewSizeY = theWorkspace->View()->Camera()->Tile().TotalSize.y();
+
+    aTileOffset = theWorkspace->View()->Camera()->Tile().OffsetLowerLeft();
+    aTileSize   = theWorkspace->View()->Camera()->Tile().TileSize;
   }
   if (myToUpdate
    || myViewWidth  != aViewSizeX
-   || myViewHeight != aViewSizeY)
+   || myViewHeight != aViewSizeY
+   || myAttribs.IsNull()
+   || myVboAttribs.IsNull())
   {
     myViewWidth  = aViewSizeX;
     myViewHeight = aViewSizeY;
@@ -440,8 +459,30 @@ void OpenGl_BackgroundArray::Render (const Handle(OpenGl_Workspace)& theWorkspac
 
   if (myType != Graphic3d_TOB_CUBEMAP)
   {
-    myTrsfPers.Apply(theWorkspace->View()->Camera(), aProjection, aWorldView,
-      aCtx->Viewport()[2], aCtx->Viewport()[3]);
+    aProjection.InitIdentity();
+    aWorldView.InitIdentity();
+    if (theWorkspace->View()->Camera()->Tile().IsValid())
+    {
+      aWorldView.SetDiagonal (OpenGl_Vec4 (2.0f / aTileSize.x(), 2.0f / aTileSize.y(), 1.0f, 1.0f));
+      if (myType == Graphic3d_TOB_GRADIENT)
+      {
+        aWorldView.SetColumn (3, OpenGl_Vec4 (-1.0f - 2.0f * aTileOffset.x() / aTileSize.x(),
+                                              -1.0f - 2.0f * aTileOffset.y() / aTileSize.y(), 0.0f, 1.0f));
+      }
+      else
+      {
+        aWorldView.SetColumn (3, OpenGl_Vec4 (-1.0f + (float) aViewSizeX / aTileSize.x() - 2.0f * aTileOffset.x() / aTileSize.x(),
+                                              -1.0f + (float) aViewSizeY / aTileSize.y() - 2.0f * aTileOffset.y() / aTileSize.y(), 0.0f, 1.0f));
+      }
+    }
+    else
+    {
+      aWorldView.SetDiagonal (OpenGl_Vec4 (2.0f / myViewWidth, 2.0f / myViewHeight, 1.0f, 1.0f));
+      if (myType == Graphic3d_TOB_GRADIENT)
+      {
+        aWorldView.SetColumn (3, OpenGl_Vec4 (-1.0f, -1.0f, 0.0f, 1.0f));
+      }
+    }
   }
 
   aCtx->ProjectionState.Push();

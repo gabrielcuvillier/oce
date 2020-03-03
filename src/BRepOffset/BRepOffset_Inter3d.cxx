@@ -253,8 +253,8 @@ void BRepOffset_Inter3d::ConnexIntByArc(const TopTools_ListOfShape& /*SetOfFaces
                                         const BRepOffset_Analyse&   Analyse, 
                                         const BRepAlgo_Image&       InitOffsetFace)
 {
-  BRepOffset_Type    OT   = BRepOffset_Concave;
-  if (mySide == TopAbs_OUT) OT   = BRepOffset_Convex;
+  ChFiDS_TypeOfConcavity    OT   = ChFiDS_Concave;
+  if (mySide == TopAbs_OUT) OT   = ChFiDS_Convex;
   TopExp_Explorer                Exp(ShapeInit,TopAbs_EDGE);
   TopTools_ListOfShape           LInt1,LInt2;
   TopoDS_Face                    F1,F2;
@@ -296,7 +296,7 @@ void BRepOffset_Inter3d::ConnexIntByArc(const TopTools_ListOfShape& /*SetOfFaces
       //---------------------------
       // E1 generated a tube.
       //---------------------------
-      F1 = TopoDS::Face(InitOffsetFace.Image(E1).First());;
+      F1 = TopoDS::Face(InitOffsetFace.Image(E1).First());
       TopExp::Vertices(E1,V[0],V[1]);
       const TopTools_ListOfShape& AncE1 = Analyse.Ancestors(E1);
       
@@ -349,7 +349,7 @@ void BRepOffset_Inter3d::ConnexIntByArc(const TopTools_ListOfShape& /*SetOfFaces
               // to the tube or if E2 is not a tangent edge.
               //-------------------------------------------------------
               const BRepOffset_ListOfInterval& L = Analyse.Type(E2);
-               if (!L.IsEmpty() && L.First().Type() == BRepOffset_Tangent) {
+               if (!L.IsEmpty() && L.First().Type() == ChFiDS_Tangential) {
                 continue;
               }
               const TopTools_ListOfShape& AncE2        = Analyse.Ancestors(E2);
@@ -399,88 +399,148 @@ void BRepOffset_Inter3d::ConnexIntByInt
  TopTools_ListOfShape&                  Failed,
  const Standard_Boolean                 bIsPlanar)
 {
-  //TopExp_Explorer Exp(SI,TopAbs_EDGE);
   TopTools_IndexedMapOfShape VEmap;
-  TopTools_IndexedDataMapOfShapeListOfShape aMVF;
   TopoDS_Face     F1,F2,OF1,OF2,NF1,NF2;
   TopAbs_State    CurSide = mySide;
   BRep_Builder    B;
   Standard_Boolean bEdge;
-  Standard_Integer i, aNb;
+  Standard_Integer i, aNb = 0;
   TopTools_ListIteratorOfListOfShape it, it1, itF1, itF2;
   //
-  TopExp::MapShapes(SI, TopAbs_EDGE  , VEmap);
-  // map the shape for vertices
-  if (bIsPlanar) {
+  TopExp::MapShapes (SI, TopAbs_EDGE, VEmap);
+  // Take the vertices for treatment
+  if (bIsPlanar)
+  {
+    aNb = VEmap.Extent();
+    for (i = 1; i <= aNb; ++i)
+    {
+      const TopoDS_Edge& aE = TopoDS::Edge (VEmap (i));
+      TopoDS_Shape aFGen = Analyse.Generated (aE);
+      if (!aFGen.IsNull())
+        TopExp::MapShapes (aFGen, TopAbs_EDGE, VEmap);
+    }
+
+    // Add vertices for treatment
     TopExp::MapShapes(SI, TopAbs_VERTEX, VEmap);
-    //
-    // make vertex-faces connexity map with unique ancestors
-    TopExp::MapShapesAndUniqueAncestors(SI, TopAbs_VERTEX, TopAbs_FACE, aMVF);
+
+    for (TopTools_ListOfShape::Iterator itNF (Analyse.NewFaces()); itNF.More(); itNF.Next())
+      TopExp::MapShapes (itNF.Value(), TopAbs_VERTEX, VEmap);
   }
   //
   TopTools_DataMapOfShapeListOfShape aDMVLF1, aDMVLF2, aDMIntFF;
   TopTools_IndexedDataMapOfShapeListOfShape aDMIntE;
   //
-  if (bIsPlanar) {
-    aNb = VEmap.Extent();
-    for (i = 1; i <= aNb; ++i) {
+  if (bIsPlanar)
+  {
+    // Find internal edges in the faces to skip them while preparing faces
+    // for intersection through vertices
+    NCollection_DataMap<TopoDS_Shape, TopTools_MapOfShape, TopTools_ShapeMapHasher> aDMFEI;
+    {
+      for (TopExp_Explorer expF (SI, TopAbs_FACE); expF.More(); expF.Next())
+      {
+        const TopoDS_Shape& aFx = expF.Current();
+
+        TopTools_MapOfShape aMEI;
+        for (TopExp_Explorer expE (aFx, TopAbs_EDGE); expE.More(); expE.Next())
+        {
+          const TopoDS_Shape& aEx = expE.Current();
+          if (aEx.Orientation() != TopAbs_FORWARD &&
+              aEx.Orientation() != TopAbs_REVERSED)
+            aMEI.Add (aEx);
+        }
+        if (!aMEI.IsEmpty())
+          aDMFEI.Bind (aFx, aMEI);
+      }
+    }
+
+    // Analyze faces connected through vertices
+    for (i = aNb + 1, aNb = VEmap.Extent(); i <= aNb; ++i)
+    {
       const TopoDS_Shape& aS = VEmap(i);
-      if (aS.ShapeType() != TopAbs_VERTEX) {
+      if (aS.ShapeType() != TopAbs_VERTEX)
         continue;
+
+      // Find faces connected to the vertex
+      TopTools_ListOfShape aLF;
+      {
+        const TopTools_ListOfShape& aLE = Analyse.Ancestors (aS);
+        for (TopTools_ListOfShape::Iterator itLE (aLE); itLE.More(); itLE.Next())
+        {
+          const TopTools_ListOfShape& aLEA = Analyse.Ancestors (itLE.Value());
+          for (TopTools_ListOfShape::Iterator itLEA (aLEA); itLEA.More(); itLEA.Next())
+          {
+            if (!aLF.Contains (itLEA.Value()))
+              aLF.Append (itLEA.Value());
+          }
+        }
       }
-      //
-      // faces connected by the vertex
-      const TopTools_ListOfShape& aLF = aMVF.FindFromKey(aS);
-      if (aLF.Extent() < 2) {
+
+      if (aLF.Extent() < 2)
         continue;
-      }
+
       // build lists of faces connected to the same vertex by looking for
       // the pairs in which the vertex is alone (not connected to shared edges)
       TopTools_ListOfShape aLF1, aLF2;
-      //
+
       it.Initialize(aLF);
-      for (; it.More(); it.Next()) {
+      for (; it.More(); it.Next())
+      {
         const TopoDS_Shape& aFV1 = it.Value();
-        //
+
         // get edges of first face connected to current vertex
         TopTools_MapOfShape aME;
-        TopExp_Explorer aExp(aFV1, TopAbs_EDGE);
-        for (; aExp.More(); aExp.Next()) {
-          const TopoDS_Shape& aE = aExp.Current();
-          if (aE.Orientation() != TopAbs_FORWARD &&
-              aE.Orientation() != TopAbs_REVERSED)
-            // Face is connected to the vertex through internal edge
+        const TopTools_MapOfShape *pF1Internal = aDMFEI.Seek (aFV1);
+        const TopTools_ListOfShape* pLE1 = Analyse.Descendants (aFV1);
+        if (!pLE1)
+          continue;
+        TopTools_ListOfShape::Iterator itLE1 (*pLE1);
+        for (; itLE1.More(); itLE1.Next())
+        {
+          const TopoDS_Shape& aE = itLE1.Value();
+          if (pF1Internal && pF1Internal->Contains (aE))
             break;
 
-          TopoDS_Iterator aItV(aE);
-          for (; aItV.More(); aItV.Next()) {
-            if (aS.IsSame(aItV.Value())) {
+          for (TopoDS_Iterator aItV(aE); aItV.More(); aItV.Next())
+          {
+            if (aS.IsSame (aItV.Value()))
+            {
               aME.Add(aE);
               break;
             }
           }
         }
-        if (aExp.More())
+        if (itLE1.More())
           continue;
 
         // get to the next face in the list
         it1 = it;
         for (it1.Next(); it1.More(); it1.Next()) {
-          const TopoDS_Shape& aFV2 = it1.Value();
-          //
-          aExp.Init(aFV2, TopAbs_EDGE);
-          for (; aExp.More(); aExp.Next()) {
-            const TopoDS_Shape& aEV2 = aExp.Current();
-            if (aME.Contains(aEV2) && 
-               (Analyse.Ancestors(aEV2).Extent() == 2 || // Multi-connexity is not supported in Analyzer
-               (aEV2.Orientation() != TopAbs_FORWARD &&  // Avoid intersection of faces connected by internal edge
-                aEV2.Orientation() != TopAbs_REVERSED))) { 
+          const TopoDS_Face& aFV2 = TopoDS::Face (it1.Value());
+
+          const TopTools_MapOfShape *pF2Internal = aDMFEI.Seek (aFV2);
+
+          const TopTools_ListOfShape* pLE2 = Analyse.Descendants (aFV2);
+          if (!pLE2)
+            continue;
+          TopTools_ListOfShape::Iterator itLE2 (*pLE2);
+          for (; itLE2.More(); itLE2.Next())
+          {
+            const TopoDS_Shape& aEV2 = itLE2.Value();
+            if (!aME.Contains (aEV2))
+              continue;
+
+            if (pF2Internal && pF2Internal->Contains (aEV2))
+              // Avoid intersection of faces connected by internal edge
               break;
-            }
+
+            if (Analyse.HasAncestor (aEV2) &&
+                Analyse.Ancestors (aEV2).Extent() == 2)
+              // Faces will be intersected through the edge
+              break;
           }
-          //
-          if (!aExp.More()) {
-            // faces share only vertex - make pair for intersection
+
+          if (!itLE2.More())
+          {
             aLF1.Append(aFV1);
             aLF2.Append(aFV2);
           }
@@ -511,13 +571,13 @@ void BRepOffset_Inter3d::ConnexIntByInt
         continue;
       }
       //
-      BRepOffset_Type    OT   = L.First().Type();
-      if (OT != BRepOffset_Convex && OT != BRepOffset_Concave) {
+      ChFiDS_TypeOfConcavity OT   = L.First().Type();
+      if (OT != ChFiDS_Convex && OT != ChFiDS_Concave) {
         continue;
       }
       //
-      if (OT == BRepOffset_Concave) CurSide = TopAbs_IN;
-      else                          CurSide = TopAbs_OUT;
+      if (OT == ChFiDS_Concave) CurSide = TopAbs_IN;
+      else                      CurSide = TopAbs_OUT;
       //-----------------------------------------------------------
       // edge is of the proper type, return adjacent faces.
       //-----------------------------------------------------------

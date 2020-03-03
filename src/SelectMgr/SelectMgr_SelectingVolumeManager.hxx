@@ -36,7 +36,7 @@ public:
   //! Creates instances of all available selecting volume types
   Standard_EXPORT SelectMgr_SelectingVolumeManager (Standard_Boolean theToAllocateFrustums = Standard_True);
 
-  virtual ~SelectMgr_SelectingVolumeManager() {};
+  virtual ~SelectMgr_SelectingVolumeManager() {}
 
   //! IMPORTANT: Scaling makes sense only for frustum built on a single point!
   //!            Note that this method does not perform any checks on type of the frustum.
@@ -235,6 +235,9 @@ public:
 
     return mySelectingVolumes[myActiveSelectionType / 2]->GetPlanes (thePlaneEquations);
   }
+
+  //! Dumps the content of me into the stream
+  Standard_EXPORT void DumpJson (Standard_OStream& theOStream, Standard_Integer theDepth = -1) const Standard_OVERRIDE;
 
 private:
   enum { Frustum, FrustumSet, VolumeTypesNb };       //!< Defines the amount of available selecting volumes

@@ -207,6 +207,31 @@ void OpenGl_Text::Release (OpenGl_Context* theCtx)
 }
 
 // =======================================================================
+// function : EstimatedDataSize
+// purpose  :
+// =======================================================================
+Standard_Size OpenGl_Text::EstimatedDataSize() const
+{
+  Standard_Size aSize = 0;
+  for (Standard_Integer anIter = myVertsVbo.Lower(); anIter <= myVertsVbo.Upper(); ++anIter)
+  {
+    if (const Handle(OpenGl_VertexBuffer)& aVerts = myVertsVbo.Value (anIter))
+    {
+      aSize += aVerts->EstimatedDataSize();
+    }
+    if (const Handle(OpenGl_VertexBuffer)& aTCrds = myTCrdsVbo.Value (anIter))
+    {
+      aSize += aTCrds->EstimatedDataSize();
+    }
+  }
+  if (!myBndVertsVbo.IsNull())
+  {
+    aSize += myBndVertsVbo->EstimatedDataSize();
+  }
+  return aSize;
+}
+
+// =======================================================================
 // function : StringSize
 // purpose  :
 // =======================================================================
@@ -278,12 +303,12 @@ void OpenGl_Text::StringSize (const Handle(OpenGl_Context)& theCtx,
 // =======================================================================
 void OpenGl_Text::Render (const Handle(OpenGl_Workspace)& theWorkspace) const
 {
-  const OpenGl_Aspects* aTextAspect = theWorkspace->ApplyAspects();
+  const OpenGl_Aspects* aTextAspect = theWorkspace->ApplyAspects (false); // do not bind textures as they will be disabled anyway
   const Handle(OpenGl_Context)& aCtx = theWorkspace->GetGlContext();
-  const Handle(OpenGl_TextureSet) aPrevTexture = aCtx->BindTextures (Handle(OpenGl_TextureSet)());
 
   // Bind custom shader program or generate default version
   aCtx->ShaderManager()->BindFontProgram (aTextAspect->ShaderProgramRes (aCtx));
+  const Handle(OpenGl_TextureSet) aPrevTexture = aCtx->BindTextures (Handle(OpenGl_TextureSet)(), Handle(OpenGl_ShaderProgram)());
 
   if (myText->HasPlane() && myText->HasOwnAnchorPoint())
   {
@@ -306,7 +331,7 @@ void OpenGl_Text::Render (const Handle(OpenGl_Workspace)& theWorkspace) const
   // restore aspects
   if (!aPrevTexture.IsNull())
   {
-    aCtx->BindTextures (aPrevTexture);
+    aCtx->BindTextures (aPrevTexture, Handle(OpenGl_ShaderProgram)());
   }
 
   // restore Z buffer settings
@@ -832,4 +857,24 @@ void OpenGl_Text::render (const Handle(OpenGl_Context)& theCtx,
   // model view matrix was modified
   theCtx->WorldViewState.Pop();
   theCtx->ApplyModelViewMatrix();
+}
+
+// =======================================================================
+// function : DumpJson
+// purpose  :
+// =======================================================================
+void OpenGl_Text::DumpJson (Standard_OStream& theOStream, Standard_Integer theDepth) const
+{
+  OCCT_DUMP_CLASS_BEGIN (theOStream, OpenGl_Text)
+  OCCT_DUMP_BASE_CLASS (theOStream, theDepth, OpenGl_Element)
+
+  OCCT_DUMP_FIELD_VALUE_NUMERICAL (theOStream, myTextures.Size())
+
+  for (NCollection_Vector<Handle(OpenGl_VertexBuffer)>::Iterator aCrdsIt (myTCrdsVbo); aCrdsIt.More(); aCrdsIt.Next())
+  {
+    const Handle(OpenGl_VertexBuffer)& aVertexBuffer = aCrdsIt.Value();
+    OCCT_DUMP_FIELD_VALUES_DUMPED (theOStream, theDepth, aVertexBuffer.get())
+  }
+
+  OCCT_DUMP_FIELD_VALUES_DUMPED (theOStream, theDepth, &myBndBox)
 }

@@ -39,6 +39,8 @@
 #include <OpenGl_Structure.hxx>
 #include <OpenGl_ArbFBO.hxx>
 
+#include "../Textures/Textures_EnvLUT.pxx"
+
 namespace
 {
   //! Format Frame Buffer format for logging messages.
@@ -180,9 +182,19 @@ void OpenGl_View::Redraw()
   ++myFrameCounter;
   const Graphic3d_StereoMode   aStereoMode  = myRenderParams.StereoMode;
   Graphic3d_Camera::Projection aProjectType = myCamera->ProjectionType();
-  Handle(OpenGl_Context)       aCtx         = myWorkspace->GetGlContext();
+  const Handle(OpenGl_Context)& aCtx        = myWorkspace->GetGlContext();
   aCtx->FrameStats()->FrameStart (myWorkspace->View(), false);
   aCtx->SetLineFeather (myRenderParams.LineFeather);
+
+  const Standard_Integer anSRgbState = aCtx->ToRenderSRGB() ? 1 : 0;
+  if (mySRgbState != -1
+   && mySRgbState != anSRgbState)
+  {
+    releaseSrgbResources (aCtx);
+    initTextureEnv (aCtx);
+  }
+  mySRgbState = anSRgbState;
+  aCtx->ShaderManager()->UpdateSRgbState();
 
   // release pending GL resources
   aCtx->ReleaseDelayed();
@@ -332,6 +344,65 @@ void OpenGl_View::Redraw()
         aProjectType = Graphic3d_Camera::Projection_Perspective;
       }
     }
+  }
+
+  // process PBR environment
+  if (myShadingModel == Graphic3d_TOSM_PBR
+   || myShadingModel == Graphic3d_TOSM_PBR_FACET)
+  {
+    if (!myPBREnvironment.IsNull()
+      && myPBREnvironment->SizesAreDifferent (myRenderParams.PbrEnvPow2Size,
+                                              myRenderParams.PbrEnvSpecMapNbLevels))
+    {
+      myPBREnvironment->Release (aCtx.get());
+      myPBREnvironment.Nullify();
+      myPBREnvState = OpenGl_PBREnvState_NONEXISTENT;
+      myPBREnvRequest = OpenGl_PBREnvRequest_BAKE;
+      ++myLightsRevision;
+    }
+
+    if (myPBREnvState == OpenGl_PBREnvState_NONEXISTENT
+     && aCtx->HasPBR())
+    {
+      myPBREnvironment = OpenGl_PBREnvironment::Create (aCtx, myRenderParams.PbrEnvPow2Size, myRenderParams.PbrEnvSpecMapNbLevels);
+      myPBREnvState = myPBREnvironment.IsNull() ? OpenGl_PBREnvState_UNAVAILABLE : OpenGl_PBREnvState_CREATED;
+      if (myPBREnvState == OpenGl_PBREnvState_CREATED)
+      {
+        Handle(OpenGl_Texture) anEnvLUT;
+        static const TCollection_AsciiString THE_SHARED_ENV_LUT_KEY("EnvLUT");
+        if (!aCtx->GetResource (THE_SHARED_ENV_LUT_KEY, anEnvLUT))
+        {
+          Handle(Graphic3d_TextureParams) aParams = new Graphic3d_TextureParams();
+          aParams->SetFilter (Graphic3d_TOTF_BILINEAR);
+          aParams->SetRepeat (Standard_False);
+          aParams->SetTextureUnit (aCtx->PBREnvLUTTexUnit());
+          anEnvLUT = new OpenGl_Texture(THE_SHARED_ENV_LUT_KEY, aParams);
+          Handle(Image_PixMap) aPixMap = new Image_PixMap();
+          aPixMap->InitWrapper (Image_Format_RGF, (Standard_Byte*)Textures_EnvLUT, Textures_EnvLUTSize, Textures_EnvLUTSize);
+          OpenGl_TextureFormat aTexFormat = OpenGl_TextureFormat::FindFormat (aCtx, aPixMap->Format(), false);
+        #if defined(GL_ES_VERSION_2_0)
+          // GL_RG32F is not texture-filterable format on OpenGL ES without OES_texture_float_linear extension.
+          // GL_RG16F is texture-filterable since OpenGL ES 3.0 and can be initialized from 32-bit floats.
+          // Note that it is expected that GL_RG16F has enough precision for this table, so that it can be used also on desktop OpenGL.
+          //if (!aCtx->hasTexFloatLinear)
+          aTexFormat.SetInternalFormat (GL_RG16F);
+        #endif
+          if (!aTexFormat.IsValid()
+           || !anEnvLUT->Init (aCtx, aTexFormat, Graphic3d_Vec2i((Standard_Integer)Textures_EnvLUTSize), Graphic3d_TOT_2D, aPixMap.get()))
+          {
+            aCtx->PushMessage (GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, 0, GL_DEBUG_SEVERITY_HIGH, "Failed allocation of LUT for PBR");
+            anEnvLUT.Nullify();
+          }
+          aCtx->ShareResource (THE_SHARED_ENV_LUT_KEY, anEnvLUT);
+        }
+        if (!anEnvLUT.IsNull())
+        {
+          anEnvLUT->Bind (aCtx);
+        }
+        myWorkspace->ApplyAspects();
+      }
+    }
+    processPBREnvRequest (aCtx);
   }
 
   // create color and coverage accumulation buffers required for OIT algorithm
@@ -799,7 +870,7 @@ void OpenGl_View::redraw (const Graphic3d_Camera::Projection theProjection,
   glClearDepthf (1.0f);
 #endif
 
-  const OpenGl_Vec4& aBgColor = myBgColor;
+  const OpenGl_Vec4 aBgColor = aCtx->Vec4FromQuantityColor (myBgColor);
   glClearColor (aBgColor.r(), aBgColor.g(), aBgColor.b(), 0.0f);
 
   glClear (toClear);
@@ -928,7 +999,7 @@ void OpenGl_View::render (Graphic3d_Camera::Projection theProjection,
    || aLightsRevision != myLightsRevision)
   {
     myLightsRevision = aLightsRevision;
-    aManager->UpdateLightSourceStateTo (aLights);
+    aManager->UpdateLightSourceStateTo (aLights, SpecIBLMapLevels());
     myLastLightSourceState = StateInfo (myCurrLightSourceState, aManager->LightSourceState().Index());
   }
 
@@ -1010,7 +1081,7 @@ void OpenGl_View::render (Graphic3d_Camera::Projection theProjection,
   }
 #endif
 
-  aManager->SetShadingModel (myShadingModel);
+  aManager->SetShadingModel (OpenGl_ShaderManager::PBRShadingModelFallback (myShadingModel, checkPBRAvailability()));
 
   // Redraw 3d scene
   if (theProjection == Graphic3d_Camera::Projection_MonoLeftEye)
@@ -1143,6 +1214,7 @@ void OpenGl_View::renderStructs (Graphic3d_Camera::Projection theProjection,
           else
           {
             aCtx->arbFBO->glBindFramebuffer (GL_DRAW_FRAMEBUFFER, 0);
+            aCtx->SetFrameBufferSRGB (false);
           }
 
           // Render non-polygonal elements in default layer
@@ -1158,6 +1230,7 @@ void OpenGl_View::renderStructs (Graphic3d_Camera::Projection theProjection,
       else
       {
         aCtx->arbFBO->glBindFramebuffer (GL_FRAMEBUFFER, 0);
+        aCtx->SetFrameBufferSRGB (false);
       }
 
       // Reset OpenGl aspects state to default to avoid enabling of
@@ -1238,7 +1311,7 @@ void OpenGl_View::renderScene (Graphic3d_Camera::Projection theProjection,
   }
 
   renderStructs (theProjection, theReadDrawFbo, theOitAccumFbo, theToDrawImmediate);
-  aContext->BindTextures (Handle(OpenGl_TextureSet)());
+  aContext->BindTextures (Handle(OpenGl_TextureSet)(), Handle(OpenGl_ShaderProgram)());
 
   // Apply restored view matrix.
   aContext->ApplyWorldViewMatrix();
@@ -1355,6 +1428,7 @@ bool OpenGl_View::blitBuffers (OpenGl_FrameBuffer*    theReadFbo,
   else
   {
     aCtx->arbFBO->glBindFramebuffer (GL_FRAMEBUFFER, OpenGl_FrameBuffer::NO_FRAMEBUFFER);
+    aCtx->SetFrameBufferSRGB (false);
   }
   const Standard_Integer aViewport[4] = { 0, 0, aDrawSizeX, aDrawSizeY };
   aCtx->ResizeViewport (aViewport);
@@ -1366,8 +1440,10 @@ bool OpenGl_View::blitBuffers (OpenGl_FrameBuffer*    theReadFbo,
 #endif
   aCtx->core20fwd->glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
+  const bool toApplyGamma = aCtx->ToRenderSRGB() != aCtx->IsFrameBufferSRGB();
   if (aCtx->arbFBOBlit != NULL
-   && theReadFbo->NbSamples() != 0)
+  && !toApplyGamma
+  &&  theReadFbo->NbSamples() != 0)
   {
     GLbitfield aCopyMask = 0;
     theReadFbo->BindReadBuffer (aCtx);
@@ -1397,6 +1473,7 @@ bool OpenGl_View::blitBuffers (OpenGl_FrameBuffer*    theReadFbo,
         aCopyMask |= GL_DEPTH_BUFFER_BIT;
       }
       aCtx->arbFBO->glBindFramebuffer (GL_DRAW_FRAMEBUFFER, OpenGl_FrameBuffer::NO_FRAMEBUFFER);
+      aCtx->SetFrameBufferSRGB (false);
     }
 
     // we don't copy stencil buffer here... does it matter for performance?
@@ -1437,6 +1514,7 @@ bool OpenGl_View::blitBuffers (OpenGl_FrameBuffer*    theReadFbo,
     else
     {
       aCtx->arbFBO->glBindFramebuffer (GL_FRAMEBUFFER, OpenGl_FrameBuffer::NO_FRAMEBUFFER);
+      aCtx->SetFrameBufferSRGB (false);
     }
   }
   else
@@ -1452,7 +1530,7 @@ bool OpenGl_View::blitBuffers (OpenGl_FrameBuffer*    theReadFbo,
     }
   #endif
 
-    aCtx->BindTextures (Handle(OpenGl_TextureSet)());
+    aCtx->BindTextures (Handle(OpenGl_TextureSet)(), Handle(OpenGl_ShaderProgram)());
 
     const Graphic3d_TypeOfTextureFilter aFilter = (aDrawSizeX == aReadSizeX && aDrawSizeY == aReadSizeY) ? Graphic3d_TOTF_NEAREST : Graphic3d_TOTF_BILINEAR;
     const GLint aFilterGl = aFilter == Graphic3d_TOTF_NEAREST ? GL_NEAREST : GL_LINEAR;
@@ -1460,7 +1538,7 @@ bool OpenGl_View::blitBuffers (OpenGl_FrameBuffer*    theReadFbo,
     OpenGl_VertexBuffer* aVerts = initBlitQuad (theToFlip);
     const Handle(OpenGl_ShaderManager)& aManager = aCtx->ShaderManager();
     if (aVerts->IsValid()
-     && aManager->BindFboBlitProgram())
+     && aManager->BindFboBlitProgram (theReadFbo != NULL ? theReadFbo->NbSamples() : 0, toApplyGamma))
     {
       aCtx->SetSampleAlphaToCoverage (false);
       theReadFbo->ColorTexture()->Bind (aCtx, Graphic3d_TextureUnit_0);
@@ -1596,7 +1674,7 @@ void OpenGl_View::drawStereoPair (OpenGl_FrameBuffer* theDrawFbo)
   aCtx->core20fwd->glDepthMask (GL_TRUE);
   aCtx->core20fwd->glEnable (GL_DEPTH_TEST);
 
-  aCtx->BindTextures (Handle(OpenGl_TextureSet)());
+  aCtx->BindTextures (Handle(OpenGl_TextureSet)(), Handle(OpenGl_ShaderProgram)());
   OpenGl_VertexBuffer* aVerts = initBlitQuad (myToFlipOutput);
 
   const Handle(OpenGl_ShaderManager)& aManager = aCtx->ShaderManager();
@@ -1830,4 +1908,65 @@ bool OpenGl_View::chooseOitColorConfiguration (const Handle(OpenGl_Context)& the
     }
   }
   return false; // color combination does not exist
+}
+
+// =======================================================================
+// function : checkPBRAvailability
+// purpose  :
+// =======================================================================
+Standard_Boolean OpenGl_View::checkPBRAvailability() const
+{
+  return myWorkspace->GetGlContext()->HasPBR()
+      && !myPBREnvironment.IsNull();
+}
+
+// =======================================================================
+// function : bakePBREnvironment
+// purpose  :
+// =======================================================================
+void OpenGl_View::bakePBREnvironment (const Handle(OpenGl_Context)& theCtx)
+{
+  const Handle(OpenGl_TextureSet)& aTextureSet = myCubeMapParams->TextureSet (theCtx);
+  if (!aTextureSet.IsNull()
+   && !aTextureSet->IsEmpty())
+  {
+    myPBREnvironment->Bake (theCtx,
+                            aTextureSet->First(),
+                            myBackgroundCubeMap->ZIsInverted(),
+                            myBackgroundCubeMap->IsTopDown(),
+                            myRenderParams.PbrEnvBakingDiffNbSamples,
+                            myRenderParams.PbrEnvBakingSpecNbSamples,
+                            myRenderParams.PbrEnvBakingProbability);
+  }
+  else
+  {
+    myPBREnvironment->Clear (theCtx);
+  }
+}
+
+// =======================================================================
+// function : clearPBREnvironment
+// purpose  :
+// =======================================================================
+void OpenGl_View::clearPBREnvironment (const Handle(OpenGl_Context)& theCtx)
+{
+  myPBREnvironment->Clear (theCtx);
+}
+
+// =======================================================================
+// function : clearPBREnvironment
+// purpose  :
+// =======================================================================
+void OpenGl_View::processPBREnvRequest (const Handle(OpenGl_Context)& theCtx)
+{
+  if (myPBREnvState == OpenGl_PBREnvState_CREATED)
+  {
+    switch (myPBREnvRequest)
+    {
+      case OpenGl_PBREnvRequest_NONE:  return;
+      case OpenGl_PBREnvRequest_BAKE:  bakePBREnvironment  (theCtx); break;
+      case OpenGl_PBREnvRequest_CLEAR: clearPBREnvironment (theCtx); break;
+    }
+  }
+  myPBREnvRequest = OpenGl_PBREnvRequest_NONE;
 }

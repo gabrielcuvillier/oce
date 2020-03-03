@@ -60,8 +60,14 @@ public:
   //! Return TRUE if primitive type generates shaded triangulation (to be used in filters).
   virtual Standard_Boolean IsFillDrawMode() const { return false; }
 
+  //! Returns estimated GPU memory usage for holding data without considering overheads and allocation alignment rules.
+  virtual Standard_Size EstimatedDataSize() const { return 0; }
+
   //! Update parameters of the drawable elements.
   virtual void SynchronizeAspects() {}
+
+  //! Dumps the content of me into the stream
+  Standard_EXPORT virtual void DumpJson (Standard_OStream& theOStream, Standard_Integer theDepth = -1) const;
 
 protected:
 

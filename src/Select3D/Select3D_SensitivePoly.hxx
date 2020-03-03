@@ -56,7 +56,7 @@ public:
                                           const Standard_Integer theNbPnts = 6);
 
   //! Returns the amount of segments in poly
-  Standard_EXPORT virtual Standard_Integer NbSubElements() Standard_OVERRIDE;
+  Standard_EXPORT virtual Standard_Integer NbSubElements() const Standard_OVERRIDE;
 
   //! Returns the 3D points of the array used at construction time.
   void Points3D (Handle(TColgp_HArray1OfPnt)& theHArrayOfPnt)
@@ -91,6 +91,9 @@ public:
   //! Swaps items with indexes theIdx1 and theIdx2 in the vector
   Standard_EXPORT virtual void Swap (const Standard_Integer theIdx1,
                                      const Standard_Integer theIdx2) Standard_OVERRIDE;
+
+  //! Dumps the content of me into the stream
+  Standard_EXPORT virtual void DumpJson (Standard_OStream& theOStream, Standard_Integer theDepth = -1) const Standard_OVERRIDE;
 
 protected:
 

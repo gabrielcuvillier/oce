@@ -138,6 +138,8 @@ Cocoa_Window::Cocoa_Window (const Standard_CString theTitle,
   {
     throw Aspect_WindowDefinitionError("Unable to create window");
   }
+  // for the moment, OpenGL renderer is expected to output sRGB colorspace
+  [myHWindow setColorSpace: [NSColorSpace sRGBColorSpace]];
   myHView = [[myHWindow contentView] retain];
 
   NSString* aTitleNs = [[NSString alloc] initWithUTF8String: theTitle];
@@ -291,7 +293,7 @@ void Cocoa_Window::Unmap() const
 // function : DoResize
 // purpose  :
 // =======================================================================
-Aspect_TypeOfResize Cocoa_Window::DoResize() const
+Aspect_TypeOfResize Cocoa_Window::DoResize()
 {
   if (myHView == NULL)
   {
@@ -324,10 +326,10 @@ Aspect_TypeOfResize Cocoa_Window::DoResize() const
     default: break;
   }
 
-  *((Standard_Integer* )&myXLeft   ) = (Standard_Integer )aBounds.origin.x;
-  *((Standard_Integer* )&myXRight  ) = (Standard_Integer )(aBounds.origin.x + aBounds.size.width);
-  *((Standard_Integer* )&myYTop    ) = (Standard_Integer )aBounds.origin.y;
-  *((Standard_Integer* )&myYBottom ) = (Standard_Integer )(aBounds.origin.y + aBounds.size.height);
+  myXLeft   = (Standard_Integer )aBounds.origin.x;
+  myXRight  = (Standard_Integer )(aBounds.origin.x + aBounds.size.width);
+  myYTop    = (Standard_Integer )aBounds.origin.y;
+  myYBottom = (Standard_Integer )(aBounds.origin.y + aBounds.size.height);
   return aMode;
 }
 

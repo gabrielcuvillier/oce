@@ -54,34 +54,46 @@ namespace
 // function : Init
 // purpose  :
 // =======================================================================
-void OpenGl_Material::Init (const Graphic3d_MaterialAspect& theMat,
-                            const Quantity_Color&           theInteriorColor)
+void OpenGl_Material::Init (const OpenGl_Context& theCtx,
+                            const Graphic3d_MaterialAspect& theMat,
+                            const Quantity_Color& theInteriorColor)
 {
-  ChangeShine()        = 128.0f * theMat.Shininess();
-  ChangeTransparency() = theMat.Alpha();
+  Common.ChangeShine()        = 128.0f * theMat.Shininess();
+  Common.ChangeTransparency() = theMat.Alpha();
+
+  Pbr.ChangeMetallic()  = theMat.PBRMaterial().Metallic();
+  Pbr.ChangeRoughness() = theMat.PBRMaterial().NormalizedRoughness();
+  Pbr.EmissionIOR = Graphic3d_Vec4 (theMat.PBRMaterial().Emission(), theMat.PBRMaterial().IOR());
 
   const OpenGl_Vec3& aSrcAmb = theMat.AmbientColor();
   const OpenGl_Vec3& aSrcDif = theMat.DiffuseColor();
   const OpenGl_Vec3& aSrcSpe = theMat.SpecularColor();
   const OpenGl_Vec3& aSrcEms = theMat.EmissiveColor();
-  Specular.SetValues (aSrcSpe, 1.0f); // interior color is ignored for Specular
+  Common.Specular.SetValues (aSrcSpe, 1.0f); // interior color is ignored for Specular
   switch (theMat.MaterialType())
   {
     case Graphic3d_MATERIAL_ASPECT:
     {
-      Ambient .SetValues (aSrcAmb * theInteriorColor, 1.0f);
-      Diffuse .SetValues (aSrcDif * theInteriorColor, 1.0f);
-      Emission.SetValues (aSrcEms * theInteriorColor, 1.0f);
+      Common.Ambient .SetValues (aSrcAmb * theInteriorColor, 1.0f);
+      Common.Diffuse .SetValues (aSrcDif * theInteriorColor, 1.0f);
+      Common.Emission.SetValues (aSrcEms * theInteriorColor, 1.0f);
+      Pbr  .BaseColor.SetValues (theInteriorColor, theMat.Alpha());
       break;
     }
     case Graphic3d_MATERIAL_PHYSIC:
     {
-      Ambient .SetValues (aSrcAmb, 1.0f);
-      Diffuse .SetValues (aSrcDif, 1.0f);
-      Emission.SetValues (aSrcEms, 1.0f);
+      Common.Ambient .SetValues (aSrcAmb, 1.0f);
+      Common.Diffuse .SetValues (aSrcDif, 1.0f);
+      Common.Emission.SetValues (aSrcEms, 1.0f);
+      Pbr.BaseColor = theMat.PBRMaterial().Color();
       break;
     }
   }
+
+  Common.Ambient  = theCtx.Vec4FromQuantityColor (Common.Ambient);
+  Common.Diffuse  = theCtx.Vec4FromQuantityColor (Common.Diffuse);
+  Common.Specular = theCtx.Vec4FromQuantityColor (Common.Specular);
+  Common.Emission = theCtx.Vec4FromQuantityColor (Common.Emission);
 }
 
 // =======================================================================
@@ -186,7 +198,7 @@ void OpenGl_Workspace::ResetAppliedAspect()
   myGlContext->SetPolygonOffset (Graphic3d_PolygonOffset());
 
   ApplyAspects();
-  myGlContext->SetTypeOfLine (myDefaultAspects.Aspect()->LineType());
+  myGlContext->SetLineStipple(myDefaultAspects.Aspect()->LinePattern());
   myGlContext->SetLineWidth  (myDefaultAspects.Aspect()->LineWidth());
   if (myGlContext->core15fwd != NULL)
   {
@@ -226,7 +238,7 @@ const OpenGl_Aspects* OpenGl_Workspace::SetAspects (const OpenGl_Aspects* theAsp
 // function : ApplyAspects
 // purpose  :
 // =======================================================================
-const OpenGl_Aspects* OpenGl_Workspace::ApplyAspects()
+const OpenGl_Aspects* OpenGl_Workspace::ApplyAspects (bool theToBindTextures)
 {
   if (myView->BackfacingModel() == Graphic3d_TOBM_AUTOMATIC)
   {
@@ -293,15 +305,18 @@ const OpenGl_Aspects* OpenGl_Workspace::ApplyAspects()
     myGlContext->SetShadingMaterial (myAspectsSet, myHighlightStyle);
   }
 
-  const Handle(OpenGl_TextureSet)& aTextureSet = myAspectsSet->TextureSet (myGlContext, ToHighlight());
-  if (!aTextureSet.IsNull()
-   || myAspectsSet->Aspect()->ToMapTexture())
+  if (theToBindTextures)
   {
-    myGlContext->BindTextures (aTextureSet);
+    const Handle(OpenGl_TextureSet)& aTextureSet = TextureSet();
+    myGlContext->BindTextures (aTextureSet, Handle(OpenGl_ShaderProgram)());
   }
-  else
+
+  if ((myView->myShadingModel == Graphic3d_TOSM_PBR
+    || myView->myShadingModel == Graphic3d_TOSM_PBR_FACET)
+   && !myView->myPBREnvironment.IsNull()
+   &&  myView->myPBREnvironment->IsNeededToBeBound())
   {
-    myGlContext->BindTextures (myEnvironmentTexture);
+    myView->myPBREnvironment->Bind (myGlContext);
   }
 
   myAspectsApplied = myAspectsSet->Aspect();
@@ -339,9 +354,9 @@ Handle(OpenGl_FrameBuffer) OpenGl_Workspace::FBOCreate (const Standard_Integer t
 
   // create the FBO
   const Handle(OpenGl_Context)& aCtx = GetGlContext();
-  aCtx->BindTextures (Handle(OpenGl_TextureSet)());
+  aCtx->BindTextures (Handle(OpenGl_TextureSet)(), Handle(OpenGl_ShaderProgram)());
   Handle(OpenGl_FrameBuffer) aFrameBuffer = new OpenGl_FrameBuffer();
-  if (!aFrameBuffer->Init (aCtx, theWidth, theHeight, GL_RGBA8, GL_DEPTH24_STENCIL8, 0))
+  if (!aFrameBuffer->Init (aCtx, theWidth, theHeight, GL_SRGB8_ALPHA8, GL_DEPTH24_STENCIL8, 0))
   {
     aFrameBuffer->Release (aCtx.operator->());
     return Handle(OpenGl_FrameBuffer)();
@@ -430,4 +445,31 @@ bool OpenGl_Workspace::ShouldRender (const OpenGl_Element* theElement)
     }
   }
   return true;
+}
+
+// =======================================================================
+// function : DumpJson
+// purpose  :
+// =======================================================================
+void OpenGl_Workspace::DumpJson (Standard_OStream& theOStream, Standard_Integer theDepth) const
+{
+  OCCT_DUMP_TRANSIENT_CLASS_BEGIN (theOStream)
+
+  OCCT_DUMP_FIELD_VALUE_NUMERICAL (theOStream, myUseZBuffer)
+  OCCT_DUMP_FIELD_VALUE_NUMERICAL (theOStream, myUseDepthWrite)
+
+  OCCT_DUMP_FIELD_VALUES_DUMPED (theOStream, theDepth, &myNoneCulling)
+  OCCT_DUMP_FIELD_VALUES_DUMPED (theOStream, theDepth, &myFrontCulling)
+
+  OCCT_DUMP_FIELD_VALUE_NUMERICAL (theOStream, myNbSkippedTranspElems)
+  OCCT_DUMP_FIELD_VALUE_NUMERICAL (theOStream, myRenderFilter)
+
+  OCCT_DUMP_FIELD_VALUES_DUMPED (theOStream, theDepth, &myDefaultAspects)
+
+  OCCT_DUMP_FIELD_VALUES_DUMPED (theOStream, theDepth, myAspectsSet)
+  OCCT_DUMP_FIELD_VALUES_DUMPED (theOStream, theDepth, myAspectsApplied.get())
+
+  OCCT_DUMP_FIELD_VALUE_NUMERICAL (theOStream, myToAllowFaceCulling)
+
+  OCCT_DUMP_FIELD_VALUES_DUMPED (theOStream, theDepth, &myAspectFaceHl)
 }

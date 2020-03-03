@@ -18,6 +18,8 @@
 #include <Standard_Overflow.hxx>
 #include <Standard_Assert.hxx>
 
+#include <Standard_WarningDisableFunctionCast.hxx>
+
 static OSD_SignalMode OSD_WasSetSignal = OSD_SignalMode_AsIs;
 
 //=======================================================================
@@ -703,7 +705,7 @@ typedef void (* SIG_PFV) (int);
 
 #include <signal.h>
 
-#if !defined(__ANDROID__) && !defined(__QNX__)
+#if !defined(__ANDROID__) && !defined(__QNX__) && !defined(__EMSCRIPTEN__)
   #include <sys/signal.h>
 #endif
 

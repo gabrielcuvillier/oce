@@ -300,10 +300,9 @@ Handle(Geom2d_Curve)  GeomPlate_BuildPlateSurface::ProjectCurve(const Handle(Ada
    Projector.Bounds(1, Udeb, Ufin);
    
    MaxSeg = 20 + HProjector->NbIntervals(GeomAbs_C3);
-   Approx_CurveOnSurface appr(HProjector, hsur, Udeb, Ufin, myTol3d,
-			      Continuity, MaxDegree, MaxSeg, 
-			      Standard_False, Standard_True);
-   
+   Approx_CurveOnSurface appr(HProjector, hsur, Udeb, Ufin, myTol3d);
+   appr.Perform(MaxSeg, MaxDegree, Continuity, Standard_False, Standard_True);
+
    Curve2d = appr.Curve2d();
  }
 #if DRAW
@@ -1014,7 +1013,7 @@ Disc3dContour (const Standard_Integer /*nbp*/,
   for(i=1; i<=NTCurve; i++) 
     if (myLinCont->Value(i)->Order()!=-1) 
       
-      { Standard_Integer NbPt=myParCont->Value(i).Length();;
+      { Standard_Integer NbPt=myParCont->Value(i).Length();
 	// first constraint point (j=0)
 	// Standard_Integer NbPt=myParCont->Length();
 	if (iordre==0) {

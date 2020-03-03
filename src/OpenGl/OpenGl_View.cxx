@@ -57,7 +57,8 @@ OpenGl_View::OpenGl_View (const Handle(Graphic3d_StructureManager)& theMgr,
   myCurrLightSourceState (theCounter->Increment()),
   myLightsRevision       (0),
   myLastLightSourceState (0, 0),
-  myFboColorFormat       (GL_RGBA8),
+  mySRgbState            (-1),
+  myFboColorFormat       (GL_SRGB8_ALPHA8), // note that GL_SRGB8 is not required to be renderable, unlike GL_RGB8, GL_RGBA8, GL_SRGB8_ALPHA8
   myFboDepthFormat       (GL_DEPTH24_STENCIL8),
   myToFlipOutput         (Standard_False),
   myFrameCounter         (0),
@@ -71,6 +72,8 @@ OpenGl_View::OpenGl_View (const Handle(Graphic3d_StructureManager)& theMgr,
   myTextureParams   (new OpenGl_Aspects()),
   myCubeMapParams   (new OpenGl_Aspects()),
   myBackgroundType  (Graphic3d_TOB_NONE),
+  myPBREnvState     (OpenGl_PBREnvState_NONEXISTENT),
+  myPBREnvRequest   (OpenGl_PBREnvRequest_NONE),
   // ray-tracing fields initialization
   myRaytraceInitStatus     (OpenGl_RT_NONE),
   myIsRaytraceDataValid    (Standard_False),
@@ -96,6 +99,7 @@ OpenGl_View::OpenGl_View (const Handle(Graphic3d_StructureManager)& theMgr,
   Handle(Graphic3d_CLight) aLight = new Graphic3d_CLight (Graphic3d_TOLS_AMBIENT);
   aLight->SetHeadlight (false);
   aLight->SetColor (Quantity_NOC_WHITE);
+  myLights = new Graphic3d_LightSet();
   myNoShadingLight = new Graphic3d_LightSet();
   myNoShadingLight->Add (aLight);
 
@@ -132,13 +136,12 @@ OpenGl_View::~OpenGl_View()
 }
 
 // =======================================================================
-// function : ReleaseGlResources
+// function : releaseSrgbResources
 // purpose  :
 // =======================================================================
-void OpenGl_View::ReleaseGlResources (const Handle(OpenGl_Context)& theCtx)
+void OpenGl_View::releaseSrgbResources (const Handle(OpenGl_Context)& theCtx)
 {
-  myGraduatedTrihedron.Release (theCtx.get());
-  myFrameStatsPrs.Release (theCtx.get());
+  myRenderParams.RebuildRayTracingShaders = true;
 
   if (!myTextureEnv.IsNull())
   {
@@ -184,7 +187,28 @@ void OpenGl_View::ReleaseGlResources (const Handle(OpenGl_Context)& theCtx)
   myFullScreenQuad           .Release (theCtx.get());
   myFullScreenQuadFlip       .Release (theCtx.get());
 
+  // Technically we should also re-initialize all sRGB/RGB8 color textures.
+  // But for now consider this sRGB disabling/enabling to be done at application start-up
+  // and re-create dynamically only frame buffers.
+}
+
+// =======================================================================
+// function : ReleaseGlResources
+// purpose  :
+// =======================================================================
+void OpenGl_View::ReleaseGlResources (const Handle(OpenGl_Context)& theCtx)
+{
+  myGraduatedTrihedron.Release (theCtx.get());
+  myFrameStatsPrs.Release (theCtx.get());
+
+  releaseSrgbResources (theCtx);
+
   releaseRaytraceResources (theCtx);
+
+  if (!myPBREnvironment.IsNull())
+  {
+    myPBREnvironment->Release (theCtx.get());
+  }
 }
 
 // =======================================================================
@@ -253,14 +277,13 @@ void OpenGl_View::initTextureEnv (const Handle(OpenGl_Context)& theContext)
     return;
   }
 
-  myTextureEnv = new OpenGl_TextureSet (1);
-  Handle(OpenGl_Texture)& aTextureEnv = myTextureEnv->ChangeFirst();
-  aTextureEnv = new OpenGl_Texture (myTextureEnvData->GetId(), myTextureEnvData->GetParams());
-  Handle(Image_PixMap) anImage = myTextureEnvData->GetImage();
-  if (!anImage.IsNull())
+  Handle(OpenGl_Texture) aTextureEnv = new OpenGl_Texture (myTextureEnvData->GetId(), myTextureEnvData->GetParams());
+  if (Handle(Image_PixMap) anImage = myTextureEnvData->GetImage())
   {
-    aTextureEnv->Init (theContext, *anImage.operator->(), myTextureEnvData->Type());
+    aTextureEnv->Init (theContext, *anImage, myTextureEnvData->Type(), true);
   }
+  myTextureEnv = new OpenGl_TextureSet (aTextureEnv);
+  myTextureEnv->ChangeTextureSetBits() = Graphic3d_TextureSetBits_BaseColor;
 }
 
 // =======================================================================
@@ -513,37 +536,56 @@ Handle(Graphic3d_CubeMap) OpenGl_View::BackgroundCubeMap() const
 {
   return myBackgroundCubeMap;
 }
+
+// =======================================================================
+// function : SpecIBLMapLevels
+// purpose  :
+// =======================================================================
+unsigned int OpenGl_View::SpecIBLMapLevels() const
+{
+  return myPBREnvironment.IsNull() ? 0 : myPBREnvironment->SpecMapLevelsNumber();
+}
  
 // =======================================================================
 // function : SetBackgroundCubeMap
 // purpose  :
 // =======================================================================
-void OpenGl_View::SetBackgroundCubeMap (const Handle(Graphic3d_CubeMap)& theCubeMap)
+void OpenGl_View::SetBackgroundCubeMap (const Handle(Graphic3d_CubeMap)& theCubeMap,
+                                        Standard_Boolean theToUpdatePBREnv)
 {
   myBackgroundCubeMap = theCubeMap;
-  Handle(Graphic3d_AspectFillArea3d) anAspect = new Graphic3d_AspectFillArea3d;
-  Handle(Graphic3d_TextureSet) aTextureSet = new Graphic3d_TextureSet (myBackgroundCubeMap);
+  if (theCubeMap.IsNull())
+  {
+    if (theToUpdatePBREnv)
+    {
+      myPBREnvRequest = OpenGl_PBREnvRequest_CLEAR;
+    }
+    if (myBackgroundType == Graphic3d_TOB_CUBEMAP)
+    {
+      myBackgroundType = Graphic3d_TOB_NONE;
+    }
+    return;
+  }
 
-  anAspect->SetInteriorStyle(Aspect_IS_SOLID);
-  anAspect->SetSuppressBackFaces(false);
-  anAspect->SetTextureSet(aTextureSet);
+  theCubeMap ->SetMipmapsGeneration (Standard_True);
+  Handle(Graphic3d_AspectFillArea3d) anAspect = new Graphic3d_AspectFillArea3d();
+  Handle(Graphic3d_TextureSet) aTextureSet = new Graphic3d_TextureSet (myBackgroundCubeMap);
+  anAspect->SetInteriorStyle (Aspect_IS_SOLID);
+  anAspect->SetSuppressBackFaces (false);
+  anAspect->SetTextureSet (aTextureSet);
 
   const Handle(OpenGl_Context)& aCtx = myWorkspace->GetGlContext();
   if (!aCtx.IsNull())
   {
     anAspect->SetShaderProgram (aCtx->ShaderManager()->GetBgCubeMapProgram());
   }
+  anAspect->SetTextureMapOn (theCubeMap->IsDone());
+  myCubeMapParams->SetAspect (anAspect);
 
-  if (theCubeMap->IsDone())
+  if (theToUpdatePBREnv)
   {
-    anAspect->SetTextureMapOn();
+    myPBREnvRequest = OpenGl_PBREnvRequest_BAKE;
   }
-  else
-  {
-    anAspect->SetTextureMapOff();
-  }
-
-  myCubeMapParams->SetAspect(anAspect);
   const OpenGl_Aspects* anAspectsBackup = myWorkspace->SetAspects (myCubeMapParams);
   myWorkspace->ApplyAspects();
   myWorkspace->SetAspects (anAspectsBackup);
@@ -642,36 +684,6 @@ Bnd_Box OpenGl_View::MinMaxValues (const Standard_Boolean theToIncludeAuxiliary)
   }
 
   Bnd_Box aBox = base_type::MinMaxValues (theToIncludeAuxiliary);
-
-  // add bounding box of gradient/texture background for proper Z-fit
-  if (theToIncludeAuxiliary
-    && (myBackgrounds[Graphic3d_TOB_TEXTURE]->IsDefined()
-     || myBackgrounds[Graphic3d_TOB_GRADIENT]->IsDefined()))
-  {
-    const Handle(Graphic3d_Camera)& aCamera = Camera();
-    Graphic3d_Vec2i aWinSize;
-    Window()->Size (aWinSize.x(), aWinSize.y());
-
-    // Background is drawn using 2D transformation persistence
-    // (e.g. it is actually placed in 3D coordinates within active camera position).
-    // We add here full-screen plane with 2D transformation persistence
-    // for simplicity (myBgTextureArray might define a little bit different options
-    // but it is updated within ::Render())
-    const Graphic3d_Mat4d& aProjectionMat = aCamera->ProjectionMatrix();
-    const Graphic3d_Mat4d& aWorldViewMat  = aCamera->OrientationMatrix();
-    Graphic3d_BndBox3d aBox2d (Graphic3d_Vec3d (0.0, 0.0, 0.0),
-                               Graphic3d_Vec3d (double(aWinSize.x()), double(aWinSize.y()), 0.0));
-
-    Graphic3d_TransformPers aTrsfPers (Graphic3d_TMF_2d, Aspect_TOTP_LEFT_LOWER);
-    aTrsfPers.Apply (aCamera,
-                     aProjectionMat,
-                     aWorldViewMat,
-                     aWinSize.x(),
-                     aWinSize.y(),
-                     aBox2d);
-    aBox.Add (gp_Pnt (aBox2d.CornerMin().x(), aBox2d.CornerMin().y(), aBox2d.CornerMin().z()));
-    aBox.Add (gp_Pnt (aBox2d.CornerMax().x(), aBox2d.CornerMax().y(), aBox2d.CornerMax().z()));
-  }
 
   return aBox;
 }

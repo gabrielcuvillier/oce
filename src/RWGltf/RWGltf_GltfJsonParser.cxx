@@ -37,6 +37,20 @@ namespace
   //! Material extension.
   const char THE_KHR_materials_common[] = "KHR_materials_common";
   const char THE_KHR_binary_glTF[]      = "KHR_binary_glTF";
+
+  //! Data buffer referring to a portion of another buffer.
+  class RWGltf_SubBuffer : public NCollection_Buffer
+  {
+  public:
+    RWGltf_SubBuffer (const Handle(NCollection_Buffer)& theBase,
+                      Standard_Size theOffset,
+                      Standard_Size theLength)
+    : NCollection_Buffer (Handle(NCollection_BaseAllocator)(), theLength, theBase->ChangeData() + theOffset),
+      myBaseBuffer (theBase) {}
+
+  private:
+    Handle(NCollection_Buffer) myBaseBuffer;
+  };
 }
 
 //! Find member of the object in a safe way.
@@ -308,6 +322,7 @@ void RWGltf_GltfJsonParser::gltfParseMaterials()
       }
       aMat->Id = aMatId.GetString();
       myMaterialsCommon.Bind (aMat->Id, aMat);
+      gltfBindMaterial (Handle(RWGltf_MaterialMetallicRoughness)(), aMat);
     }
   }
   else if (aMatList->IsArray())
@@ -342,8 +357,96 @@ void RWGltf_GltfJsonParser::gltfParseMaterials()
         aMatCommon->Id = TCollection_AsciiString ("mat_") + aMatIndex;
         myMaterialsCommon.Bind (TCollection_AsciiString (aMatIndex), aMatCommon);
       }
+
+      gltfBindMaterial (aMatPbr, aMatCommon);
     }
   }
+}
+
+// =======================================================================
+// function : gltfBindMaterial
+// purpose  :
+// =======================================================================
+void RWGltf_GltfJsonParser::gltfBindMaterial (const Handle(RWGltf_MaterialMetallicRoughness)& theMatPbr,
+                                              const Handle(RWGltf_MaterialCommon)& theMatCommon)
+{
+  if (theMatPbr.IsNull()
+   && theMatCommon.IsNull())
+  {
+    return;
+  }
+
+  Handle(XCAFDoc_VisMaterial) aMat = new XCAFDoc_VisMaterial();
+  if (!theMatCommon.IsNull())
+  {
+    XCAFDoc_VisMaterialCommon aMatXde;
+    aMatXde.IsDefined = true;
+    aMatXde.AmbientColor    = theMatCommon->AmbientColor;
+    aMatXde.DiffuseColor    = theMatCommon->DiffuseColor;
+    aMatXde.SpecularColor   = theMatCommon->SpecularColor;
+    aMatXde.EmissiveColor   = theMatCommon->EmissiveColor;
+    aMatXde.Shininess       = theMatCommon->Shininess;
+    aMatXde.Transparency    = theMatCommon->Transparency;
+    aMatXde.DiffuseTexture  = theMatCommon->DiffuseTexture;
+    if (aMatXde.DiffuseTexture.IsNull()
+    && !theMatCommon->AmbientTexture.IsNull())
+    {
+      aMatXde.DiffuseTexture = theMatCommon->AmbientTexture;
+    }
+    aMat->SetCommonMaterial (aMatXde);
+    if (!theMatCommon->Name.IsEmpty())
+    {
+      aMat->SetRawName (new TCollection_HAsciiString (theMatCommon->Name));
+    }
+  }
+  if (!theMatPbr.IsNull())
+  {
+    XCAFDoc_VisMaterialPBR aMatXde;
+    aMatXde.IsDefined = true;
+    aMatXde.MetallicRoughnessTexture = theMatPbr->MetallicRoughnessTexture;
+    aMatXde.BaseColorTexture = theMatPbr->BaseColorTexture;
+    aMatXde.EmissiveTexture  = theMatPbr->EmissiveTexture;
+    aMatXde.OcclusionTexture = theMatPbr->OcclusionTexture;
+    aMatXde.NormalTexture    = theMatPbr->NormalTexture;
+    aMatXde.BaseColor        = theMatPbr->BaseColor;
+    aMatXde.EmissiveFactor   = theMatPbr->EmissiveFactor;
+    aMatXde.Metallic         = theMatPbr->Metallic;
+    aMatXde.Roughness        = theMatPbr->Roughness;
+    aMat->SetPbrMaterial (aMatXde);
+
+    Graphic3d_AlphaMode anAlphaMode = Graphic3d_AlphaMode_BlendAuto;
+    switch (theMatPbr->AlphaMode)
+    {
+      case RWGltf_GltfAlphaMode_Opaque:
+      {
+        anAlphaMode = Graphic3d_AlphaMode_Opaque;
+        if (aMatXde.BaseColor.Alpha() < 1.0f)
+        {
+          Message::DefaultMessenger()->Send ("glTF reader - material with non-zero Transparency specifies Opaque AlphaMode", Message_Warning);
+        }
+        break;
+      }
+      case RWGltf_GltfAlphaMode_Mask:
+      {
+        anAlphaMode = Graphic3d_AlphaMode_Mask;
+        break;
+      }
+      case RWGltf_GltfAlphaMode_Blend:
+      {
+        anAlphaMode = Graphic3d_AlphaMode_Blend;
+        break;
+      }
+    }
+    aMat->SetAlphaMode (anAlphaMode, theMatPbr->AlphaCutOff);
+    aMat->SetDoubleSided (theMatPbr->IsDoubleSided);
+
+    if (!theMatPbr->Name.IsEmpty())
+    {
+      aMat->SetRawName (new TCollection_HAsciiString (theMatPbr->Name));
+    }
+  }
+
+  myMaterials.Bind (!theMatPbr.IsNull() ? theMatPbr->Id : theMatCommon->Id, aMat);
 }
 
 // =======================================================================
@@ -385,7 +488,7 @@ bool RWGltf_GltfJsonParser::gltfParseStdMaterial (Handle(RWGltf_MaterialCommon)&
   else if (gltfReadVec4   (anAmb, anAmbVal)
         && validateColor4 (anAmb))
   {
-    theMat->AmbientColor = Quantity_Color (anAmb.r(), anAmb.g(), anAmb.b(), Quantity_TOC_RGB);
+    theMat->AmbientColor = Quantity_Color (anAmb.r(), anAmb.g(), anAmb.b(), Quantity_TOC_sRGB);
   }
 
   if (aDiffVal != NULL
@@ -396,14 +499,14 @@ bool RWGltf_GltfJsonParser::gltfParseStdMaterial (Handle(RWGltf_MaterialCommon)&
   else if (gltfReadVec4   (aDiff, aDiffVal)
         && validateColor4 (aDiff))
   {
-    theMat->DiffuseColor = Quantity_Color (aDiff.r(), aDiff.g(), aDiff.b(), Quantity_TOC_RGB);
+    theMat->DiffuseColor = Quantity_Color (aDiff.r(), aDiff.g(), aDiff.b(), Quantity_TOC_sRGB);
     theMat->Transparency = float(1.0 - aDiff.a());
   }
 
   if (gltfReadVec4   (anEmi, anEmiVal)
    && validateColor4 (anEmi))
   {
-    theMat->EmissiveColor = Quantity_Color (anEmi.r(), anEmi.g(), anEmi.b(), Quantity_TOC_RGB);
+    theMat->EmissiveColor = Quantity_Color (anEmi.r(), anEmi.g(), anEmi.b(), Quantity_TOC_sRGB);
   }
 
   if (aSpecVal != NULL
@@ -414,7 +517,7 @@ bool RWGltf_GltfJsonParser::gltfParseStdMaterial (Handle(RWGltf_MaterialCommon)&
   if (gltfReadVec4   (aSpec, aSpecVal)
    && validateColor4 (aSpec))
   {
-    theMat->SpecularColor = Quantity_Color (aSpec.r(), aSpec.g(), aSpec.b(), Quantity_TOC_RGB);
+    theMat->SpecularColor = Quantity_Color (aSpec.r(), aSpec.g(), aSpec.b(), Quantity_TOC_sRGB);
   }
 
   if (aShinVal != NULL
@@ -450,6 +553,10 @@ bool RWGltf_GltfJsonParser::gltfParsePbrMaterial (Handle(RWGltf_MaterialMetallic
   const RWGltf_JsonValue* anEmissFactorVal  = findObjectMember (theMatNode, "emissiveFactor");
   const RWGltf_JsonValue* anEmissTexVal     = findObjectMember (theMatNode, "emissiveTexture");
   const RWGltf_JsonValue* anOcclusionTexVal = findObjectMember (theMatNode, "occlusionTexture");
+  const RWGltf_JsonValue* aDoubleSidedVal   = findObjectMember (theMatNode, "doubleSided");
+  const RWGltf_JsonValue* anAlphaModeVal    = findObjectMember (theMatNode, "alphaMode");
+  const RWGltf_JsonValue* anAlphaCutoffVal  = findObjectMember (theMatNode, "alphaCutoff");
+  // TODO ADOBE_materials_thin_transparency extension can be used to read IOR (Index of Refraction for transparent materials)
   if (aMetalRoughVal == NULL)
   {
     return false;
@@ -461,6 +568,22 @@ bool RWGltf_GltfJsonParser::gltfParsePbrMaterial (Handle(RWGltf_MaterialMetallic
   const RWGltf_JsonValue* aMetallicFactorVal  = findObjectMember (*aMetalRoughVal, "metallicFactor");
   const RWGltf_JsonValue* aRoughnessFactorVal = findObjectMember (*aMetalRoughVal, "roughnessFactor");
   const RWGltf_JsonValue* aMetalRoughTexVal   = findObjectMember (*aMetalRoughVal, "metallicRoughnessTexture");
+
+  if (aDoubleSidedVal != NULL
+   && aDoubleSidedVal->IsBool())
+  {
+    theMat->IsDoubleSided = aDoubleSidedVal->GetBool();
+  }
+  if (anAlphaCutoffVal != NULL
+   && anAlphaCutoffVal->IsNumber())
+  {
+    theMat->AlphaCutOff = (float )anAlphaCutoffVal->GetDouble();
+  }
+  if (anAlphaModeVal != NULL
+   && anAlphaModeVal->IsString())
+  {
+    theMat->AlphaMode = RWGltf_GltfParseAlphaMode (anAlphaModeVal->GetString());
+  }
 
   if (aBaseColorTexVal != NULL
    && aBaseColorTexVal->IsObject())
@@ -627,15 +750,11 @@ bool RWGltf_GltfJsonParser::gltfParseTexture (Handle(Image_Texture)& theTexture,
 
     if (aBinVal != NULL)
     {
-      //const RWGltf_JsonValue* aMimeTypeVal = findObjectMember (*aBinVal, "mimeType");
-      //const RWGltf_JsonValue* aWidthVal    = findObjectMember (*aBinVal, "width");
-      //const RWGltf_JsonValue* aHeightVal   = findObjectMember (*aBinVal, "height");
       if (aBufferViewName == NULL)
       {
         reportGltfWarning ("Invalid texture node '" + aTextureId + "' points to invalid data source.");
         return false;
       }
-
       const RWGltf_JsonValue* aBufferView = myGltfRoots[RWGltf_GltfRootElement_BufferViews].FindChild (*aBufferViewName);
       if (aBufferView == NULL
       || !aBufferView->IsObject())
@@ -643,47 +762,33 @@ bool RWGltf_GltfJsonParser::gltfParseTexture (Handle(Image_Texture)& theTexture,
         reportGltfWarning ("Invalid texture node '" + aTextureId + "' points to invalid buffer view '" + getKeyString (*aBufferViewName) + "'.");
         return false;
       }
-
-      const RWGltf_JsonValue* aBufferName = findObjectMember (*aBufferView, "buffer");
-      const RWGltf_JsonValue* aByteLength = findObjectMember (*aBufferView, "byteLength");
-      const RWGltf_JsonValue* aByteOffset = findObjectMember (*aBufferView, "byteOffset");
-      if (aBufferName != NULL
-      &&  aBufferName->IsString()
-      && !IsEqual (aBufferName->GetString(), "binary_glTF"))
-      {
-        reportGltfError ("BufferView '" + getKeyString (*aBufferViewName) + "' does not define binary_glTF buffer.");
-        return false;
-      }
-
-      RWGltf_GltfBufferView aBuffView;
-      aBuffView.ByteOffset = aByteOffset != NULL && aByteOffset->IsNumber()
-                           ? (int64_t )aByteOffset->GetDouble()
-                           : 0;
-      aBuffView.ByteLength = aByteLength != NULL && aByteLength->IsNumber()
-                           ? (int64_t )aByteLength->GetDouble()
-                           : 0;
-      if (aBuffView.ByteLength < 0)
-      {
-        reportGltfError ("BufferView '" + getKeyString (*aBufferViewName) + "' defines invalid byteLength.");
-        return false;
-      }
-      else if (aBuffView.ByteOffset < 0)
-      {
-        reportGltfError ("BufferView '" + getKeyString (*aBufferViewName) + "' defines invalid byteOffset.");
-        return false;
-      }
-
-
-      const int64_t anOffset = myBinBodyOffset + aBuffView.ByteOffset;
-      theTexture = new Image_Texture (myFilePath, anOffset, aBuffView.ByteLength);
-      return true;
+      return gltfParseTexturInGlbBuffer (theTexture, *aBinVal, getKeyString (*aBufferViewName), *aBufferView);
     }
   }
 
   const RWGltf_JsonValue* anUriVal = findObjectMember (*anImgNode, "uri");
-  if (anUriVal == NULL
-  || !anUriVal->IsString())
+  if (anUriVal == NULL)
   {
+    const RWGltf_JsonValue* aBufferViewName = findObjectMember (*anImgNode, "bufferView");
+    if (aBufferViewName == NULL)
+    {
+      reportGltfWarning ("Invalid texture node '" + aTextureId + "' points to invalid data source.");
+      return false;
+    }
+
+    const RWGltf_JsonValue* aBufferView = myGltfRoots[RWGltf_GltfRootElement_BufferViews].FindChild (*aBufferViewName);
+    if (aBufferView == NULL
+    || !aBufferView->IsObject())
+    {
+      reportGltfWarning ("Invalid texture node '" + aTextureId + "' points to invalid buffer view '" + getKeyString (*aBufferViewName) + "'.");
+      return false;
+    }
+    return gltfParseTextureInBufferView (theTexture, getKeyString (*aSrcVal), getKeyString (*aBufferViewName), *aBufferView);
+  }
+
+  if (!anUriVal->IsString())
+  {
+    reportGltfWarning ("Invalid texture node '" + aTextureId + "' points to invalid data source.");
     return false;
   }
 
@@ -714,6 +819,150 @@ bool RWGltf_GltfJsonParser::gltfParseTexture (Handle(Image_Texture)& theTexture,
   if (myExternalFiles != NULL)
   {
     myExternalFiles->Add (anImageFile);
+  }
+  return true;
+}
+
+// =======================================================================
+// function : gltfParseTexturInGlbBuffer
+// purpose  :
+// =======================================================================
+bool RWGltf_GltfJsonParser::gltfParseTexturInGlbBuffer (Handle(Image_Texture)& theTexture,
+                                                        const RWGltf_JsonValue& theBinVal,
+                                                        const TCollection_AsciiString& theBufferViewId,
+                                                        const RWGltf_JsonValue& theBufferView)
+{
+  const RWGltf_JsonValue* aMimeTypeVal = findObjectMember (theBinVal, "mimeType");
+  //const RWGltf_JsonValue* aWidthVal    = findObjectMember (theBinVal, "width");
+  //const RWGltf_JsonValue* aHeightVal   = findObjectMember (theBinVal, "height");
+  (void )aMimeTypeVal;
+
+  const RWGltf_JsonValue* aBufferName = findObjectMember (theBufferView, "buffer");
+  const RWGltf_JsonValue* aByteLength = findObjectMember (theBufferView, "byteLength");
+  const RWGltf_JsonValue* aByteOffset = findObjectMember (theBufferView, "byteOffset");
+  if (aBufferName != NULL
+  &&  aBufferName->IsString()
+  && !IsEqual (aBufferName->GetString(), "binary_glTF"))
+  {
+    reportGltfError ("BufferView '" + theBufferViewId + "' does not define binary_glTF buffer.");
+    return false;
+  }
+
+  RWGltf_GltfBufferView aBuffView;
+  aBuffView.ByteOffset = aByteOffset != NULL && aByteOffset->IsNumber()
+                       ? (int64_t )aByteOffset->GetDouble()
+                       : 0;
+  aBuffView.ByteLength = aByteLength != NULL && aByteLength->IsNumber()
+                       ? (int64_t )aByteLength->GetDouble()
+                       : 0;
+  if (aBuffView.ByteLength <= 0)
+  {
+    reportGltfError ("BufferView '" + theBufferViewId + "' defines invalid byteLength.");
+    return false;
+  }
+  else if (aBuffView.ByteOffset < 0)
+  {
+    reportGltfError ("BufferView '" + theBufferViewId + "' defines invalid byteOffset.");
+    return false;
+  }
+
+  const int64_t anOffset = myBinBodyOffset + aBuffView.ByteOffset;
+  theTexture = new Image_Texture (myFilePath, anOffset, aBuffView.ByteLength);
+  return true;
+}
+
+// =======================================================================
+// function : gltfParseTextureInBufferView
+// purpose  :
+// =======================================================================
+bool RWGltf_GltfJsonParser::gltfParseTextureInBufferView (Handle(Image_Texture)& theTexture,
+                                                          const TCollection_AsciiString& theSourceId,
+                                                          const TCollection_AsciiString& theBufferViewId,
+                                                          const RWGltf_JsonValue& theBufferView)
+{
+  const RWGltf_JsonValue* aBufferName = findObjectMember (theBufferView, "buffer");
+  const RWGltf_JsonValue* aByteLength = findObjectMember (theBufferView, "byteLength");
+  const RWGltf_JsonValue* aByteOffset = findObjectMember (theBufferView, "byteOffset");
+  if (aBufferName == NULL)
+  {
+    reportGltfError ("BufferView '" + theBufferViewId + "' does not define buffer.");
+    return false;
+  }
+
+  const TCollection_AsciiString aBufferId = getKeyString (*aBufferName);
+  const RWGltf_JsonValue* aBuffer = myGltfRoots[RWGltf_GltfRootElement_Buffers].FindChild (*aBufferName);
+  if (aBuffer == NULL
+  || !aBuffer->IsObject())
+  {
+    reportGltfError ("BufferView '" + theBufferViewId + "' refers to non-existing buffer.");
+    return false;
+  }
+
+  RWGltf_GltfBufferView aBuffView;
+  aBuffView.ByteOffset = aByteOffset != NULL && aByteOffset->IsNumber()
+                       ? (int64_t )aByteOffset->GetDouble()
+                       : 0;
+  aBuffView.ByteLength = aByteLength != NULL && aByteLength->IsNumber()
+                       ? (int64_t )aByteLength->GetDouble()
+                       : 0;
+  if (aBuffView.ByteLength <= 0)
+  {
+    reportGltfError ("BufferView '" + theBufferViewId + "' defines invalid byteLength.");
+    return false;
+  }
+  else if (aBuffView.ByteOffset < 0)
+  {
+    reportGltfError ("BufferView '" + theBufferViewId + "' defines invalid byteOffset.");
+    return false;
+  }
+
+  const RWGltf_JsonValue* anUriVal = findObjectMember (*aBuffer, "uri");
+  if (anUriVal == NULL
+  || !anUriVal->IsString())
+  {
+    reportGltfError ("Buffer '" + aBufferId + "' does not define uri.");
+    return false;
+  }
+
+  const char* anUriData = anUriVal->GetString();
+  if (::strncmp (anUriData, "data:application/octet-stream;base64,", 37) == 0)
+  {
+    Handle(NCollection_Buffer) aBaseBuffer;
+    if (!myDecodedBuffers.Find (aBufferId, aBaseBuffer))
+    {
+      aBaseBuffer = FSD_Base64Decoder::Decode ((const Standard_Byte* )anUriData + 37, anUriVal->GetStringLength() - 37);
+      myDecodedBuffers.Bind (aBufferId, aBaseBuffer);
+    }
+
+    Handle(RWGltf_SubBuffer) aSubBuffer = new RWGltf_SubBuffer (aBaseBuffer, (Standard_Size )aBuffView.ByteOffset, (Standard_Size )aBuffView.ByteLength);
+    theTexture = new Image_Texture (aSubBuffer, myFilePath + "@" + theSourceId);
+    return true;
+  }
+
+  const TCollection_AsciiString anUri (anUriData);
+  if (anUri.IsEmpty())
+  {
+    reportGltfError ("Buffer '" + aBufferId + "' does not define uri.");
+    return false;
+  }
+
+  const TCollection_AsciiString aPath = myFolder + anUri;
+  bool isFileExist = false;
+  if (!myProbedFiles.Find (aPath, isFileExist))
+  {
+    isFileExist = OSD_File (aPath).Exists();
+    myProbedFiles.Bind (aPath, isFileExist);
+  }
+  if (!isFileExist)
+  {
+    reportGltfError ("Buffer '" + aBufferId + "' refers to non-existing file '" + anUri + "'.");
+    return false;
+  }
+
+  theTexture = new Image_Texture (aPath, aBuffView.ByteOffset, aBuffView.ByteLength);
+  if (myExternalFiles != NULL)
+  {
+    myExternalFiles->Add (aPath);
   }
   return true;
 }
@@ -1116,7 +1365,14 @@ bool RWGltf_GltfJsonParser::gltfParseMesh (TopoDS_Shape& theMeshShape,
       {
         RWMesh_NodeAttributes aShapeAttribs;
         aShapeAttribs.RawName = aUserName;
-        aShapeAttribs.Style.SetColorSurf (aMeshData->BaseColor());
+
+        // assign material and not color
+        //aShapeAttribs.Style.SetColorSurf (aMeshData->BaseColor());
+
+        Handle(XCAFDoc_VisMaterial) aMat;
+        myMaterials.Find (!aMeshData->MaterialPbr().IsNull() ? aMeshData->MaterialPbr()->Id : aMeshData->MaterialCommon()->Id, aMat);
+        aShapeAttribs.Style.SetMaterial (aMat);
+
         myAttribMap->Bind (aFace, aShapeAttribs);
       }
       myFaceList.Append (aFace);
@@ -1266,7 +1522,7 @@ bool RWGltf_GltfJsonParser::gltfParseAccessor (const Handle(RWGltf_GltfLatePrimi
   const RWGltf_JsonValue* aTypeStr        = findObjectMember (theAccessor, "type");
   const RWGltf_JsonValue* aBufferViewName = findObjectMember (theAccessor, "bufferView");
   const RWGltf_JsonValue* aByteOffset     = findObjectMember (theAccessor, "byteOffset");
-  const RWGltf_JsonValue* aByteStride     = findObjectMember (theAccessor, "byteStride");
+  const RWGltf_JsonValue* aByteStride     = findObjectMember (theAccessor, "byteStride"); // byteStride was part of bufferView in glTF 1.0
   const RWGltf_JsonValue* aCompType       = findObjectMember (theAccessor, "componentType");
   const RWGltf_JsonValue* aCount          = findObjectMember (theAccessor, "count");
   if (aTypeStr == NULL
@@ -1408,6 +1664,7 @@ bool RWGltf_GltfJsonParser::gltfParseBufferView (const Handle(RWGltf_GltfLatePri
   const RWGltf_JsonValue* aBufferName = findObjectMember (theBufferView, "buffer");
   const RWGltf_JsonValue* aByteLength = findObjectMember (theBufferView, "byteLength");
   const RWGltf_JsonValue* aByteOffset = findObjectMember (theBufferView, "byteOffset");
+  const RWGltf_JsonValue* aByteStride = findObjectMember (theBufferView, "byteStride"); // byteStride is part of bufferView since glTF 2.0
   const RWGltf_JsonValue* aTarget     = findObjectMember (theBufferView, "target");
   if (aBufferName == NULL)
   {
@@ -1421,6 +1678,9 @@ bool RWGltf_GltfJsonParser::gltfParseBufferView (const Handle(RWGltf_GltfLatePri
   aBuffView.ByteLength = aByteLength != NULL && aByteLength->IsNumber()
                        ? (int64_t )aByteLength->GetDouble()
                        : 0;
+  aBuffView.ByteStride = aByteStride != NULL && aByteStride->IsInt()
+                       ? aByteStride->GetInt()
+                       : 0;
   if (aTarget != NULL && aTarget->IsInt())
   {
     aBuffView.Target = (RWGltf_GltfBufferViewTarget )aTarget->GetInt();
@@ -1432,7 +1692,7 @@ bool RWGltf_GltfJsonParser::gltfParseBufferView (const Handle(RWGltf_GltfLatePri
     }
   }
 
-  if (aBuffView.ByteLength < 0)
+  if (aBuffView.ByteLength <= 0)
   {
     reportGltfError ("BufferView '" + theName + "' defines invalid byteLength.");
     return false;
@@ -1440,6 +1700,12 @@ bool RWGltf_GltfJsonParser::gltfParseBufferView (const Handle(RWGltf_GltfLatePri
   else if (aBuffView.ByteOffset < 0)
   {
     reportGltfError ("BufferView '" + theName + "' defines invalid byteOffset.");
+    return false;
+  }
+  else if (aBuffView.ByteStride < 0
+        || aBuffView.ByteStride > 255)
+  {
+    reportGltfError ("BufferView '" + theName + "' defines invalid byteStride.");
     return false;
   }
 
@@ -1470,6 +1736,7 @@ bool RWGltf_GltfJsonParser::gltfParseBuffer (const Handle(RWGltf_GltfLatePrimiti
   const RWGltf_JsonValue* anUriVal      = findObjectMember (theBuffer, "uri");
 
   int64_t anOffset = theView.ByteOffset + theAccessor.ByteOffset;
+  const int32_t aByteStride = theAccessor.ByteStride != 0 ? theView.ByteStride : theView.ByteStride;
   bool isBinary = false;
   if (myIsBinary)
   {
@@ -1482,6 +1749,7 @@ bool RWGltf_GltfJsonParser::gltfParseBuffer (const Handle(RWGltf_GltfLatePrimiti
 
     RWGltf_GltfPrimArrayData& aData = theMeshData->AddPrimArrayData (theType);
     aData.Accessor = theAccessor;
+    aData.Accessor.ByteStride = aByteStride;
     aData.StreamOffset = anOffset;
     aData.StreamUri = myFilePath;
     return true;
@@ -1499,6 +1767,7 @@ bool RWGltf_GltfJsonParser::gltfParseBuffer (const Handle(RWGltf_GltfLatePrimiti
   {
     RWGltf_GltfPrimArrayData& aData = theMeshData->AddPrimArrayData (theType);
     aData.Accessor = theAccessor;
+    aData.Accessor.ByteStride = aByteStride;
     aData.StreamOffset = anOffset;
     if (!myDecodedBuffers.Find (theName, aData.StreamData))
     {
@@ -1532,6 +1801,7 @@ bool RWGltf_GltfJsonParser::gltfParseBuffer (const Handle(RWGltf_GltfLatePrimiti
 
     RWGltf_GltfPrimArrayData& aData = theMeshData->AddPrimArrayData (theType);
     aData.Accessor = theAccessor;
+    aData.Accessor.ByteStride = aByteStride;
     aData.StreamOffset = anOffset;
     aData.StreamUri = myFolder + anUri;
     if (myExternalFiles != NULL)
@@ -1586,7 +1856,12 @@ void RWGltf_GltfJsonParser::bindNamedShape (TopoDS_Shape& theShape,
       {
         if (aLateData->HasStyle())
         {
-          aShapeAttribs.Style.SetColorSurf (aLateData->BaseColor());
+          // assign material and not color
+          //aShapeAttribs.Style.SetColorSurf (aLateData->BaseColor());
+
+          Handle(XCAFDoc_VisMaterial) aMat;
+          myMaterials.Find (!aLateData->MaterialPbr().IsNull() ? aLateData->MaterialPbr()->Id : aLateData->MaterialCommon()->Id, aMat);
+          aShapeAttribs.Style.SetMaterial (aMat);
         }
         if (aShapeAttribs.Name.IsEmpty()
          && myUseMeshNameAsFallback)
@@ -1660,7 +1935,7 @@ bool RWGltf_GltfJsonParser::Parse (const Handle(Message_ProgressIndicator)& theP
   }
   return true;
 #else
-  Message::DefaultMessenger()->Send ("Error: glTF reader is unavailable - OCCT has been built without RapidJSON support.", Message_Fail);
+  Message::DefaultMessenger()->Send ("Error: glTF reader is unavailable - OCCT has been built without RapidJSON support [HAVE_RAPIDJSON undefined].", Message_Fail);
   return false;
 #endif
 }

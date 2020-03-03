@@ -594,7 +594,7 @@ void OpenGl_LayerList::renderLayer (const Handle(OpenGl_Workspace)& theWorkspace
   if (hasOwnLights)
   {
     aLayerSettings.Lights()->UpdateRevision();
-    aManager->UpdateLightSourceStateTo (aLayerSettings.Lights());
+    aManager->UpdateLightSourceStateTo (aLayerSettings.Lights(), theWorkspace->View()->SpecIBLMapLevels());
   }
 
   const Handle(Graphic3d_Camera)& aWorldCamera = theWorkspace->View()->Camera();
@@ -665,7 +665,7 @@ void OpenGl_LayerList::renderLayer (const Handle(OpenGl_Workspace)& theWorkspace
 
   if (hasOwnLights)
   {
-    aManager->UpdateLightSourceStateTo (aLightsBack);
+    aManager->UpdateLightSourceStateTo (aLightsBack, theWorkspace->View()->SpecIBLMapLevels());
   }
   if (hasLocalCS)
   {
@@ -732,7 +732,7 @@ void OpenGl_LayerList::Render (const Handle(OpenGl_Workspace)& theWorkspace,
       if (aPassIter == 0)
       {
         aCtx->SetColorMask (false);
-        aCtx->ShaderManager()->UpdateLightSourceStateTo (Handle(Graphic3d_LightSet)());
+        aCtx->ShaderManager()->UpdateLightSourceStateTo (Handle(Graphic3d_LightSet)(), theWorkspace->View()->SpecIBLMapLevels());
         aDefaultSettings.DepthFunc = aPrevSettings.DepthFunc;
         aDefaultSettings.DepthMask = GL_TRUE;
       }
@@ -743,13 +743,13 @@ void OpenGl_LayerList::Render (const Handle(OpenGl_Workspace)& theWorkspace,
           continue;
         }
         aCtx->SetColorMask (true);
-        aCtx->ShaderManager()->UpdateLightSourceStateTo (aLightsBack);
+        aCtx->ShaderManager()->UpdateLightSourceStateTo (aLightsBack, theWorkspace->View()->SpecIBLMapLevels());
         aDefaultSettings = aPrevSettings;
       }
       else if (aPassIter == 2)
       {
         aCtx->SetColorMask (true);
-        aCtx->ShaderManager()->UpdateLightSourceStateTo (aLightsBack);
+        aCtx->ShaderManager()->UpdateLightSourceStateTo (aLightsBack, theWorkspace->View()->SpecIBLMapLevels());
         if (toPerformDepthPrepass)
         {
           aDefaultSettings.DepthFunc = GL_EQUAL;
@@ -932,7 +932,7 @@ void OpenGl_LayerList::renderTransparent (const Handle(OpenGl_Workspace)&   theW
       // Bind full screen quad buffer and framebuffer resources.
       aVerts->BindVertexAttrib (aCtx, Graphic3d_TOA_POS);
 
-      const Handle(OpenGl_TextureSet) aTextureBack = aCtx->BindTextures (Handle(OpenGl_TextureSet)());
+      const Handle(OpenGl_TextureSet) aTextureBack = aCtx->BindTextures (Handle(OpenGl_TextureSet)(), Handle(OpenGl_ShaderProgram)());
 
       theOitAccumFbo->ColorTexture (0)->Bind (aCtx, Graphic3d_TextureUnit_0);
       theOitAccumFbo->ColorTexture (1)->Bind (aCtx, Graphic3d_TextureUnit_1);
@@ -949,7 +949,7 @@ void OpenGl_LayerList::renderTransparent (const Handle(OpenGl_Workspace)&   theW
 
       if (!aTextureBack.IsNull())
       {
-        aCtx->BindTextures (aTextureBack);
+        aCtx->BindTextures (aTextureBack, Handle(OpenGl_ShaderProgram)());
       }
     }
     else
@@ -969,4 +969,24 @@ void OpenGl_LayerList::renderTransparent (const Handle(OpenGl_Workspace)&   theW
   aCtx->core11fwd->glBlendFunc (GL_ONE, GL_ZERO);
   aCtx->core11fwd->glDepthMask (theGlobalSettings.DepthMask);
   aCtx->core11fwd->glDepthFunc (theGlobalSettings.DepthFunc);
+}
+
+// =======================================================================
+// function : DumpJson
+// purpose  :
+// =======================================================================
+void OpenGl_LayerList::DumpJson (Standard_OStream& theOStream, Standard_Integer theDepth) const
+{
+  OCCT_DUMP_CLASS_BEGIN (theOStream, OpenGl_LayerList)
+
+  for (NCollection_List<Handle(Graphic3d_Layer)>::Iterator aLayersIt (myLayers); aLayersIt.More(); aLayersIt.Next())
+  {
+    const Handle(Graphic3d_Layer)& aLayerId = aLayersIt.Value();
+    OCCT_DUMP_FIELD_VALUES_DUMPED (theOStream, theDepth, aLayerId.get())
+  }
+
+  OCCT_DUMP_FIELD_VALUE_NUMERICAL (theOStream, myNbPriorities)
+  OCCT_DUMP_FIELD_VALUE_NUMERICAL (theOStream, myNbStructures)
+  OCCT_DUMP_FIELD_VALUE_NUMERICAL (theOStream, myImmediateNbStructures)
+  OCCT_DUMP_FIELD_VALUE_NUMERICAL (theOStream, myModifStateOfRaytraceable)
 }

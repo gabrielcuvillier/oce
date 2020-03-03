@@ -319,7 +319,19 @@ gp_Pnt Select3D_InteriorSensitivePointSet::CenterOfGeometry() const
 // function : NbSubElements
 // purpose  : Returns the amount of points in set
 //=======================================================================
-Standard_Integer Select3D_InteriorSensitivePointSet::NbSubElements()
+Standard_Integer Select3D_InteriorSensitivePointSet::NbSubElements() const
 {
   return myPlanarPolygons.Length();
+}
+
+// =======================================================================
+// function : DumpJson
+// purpose  :
+// =======================================================================
+void Select3D_InteriorSensitivePointSet::DumpJson (Standard_OStream& theOStream, Standard_Integer theDepth) const
+{
+  OCCT_DUMP_TRANSIENT_CLASS_BEGIN (theOStream)
+  OCCT_DUMP_BASE_CLASS (theOStream, theDepth, Select3D_SensitiveSet)
+
+  OCCT_DUMP_FIELD_VALUES_DUMPED (theOStream, theDepth, &myBndBox)
 }

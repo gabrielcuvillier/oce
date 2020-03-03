@@ -695,7 +695,7 @@ namespace
       theColor = Quantity_Color (Standard_Real(myBullardGenerator.NextInt() % 256) / 255.0,
                                  Standard_Real(myBullardGenerator.NextInt() % 256) / 255.0,
                                  Standard_Real(myBullardGenerator.NextInt() % 256) / 255.0,
-                                 Quantity_TOC_RGB);
+                                 Quantity_TOC_sRGB);
     }
 
   protected:
@@ -1085,4 +1085,20 @@ Standard_Boolean StdSelect_ViewerSelector3d::ToPixMap (Image_PixMap&            
   }
   aFiller->Flush();
   return Standard_True;
+}
+
+//=======================================================================
+//function : DumpJson
+//purpose  : 
+//=======================================================================
+void StdSelect_ViewerSelector3d::DumpJson (Standard_OStream& theOStream, Standard_Integer) const 
+{
+  OCCT_DUMP_TRANSIENT_CLASS_BEGIN (theOStream)
+
+  OCCT_DUMP_FIELD_VALUE_NUMERICAL (theOStream, myStructs.Length())
+  for (Graphic3d_SequenceOfStructure::Iterator aStructsIt (myStructs); aStructsIt.More(); aStructsIt.Next())
+  {
+    const Handle(Graphic3d_Structure)& aStructure = aStructsIt.Value();
+    OCCT_DUMP_FIELD_VALUE_POINTER (theOStream, aStructure)
+  }
 }

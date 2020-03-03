@@ -223,7 +223,8 @@ void OpenGl_Sampler::applySamplerParams (const Handle(OpenGl_Context)& theCtx,
   }
 #endif
   setParameter (theCtx, theSampler, theTarget, GL_TEXTURE_WRAP_T, aWrapMode);
-  if (theTarget == GL_TEXTURE_3D)
+  if (theTarget == GL_TEXTURE_3D
+   || theTarget == GL_TEXTURE_CUBE_MAP)
   {
     setParameter (theCtx, theSampler, theTarget, GL_TEXTURE_WRAP_R, aWrapMode);
     return;
@@ -260,6 +261,13 @@ void OpenGl_Sampler::applySamplerParams (const Handle(OpenGl_Context)& theCtx,
     }
 
     setParameter (theCtx, theSampler, theTarget, GL_TEXTURE_MAX_ANISOTROPY_EXT, aDegree);
+  }
+
+  if (theCtx->HasTextureBaseLevel()
+   && (theSampler == NULL || !theSampler->isValidSampler()))
+  {
+    setParameter (theCtx, theSampler, theTarget, GL_TEXTURE_BASE_LEVEL, theParams->BaseLevel());
+    setParameter (theCtx, theSampler, theTarget, GL_TEXTURE_MAX_LEVEL,  theParams->MaxLevel());
   }
 }
 
@@ -418,7 +426,8 @@ void OpenGl_Sampler::resetGlobalTextureParams (const Handle(OpenGl_Context)& the
       {
         theCtx->core11fwd->glDisable (GL_TEXTURE_GEN_S);
         theCtx->core11fwd->glDisable (GL_TEXTURE_GEN_T);
-        if (theParams->GenMode() == Graphic3d_TOTM_SPRITE)
+        if (theParams->GenMode() == Graphic3d_TOTM_SPRITE
+         && theCtx->core20fwd != NULL)
         {
           theCtx->core11fwd->glDisable (GL_POINT_SPRITE);
         }

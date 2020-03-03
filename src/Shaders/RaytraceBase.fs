@@ -70,8 +70,18 @@ uniform isamplerBuffer uGeometryTriangTexture;
 uniform samplerBuffer uRaytraceMaterialTexture;
 //! Texture buffer of light source properties.
 uniform samplerBuffer uRaytraceLightSrcTexture;
-//! Environment map texture.
-uniform sampler2D uEnvironmentMapTexture;
+
+#ifdef BACKGROUND_CUBEMAP
+  //! Environment cubemap texture.
+  uniform samplerCube uEnvMapTexture;
+  //! Coefficient of Y controlling horizontal flip of cubemap
+  uniform int uYCoeff;
+  //! Coefficient of Z controlling vertical flip of cubemap
+  uniform int uZCoeff;
+#else
+  //! Environment map texture.
+  uniform sampler2D uEnvMapTexture;
+#endif
 
 //! Total number of light sources.
 uniform int uLightCount;
@@ -82,10 +92,10 @@ uniform vec4 uGlobalAmbient;
 uniform int uShadowsEnabled;
 //! Enables/disables specular reflections.
 uniform int uReflectEnabled;
-//! Enables/disables spherical environment map.
-uniform int uSphereMapEnabled;
+//! Enables/disables environment map lighting.
+uniform int uEnvMapEnabled;
 //! Enables/disables environment map background.
-uniform int uSphereMapForBack;
+uniform int uEnvMapForBack;
 
 //! Radius of bounding sphere of the scene.
 uniform float uSceneRadius;
@@ -158,6 +168,14 @@ struct SIntersect
   vec2 UV;
 
   vec3 Normal;
+};
+
+//! Stores triangle's vertex indexes and vertexes itself
+struct STriangle
+{
+  ivec4 TriIndex;
+
+  vec3 Points[3];
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -452,7 +470,7 @@ struct SSubTree
 #define TRG_OFFSET(treelet) treelet.SubData.w
 
 //! Identifies the absence of intersection.
-#define INALID_HIT ivec4 (-1)
+#define INVALID_HIT ivec4 (-1)
 
 //! Global stack shared between traversal functions.
 int Stack[STACK_SIZE];
@@ -488,9 +506,9 @@ int pop (inout int theHead)
 // function : SceneNearestHit
 // purpose  : Finds intersection with nearest scene triangle
 // =======================================================================
-ivec4 SceneNearestHit (in SRay theRay, in vec3 theInverse, inout SIntersect theHit, out int theTrsfId)
+STriangle SceneNearestHit (in SRay theRay, in vec3 theInverse, inout SIntersect theHit, out int theTrsfId)
 {
-  ivec4 aTriIndex = INALID_HIT;
+  STriangle aTriangle = STriangle (INVALID_HIT, vec3[](vec3(0.0), vec3(0.0), vec3(0.0)));
 
   int aNode =  0; // node to traverse
   int aHead = -1; // pointer of stack
@@ -597,17 +615,22 @@ ivec4 SceneNearestHit (in SRay theRay, in vec3 theInverse, inout SIntersect theH
 
       for (int anIdx = aData.y; anIdx <= aData.z; ++anIdx)
       {
-        ivec4 aTriangle = texelFetch (uGeometryTriangTexture, anIdx + TRG_OFFSET (aSubTree));
+        ivec4 aTriIndex = texelFetch (uGeometryTriangTexture, anIdx + TRG_OFFSET (aSubTree));
+        vec3 aPoints[3];
 
-        vec3 aPoint0 = texelFetch (uGeometryVertexTexture, aTriangle.x += VRT_OFFSET (aSubTree)).xyz;
-        vec3 aPoint1 = texelFetch (uGeometryVertexTexture, aTriangle.y += VRT_OFFSET (aSubTree)).xyz;
-        vec3 aPoint2 = texelFetch (uGeometryVertexTexture, aTriangle.z += VRT_OFFSET (aSubTree)).xyz;
+        aPoints[0] = texelFetch (uGeometryVertexTexture, aTriIndex.x += VRT_OFFSET (aSubTree)).xyz;
+        aPoints[1] = texelFetch (uGeometryVertexTexture, aTriIndex.y += VRT_OFFSET (aSubTree)).xyz;
+        aPoints[2] = texelFetch (uGeometryVertexTexture, aTriIndex.z += VRT_OFFSET (aSubTree)).xyz;
 
-        IntersectTriangle (aSubTree.TrsfRay, aPoint0, aPoint1, aPoint2, aTimeUV, aNormal);
+        IntersectTriangle (aSubTree.TrsfRay, aPoints[0], aPoints[1], aPoints[2], aTimeUV, aNormal);
 
         if (aTimeUV.x < theHit.Time)
         {
-          aTriIndex = aTriangle;
+          aTriangle.TriIndex = aTriIndex;
+          for (int i = 0; i < 3; ++i)
+          {
+            aTriangle.Points[i] = aPoints[i];
+          }
 
           theTrsfId = TRS_OFFSET (aSubTree);
 
@@ -654,7 +677,7 @@ ivec4 SceneNearestHit (in SRay theRay, in vec3 theInverse, inout SIntersect theH
     }
   }
 
-  return aTriIndex;
+  return aTriangle;
 }
 
 // =======================================================================
@@ -848,6 +871,17 @@ vec2 Latlong (in vec3 thePoint, in float theRadius)
                aPsi * 0.3183098f);
 }
 
+#ifdef BACKGROUND_CUBEMAP
+//! Transform texture coordinates for cubemap lookup.
+vec3 cubemapVectorTransform (in vec3 theVec, in float theRadius)
+{
+  vec3 aVec = theVec.yzx;
+  aVec.y *= float(uYCoeff);
+  aVec.z *= float(uZCoeff);
+  return aVec;
+}
+#endif
+
 // =======================================================================
 // function : SmoothNormal
 // purpose  : Interpolates normal across the triangle
@@ -893,15 +927,21 @@ float PolygonOffset (in vec3 theNormal, in vec3 thePoint)
 // purpose  : Interpolates UV coordinates across the triangle
 // =======================================================================
 #ifdef USE_TEXTURES
+vec2 SmoothUV (in vec2 theUV, in ivec4 theTriangle, out vec2[3] theUVs)
+{
+  theUVs[0] = texelFetch (uGeometryTexCrdTexture, theTriangle.x).st;
+  theUVs[1] = texelFetch (uGeometryTexCrdTexture, theTriangle.y).st;
+  theUVs[2] = texelFetch (uGeometryTexCrdTexture, theTriangle.z).st;
+
+  return theUVs[1] * theUV.x +
+         theUVs[2] * theUV.y +
+         theUVs[0] * (1.0f - theUV.x - theUV.y);
+}
+
 vec2 SmoothUV (in vec2 theUV, in ivec4 theTriangle)
 {
-  vec2 aTexCrd0 = texelFetch (uGeometryTexCrdTexture, theTriangle.x).st;
-  vec2 aTexCrd1 = texelFetch (uGeometryTexCrdTexture, theTriangle.y).st;
-  vec2 aTexCrd2 = texelFetch (uGeometryTexCrdTexture, theTriangle.z).st;
-
-  return aTexCrd1 * theUV.x +
-         aTexCrd2 * theUV.y +
-         aTexCrd0 * (1.0f - theUV.x - theUV.y);
+  vec2 aUVs[3];
+  return SmoothUV (theUV, theTriangle, aUVs);
 }
 #endif
 
@@ -909,10 +949,25 @@ vec2 SmoothUV (in vec2 theUV, in ivec4 theTriangle)
 // function : FetchEnvironment
 // purpose  :
 // =======================================================================
-vec4 FetchEnvironment (in vec2 theTexCoord)
+vec4 FetchEnvironment (in vec3 theTexCoord, in float theRadius, in bool theIsBackground)
 {
-  return uSphereMapEnabled == 0 ?
-    vec4 (0.f, 0.f, 0.f, 1.f) : textureLod (uEnvironmentMapTexture, theTexCoord, 0.f);
+  if (uEnvMapEnabled == 0)
+  {
+#ifdef PATH_TRACING
+    return theIsBackground ? vec4 (0.0, 0.0, 0.0, 1.0) : uGlobalAmbient;
+#else
+    return vec4 (0.0, 0.0, 0.0, 1.0);
+#endif
+  }
+
+  vec4 anAmbScale = theIsBackground ? vec4(1.0) : uGlobalAmbient;
+  vec4 anEnvColor =
+#ifdef BACKGROUND_CUBEMAP
+    textureLod (uEnvMapTexture, cubemapVectorTransform (theTexCoord, theRadius), 0.0);
+#else
+    textureLod (uEnvMapTexture, Latlong (theTexCoord, theRadius), 0.0);
+#endif
+  return anEnvColor * anAmbScale;
 }
 
 // =======================================================================
@@ -973,18 +1028,17 @@ vec4 Radiance (in SRay theRay, in vec3 theInverse)
   {
     SIntersect aHit = SIntersect (MAXFLOAT, vec2 (ZERO), ZERO);
 
-    ivec4 aTriIndex = SceneNearestHit (theRay, theInverse, aHit, aTrsfId);
+    ivec4 aTriIndex = SceneNearestHit (theRay, theInverse, aHit, aTrsfId).TriIndex;
 
     if (aTriIndex.x == -1)
     {
       vec4 aColor = vec4 (0.0);
 
-      if (bool(uSphereMapForBack) || aWeight.w == 0.0f /* reflection */)
+      if (bool(uEnvMapForBack) || aWeight.w == 0.0f /* reflection */)
       {
         float aTime = IntersectSphere (theRay, uSceneRadius);
 
-        aColor = FetchEnvironment (Latlong (
-          theRay.Direct * aTime + theRay.Origin, uSceneRadius));
+        aColor = FetchEnvironment (theRay.Direct * aTime + theRay.Origin, uSceneRadius, aWeight.w != 0.0);
       }
       else
       {

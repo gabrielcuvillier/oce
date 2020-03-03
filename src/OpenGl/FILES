@@ -52,8 +52,11 @@ OpenGl_FrameBuffer.hxx
 OpenGl_FrameBuffer.cxx
 OpenGl_Texture.cxx
 OpenGl_Texture.hxx
+OpenGl_TextureFormat.cxx
+OpenGl_TextureFormat.hxx
 OpenGl_TextureSet.cxx
 OpenGl_TextureSet.hxx
+OpenGl_TextureSetPairIterator.hxx
 OpenGl_Resource.hxx
 OpenGl_Resource.cxx
 OpenGl_NamedResource.hxx
@@ -103,6 +106,8 @@ OpenGl_GraphicDriver.hxx
 OpenGl_IndexBuffer.cxx
 OpenGl_IndexBuffer.hxx
 OpenGl_Layer.hxx
+OpenGl_PBREnvironment.cxx
+OpenGl_PBREnvironment.hxx
 OpenGl_RenderFilter.hxx
 OpenGl_Sampler.cxx
 OpenGl_Sampler.hxx

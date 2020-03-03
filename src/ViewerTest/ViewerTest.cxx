@@ -213,7 +213,7 @@ namespace
     }
 
     const Graphic3d_Vec4 aRealColor = Graphic3d_Vec4 (anIntegerColor) / static_cast<Standard_ShortReal> (THE_MAX_INTEGER_COLOR_COMPONENT);
-    theColor = Quantity_ColorRGBA (aRealColor);
+    theColor = Quantity_ColorRGBA (Quantity_ColorRGBA::Convert_sRGB_To_LinearRGB (aRealColor));
     return true;
   }
 
@@ -338,43 +338,74 @@ void ViewerTest::GetSelectedShapes (TopTools_ListOfShape& theSelectedShapes)
 //function : ParseLineType
 //purpose  :
 //=======================================================================
-Standard_Boolean ViewerTest::ParseLineType (Standard_CString   theArg,
-                                            Aspect_TypeOfLine& theType)
+Standard_Boolean ViewerTest::ParseLineType (Standard_CString theArg,
+                                            Aspect_TypeOfLine& theType,
+                                            uint16_t& thePattern)
 {
   TCollection_AsciiString aTypeStr (theArg);
   aTypeStr.LowerCase();
-  if (aTypeStr == "empty")
+  if (aTypeStr == "empty"
+   || aTypeStr == "-1")
   {
     theType = Aspect_TOL_EMPTY;
+    thePattern = Graphic3d_Aspects::DefaultLinePatternForType (theType);
   }
-  else if (aTypeStr == "solid")
+  else if (aTypeStr == "solid"
+        || aTypeStr == "0")
   {
     theType = Aspect_TOL_SOLID;
+    thePattern = Graphic3d_Aspects::DefaultLinePatternForType (theType);
   }
-  else if (aTypeStr == "dot")
+  else if (aTypeStr == "dot"
+        || aTypeStr == "2")
   {
     theType = Aspect_TOL_DOT;
+    thePattern = Graphic3d_Aspects::DefaultLinePatternForType (theType);
   }
-  else if (aTypeStr == "dash")
+  else if (aTypeStr == "dash"
+        || aTypeStr == "1")
   {
     theType = Aspect_TOL_DASH;
+    thePattern = Graphic3d_Aspects::DefaultLinePatternForType (theType);
   }
-  else if (aTypeStr == "dotdash")
+  else if (aTypeStr == "dotdash"
+        || aTypeStr == "3")
   {
     theType = Aspect_TOL_DOTDASH;
-  }
-  else if (aTypeStr.IsIntegerValue())
-  {
-    const int aTypeInt = aTypeStr.IntegerValue();
-    if (aTypeInt < -1 || aTypeInt >= Aspect_TOL_USERDEFINED)
-    {
-      return Standard_False;
-    }
-    theType = (Aspect_TypeOfLine )aTypeInt;
+    thePattern = Graphic3d_Aspects::DefaultLinePatternForType (theType);
   }
   else
   {
-    return Standard_False;
+    if (aTypeStr.StartsWith ("0x"))
+    {
+      aTypeStr = aTypeStr.SubString (3, aTypeStr.Length());
+    }
+
+    if (aTypeStr.Length() != 4
+    || !std::isxdigit (static_cast<unsigned char> (aTypeStr.Value (1)))
+    || !std::isxdigit (static_cast<unsigned char> (aTypeStr.Value (2)))
+    || !std::isxdigit (static_cast<unsigned char> (aTypeStr.Value (3)))
+    || !std::isxdigit (static_cast<unsigned char> (aTypeStr.Value (4))))
+    {
+      return Standard_False;
+    }
+
+    std::stringstream aStream;
+    aStream << std::setbase (16) << aTypeStr.ToCString();
+    if (aStream.fail())
+    {
+      return Standard_False;
+    }
+
+    Standard_Integer aNumber = -1;
+    aStream >> aNumber;
+    if (aStream.fail())
+    {
+      return Standard_False;
+    }
+
+    thePattern = (uint16_t )aNumber;
+    theType = Graphic3d_Aspects::DefaultLineTypeForPattern (thePattern);
   }
   return Standard_True;
 }
@@ -516,6 +547,14 @@ Standard_Boolean ViewerTest::ParseShadingModel (Standard_CString              th
         || aTypeStr == "pixel")
   {
     theModel = Graphic3d_TOSM_FRAGMENT;
+  }
+  else if (aTypeStr == "pbr")
+  {
+    theModel = Graphic3d_TOSM_PBR;
+  }
+  else if (aTypeStr == "pbr_facet")
+  {
+    theModel = Graphic3d_TOSM_PBR_FACET;
   }
   else if (aTypeStr == "default"
         || aTypeStr == "def")
@@ -1149,6 +1188,10 @@ static Standard_Integer VDump (Draw_Interpretor& theDI,
       {
         aParams.BufferType = Graphic3d_BT_RGB;
       }
+      else if (aBufArg == "red")
+      {
+        aParams.BufferType = Graphic3d_BT_Red;
+      }
       else if (aBufArg == "depth")
       {
         aParams.BufferType = Graphic3d_BT_Depth;
@@ -1214,6 +1257,11 @@ static Standard_Integer VDump (Draw_Interpretor& theDI,
           || anArg ==  "rgb")
     {
       aParams.BufferType = Graphic3d_BT_RGB;
+    }
+    else if (anArg == "-red"
+          || anArg ==  "red")
+    {
+      aParams.BufferType = Graphic3d_BT_Red;
     }
     else if (anArg == "-depth"
           || anArg ==  "depth")
@@ -1295,6 +1343,7 @@ static Standard_Integer VDump (Draw_Interpretor& theDI,
     case Graphic3d_BT_RGBA:                aFormat = Image_Format_RGBA;  break;
     case Graphic3d_BT_Depth:               aFormat = Image_Format_GrayF; break;
     case Graphic3d_BT_RGB_RayTraceHdrLeft: aFormat = Image_Format_RGBF;  break;
+    case Graphic3d_BT_Red:                 aFormat = Image_Format_Gray;  break;
   }
 
   switch (aStereoPair)
@@ -1765,7 +1814,7 @@ struct ViewerTest_AspectsChangeSet
   Standard_Real                LineWidth;
 
   Standard_Integer             ToSetTypeOfLine;
-  Aspect_TypeOfLine            TypeOfLine;
+  uint16_t                     StippleLinePattern;
 
   Standard_Integer             ToSetTypeOfMarker;
   Aspect_TypeOfMarker          TypeOfMarker;
@@ -1851,7 +1900,7 @@ struct ViewerTest_AspectsChangeSet
     ToSetLineWidth    (0),
     LineWidth         (1.0),
     ToSetTypeOfLine   (0),
-    TypeOfLine        (Aspect_TOL_SOLID),
+    StippleLinePattern(0xFFFF),
     ToSetTypeOfMarker (0),
     TypeOfMarker      (Aspect_TOM_PLUS),
     ToSetMarkerSize   (0),
@@ -1982,7 +2031,7 @@ struct ViewerTest_AspectsChangeSet
       isOk = Standard_False;
     }
     if (ToSetShadingModel == 1
-    && (ShadingModel < Graphic3d_TOSM_DEFAULT || ShadingModel > Graphic3d_TOSM_FRAGMENT))
+    && (ShadingModel < Graphic3d_TOSM_DEFAULT || ShadingModel > Graphic3d_TOSM_PBR_FACET))
     {
       std::cout << "Error: unknown shading model " << ShadingModelName << ".\n";
       isOk = Standard_False;
@@ -2033,11 +2082,11 @@ struct ViewerTest_AspectsChangeSet
        || theDrawer->HasOwnSeenLineAspect())
       {
         toRecompute = theDrawer->SetOwnLineAspects() || toRecompute;
-        theDrawer->LineAspect()->SetTypeOfLine           (TypeOfLine);
-        theDrawer->WireAspect()->SetTypeOfLine           (TypeOfLine);
-        theDrawer->FreeBoundaryAspect()->SetTypeOfLine   (TypeOfLine);
-        theDrawer->UnFreeBoundaryAspect()->SetTypeOfLine (TypeOfLine);
-        theDrawer->SeenLineAspect()->SetTypeOfLine       (TypeOfLine);
+        theDrawer->LineAspect()->Aspect()->SetLinePattern (StippleLinePattern);
+        theDrawer->WireAspect()->Aspect()->SetLinePattern (StippleLinePattern);
+        theDrawer->FreeBoundaryAspect()->Aspect()->SetLinePattern (StippleLinePattern);
+        theDrawer->UnFreeBoundaryAspect()->Aspect()->SetLinePattern (StippleLinePattern);
+        theDrawer->SeenLineAspect()->Aspect()->SetLinePattern (StippleLinePattern);
       }
     }
     if (ToSetTypeOfMarker != 0)
@@ -2490,7 +2539,7 @@ static Standard_Integer VAspects (Draw_Interpretor& theDI,
         aChangeSet->FaceBoundaryColor = Quantity_Color (aNames.Value (3).IntegerValue() / 255.0,
                                                         aNames.Value (4).IntegerValue() / 255.0,
                                                         aNames.Value (5).IntegerValue() / 255.0,
-                                                        Quantity_TOC_RGB);
+                                                        Quantity_TOC_sRGB);
         aNames.Remove (5);
         aNames.Remove (4);
         aNames.Remove (3);
@@ -2759,18 +2808,20 @@ static Standard_Integer VAspects (Draw_Interpretor& theDI,
         return 1;
       }
       Aspect_TypeOfLine aLineType = Aspect_TOL_EMPTY;
-      if (!ViewerTest::ParseLineType (theArgVec[anArgIter], aLineType))
+      uint16_t aLinePattern = 0xFFFF;
+      if (!ViewerTest::ParseLineType (theArgVec[anArgIter], aLineType, aLinePattern))
       {
         std::cout << "Error: wrong syntax at " << anArg << "\n";
         return 1;
       }
+
       if (anArg == "-setedgetype"
        || anArg == "-setedgestype"
        || anArg == "-edgetype"
        || anArg == "-edgestype"
        || aCmdName == "vsetedgetype")
       {
-        aChangeSet->TypeOfEdge = aLineType;
+        aChangeSet->TypeOfEdge = Graphic3d_Aspects::DefaultLineTypeForPattern (aLinePattern);
         aChangeSet->ToSetTypeOfEdge = 1;
       }
       else if (anArg == "-setfaceboundarystyle"
@@ -2782,12 +2833,12 @@ static Standard_Integer VAspects (Draw_Interpretor& theDI,
             || anArg == "-boundarytype"
             || aCmdName == "vshowfaceboundary")
       {
-        aChangeSet->TypeOfFaceBoundaryLine = aLineType;
+        aChangeSet->TypeOfFaceBoundaryLine = Graphic3d_Aspects::DefaultLineTypeForPattern (aLinePattern);
         aChangeSet->ToSetTypeOfFaceBoundaryLine = 1;
       }
       else
       {
-        aChangeSet->TypeOfLine = aLineType;
+        aChangeSet->StippleLinePattern = aLinePattern;
         aChangeSet->ToSetTypeOfLine = 1;
       }
     }
@@ -3238,7 +3289,7 @@ static Standard_Integer VAspects (Draw_Interpretor& theDI,
       aChangeSet->ToSetLineWidth = -1;
       aChangeSet->LineWidth = 1.0;
       aChangeSet->ToSetTypeOfLine = -1;
-      aChangeSet->TypeOfLine = Aspect_TOL_SOLID;
+      aChangeSet->StippleLinePattern = 0xFFFF;
       aChangeSet->ToSetTypeOfMarker = -1;
       aChangeSet->TypeOfMarker = Aspect_TOM_PLUS;
       aChangeSet->ToSetMarkerSize = -1;
@@ -6642,7 +6693,7 @@ void ViewerTest::Commands(Draw_Interpretor& theCommands)
       "\n\t\t:          [-setMaterial MatName] [-unsetMaterial]"
       "\n\t\t:          [-setTransparency Transp] [-unsetTransparency]"
       "\n\t\t:          [-setWidth LineWidth] [-unsetWidth]"
-      "\n\t\t:          [-setLineType {solid|dash|dot|dotDash}] [-unsetLineType]"
+      "\n\t\t:          [-setLineType {solid|dash|dot|dotDash|0xHexPattern}] [-unsetLineType]"
       "\n\t\t:          [-setMarkerType {.|+|x|O|xcircle|pointcircle|ring1|ring2|ring3|ball|ImagePath}]"
       "\n\t\t:          [-unsetMarkerType]"
       "\n\t\t:          [-setMarkerSize Scale] [-unsetMarkerSize]"

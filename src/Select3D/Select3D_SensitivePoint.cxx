@@ -81,7 +81,17 @@ Select3D_BndBox3d Select3D_SensitivePoint::BoundingBox()
 // function : NbSubElements
 // purpose  : Returns the amount of sub-entities in sensitive
 //=======================================================================
-Standard_Integer Select3D_SensitivePoint::NbSubElements()
+Standard_Integer Select3D_SensitivePoint::NbSubElements() const
 {
   return 1;
+}
+
+//=======================================================================
+//function : DumpJson
+//purpose  :
+//=======================================================================
+void Select3D_SensitivePoint::DumpJson (Standard_OStream& theOStream, Standard_Integer theDepth) const
+{
+  OCCT_DUMP_TRANSIENT_CLASS_BEGIN (theOStream)
+  OCCT_DUMP_BASE_CLASS (theOStream, theDepth, Select3D_SensitiveEntity)
 }

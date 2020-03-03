@@ -247,6 +247,10 @@ static Standard_Integer geompipe(Draw_Interpretor&,
     std::cout << "GeomFill_Pipe cannot make a surface" << std::endl;
     return 1;
   }
+
+  Standard_Real Accuracy = aPipe.ErrorOnSurf();
+  std::cout << "Accuracy of approximation = " << Accuracy << std::endl;
+  
   Handle(Geom_Surface) Sur = aPipe.Surface();
   TopoDS_Face F;
   if (!Sur.IsNull())
@@ -605,7 +609,7 @@ static Standard_Integer setsweep(Draw_Interpretor& di,
       return 1;
     }
     gp_Dir D(Draw::Atof(a[2]), Draw::Atof(a[3]), Draw::Atof(a[4]));
-    Sweep->SetMode(D);;
+    Sweep->SetMode(D);
   }
   else if (!strcmp(a[1], "-FX")) {
     if ((n != 5) && (n != 8)) {

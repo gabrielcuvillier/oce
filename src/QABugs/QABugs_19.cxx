@@ -23,6 +23,7 @@
 #include <BRepPrimAPI_MakeSphere.hxx>
 #include <DBRep.hxx>
 #include <Draw_Interpretor.hxx>
+#include <Draw_Printer.hxx>
 #include <DrawTrSurf.hxx>
 #include <GCE2d_MakeSegment.hxx>
 #include <Geom2d_TrimmedCurve.hxx>
@@ -33,6 +34,9 @@
 #include <gp_Quaternion.hxx>
 #include <Image_Color.hxx>
 #include <Image_PixMap.hxx>
+#include <Message.hxx>
+#include <Message_Messenger.hxx>
+#include <Message_PrinterOStream.hxx>
 #include <NCollection_Handle.hxx>
 #include <NCollection_IncAllocator.hxx>
 #include <NCollection_Map.hxx>
@@ -57,9 +61,11 @@
 #include <Standard_Atomic.hxx>
 
 #ifdef HAVE_TBB
+  Standard_DISABLE_DEPRECATION_WARNINGS
   #include <tbb/parallel_for.h>
   #include <tbb/parallel_for_each.h>
   #include <tbb/blocked_range.h>
+  Standard_ENABLE_DEPRECATION_WARNINGS
 #endif
 
 #include <cstdio>
@@ -1682,13 +1688,13 @@ static Standard_Integer OCC23951 (Draw_Interpretor& di, Standard_Integer argc, c
     di << "Usage: " << argv[0] << " invalid number of arguments\n";
     return 1;
   }
-  Handle(TDocStd_Document) aDoc = new TDocStd_Document("dummy");;
+  Handle(TDocStd_Document) aDoc = new TDocStd_Document("dummy");
   TopoDS_Shape s1 = BRepPrimAPI_MakeBox(1,1,1).Shape();
   TDF_Label lab1 = XCAFDoc_DocumentTool::ShapeTool (aDoc->Main ())->NewShape();
   XCAFDoc_DocumentTool::ShapeTool (aDoc->Main ())->SetShape(lab1, s1);
   TDataStd_Name::Set(lab1, "Box1");
         
-  Quantity_Color yellow(1,1,0, Quantity_TOC_RGB);
+  Quantity_Color yellow(Quantity_NOC_YELLOW);
   XCAFDoc_DocumentTool::ColorTool (aDoc->Main())->SetColor(lab1, yellow, XCAFDoc_ColorGen);
   XCAFDoc_DocumentTool::ColorTool(aDoc->Main())->SetVisibility(lab1, 0);
 
@@ -1700,7 +1706,16 @@ static Standard_Integer OCC23951 (Draw_Interpretor& di, Standard_Integer argc, c
     return 1;
   }
 
-  writer.Write(argv[1]);
+  const Handle(Message_Messenger)& aMsgMgr = Message::DefaultMessenger();
+  Message_SequenceOfPrinters aPrinters;
+  aPrinters.Append (aMsgMgr->ChangePrinters());
+  aMsgMgr->AddPrinter (new Draw_Printer (di));
+
+  writer.Write (argv[1]);
+
+  aMsgMgr->RemovePrinters (STANDARD_TYPE(Draw_Printer));
+  aMsgMgr->ChangePrinters().Append (aPrinters);
+
   return 0;
 }
 
@@ -1731,7 +1746,7 @@ static Standard_Integer OCC23950 (Draw_Interpretor& di, Standard_Integer argc, c
   TDF_Label component01 = XCAFDoc_DocumentTool::ShapeTool (aDoc->Main ())->AddComponent (labelA0, lab1, location0);
   XCAFDoc_DocumentTool::ShapeTool (aDoc->Main ())->UpdateAssemblies();
 
-  Quantity_Color yellow(1,1,0, Quantity_TOC_RGB);
+  Quantity_Color yellow(Quantity_NOC_YELLOW);
   XCAFDoc_DocumentTool::ColorTool (labelA0)->SetColor (component01, yellow, XCAFDoc_ColorGen);
   XCAFDoc_DocumentTool::ColorTool (labelA0)->SetVisibility (component01, 0);
 
@@ -1743,7 +1758,16 @@ static Standard_Integer OCC23950 (Draw_Interpretor& di, Standard_Integer argc, c
     return 1;
   }
 
+  const Handle(Message_Messenger)& aMsgMgr = Message::DefaultMessenger();
+  Message_SequenceOfPrinters aPrinters;
+  aPrinters.Append (aMsgMgr->ChangePrinters());
+  aMsgMgr->AddPrinter (new Draw_Printer (di));
+
   writer.Write (argv[1]);
+
+  aMsgMgr->RemovePrinters (STANDARD_TYPE(Draw_Printer));
+  aMsgMgr->ChangePrinters().Append (aPrinters);
+
   return 0;
 }
 
@@ -2206,6 +2230,13 @@ public:
     return new XmlDrivers_DocumentStorageDriver ("Test");
   }
   virtual Standard_CString ResourcesName() Standard_OVERRIDE { return ""; }
+
+  //! Dumps the content of me into the stream
+  void DumpJson (Standard_OStream& theOStream, Standard_Integer theDepth) const
+  {
+    OCCT_DUMP_TRANSIENT_CLASS_BEGIN (theOStream)
+    OCCT_DUMP_BASE_CLASS (theOStream, theDepth, TDocStd_Application)
+  }
 };
 
 //=======================================================================
