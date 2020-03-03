@@ -34,7 +34,8 @@ struct IMeshTools_Parameters {
     InternalVerticesMode (Standard_True),
     ControlSurfaceDeflection (Standard_True),
     CleanModel (Standard_True),
-    AdjustMinSize (Standard_False)
+    AdjustMinSize (Standard_False),
+    ForceFaceDeflection (Standard_False)
   {
   }
 
@@ -57,7 +58,8 @@ struct IMeshTools_Parameters {
   //! Linear deflection used to tessellate the face interior
   Standard_Real                                    DeflectionInterior;
   
-  //! Minimal allowed size of mesh element
+  //! Minimum size parameter limiting size of triangle's edges to prevent 
+  //! sinking into amplification in case of distorted curves and surfaces.
   Standard_Real                                    MinSize;
 
   //! Switches on/off multi-thread computation
@@ -83,6 +85,10 @@ struct IMeshTools_Parameters {
   //! Enables/disables local adjustment of min size depending on edge size.
   //! Disabled by default.
   Standard_Boolean                                 AdjustMinSize;
+
+  //! Enables/disables usage of shape tolerances for computing face deflection.
+  //! Disabled by default.
+  Standard_Boolean                                 ForceFaceDeflection;
 };
 
 #endif

@@ -40,6 +40,9 @@ public:
   //! Destructor
   virtual ~TInspector_Communicator() {}
 
+  //! Returns directory of Qt plugins. Firstly it founds it in QTDIR, else if not defined in PATH
+  Standard_EXPORT static Standard_Boolean PluginsDir (TCollection_AsciiString& thePlugindsDirName);
+
   //! Registers plugin into TInspector window
   //! \param thePluginName a name of the plugin
   void RegisterPlugin (const TCollection_AsciiString& thePluginName) { myWindow->RegisterPlugin (thePluginName); }
@@ -64,13 +67,13 @@ public:
              const Standard_Boolean theAppend = Standard_False)
   { myWindow->Init (thePluginName, theParameters, theAppend); }
 
-  //! UpdateContent for the TInspector window
+  //! Updates content for the TInspector window
   void UpdateContent() { myWindow->UpdateContent(); }
 
-  //! SetOpenButton for the TInspector window
+  //! Sets open button for the TInspector window
   void SetOpenButton (QPushButton* theButton) { myWindow->SetOpenButton (theButton); }
 
-  //! OpenFile in TInspector window
+  //! Opens file in TInspector window
   void OpenFile (const TCollection_AsciiString& thePluginName, const TCollection_AsciiString& theFileName)
   { myWindow->OpenFile (thePluginName, theFileName); }
 
@@ -78,14 +81,13 @@ public:
   //! \param thePluginName a name of the plugin
   void Activate (const TCollection_AsciiString& thePluginName) { myWindow->ActivateTool (thePluginName); }
 
-  //! Set item selected in the active plugin
+  //! Sets item selected in the active plugin
   //! \param theItemName a containerr of name of items in plugin that should become selected
   void SetSelected (const NCollection_List<TCollection_AsciiString>& theItemNames) { myWindow->SetSelected (theItemNames); }
 
   //! Sets objects to be selected in the plugin
   //! \param theObjects an objects
-  Standard_EXPORT void SetSelected (const NCollection_List<Handle(Standard_Transient)>& theObjects)
-    { myWindow->SetSelected (theObjects); }
+  void SetSelected (const NCollection_List<Handle(Standard_Transient)>& theObjects) { myWindow->SetSelected (theObjects); }
 
   //! Sets path to a directory for temporary plugin files
   //! \param thePath a path
@@ -95,11 +97,11 @@ public:
   //! \return path
   TCollection_AsciiString GetTemporaryDirectory() const { return myWindow->GetTemporaryDirectory(); }
 
-  //! Change window visibility
+  //! Changes window visibility
   //! \param theVisible boolean state
   Standard_EXPORT virtual void SetVisible (const bool theVisible);
 
-  //! Change window position
+  //! Changes window position
   //! \param theX X pixel position of top left corner of the window
   //! \param theY Y pixel position
   Standard_EXPORT virtual void Move (const int theXPosition, const int theYPosition);

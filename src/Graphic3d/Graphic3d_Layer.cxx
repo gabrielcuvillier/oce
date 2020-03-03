@@ -557,14 +557,18 @@ void Graphic3d_Layer::UpdateCulling (Standard_Integer theViewId,
       }
       else
       {
-        Standard_Integer aIdx = aBVHTree->BegPrimitive (aNode);
-        const Graphic3d_CStructure* aStruct = isTrsfPers
-                                            ? myBVHPrimitivesTrsfPers.GetStructureById (aIdx)
-                                            : myBVHPrimitives.GetStructureById (aIdx);
-        if (aStruct->IsVisible (theViewId))
+        const Standard_Integer aStartIdx = aBVHTree->BegPrimitive (aNode);
+        const Standard_Integer anEndIdx  = aBVHTree->EndPrimitive (aNode);
+        for (Standard_Integer anIdx = aStartIdx; anIdx <= anEndIdx; ++anIdx)
         {
-          aStruct->MarkAsNotCulled();
-          ++myNbStructuresNotCulled;
+          const Graphic3d_CStructure* aStruct = isTrsfPers
+                                              ? myBVHPrimitivesTrsfPers.GetStructureById (anIdx)
+                                              : myBVHPrimitives.GetStructureById (anIdx);
+          if (aStruct->IsVisible (theViewId))
+          {
+            aStruct->MarkAsNotCulled();
+            ++myNbStructuresNotCulled;
+          }
         }
         if (aHead < 0)
         {
@@ -625,4 +629,39 @@ void Graphic3d_Layer::SetLayerSettings (const Graphic3d_ZLayerSettings& theSetti
       aStructure->updateLayerTransformation();
     }
   }
+}
+
+// =======================================================================
+// function : DumpJson
+// purpose  :
+// =======================================================================
+void Graphic3d_Layer::DumpJson (Standard_OStream& theOStream, Standard_Integer theDepth) const
+{
+  OCCT_DUMP_TRANSIENT_CLASS_BEGIN (theOStream)
+
+  OCCT_DUMP_FIELD_VALUE_POINTER (theOStream, this)
+  OCCT_DUMP_FIELD_VALUE_NUMERICAL (theOStream, myLayerId)
+  OCCT_DUMP_FIELD_VALUE_NUMERICAL (theOStream, myNbStructures)
+  OCCT_DUMP_FIELD_VALUE_NUMERICAL (theOStream, myNbStructuresNotCulled)
+
+  const Standard_Integer aNbPriorities = myArray.Length();
+  for (Standard_Integer aPriorityIter = 0; aPriorityIter < aNbPriorities; ++aPriorityIter)
+  {
+    const Graphic3d_IndexedMapOfStructure& aStructures = myArray (aPriorityIter);
+    for (Graphic3d_IndexedMapOfStructure::Iterator aStructIter (aStructures); aStructIter.More(); aStructIter.Next())
+    {
+      const Graphic3d_CStructure* aStructure = aStructIter.Value();
+      OCCT_DUMP_FIELD_VALUE_POINTER (theOStream, aStructure)
+    }
+  }
+
+  OCCT_DUMP_FIELD_VALUES_DUMPED (theOStream, theDepth, &myLayerSettings)
+
+  OCCT_DUMP_FIELD_VALUE_NUMERICAL (theOStream, myBVHIsLeftChildQueuedFirst)
+  OCCT_DUMP_FIELD_VALUE_NUMERICAL (theOStream, myIsBVHPrimitivesNeedsReset)
+  OCCT_DUMP_FIELD_VALUE_NUMERICAL (theOStream, myIsBoundingBoxNeedsReset[0])
+  OCCT_DUMP_FIELD_VALUE_NUMERICAL (theOStream, myIsBoundingBoxNeedsReset[1])
+
+  OCCT_DUMP_FIELD_VALUES_DUMPED (theOStream, theDepth, &myBoundingBox[0])
+  OCCT_DUMP_FIELD_VALUES_DUMPED (theOStream, theDepth, &myBoundingBox[1])
 }

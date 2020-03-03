@@ -108,6 +108,7 @@ else()
   elseif (ANDROID)
     set (CSF_ThreadLibs  "c")
     set (CSF_OpenGlLibs  "EGL GLESv2")
+    set (CSF_androidlog  "log")
   elseif (EMSCRIPTEN)
     #NB: Emscripten does not work like usual platforms: the application needs to explicitely links to "webgl.js"
     #set (CSF_OpenGlLibs "webgl")

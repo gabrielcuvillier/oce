@@ -15,6 +15,8 @@
 
 #include <Graphic3d_BSDF.hxx>
 
+#include <Graphic3d_PBRMaterial.hxx>
+
 #include <algorithm>
 
 // =======================================================================
@@ -58,11 +60,24 @@ Graphic3d_Fresnel Graphic3d_Fresnel::CreateConductor (const Graphic3d_Vec3& theR
   return Graphic3d_Fresnel (Graphic3d_FM_SCHLICK, aFresnel);
 }
 
+//=======================================================================
+//function : DumpJson
+//purpose  : 
+//=======================================================================
+void Graphic3d_Fresnel::DumpJson (Standard_OStream& theOStream, Standard_Integer theDepth) const
+{
+  OCCT_DUMP_CLASS_BEGIN (theOStream, Graphic3d_Fresnel)
+
+  OCCT_DUMP_FIELD_VALUE_NUMERICAL (theOStream, myFresnelType)
+  OCCT_DUMP_FIELD_VALUES_DUMPED (theOStream, theDepth, &myFresnelData)
+}
+
 // =======================================================================
 // function : Graphic3d_BSDF
 // purpose  :
 // =======================================================================
 Graphic3d_BSDF::Graphic3d_BSDF()
+: Ks (Graphic3d_Vec3 (0.f), 1.f)
 {
   FresnelCoat = Graphic3d_Fresnel::CreateConstant (0.f);
   FresnelBase = Graphic3d_Fresnel::CreateConstant (1.f);
@@ -189,4 +204,56 @@ Graphic3d_BSDF Graphic3d_BSDF::CreateGlass (const Graphic3d_Vec3& theWeight,
                                      theAbsorptionCoeff);
 
   return aBSDF;
+}
+
+// =======================================================================
+// function : CreateMetallicRoughness
+// purpose  :
+// =======================================================================
+Graphic3d_BSDF Graphic3d_BSDF::CreateMetallicRoughness (const Graphic3d_PBRMaterial& thePbr)
+{
+  const Graphic3d_Vec3 aDiff = (Graphic3d_Vec3 )thePbr.Color().GetRGB() * thePbr.Alpha();
+  const Standard_ShortReal aRougness2 = thePbr.NormalizedRoughness() * thePbr.NormalizedRoughness();
+
+  Graphic3d_BSDF aBsdf;
+  aBsdf.Le = thePbr.Emission();
+  if (thePbr.IOR() > 1.0f
+   && thePbr.Alpha() < 1.0f
+   && thePbr.Metallic() <= ShortRealEpsilon())
+  {
+    aBsdf.FresnelCoat = Graphic3d_Fresnel::CreateDielectric (thePbr.IOR());
+    aBsdf.Kt = Graphic3d_Vec3(1.0f);
+    aBsdf.Kc.r() = aBsdf.Kt.r();
+    aBsdf.Kc.g() = aBsdf.Kt.g();
+    aBsdf.Kc.b() = aBsdf.Kt.b();
+    aBsdf.Absorption.SetValues (thePbr.Color().GetRGB(), thePbr.Alpha() * 0.25f);
+  }
+  else
+  {
+    aBsdf.FresnelBase = Graphic3d_Fresnel::CreateSchlick (aDiff * thePbr.Metallic());
+    aBsdf.Ks.SetValues (Graphic3d_Vec3 (thePbr.Alpha()), aRougness2);
+    aBsdf.Kt = Graphic3d_Vec3 (1.0f - thePbr.Alpha());
+    aBsdf.Kd = aDiff * (1.0f - thePbr.Metallic());
+  }
+
+  return aBsdf;
+}
+
+//=======================================================================
+//function : DumpJson
+//purpose  : 
+//=======================================================================
+void Graphic3d_BSDF::DumpJson (Standard_OStream& theOStream, Standard_Integer theDepth) const
+{
+  OCCT_DUMP_CLASS_BEGIN (theOStream, Graphic3d_BSDF)
+
+  OCCT_DUMP_FIELD_VALUES_DUMPED (theOStream, theDepth, &Kc)
+  OCCT_DUMP_FIELD_VALUES_DUMPED (theOStream, theDepth, &Kd)
+  OCCT_DUMP_FIELD_VALUES_DUMPED (theOStream, theDepth, &Ks)
+  OCCT_DUMP_FIELD_VALUES_DUMPED (theOStream, theDepth, &Kt)
+  OCCT_DUMP_FIELD_VALUES_DUMPED (theOStream, theDepth, &Le)
+  OCCT_DUMP_FIELD_VALUES_DUMPED (theOStream, theDepth, &Absorption)
+
+  OCCT_DUMP_FIELD_VALUES_DUMPED (theOStream, theDepth, &FresnelCoat)
+  OCCT_DUMP_FIELD_VALUES_DUMPED (theOStream, theDepth, &FresnelBase)
 }

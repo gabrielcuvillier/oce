@@ -23,6 +23,9 @@
 #include <Draw_ProgressIndicator.hxx>
 #include <Draw_Window.hxx>
 #include <gp_Pnt2d.hxx>
+#include <Message.hxx>
+#include <Message_Messenger.hxx>
+#include <Message_PrinterOStream.hxx>
 #include <OSD.hxx>
 #include <OSD_Environment.hxx>
 #include <OSD_File.hxx>
@@ -37,6 +40,9 @@
 #include <TCollection_AsciiString.hxx>
 
 #include <tcl.h>
+
+#include <Standard_WarningDisableFunctionCast.hxx>
+
 // on MSVC, use #pragma to define name of the Tcl library to link with,
 // depending on Tcl version number
 #ifdef _MSC_VER
@@ -493,7 +499,20 @@ void Draw_Appli(int argc, char** argv, const FDraw_InitAppli Draw_InitAppli)
   }
 
   // read commands from file
-  if (!aRunFile.IsEmpty()) {
+  if (!aRunFile.IsEmpty())
+  {
+    if (!isInteractiveForced)
+    {
+      // disable console messages colorization to avoid spoiling log with color codes
+      for (Message_SequenceOfPrinters::Iterator aPrinterIter (Message::DefaultMessenger()->Printers());
+           aPrinterIter.More(); aPrinterIter.Next())
+      {
+        if (Handle(Message_PrinterOStream) aPrinter = Handle(Message_PrinterOStream)::DownCast (aPrinterIter.Value()))
+        {
+          aPrinter->SetToColorize (Standard_False);
+        }
+      }
+    }
     ReadInitFile (aRunFile);
     // provide a clean exit, this is useful for some analysis tools
     if ( ! isInteractiveForced )
@@ -618,12 +637,7 @@ Standard_Boolean Draw_Interprete(const char* com)
 
   if (*theCommands.Result())
   {
-  #ifdef _WIN32
-    const TCollection_ExtendedString aResWide (theCommands.Result());
-    std::wcout << aResWide.ToWideString() << std::endl;
-  #else
     std::cout << theCommands.Result() << std::endl;
-  #endif
   }
 
   if (Draw_Chrono && hadchrono) {

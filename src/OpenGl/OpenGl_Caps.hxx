@@ -28,7 +28,8 @@ class OpenGl_Caps : public Standard_Transient
 public: //! @name flags to disable particular functionality, should be used only for testing purposes!
 
 #if !defined(HAVE_GLES2)  // VBO disable, PntSprite disable, FFP enable, and PolygonMode not supported on GLES2
-  Standard_Boolean vboDisable;        //!< flag permits VBO usage, will significantly affect performance (OFF by default)
+  Standard_Boolean sRGBDisable;       //!< Disables sRGB rendering (OFF by default)
+  Standard_Boolean vboDisable;        //!< disallow VBO usage for debugging purposes (OFF by default)
   Standard_Boolean pntSpritesDisable; //!< flag permits Point Sprites usage, will significantly affect performance (OFF by default)
   Standard_Boolean ffpEnable;         //!< Enables FFP (fixed-function pipeline), do not use built-in GLSL programs (OFF by default)
   Standard_Boolean usePolygonMode;    //!< Enables Polygon Mode instead of built-in GLSL programs (OFF by default; unsupported on OpenGL ES)

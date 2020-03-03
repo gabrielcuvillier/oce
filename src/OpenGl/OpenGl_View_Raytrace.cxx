@@ -30,6 +30,7 @@
 #include "../Shaders/Shaders_RaytraceRender_fs.pxx"
 #include "../Shaders/Shaders_RaytraceSmooth_fs.pxx"
 #include "../Shaders/Shaders_Display_fs.pxx"
+#include "../Shaders/Shaders_TangentSpaceNormal_glsl.pxx"
 
 //! Use this macro to output ray-tracing debug info
 // #define RAY_TRACE_PRINT_INFO
@@ -47,7 +48,7 @@ namespace
 namespace
 {
   //! Defines OpenGL texture samplers.
-  static const Graphic3d_TextureUnit OpenGl_RT_EnvironmentMapTexture = Graphic3d_TextureUnit_0;
+  static const Graphic3d_TextureUnit OpenGl_RT_EnvMapTexture = Graphic3d_TextureUnit_0;
 
   static const Graphic3d_TextureUnit OpenGl_RT_SceneNodeInfoTexture  = Graphic3d_TextureUnit_1;
   static const Graphic3d_TextureUnit OpenGl_RT_SceneMinPointTexture  = Graphic3d_TextureUnit_2;
@@ -395,19 +396,25 @@ OpenGl_RaytraceMaterial OpenGl_View::convertMaterial (const OpenGl_Aspects* theA
                                     anIndex == 0 ? 1.0f : anIndex,
                                     anIndex == 0 ? 1.0f : 1.0f / anIndex);
 
+  aResMat.Ambient  = theGlContext->Vec4FromQuantityColor (aResMat.Ambient);
+  aResMat.Diffuse  = theGlContext->Vec4FromQuantityColor (aResMat.Diffuse);
+  aResMat.Specular = theGlContext->Vec4FromQuantityColor (aResMat.Specular);
+  aResMat.Emission = theGlContext->Vec4FromQuantityColor (aResMat.Emission);
+
   // Serialize physically-based material properties
   const Graphic3d_BSDF& aBSDF = aSrcMat.BSDF();
 
   aResMat.BSDF.Kc = aBSDF.Kc;
   aResMat.BSDF.Ks = aBSDF.Ks;
-  aResMat.BSDF.Kd = BVH_Vec4f (aBSDF.Kd, -1.f); // no texture
-  aResMat.BSDF.Kt = BVH_Vec4f (aBSDF.Kt,  0.f);
-  aResMat.BSDF.Le = BVH_Vec4f (aBSDF.Le,  0.f);
+  aResMat.BSDF.Kd = BVH_Vec4f (aBSDF.Kd, -1.0f); // no base color texture
+  aResMat.BSDF.Kt = BVH_Vec4f (aBSDF.Kt, -1.0f); // no metallic-roughness texture
+  aResMat.BSDF.Le = BVH_Vec4f (aBSDF.Le, -1.0f); // no emissive texture
 
   aResMat.BSDF.Absorption = aBSDF.Absorption;
 
   aResMat.BSDF.FresnelCoat = aBSDF.FresnelCoat.Serialize ();
   aResMat.BSDF.FresnelBase = aBSDF.FresnelBase.Serialize ();
+  aResMat.BSDF.FresnelBase.w() = -1.0; // no normal map texture
 
   // Handle material textures
   if (!theAspect->Aspect()->ToMapTexture())
@@ -425,11 +432,31 @@ OpenGl_RaytraceMaterial OpenGl_View::convertMaterial (const OpenGl_Aspects* theA
 
   if (theGlContext->HasRayTracingTextures())
   {
-    const Handle(OpenGl_Texture)& aTexture = aTextureSet->First();
-    buildTextureTransform (aTexture->Sampler()->Parameters(), aResMat.TextureTransform);
-
-    // write texture ID to diffuse w-component
-    aResMat.Diffuse.w() = aResMat.BSDF.Kd.w() = static_cast<Standard_ShortReal> (myRaytraceGeometry.AddTexture (aTexture));
+    // write texture ID to diffuse w-components
+    for (OpenGl_TextureSet::Iterator aTexIter (aTextureSet); aTexIter.More(); aTexIter.Next())
+    {
+      const Handle(OpenGl_Texture)& aTexture = aTexIter.Value();
+      if (aTexIter.Unit() == Graphic3d_TextureUnit_BaseColor)
+      {
+        buildTextureTransform (aTexture->Sampler()->Parameters(), aResMat.TextureTransform);
+        aResMat.Diffuse.w() = aResMat.BSDF.Kd.w() = static_cast<Standard_ShortReal> (myRaytraceGeometry.AddTexture (aTexture));
+      }
+      else if (aTexIter.Unit() == Graphic3d_TextureUnit_MetallicRoughness)
+      {
+        buildTextureTransform (aTexture->Sampler()->Parameters(), aResMat.TextureTransform);
+        aResMat.BSDF.Kt.w() = static_cast<Standard_ShortReal> (myRaytraceGeometry.AddTexture (aTexture));
+      }
+      else if (aTexIter.Unit() == Graphic3d_TextureUnit_Emissive)
+      {
+        buildTextureTransform (aTexture->Sampler()->Parameters(), aResMat.TextureTransform);
+        aResMat.BSDF.Le.w() = static_cast<Standard_ShortReal> (myRaytraceGeometry.AddTexture (aTexture));
+      }
+      else if (aTexIter.Unit() == Graphic3d_TextureUnit_Normal)
+      {
+        buildTextureTransform (aTexture->Sampler()->Parameters(), aResMat.TextureTransform);
+        aResMat.BSDF.FresnelBase.w() = static_cast<Standard_ShortReal> (myRaytraceGeometry.AddTexture (aTexture));
+      }
+    }
   }
   else if (!myIsRaytraceWarnTextures)
   {
@@ -1091,6 +1118,10 @@ TCollection_AsciiString OpenGl_View::generateShaderPrefix (const Handle(OpenGl_C
   {
     aPrefixString += TCollection_AsciiString ("\n#define TRANSPARENT_SHADOWS");
   }
+  if (!theGlContext->ToRenderSRGB())
+  {
+    aPrefixString += TCollection_AsciiString ("\n#define THE_SHIFT_sRGB");
+  }
 
   // If OpenGL driver supports bindless textures and texturing
   // is actually used, activate texturing in ray-tracing mode
@@ -1130,6 +1161,16 @@ TCollection_AsciiString OpenGl_View::generateShaderPrefix (const Handle(OpenGl_C
         aPrefixString += TCollection_AsciiString ("\n#define TONE_MAPPING_FILMIC");
         break;
     }
+  }
+
+  if (myRaytraceParameters.ToIgnoreNormalMap)
+  {
+    aPrefixString += TCollection_AsciiString("\n#define IGNORE_NORMAL_MAP");
+  }
+
+  if (myRaytraceParameters.CubemapForBack)
+  {
+    aPrefixString += TCollection_AsciiString("\n#define BACKGROUND_CUBEMAP");
   }
 
   if (myRaytraceParameters.DepthOfField)
@@ -1302,13 +1343,15 @@ Standard_Boolean OpenGl_View::initRaytraceResources (const Standard_Integer theS
      || myRenderParams.IsTransparentShadowEnabled  != myRaytraceParameters.TransparentShadows
      || myRenderParams.IsGlobalIlluminationEnabled != myRaytraceParameters.GlobalIllumination
      || myRenderParams.TwoSidedBsdfModels          != myRaytraceParameters.TwoSidedBsdfModels
-     || myRaytraceGeometry.HasTextures()           != myRaytraceParameters.UseBindlessTextures)
+     || myRaytraceGeometry.HasTextures()           != myRaytraceParameters.UseBindlessTextures
+     || myRenderParams.ToIgnoreNormalMapInRayTracing != myRaytraceParameters.ToIgnoreNormalMap)
     {
       myRaytraceParameters.NbBounces           = myRenderParams.RaytracingDepth;
       myRaytraceParameters.TransparentShadows  = myRenderParams.IsTransparentShadowEnabled;
       myRaytraceParameters.GlobalIllumination  = myRenderParams.IsGlobalIlluminationEnabled;
       myRaytraceParameters.TwoSidedBsdfModels  = myRenderParams.TwoSidedBsdfModels;
       myRaytraceParameters.UseBindlessTextures = myRaytraceGeometry.HasTextures();
+      myRaytraceParameters.ToIgnoreNormalMap     = myRenderParams.ToIgnoreNormalMapInRayTracing;
       aToRebuildShaders = Standard_True;
     }
 
@@ -1339,6 +1382,13 @@ Standard_Boolean OpenGl_View::initRaytraceResources (const Standard_Integer theS
       aToRebuildShaders = Standard_True;
     }
     myTileSampler.SetSize (myRenderParams, myRaytraceParameters.AdaptiveScreenSampling ? Graphic3d_Vec2i (theSizeX, theSizeY) : Graphic3d_Vec2i (0, 0));
+
+    const bool isCubemapForBack = !myBackgroundCubeMap.IsNull();
+    if (myRaytraceParameters.CubemapForBack != isCubemapForBack)
+    {
+      myRaytraceParameters.CubemapForBack = isCubemapForBack;
+      aToRebuildShaders = Standard_True;
+    }
 
     const bool toEnableDof = !myCamera->IsOrthographic() && myRaytraceParameters.GlobalIllumination;
     if (myRaytraceParameters.DepthOfField != toEnableDof)
@@ -1444,6 +1494,7 @@ Standard_Boolean OpenGl_View::initRaytraceResources (const Standard_Integer theS
       if (!aShaderFolder.IsEmpty())
       {
         const TCollection_AsciiString aFiles[] = { aShaderFolder + "/RaytraceBase.fs",
+                                                   aShaderFolder + "/TangentSpaceNormal.glsl",
                                                    aShaderFolder + "/PathtraceBase.fs",
                                                    aShaderFolder + "/RaytraceRender.fs",
                                                    "" };
@@ -1455,6 +1506,7 @@ Standard_Boolean OpenGl_View::initRaytraceResources (const Standard_Integer theS
       else
       {
         const TCollection_AsciiString aSrcShaders[] = { Shaders_RaytraceBase_fs,
+                                                        Shaders_TangentSpaceNormal_glsl,
                                                         Shaders_PathtraceBase_fs,
                                                         Shaders_RaytraceRender_fs,
                                                         "" };
@@ -1578,7 +1630,7 @@ Standard_Boolean OpenGl_View::initRaytraceResources (const Standard_Integer theS
       aShaderProgram->SetSampler (theGlContext, 
         "uSceneTransformTexture", OpenGl_RT_SceneTransformTexture);
       aShaderProgram->SetSampler (theGlContext,
-        "uEnvironmentMapTexture", OpenGl_RT_EnvironmentMapTexture);
+        "uEnvMapTexture", OpenGl_RT_EnvMapTexture);
       aShaderProgram->SetSampler (theGlContext,
         "uRaytraceMaterialTexture", OpenGl_RT_RaytraceMaterialTexture);
       aShaderProgram->SetSampler (theGlContext,
@@ -1642,10 +1694,10 @@ Standard_Boolean OpenGl_View::initRaytraceResources (const Standard_Integer theS
         aShaderProgram->GetUniformLocation (theGlContext, "uShadowsEnabled");
       myUniformLocations[anIndex][OpenGl_RT_uReflectEnabled] =
         aShaderProgram->GetUniformLocation (theGlContext, "uReflectEnabled");
-      myUniformLocations[anIndex][OpenGl_RT_uSphereMapEnabled] =
-        aShaderProgram->GetUniformLocation (theGlContext, "uSphereMapEnabled");
-      myUniformLocations[anIndex][OpenGl_RT_uSphereMapForBack] =
-        aShaderProgram->GetUniformLocation (theGlContext, "uSphereMapForBack");
+      myUniformLocations[anIndex][OpenGl_RT_uEnvMapEnabled] =
+        aShaderProgram->GetUniformLocation (theGlContext, "uEnvMapEnabled");
+      myUniformLocations[anIndex][OpenGl_RT_uEnvMapForBack] =
+        aShaderProgram->GetUniformLocation (theGlContext, "uEnvMapForBack");
       myUniformLocations[anIndex][OpenGl_RT_uBlockedRngEnabled] =
         aShaderProgram->GetUniformLocation (theGlContext, "uBlockedRngEnabled");
 
@@ -1862,12 +1914,16 @@ Standard_Boolean OpenGl_View::updateRaytraceBuffers (const Standard_Integer     
       // workaround for some NVIDIA drivers
       myRaytraceVisualErrorTexture[aViewIter]->Release (theGlContext.operator->());
       myRaytraceTileSamplesTexture[aViewIter]->Release (theGlContext.operator->());
-      myRaytraceVisualErrorTexture[aViewIter]->Init (theGlContext, GL_R32I, GL_RED_INTEGER, GL_INT,
-                                                     myTileSampler.NbTilesX(), myTileSampler.NbTilesY(), Graphic3d_TOT_2D);
+      myRaytraceVisualErrorTexture[aViewIter]->Init (theGlContext,
+                                                     OpenGl_TextureFormat::FindSizedFormat (theGlContext, GL_R32I),
+                                                     Graphic3d_Vec2i (myTileSampler.NbTilesX(), myTileSampler.NbTilesY()),
+                                                     Graphic3d_TOT_2D);
       if (!myRaytraceParameters.AdaptiveScreenSamplingAtomic)
       {
-        myRaytraceTileSamplesTexture[aViewIter]->Init (theGlContext, GL_R32I, GL_RED_INTEGER, GL_INT,
-                                                       myTileSampler.NbTilesX(), myTileSampler.NbTilesY(), Graphic3d_TOT_2D);
+        myRaytraceTileSamplesTexture[aViewIter]->Init (theGlContext,
+                                                       OpenGl_TextureFormat::FindSizedFormat (theGlContext, GL_R32I),
+                                                       Graphic3d_Vec2i (myTileSampler.NbTilesX(), myTileSampler.NbTilesY()),
+                                                       Graphic3d_TOT_2D);
       }
     }
     else // non-adaptive mode
@@ -2345,12 +2401,11 @@ Standard_Boolean OpenGl_View::uploadRaytraceData (const Handle(OpenGl_Context)& 
 Standard_Boolean OpenGl_View::updateRaytraceLightSources (const OpenGl_Mat4& theInvModelView, const Handle(OpenGl_Context)& theGlContext)
 {
   std::vector<Handle(Graphic3d_CLight)> aLightSources;
-  myRaytraceGeometry.Ambient = BVH_Vec4f (0.f, 0.f, 0.f, 0.f);
+  Graphic3d_Vec4 aNewAmbient (0.0f);
   if (myShadingModel != Graphic3d_TOSM_UNLIT
   && !myLights.IsNull())
   {
-    const Graphic3d_Vec4& anAmbient = myLights->AmbientColor();
-    myRaytraceGeometry.Ambient = BVH_Vec4f (anAmbient.r(), anAmbient.g(), anAmbient.b(), 0.0f);
+    aNewAmbient.SetValues (myLights->AmbientColor().rgb(), 0.0f);
 
     // move positional light sources at the front of the list
     aLightSources.reserve (myLights->Extent());
@@ -2374,6 +2429,12 @@ Standard_Boolean OpenGl_View::updateRaytraceLightSources (const OpenGl_Mat4& the
     }
   }
 
+  if (!myRaytraceGeometry.Ambient.IsEqual (aNewAmbient))
+  {
+    myAccumFrames = 0;
+    myRaytraceGeometry.Ambient = aNewAmbient;
+  }
+
   // get number of 'real' (not ambient) light sources
   const size_t aNbLights = aLightSources.size();
   Standard_Boolean wasUpdated = myRaytraceGeometry.Sources.size () != aNbLights;
@@ -2391,9 +2452,9 @@ Standard_Boolean OpenGl_View::updateRaytraceLightSources (const OpenGl_Mat4& the
                           aLightColor.b() * aLight.Intensity(),
                           1.0f);
 
-    BVH_Vec4f aPosition (-aLight.PackedDirection().x(),
-                         -aLight.PackedDirection().y(),
-                         -aLight.PackedDirection().z(),
+    BVH_Vec4f aPosition (-aLight.PackedDirectionRange().x(),
+                         -aLight.PackedDirectionRange().y(),
+                         -aLight.PackedDirectionRange().z(),
                          0.0f);
 
     if (aLight.Type() != Graphic3d_TOLS_DIRECTIONAL)
@@ -2509,7 +2570,7 @@ Standard_Boolean OpenGl_View::setUniformState (const Standard_Integer        the
 
   theProgram->SetUniform(theGlContext, "uApertureRadius", myRenderParams.CameraApertureRadius);
   theProgram->SetUniform(theGlContext, "uFocalPlaneDist", myRenderParams.CameraFocalPlaneDist);
-  
+
   // Set camera state
   theProgram->SetUniform (theGlContext,
     myUniformLocations[theProgramId][OpenGl_RT_uOriginLB], aOrigins[0]);
@@ -2560,36 +2621,54 @@ Standard_Boolean OpenGl_View::setUniformState (const Standard_Integer        the
       static_cast<GLsizei> (aTextures.size()), reinterpret_cast<const OpenGl_Vec2u*> (&aTextures.front()));
   }
 
-  // Set background colors (only gradient background supported)
+  // Set background colors (only vertical gradient background supported)
+  OpenGl_Vec4 aBackColorTop = myBgColor, aBackColorBot = myBgColor;
   if (myBackgrounds[Graphic3d_TOB_GRADIENT] != NULL
    && myBackgrounds[Graphic3d_TOB_GRADIENT]->IsDefined())
   {
-    theProgram->SetUniform (theGlContext,
-      myUniformLocations[theProgramId][OpenGl_RT_uBackColorTop], myBackgrounds[Graphic3d_TOB_GRADIENT]->GradientColor (0));
-    theProgram->SetUniform (theGlContext,
-      myUniformLocations[theProgramId][OpenGl_RT_uBackColorBot], myBackgrounds[Graphic3d_TOB_GRADIENT]->GradientColor (1));
+    aBackColorTop = myBackgrounds[Graphic3d_TOB_GRADIENT]->GradientColor (0);
+    aBackColorBot = myBackgrounds[Graphic3d_TOB_GRADIENT]->GradientColor (1);
+
+    if (myCamera->Tile().IsValid())
+    {
+      Standard_Integer aTileOffset = myCamera->Tile().OffsetLowerLeft().y();
+      Standard_Integer aTileSize = myCamera->Tile().TileSize.y();
+      Standard_Integer aViewSize = myCamera->Tile().TotalSize.y();
+      OpenGl_Vec4 aColorRange = aBackColorTop - aBackColorBot;
+      aBackColorBot = aBackColorBot + aColorRange * ((float) aTileOffset / aViewSize);
+      aBackColorTop = aBackColorBot + aColorRange * ((float) aTileSize / aViewSize);
+    }
+  }
+  aBackColorTop = theGlContext->Vec4FromQuantityColor (aBackColorTop);
+  aBackColorBot = theGlContext->Vec4FromQuantityColor (aBackColorBot);
+  theProgram->SetUniform (theGlContext, myUniformLocations[theProgramId][OpenGl_RT_uBackColorTop], aBackColorTop);
+  theProgram->SetUniform (theGlContext, myUniformLocations[theProgramId][OpenGl_RT_uBackColorBot], aBackColorBot);
+
+  // Set environment map parameters
+  const Handle(OpenGl_TextureSet)& anEnvTextureSet = myRaytraceParameters.CubemapForBack
+                                                   ? myCubeMapParams->TextureSet (theGlContext)
+                                                   : myTextureEnv;
+  const bool toDisableEnvironmentMap = anEnvTextureSet.IsNull()
+                                   ||  anEnvTextureSet->IsEmpty()
+                                   || !anEnvTextureSet->First()->IsValid();
+  theProgram->SetUniform (theGlContext, myUniformLocations[theProgramId][OpenGl_RT_uEnvMapEnabled],
+                          toDisableEnvironmentMap ? 0 : 1);
+  if (myRaytraceParameters.CubemapForBack)
+  {
+    theProgram->SetUniform (theGlContext, "uZCoeff", myBackgroundCubeMap->ZIsInverted() ? -1 :  1);
+    theProgram->SetUniform (theGlContext, "uYCoeff", myBackgroundCubeMap->IsTopDown()   ?  1 : -1);
+    theProgram->SetUniform (theGlContext, myUniformLocations[theProgramId][OpenGl_RT_uEnvMapForBack],
+                            myBackgroundType == Graphic3d_TOB_CUBEMAP ? 1 : 0);
   }
   else
   {
-    const OpenGl_Vec4& aBackColor = myBgColor;
-
-    theProgram->SetUniform (theGlContext,
-      myUniformLocations[theProgramId][OpenGl_RT_uBackColorTop], aBackColor);
-    theProgram->SetUniform (theGlContext,
-      myUniformLocations[theProgramId][OpenGl_RT_uBackColorBot], aBackColor);
+    theProgram->SetUniform (theGlContext, myUniformLocations[theProgramId][OpenGl_RT_uEnvMapForBack],
+                            myRenderParams.UseEnvironmentMapBackground ? 1 : 0);
   }
 
-  // Set environment map parameters
-  const Standard_Boolean toDisableEnvironmentMap = myTextureEnv.IsNull()
-                                               ||  myTextureEnv->IsEmpty()
-                                               || !myTextureEnv->First()->IsValid();
-
+  // Set ambient light source
   theProgram->SetUniform (theGlContext,
-    myUniformLocations[theProgramId][OpenGl_RT_uSphereMapEnabled], toDisableEnvironmentMap ? 0 : 1);
-
-  theProgram->SetUniform (theGlContext,
-    myUniformLocations[theProgramId][OpenGl_RT_uSphereMapForBack], myRenderParams.UseEnvironmentMapBackground ?  1 : 0);
-
+                          myUniformLocations[theProgramId][OpenGl_RT_uLightAmbnt], myRaytraceGeometry.Ambient);
   if (myRenderParams.IsGlobalIlluminationEnabled) // GI parameters
   {
     theProgram->SetUniform (theGlContext,
@@ -2610,10 +2689,6 @@ Standard_Boolean OpenGl_View::setUniformState (const Standard_Integer        the
   }
   else // RT parameters
   {
-    // Set ambient light source
-    theProgram->SetUniform (theGlContext,
-      myUniformLocations[theProgramId][OpenGl_RT_uLightAmbnt], myRaytraceGeometry.Ambient);
-
     // Enable/disable run-time ray-tracing effects
     theProgram->SetUniform (theGlContext,
       myUniformLocations[theProgramId][OpenGl_RT_uShadowsEnabled], myRenderParams.IsShadowEnabled ?  1 : 0);
@@ -2650,11 +2725,14 @@ void OpenGl_View::bindRaytraceTextures (const Handle(OpenGl_Context)& theGlConte
     }
   }
 
-  if (!myTextureEnv.IsNull()
-   && !myTextureEnv->IsEmpty()
-   &&  myTextureEnv->First()->IsValid())
+  const Handle(OpenGl_TextureSet)& anEnvTextureSet = myRaytraceParameters.CubemapForBack
+                                                   ? myCubeMapParams->TextureSet (theGlContext)
+                                                   : myTextureEnv;
+  if (!anEnvTextureSet.IsNull()
+   && !anEnvTextureSet->IsEmpty()
+   &&  anEnvTextureSet->First()->IsValid())
   {
-    myTextureEnv->First()->Bind (theGlContext, OpenGl_RT_EnvironmentMapTexture);
+    anEnvTextureSet->First()->Bind (theGlContext, OpenGl_RT_EnvMapTexture);
   }
 
   mySceneMinPointTexture   ->BindTexture (theGlContext, OpenGl_RT_SceneMinPointTexture);

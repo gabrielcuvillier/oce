@@ -55,7 +55,7 @@ void OSD_Chronometer::GetProcessCPU (Standard_Real& theUserSeconds,
   theUserSeconds = theSystemSeconds = 0.0;
   return;
 #else
-#if defined(__linux__) || defined(__FreeBSD__) || defined(__ANDROID__) || defined(__QNX__)
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__ANDROID__) || defined(__QNX__) || defined(__EMSCRIPTEN__)
   static const long aCLK_TCK = sysconf(_SC_CLK_TCK);
 #else
   static const long aCLK_TCK = CLK_TCK;

@@ -1104,3 +1104,61 @@ proc checkplatform {args} {
     # current platform is not equal to given as argument platform, return false
     return 0
 }
+
+help checkgravitycenter {
+  Compare Center Of Gravity with given reference data
+
+  Use: checkgravitycenter shape prop_type x y z tol
+}
+proc checkgravitycenter {shape prop_type x y z tol} {
+  puts "checkgravitycenter ${shape} $prop_type $x $y $z $tol"
+  upvar ${shape} ${shape}
+
+  if { $prop_type == "-l" } {
+    set outstr [lprops $shape]
+  } elseif { $prop_type == "-s" } {
+    set outstr [sprops $shape]
+  } elseif { $prop_type == "-v" } {
+    set outstr [vprops $shape]
+  } else {
+    error "Error : invalid prop_type"
+  }
+
+  if { ![regexp {\nX = +([-0-9.+eE]+).*\nY = +([-0-9.+eE]+).*\nZ = +([-0-9.+eE]+)} ${outstr} full comp_x comp_y comp_z] } {
+    error "Error : cannot evaluate properties"
+  }
+
+  if { [expr abs($comp_x-$x)] < $tol && [expr abs($comp_y-$y)] < $tol && [expr abs($comp_z-$z)] < $tol } {
+    puts "Check of center of gravity is OK: value = ($comp_x, $comp_y, $comp_z), expected = ($x, $y, $z)"
+  } else {
+    puts "Error: center of gravity ($comp_x, $comp_y, $comp_z) is not equal to expected ($x, $y, $z)"
+  }
+}
+
+help checkMultilineStrings {
+  Compares two strings.
+  Logically splits the strings to lines by the new line characters.
+  Outputs the first different lines.
+
+  Use: checkMultilineStrings <string_1> <string_2>
+}
+proc checkMultilineStrings {tS1 tS2} {
+  set aL1 [split $tS1 \n]
+  set aL2 [split $tS2 \n]
+
+  set aC1 [llength $aL1]
+  set aC2 [llength $aL2]
+  set aC [expr {min($aC1, $aC2)}]
+
+  for {set aI 0} {$aI < $aC} {incr aI} {
+    if {[lindex $aL1 $aI] != [lindex $aL2 $aI]} {
+      puts "Error. $aI-th lines are different:"
+      puts "[lindex $aL1 $aI]"
+      puts "[lindex $aL2 $aI]"
+    }
+  }
+
+  if {$aC1 != $aC2} {
+    puts "Error. Line counts are different: $aC1 != $aC2."
+  }
+}

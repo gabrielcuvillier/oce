@@ -153,6 +153,9 @@ on this tool.
 **RapidJSON** is an Open Source JSON parser and generator for C++.
 RapidJSON is optionally used by OCCT for reading glTF files (https://rapidjson.org/).
 
+**DejaVu** fonts are a font family based on the Vera Fonts under a permissive license (MIT-like, https://dejavu-fonts.github.io/License.html).
+DejaVu Sans (basic Latin sub-set) is used by OCCT as fallback font when no system font is available.
+
 Adobe Systems, Inc. provides **Adobe Reader**, which can be used to view files in Portable Document Format (PDF). 
 
 @section OCCT_OVW_SECTION_3 Documentation
@@ -207,10 +210,11 @@ for which OCCT is certified to work.
 
 | OS        | Compiler |
 | --------- | ----------- |
-| Windows   | Microsoft Visual Studio: 2008 SP1, 2010 SP1, 2012 Update 4, 2013 Update 5, 2015 Update 3, 2017 <sup>1</sup>, 2019 <br> GCC 4.3+ (Mingw-w64)|
+| Windows   | Microsoft Visual Studio: 2008 SP1, 2010 SP1, 2012 Update 4, 2013 Update 5, 2015 Update 3, 2017 <sup>1</sup>, 2019 <br>, LLVM (ClangCL), GCC 4.3+ (Mingw-w64)|
 | Linux     | GNU gcc 4.3+ <br> LLVM CLang 3.6+ |
 | OS X / macOS | XCode 6 or newer |
 | Android   | NDK r10, GNU gcc 4.8 or newer |
+| Web       | Emscripten SDK 1.39 or newer (CLang) |
 
 1) VC++ 141 64-bit is used for regular testing and for building binary package of official release of OCCT on Windows.
 
@@ -569,3 +573,11 @@ There is a sample demonstrating usage of OCCT on iOS with Apple UIKit framework.
 @figure{/overview/images/sample_ios_uikit.png}
 
 See \subpage occt_samples_ios_uikit "iOS sample Readme" for details.
+
+@subsubsection OCCT_OVW_SECTION_7_3_6 Web
+
+WebGL Viewer sample demonstrating usage of OCCT 3D Viewer in Web browser with Emscripten SDK can be found in `samples/webgl`.
+
+@figure{/overview/images/sample_webgl.png}
+
+See \subpage occt_samples_webgl "WebGL sample Readme" for details.

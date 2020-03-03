@@ -195,6 +195,25 @@ private:
   friend class Standard_Failure;
 };
 
+// If OCC_CONVERT_SIGNALS is not defined,
+// provide empty inline implementation
+#if ! defined(OCC_CONVERT_SIGNALS)
+inline Standard_ErrorHandler::Callback::Callback ()
+       : myHandler(0), myPrev(0), myNext(0)
+{
+}
+inline Standard_ErrorHandler::Callback::~Callback ()
+{
+  (void)myHandler;
+  (void)myPrev;
+}
+inline void Standard_ErrorHandler::Callback::RegisterCallback ()
+{
+}
+inline void Standard_ErrorHandler::Callback::UnregisterCallback ()
+{
+}
+#endif
 
 // Definition of the old name "Standard_ErrorHandlerCallback" was kept for compatibility
 typedef Standard_ErrorHandler::Callback Standard_ErrorHandlerCallback;

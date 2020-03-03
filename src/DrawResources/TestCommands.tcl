@@ -144,7 +144,9 @@ help testgrid {
   -xml filename: write XML report for Jenkins (in JUnit-like format)
   -beep: play sound signal at the end of the tests
   -regress dirname: re-run only a set of tests that have been detected as regressions on some previous run.
+  -skipped dirname: re-run only a set of tests that have been skipped on some previous run.
                     Here "dirname" is path to directory containing results of previous run.
+  -skip N: skip first N tests (useful to restart after abort)
   Groups, grids, and test cases to be executed can be specified by list of file 
   masks, separated by spaces or comma; default is all (*).
 }
@@ -172,7 +174,10 @@ proc testgrid {args} {
     set exc_grid 0
     set exc_case 0
     set regress 0
-    set prev_logdir ""
+    set skipped 0
+    set logdir_regr ""
+    set logdir_skip ""
+    set nbskip 0
     for {set narg 0} {$narg < [llength $args]} {incr narg} {
         set arg [lindex $args $narg]
 
@@ -234,13 +239,29 @@ proc testgrid {args} {
         }
 
         # re-run only a set of tests that have been detected as regressions on some previous run
-        if { $arg == "-regress" } {
+        if { $arg == "-regress" || $arg == "-skipped" } {
             incr narg
             if { $narg < [llength $args] && ! [regexp {^-} [lindex $args $narg]] } {
-                set prev_logdir [lindex $args $narg]
-                set regress 1
+                if { $arg == "-regress" } {
+                    set logdir_regr [file normalize [string trim [lindex $args $narg]]]
+                    set regress 1
+                } else {
+                    set logdir_skip [file normalize [string trim [lindex $args $narg]]]
+                    set skipped 1
+                }
             } else {
-                error "Option -regress requires argument"
+                error "Option $arg requires argument"
+            }
+            continue
+        }
+
+        # skip N first tests
+        if { $arg == "-skip" } {
+            incr narg
+            if { $narg < [llength $args] && [string is integer [lindex $args $narg]] } { 
+                set nbskip [lindex $args $narg]
+            } else {
+                error "Option -skip requires integer argument"
             }
             continue
         }
@@ -303,7 +324,6 @@ proc testgrid {args} {
 
     # check that target log directory is empty or does not exist
     set logdir [file normalize [string trim $logdir]]
-    set prev_logdir [file normalize [string trim $prev_logdir]]
     if { $logdir == "" } {
         # if specified logdir is empty string, generate unique name like 
         # results/<branch>_<timestamp>
@@ -332,7 +352,7 @@ proc testgrid {args} {
     # if option "regress" is given
     set rerun_group_grid_case {}
 
-    if { ${regress} > 0 } {
+    if { ${regress} > 0 || ${skipped} > 0 } {
         if { "${groupmask}" != "*"} {
             lappend rerun_group_grid_case [list $groupmask $gridmask $casemask]
         }
@@ -341,8 +361,8 @@ proc testgrid {args} {
     }
 
     if { ${regress} > 0 } {
-        if { [file exists ${prev_logdir}/tests.log] } {
-            set fd [open ${prev_logdir}/tests.log]
+        if { [file exists ${logdir_regr}/tests.log] } {
+            set fd [open ${logdir_regr}/tests.log]
             while { [gets $fd line] >= 0 } {
                 if {[regexp {CASE ([^\s]+) ([^\s]+) ([^\s]+): FAILED} $line dump group grid casename] ||
                     [regexp {CASE ([^\s]+) ([^\s]+) ([^\s]+): IMPROVEMENT} $line dump group grid casename]} {
@@ -351,7 +371,20 @@ proc testgrid {args} {
             }
             close $fd
         } else {
-            error "Error: file ${prev_logdir}/tests.log is not found, check your input arguments!"
+            error "Error: file ${logdir_regr}/tests.log is not found, check your input arguments!"
+        }
+    }
+    if { ${skipped} > 0 } {
+        if { [file exists ${logdir_skip}/tests.log] } {
+            set fd [open ${logdir_skip}/tests.log]
+            while { [gets $fd line] >= 0 } {
+                if {[regexp {CASE ([^\s]+) ([^\s]+) ([^\s]+): SKIPPED} $line dump group grid casename] } {
+                    lappend rerun_group_grid_case [list $group $grid $casename]
+                }
+            }
+            close $fd
+        } else {
+            error "Error: file ${logdir_skip}/tests.log is not found, check your input arguments!"
         }
     }
 
@@ -501,7 +534,11 @@ proc testgrid {args} {
                             continue
                         }
 
-                        lappend tests_list [list $dir $group $grid $casename $casefile]
+                        if { $nbskip > 0 } {
+                            incr nbskip -1
+                        } else {
+                            lappend tests_list [list $dir $group $grid $casename $casefile]
+                        }
                     }
                 }
             }
@@ -571,7 +608,20 @@ proc testgrid {args} {
         if { $logdir != "" } { set imgdir_cmd "set imagedir $logdir/$group/$grid" }
 
         # prepare command file for running test case in separate instance of DRAW
-        set fd_cmd [open $logdir/$group/$grid/${casename}.tcl w]
+        set file_cmd "$logdir/$group/$grid/${casename}.tcl"
+        set fd_cmd [open $file_cmd w]
+
+        # UTF-8 encoding is used by default on Linux everywhere, and "unicode" is set 
+        # by default as encoding of stdin and stdout on Windows in interactive mode; 
+        # however in batch mode on Windows default encoding is set to system one (e.g. 1252),
+        # so we need to set UTF-8 encoding explicitly to have Unicode symbols transmitted 
+        # correctly between calling and caller processes
+        if { "$tcl_platform(platform)" == "windows" } {
+            puts $fd_cmd "fconfigure stdout -encoding utf-8"
+            puts $fd_cmd "fconfigure stdin -encoding utf-8"
+        }
+
+        # commands to set up and run test
         puts $fd_cmd "$imgdir_cmd"
         puts $fd_cmd "set test_image $casename"
         puts $fd_cmd "_run_test $dir $group $grid $casefile t"
@@ -591,10 +641,10 @@ proc testgrid {args} {
         puts $fd_cmd "exit"
         close $fd_cmd
 
-        # commant to run DRAW with a command file;
+        # command to run DRAW with a command file;
         # note that empty string is passed as standard input to avoid possible 
         # hang-ups due to waiting for stdin of the launching process
-        set command "exec <<{} DRAWEXE -f $logdir/$group/$grid/${casename}.tcl"
+        set command "exec <<{} DRAWEXE -f $file_cmd"
 
         # alternative method to run without temporary file; disabled as it needs too many backslashes
         # else {
@@ -1558,6 +1608,7 @@ proc _log_and_puts {logvar message} {
 proc _log_test_case {output logdir dir group grid casename logvar} {
     upvar $logvar log
     set show_errors 0
+
     # check result and make HTML log
     _check_log $dir $group $grid $casename $show_errors $output summary html_log
     lappend log $summary
@@ -1566,6 +1617,11 @@ proc _log_test_case {output logdir dir group grid casename logvar} {
     if { $logdir != "" } {
         _log_html $logdir/$group/$grid/$casename.html $html_log "Test $group $grid $casename"
         _log_save $logdir/$group/$grid/$casename.log "$output\n$summary" "Test $group $grid $casename"
+    }
+
+    # remove intermediate command file used to run test
+    if { [file exists $logdir/$group/$grid/${casename}.tcl] } {
+        file delete $logdir/$group/$grid/${casename}.tcl
     }
 }
 
@@ -1710,8 +1766,8 @@ proc _log_html_summary {logdir log totals regressions improvements skipped total
     puts $fd "</table>"
 
     # time stamp and elapsed time info
+    puts $fd "<p>Generated on [clock format [clock seconds] -format {%Y-%m-%d %H:%M:%S}] on [info hostname]\n<p>"
     if { $total_time != "" } { 
-        puts $fd "<p>Generated on [clock format [clock seconds] -format {%Y-%m-%d %H:%M:%S}] on [info hostname]\n<p>"
         puts $fd [join [split $total_time "\n"] "<p>"]
     } else {
         puts $fd "<p>NOTE: This is intermediate summary; the tests are still running! This page will refresh automatically until tests are finished."
@@ -2040,6 +2096,15 @@ proc _diff_show_ratio {value1 value2} {
     }
 }
 
+# auxiliary procedure to produce string comparing two values, where first value is a portion of second
+proc _diff_show_positive_ratio {value1 value2} {
+    if {[expr double ($value2)] == 0.} {
+        return "$value1 / $value2"
+    } else {
+        return "$value1 / $value2 \[[format "%5.2f%%" [expr 100 * double($value1) / double($value2)]]\]"
+    }
+}
+
 # procedure to check cpu user time
 proc _check_time {regexp_msg} {
     upvar log log
@@ -2102,6 +2167,8 @@ proc _test_diff {dir1 dir2 basename image cpu memory status verbose _logvar _log
         set stat(cpu2) 0
         set stat(mem1) 0
         set stat(mem2) 0
+        set stat(img1) 0
+        set stat(img2) 0
         set log {}
         set log_image {}
         set log_cpu {}
@@ -2239,13 +2306,16 @@ proc _test_diff {dir1 dir2 basename image cpu memory status verbose _logvar _log
                         }
                     }
                 }
+
                 foreach imgfile $imgcommon {
+                    set stat(img2) [expr $stat(img2) + 1]
                     # if { $verbose > 1 } { _log_and_puts log "Checking [split basename /] $casename: $imgfile" }
                     set diffile [_diff_img_name $dir1 $dir2 $basename $imgfile]
                     if { [catch {diffimage [file join $dir1 $basename $imgfile] \
                                            [file join $dir2 $basename $imgfile] \
                                            -toleranceOfColor 0.0 -blackWhite off -borderFilter off $diffile} diff] } {
                         if {$image != false} {
+                            set stat(img1) [expr $stat(img1) + 1]
                             _log_and_puts log_image "IMAGE [split $basename /] $casename: $imgfile cannot be compared"
                         } else {
                             _log_and_puts log "IMAGE [split $basename /] $casename: $imgfile cannot be compared"
@@ -2259,6 +2329,7 @@ proc _test_diff {dir1 dir2 basename image cpu memory status verbose _logvar _log
                                                    [file join $dir2 $basename $imgfile] \
                                                    -toleranceOfColor $aCaseDiffColorTol -blackWhite off -borderFilter off $diffile} diff2] } {
                                 if {$image != false} {
+                                    set stat(img1) [expr $stat(img1) + 1]
                                     _log_and_puts log_image "IMAGE [split $basename /] $casename: $imgfile cannot be compared"
                                 } else {
                                     _log_and_puts log "IMAGE [split $basename /] $casename: $imgfile cannot be compared"
@@ -2269,6 +2340,7 @@ proc _test_diff {dir1 dir2 basename image cpu memory status verbose _logvar _log
                                 set toLogImageCase false
                                 file delete -force $diffile
                                 if {$image != false} {
+                                    set stat(img1) [expr $stat(img1) + 1]
                                     _log_and_puts log_image "IMAGE [split $basename /] $casename: $imgfile is similar \[$diff different pixels\]"
                                 } else {
                                     _log_and_puts log "IMAGE [split $basename /] $casename: $imgfile is similar \[$diff different pixels\]"
@@ -2278,6 +2350,7 @@ proc _test_diff {dir1 dir2 basename image cpu memory status verbose _logvar _log
                         }
 
                         if {$image != false} {
+                            set stat(img1) [expr $stat(img1) + 1]
                             _log_and_puts log_image "IMAGE [split $basename /] $casename: $imgfile differs \[$diff different pixels\]"
                         } else {
                             _log_and_puts log "IMAGE [split $basename /] $casename: $imgfile differs \[$diff different pixels\]"
@@ -2323,6 +2396,13 @@ proc _test_diff {dir1 dir2 basename image cpu memory status verbose _logvar _log
                 _log_and_puts log_cpu "Total CPU difference: [_diff_show_ratio $stat(cpu1) $stat(cpu2)]"
             } else {
                 _log_and_puts log "Total CPU difference: [_diff_show_ratio $stat(cpu1) $stat(cpu2)]"
+            }
+        }
+        if {$image != false || ($image == false && $cpu == false && $memory == false)} {
+            if {$image != false} {
+                _log_and_puts log_image "Total Image difference: [_diff_show_positive_ratio $stat(img1) $stat(img2)]"
+            } else {
+                _log_and_puts log "Total Image difference: [_diff_show_positive_ratio $stat(img1) $stat(img2)]"
             }
         }
     }

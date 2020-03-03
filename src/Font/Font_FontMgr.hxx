@@ -100,9 +100,11 @@ public:
   //! @param theStrictLevel [in]       search strict level for using aliases and fallback
   //! @param theFontAspect  [in] [out] font aspect to find (considered only if family name is not found);
   //!                                  can be modified if specified font alias refers to another style (compatibility with obsolete aliases)
+  //! @param theDoFailMsg   [in]       put error message on failure into default messenger
   Standard_EXPORT Handle(Font_SystemFont) FindFont (const TCollection_AsciiString& theFontName,
                                                     Font_StrictLevel theStrictLevel,
-                                                    Font_FontAspect& theFontAspect) const;
+                                                    Font_FontAspect& theFontAspect,
+                                                    Standard_Boolean theDoFailMsg = Standard_True) const;
 
   //! Tries to find font by given parameters.
   Handle(Font_SystemFont) FindFont (const TCollection_AsciiString& theFontName,
@@ -118,13 +120,30 @@ public:
   Standard_EXPORT Handle(Font_SystemFont) FindFallbackFont (Font_UnicodeSubset theSubset,
                                                             Font_FontAspect theFontAspect) const;
 
+  //! Read font file and retrieve information from it (the list of font faces).
+  Standard_EXPORT Standard_Boolean CheckFont (NCollection_Sequence<Handle(Font_SystemFont)>& theFonts,
+                                              const TCollection_AsciiString& theFontPath) const;
+
   //! Read font file and retrieve information from it.
   Standard_EXPORT Handle(Font_SystemFont) CheckFont (const Standard_CString theFontPath) const;
   
   //! Register new font.
   //! If there is existing entity with the same name and properties but different path
   //! then font will be overridden or ignored depending on theToOverride flag.
-  Standard_EXPORT Standard_Boolean RegisterFont (const Handle(Font_SystemFont)& theFont, const Standard_Boolean theToOverride);
+  Standard_EXPORT Standard_Boolean RegisterFont (const Handle(Font_SystemFont)& theFont,
+                                                 const Standard_Boolean theToOverride);
+
+  //! Register new fonts.
+  Standard_Boolean RegisterFonts (const NCollection_Sequence<Handle(Font_SystemFont)>& theFonts,
+                                  const Standard_Boolean theToOverride)
+  {
+    Standard_Boolean isRegistered = Standard_False;
+    for (NCollection_Sequence<Handle(Font_SystemFont)>::Iterator aFontIter (theFonts); aFontIter.More(); aFontIter.Next())
+    {
+      isRegistered = RegisterFont (aFontIter.Value(), theToOverride) || isRegistered;
+    }
+    return isRegistered;
+  }
 
   //! Return flag for tracing font aliases usage via Message_Trace messages; TRUE by default.
   Standard_Boolean ToTraceAliases() const { return myToTraceAliases; }
@@ -133,13 +152,16 @@ public:
   //! Can be disabled to avoid redundant messages with Message_Trace level.
   void SetTraceAliases (Standard_Boolean theToTrace) { myToTraceAliases = theToTrace; }
 
+  //! Collects available fonts paths.
+  Standard_EXPORT void InitFontDataBase();
+
+  //! Clear registry. Can be used for testing purposes.
+  Standard_EXPORT void ClearFontDataBase();
+
 private:
   
   //! Creates empty font manager object
   Standard_EXPORT Font_FontMgr();
-  
-  //! Collects available fonts paths.
-  Standard_EXPORT void InitFontDataBase();
 
 private:
 

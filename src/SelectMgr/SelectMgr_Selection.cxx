@@ -26,8 +26,7 @@ IMPLEMENT_STANDARD_RTTIEXT(SelectMgr_Selection,Standard_Transient)
 // Purpose :
 //==================================================
 SelectMgr_Selection::SelectMgr_Selection (const Standard_Integer theModeIdx)
-: myEntityIter (0),
-  myMode (theModeIdx),
+: myMode (theModeIdx),
   mySelectionState (SelectMgr_SOS_Unknown),
   myBVHUpdateStatus (SelectMgr_TBU_None),
   mySensFactor (2),
@@ -115,4 +114,26 @@ void SelectMgr_Selection::SetSensitivity (const Standard_Integer theNewSens)
     Handle(SelectMgr_SensitiveEntity)& anEntity = anEntityIter.ChangeValue();
     anEntity->BaseSensitive()->SetSensitivityFactor (theNewSens);
   }
+}
+
+// =======================================================================
+// function : DumpJson
+// purpose  :
+// =======================================================================
+void SelectMgr_Selection::DumpJson (Standard_OStream& theOStream, Standard_Integer theDepth) const
+{
+  OCCT_DUMP_TRANSIENT_CLASS_BEGIN (theOStream)
+
+  for (NCollection_Vector<Handle(SelectMgr_SensitiveEntity)>::Iterator anIterator (myEntities); anIterator.More(); anIterator.Next())
+  {
+    const Handle(SelectMgr_SensitiveEntity)& anEntity = anIterator.Value();
+    OCCT_DUMP_FIELD_VALUES_DUMPED (theOStream, theDepth, anEntity.get())
+  }
+
+  OCCT_DUMP_FIELD_VALUE_NUMERICAL (theOStream, myMode)
+  OCCT_DUMP_FIELD_VALUE_NUMERICAL (theOStream, mySelectionState)
+  OCCT_DUMP_FIELD_VALUE_NUMERICAL (theOStream, mySensFactor)
+  OCCT_DUMP_FIELD_VALUE_NUMERICAL (theOStream, myUpdateStatus)
+  OCCT_DUMP_FIELD_VALUE_NUMERICAL (theOStream, myBVHUpdateStatus)
+  OCCT_DUMP_FIELD_VALUE_NUMERICAL (theOStream, myIsCustomSens)
 }

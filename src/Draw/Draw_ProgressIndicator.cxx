@@ -18,7 +18,7 @@
 #include <Message.hxx>
 #include <Message_Messenger.hxx>
 #include <Message_ProgressScale.hxx>
-#include <Standard_Type.hxx>
+#include <Precision.hxx>
 
 #include <stdio.h>
 #include <time.h>
@@ -31,7 +31,8 @@ IMPLEMENT_STANDARD_RTTIEXT(Draw_ProgressIndicator,Message_ProgressIndicator)
 Draw_ProgressIndicator::Draw_ProgressIndicator (const Draw_Interpretor &di, Standard_Real theUpdateThreshold)
 : myTextMode ( DefaultTextMode() ),
   myGraphMode ( DefaultGraphMode() ),
-  myDraw ( (Standard_Address)&di ),
+  myTclOutput ( DefaultTclOutput() ),
+  myDraw ( (Draw_Interpretor*)&di ),
   myShown ( Standard_False ),
   myBreak ( Standard_False ),
   myUpdateThreshold ( 0.01 * theUpdateThreshold ),
@@ -59,7 +60,7 @@ void Draw_ProgressIndicator::Reset()
 {
   Message_ProgressIndicator::Reset();
   if ( myShown ) {
-    ((Draw_Interpretor*)myDraw)->Eval ( "destroy .xprogress" );
+    myDraw->Eval ( "destroy .xprogress" );
     myShown = Standard_False;
   }
   myBreak = Standard_False;
@@ -92,21 +93,34 @@ Standard_Boolean Draw_ProgressIndicator::Show(const Standard_Boolean force)
   myLastPosition = aPosition;
   
   // Prepare textual progress info
-  char text[2048];
-  Standard_Integer n = 0;
-  n += Sprintf ( &text[n], "Progress: %.0f%%", 100. * GetPosition() );
+  std::stringstream aText;
+  aText.setf (std::ios::fixed, std:: ios::floatfield);
+  aText.precision(0);
+  aText << "Progress: " << 100. * GetPosition() << "%";
   for ( Standard_Integer i=GetNbScopes(); i >=1; i-- ) {
     const Message_ProgressScale &scale = GetScope ( i );
     if ( scale.GetName().IsNull() ) continue; // skip unnamed scopes
+    aText << " " << scale.GetName()->ToCString() << ": ";
+
     // if scope has subscopes, print end of subscope as its current position
     Standard_Real locPos = ( i >1 ? GetScope ( i-1 ).GetLast() : GetPosition() );
     // print progress info differently for finite and infinite scopes
     if ( scale.GetInfinite() )
-      n += Sprintf ( &text[n], " %s: %.0f", scale.GetName()->ToCString(), 
-                     scale.BaseToLocal ( locPos ) );
-    else 
-      n += Sprintf ( &text[n], " %s: %.0f / %.0f", scale.GetName()->ToCString(), 
-                     scale.BaseToLocal ( locPos ), scale.GetMax() );
+    {
+      Standard_Real aVal = scale.BaseToLocal(locPos);
+      if (Precision::IsInfinite(aVal))
+      {
+        aText << "finished";
+      }
+      else
+      {
+        aText << aVal;
+      }
+    }
+    else
+    {
+      aText << scale.BaseToLocal ( locPos ) << " / " << scale.GetMax();
+    }
   }
 
   // Show graphic progress bar
@@ -117,8 +131,8 @@ Standard_Boolean Draw_ProgressIndicator::Show(const Standard_Boolean force)
       time_t aTimeT;
       time ( &aTimeT );
       Standard_Size aTime = (Standard_Size)aTimeT;
-      n += Sprintf ( &text[n], "\nElapsed/estimated time: %ld/%.0f sec", 
-                     (long)(aTime - myStartTime), ( aTime - myStartTime ) / GetPosition() );
+      aText << "\nElapsed/estimated time: " << (long)(aTime - myStartTime) <<
+               "/" << ( aTime - myStartTime ) / GetPosition() << " sec";
     }
   
     if ( ! myShown ) {
@@ -132,27 +146,34 @@ Standard_Boolean Draw_ProgressIndicator::Show(const Standard_Boolean force)
                          "message .xprogress.text -width 400 -text \"Progress 0%%\";"
                          "button .xprogress.stop -text \"Break\" -relief groove -width 9 -command {XProgress -stop %p};"
                          "pack .xprogress.bar .xprogress.text .xprogress.stop -side top;", this );
-      ((Draw_Interpretor*)myDraw)->Eval ( command );
+      myDraw->Eval ( command );
       myShown = Standard_True;
     }
-    char command[1024];
-    Standard_Integer num = 0;
-    num += Sprintf ( &command[num], ".xprogress.bar coords progress 2 2 %.0f 21;", 
-                  1+400*GetPosition() );
-    num += Sprintf ( &command[num], ".xprogress.bar coords progress_next 2 2 %.0f 21;", 
-                  1+400*GetScope(1).GetLast() );
-    num += Sprintf ( &command[num], ".xprogress.text configure -text \"%s\";", text );
-    num += Sprintf ( &command[num], "update" );
-    ((Draw_Interpretor*)myDraw)->Eval ( command );
+    std::stringstream aCommand;
+    aCommand.setf(std::ios::fixed, std::ios::floatfield);
+    aCommand.precision(0);
+    aCommand << ".xprogress.bar coords progress 2 2 " << (1 + 400 * GetPosition()) << " 21;";
+    aCommand << ".xprogress.bar coords progress_next 2 2 " << (1 + 400 * GetScope(1).GetLast()) << " 21;";
+    aCommand << ".xprogress.text configure -text \"" << aText.str() << "\";";
+    aCommand << "update";
+    myDraw->Eval (aCommand.str().c_str());
   }
 
   // Print textual progress info
-  if ( myTextMode )
-    Message::DefaultMessenger()->Send (text, Message_Info);
-  
+  if (myTextMode)
+  {
+    if (myTclOutput && myDraw)
+    {
+      *myDraw << aText.str().c_str() << "\n";
+    }
+    else
+    {
+      std::cout << aText.str().c_str() << "\n";
+    }
+  }
   return Standard_True;
 }
-       
+
 //=======================================================================
 //function : UserBreak
 //purpose  : 
@@ -163,7 +184,7 @@ Standard_Boolean Draw_ProgressIndicator::UserBreak()
   if ( StopIndicator() == this ) {
 //    std::cout << "Progress Indicator - User Break: " << StopIndicator() << ", " << (void*)this << std::endl;
     myBreak = Standard_True;
-    ((Draw_Interpretor*)myDraw)->Eval ( "XProgress -stop 0" );
+    myDraw->Eval ( "XProgress -stop 0" );
   }
   return myBreak;
 }
@@ -213,29 +234,40 @@ Standard_Boolean Draw_ProgressIndicator::GetGraphMode() const
 //purpose  : 
 //=======================================================================
 
-Standard_Boolean &Draw_ProgressIndicator::DefaultTextMode () 
+Standard_Boolean &Draw_ProgressIndicator::DefaultTextMode()
 {
   static Standard_Boolean defTextMode = Standard_False;
   return defTextMode;
 }
-    
+
 //=======================================================================
 //function : DefaultGraphMode
 //purpose  : 
 //=======================================================================
 
-Standard_Boolean &Draw_ProgressIndicator::DefaultGraphMode () 
+Standard_Boolean &Draw_ProgressIndicator::DefaultGraphMode()
 {
   static Standard_Boolean defGraphMode = Standard_False;
   return defGraphMode;
 }
-    
+
+//=======================================================================
+//function : DefaultTclOutput
+//purpose  :
+//=======================================================================
+
+Standard_Boolean &Draw_ProgressIndicator::DefaultTclOutput()
+{
+  static Standard_Boolean defTclOutput = Standard_False;
+  return defTclOutput;
+}
+
 //=======================================================================
 //function : StopIndicator
 //purpose  : 
 //=======================================================================
 
-Standard_Address &Draw_ProgressIndicator::StopIndicator ()
+Standard_Address &Draw_ProgressIndicator::StopIndicator()
 {
   static Standard_Address stopIndicator = 0;
   return stopIndicator;

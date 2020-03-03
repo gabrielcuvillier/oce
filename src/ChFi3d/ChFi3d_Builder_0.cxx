@@ -2311,7 +2311,7 @@ void  ChFi3d_FilDS(const Standard_Integer       SolidIndex,
           Standard_Integer IArcspine = DStr.AddShape(Arcspine);
           Standard_Integer IVtx = CorDat->IndexFirstPointOnS1();
 
-          TopAbs_Orientation OVtx = TopAbs_FORWARD;;
+          TopAbs_Orientation OVtx = TopAbs_FORWARD;
 
           for(ex.Init(Arcspine.Oriented(TopAbs_FORWARD),TopAbs_VERTEX); 
             ex.More(); ex.Next()) {
@@ -4611,8 +4611,12 @@ Standard_Boolean ChFi3d_isTangentFaces(const TopoDS_Edge &theEdge,
 // Obtaining of pcurves of edge on two faces.
   const Handle(Geom2d_Curve) aC2d1 = BRep_Tool::CurveOnSurface
                                                 (theEdge, theFace1, aFirst, aLast);
+  //For the case of seam edge
+  TopoDS_Edge EE = theEdge;
+  if (theFace1.IsSame(theFace2))
+    EE.Reverse();
   const Handle(Geom2d_Curve) aC2d2 = BRep_Tool::CurveOnSurface
-                                                (theEdge, theFace2, aFirst, aLast);
+                                                (EE, theFace2, aFirst, aLast);
   if (aC2d1.IsNull() || aC2d2.IsNull())
     return Standard_False;
 

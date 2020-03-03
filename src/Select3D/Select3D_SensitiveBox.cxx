@@ -59,7 +59,7 @@ Select3D_SensitiveBox::Select3D_SensitiveBox (const Handle(SelectMgr_EntityOwner
 // function : NbSubElements
 // purpose  : Returns the amount of sub-entities in sensitive
 //=======================================================================
-Standard_Integer Select3D_SensitiveBox::NbSubElements()
+Standard_Integer Select3D_SensitiveBox::NbSubElements() const
 {
   return 1;
 }
@@ -119,4 +119,16 @@ gp_Pnt Select3D_SensitiveBox::CenterOfGeometry() const
 Select3D_BndBox3d Select3D_SensitiveBox::BoundingBox()
 {
   return myBox;
+}
+
+//=======================================================================
+//function : DumpJson
+//purpose  :
+//=======================================================================
+void Select3D_SensitiveBox::DumpJson (Standard_OStream& theOStream, Standard_Integer theDepth) const
+{
+  OCCT_DUMP_TRANSIENT_CLASS_BEGIN (theOStream)
+  OCCT_DUMP_BASE_CLASS (theOStream, theDepth, Select3D_SensitiveEntity)
+
+  OCCT_DUMP_FIELD_VALUES_DUMPED (theOStream, theDepth, &myBox)
 }

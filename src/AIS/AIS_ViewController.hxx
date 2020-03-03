@@ -54,6 +54,9 @@ public:
   //! Empty constructor.
   Standard_EXPORT AIS_ViewController();
 
+  //! Destructor.
+  Standard_EXPORT virtual ~AIS_ViewController();
+
   //! Return input buffer.
   const AIS_ViewInputBuffer& InputBuffer (AIS_ViewInputBufferType theType) const { return theType == AIS_ViewInputBufferType_UI ? myUI : myGL; }
 
@@ -671,6 +674,7 @@ protected: //! @name mouse input variables
   Aspect_VKeyMouse    myMousePressed;             //!< active mouse buttons
   Aspect_VKeyFlags    myMouseModifiers;           //!< active key modifiers passed with last mouse event
   Standard_Integer    myMouseSingleButton;        //!< index of mouse button pressed alone (>0)
+  Standard_Boolean    myMouseStopDragOnUnclick;   //!< queue stop dragging even with at next mouse unclick
 
 protected: //! @name multi-touch input variables
 

@@ -29,7 +29,7 @@ MeshVS_DummySensitiveEntity::MeshVS_DummySensitiveEntity (const Handle(SelectMgr
 // Function : NbSubElements
 // Purpose  :
 //================================================================
-Standard_Integer MeshVS_DummySensitiveEntity::NbSubElements()
+Standard_Integer MeshVS_DummySensitiveEntity::NbSubElements() const
 {
   return -1;
 }
@@ -80,7 +80,7 @@ Standard_Boolean MeshVS_DummySensitiveEntity::HasInitLocation() const
 //function : InvInitLocation
 //purpose  :
 //=======================================================================
-inline gp_GTrsf MeshVS_DummySensitiveEntity::InvInitLocation() const
+gp_GTrsf MeshVS_DummySensitiveEntity::InvInitLocation() const
 {
   return gp_GTrsf();
 }

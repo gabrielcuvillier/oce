@@ -155,19 +155,27 @@ public:
   //! Initialize the font from the given file path.
   //! @param theFontPath path to the font
   //! @param theParams   initialization parameters
+  //! @param theFaceId   face id within the file (0 by default)
   //! @return true on success
   bool Init (const TCollection_AsciiString& theFontPath,
              const Font_FTFontParams& theParams);
+             const Font_FTFontParams& theParams,
+             const Standard_Integer theFaceId = 0)
+  {
+    return Init (Handle(NCollection_Buffer)(), theFontPath, theParams, theFaceId);
+  }
 
   //! Initialize the font from the given file path or memory buffer.
   //! @param theData     memory to read from, should NOT be freed after initialization!
   //!                    when NULL, function will attempt to open theFileName file
   //! @param theFileName optional path to the font
   //! @param theParams   initialization parameters
+  //! @param theFaceId   face id within the file (0 by default)
   //! @return true on success
   Standard_EXPORT bool Init (const Handle(NCollection_Buffer)& theData,
                              const TCollection_AsciiString& theFileName,
-                             const Font_FTFontParams& theParams);
+                             const Font_FTFontParams& theParams,
+                             const Standard_Integer theFaceId = 0);
 
   //! Find (using Font_FontMgr) and initialize the font from the given name.
   //! @param theFontName    the font name
@@ -287,7 +295,7 @@ public:
     Font_FTFontParams aParams;
     aParams.PointSize  = thePointSize;
     aParams.Resolution = theResolution;
-    return Init (theFontPath.ToCString(), aParams);
+    return Init (theFontPath.ToCString(), aParams, 0);
   }
 
   //! Initialize the font.

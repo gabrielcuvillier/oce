@@ -3,6 +3,7 @@ Message.hxx
 Message_Algorithm.cxx
 Message_Algorithm.hxx
 Message_Algorithm.lxx
+Message_ConsoleColor.hxx
 Message_ExecStatus.hxx
 Message_Gravity.hxx
 Message_HArrayOfMsg.hxx
@@ -19,6 +20,8 @@ Message_Printer.cxx
 Message_Printer.hxx
 Message_PrinterOStream.cxx
 Message_PrinterOStream.hxx
+Message_PrinterSystemLog.cxx
+Message_PrinterSystemLog.hxx
 Message_ProgressIndicator.cxx
 Message_ProgressIndicator.hxx
 Message_ProgressIndicator.lxx

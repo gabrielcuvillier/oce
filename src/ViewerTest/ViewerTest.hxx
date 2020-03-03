@@ -34,6 +34,7 @@ class V3d_View;
 class V3d_Viewer;
 class ViewerTest_EventManager;
 class TopoDS_Shape;
+class WNT_WClass;
 
 class ViewerTest
 {
@@ -196,8 +197,18 @@ public:
 
   //! Parses line type argument.
   //! Handles either enumeration (integer) value or string constant.
-  Standard_EXPORT static Standard_Boolean ParseLineType (Standard_CString   theArg,
-                                                         Aspect_TypeOfLine& theType);
+  Standard_EXPORT static Standard_Boolean ParseLineType (Standard_CString theArg,
+                                                         Aspect_TypeOfLine& theType,
+                                                         uint16_t& thePattern);
+
+  //! Parses line type argument.
+  //! Handles either enumeration (integer) value or string constant.
+  static Standard_Boolean ParseLineType (Standard_CString theArg,
+                                         Aspect_TypeOfLine& theType)
+  {
+    uint16_t aPattern = 0xFFFF;
+    return ParseLineType (theArg, theType, aPattern);
+  }
 
   //! Parses marker type argument.
   //! Handles either enumeration (integer) value or string constant.
@@ -257,7 +268,7 @@ private:
   //! Ctrl+MB2 for pan, etc) and keyboard shortcuts.
   //! This method is relevant for MS Windows only and respectively
   //! returns WNT_WClass handle.
-  static const Handle(Standard_Transient)& WClass();
+  static const Handle(WNT_WClass)& WClass();
 };
 
 #endif // _ViewerTest_HeaderFile

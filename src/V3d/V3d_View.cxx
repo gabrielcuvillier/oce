@@ -506,10 +506,36 @@ void V3d_View::SetBgImageStyle (const Aspect_FillMethod theFillStyle, const Stan
 //purpose  :
 //=============================================================================
 void V3d_View::SetBackgroundCubeMap (const Handle(Graphic3d_CubeMap)& theCubeMap,
+                                     Standard_Boolean                 theToUpdatePBREnv,
                                      Standard_Boolean                 theToUpdate)
 {
-  myView->SetBackgroundCubeMap (theCubeMap);
+  myView->SetBackgroundCubeMap (theCubeMap, theToUpdatePBREnv);
+  if (myImmediateUpdate || theToUpdate)
+  {
+    Redraw();
+  }
+}
 
+//=============================================================================
+//function : GeneratePBREnvironment
+//purpose  :
+//=============================================================================
+void V3d_View::GeneratePBREnvironment (Standard_Boolean theToUpdate)
+{
+  myView->GeneratePBREnvironment();
+  if (myImmediateUpdate || theToUpdate)
+  {
+    Redraw();
+  }
+}
+
+//=============================================================================
+//function : ClearPBREnvironment
+//purpose  :
+//=============================================================================
+void V3d_View::ClearPBREnvironment (Standard_Boolean theToUpdate)
+{
+  myView->ClearPBREnvironment();
   if (myImmediateUpdate || theToUpdate)
   {
     Redraw();
@@ -2674,6 +2700,7 @@ Standard_Boolean V3d_View::ToPixMap (Image_PixMap&               theImage,
         case Graphic3d_BT_RGBA:                aFormat = Image_Format_RGBA;  break;
         case Graphic3d_BT_Depth:               aFormat = Image_Format_GrayF; break;
         case Graphic3d_BT_RGB_RayTraceHdrLeft: aFormat = Image_Format_RGBF;  break;
+        case Graphic3d_BT_Red:                 aFormat = Image_Format_Gray;  break;
       }
 
       if (!theImage.InitZero (aFormat, Standard_Size(aTargetSize.x()), Standard_Size(aTargetSize.y())))

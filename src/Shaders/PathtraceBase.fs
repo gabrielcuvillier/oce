@@ -34,20 +34,20 @@ struct SBSDF
   //! Weight of coat specular/glossy BRDF.
   vec4 Kc;
 
-  //! Weight of base diffuse BRDF.
+  //! Weight of base diffuse BRDF + base color texture index in W.
   vec4 Kd;
 
   //! Weight of base specular/glossy BRDF.
   vec4 Ks;
 
-  //! Weight of base specular/glossy BTDF.
-  vec3 Kt;
+  //! Weight of base specular/glossy BTDF + metallic-roughness texture index in W.
+  vec4 Kt;
 
   //! Fresnel coefficients of coat layer.
   vec3 FresnelCoat;
 
-  //! Fresnel coefficients of base layer.
-  vec3 FresnelBase;
+  //! Fresnel coefficients of base layer + normal map texture index in W.
+  vec4 FresnelBase;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -322,7 +322,7 @@ vec3 EvalBsdfLayered (in SBSDF theBSDF, in vec3 theWi, in vec3 theWo)
 
   if (theBSDF.Ks.w > FLT_EPSILON)
   {
-    aBxDF += theBSDF.Ks.rgb * EvalBlinnReflection (theWi, theWo, theBSDF.FresnelBase, theBSDF.Ks.w);
+    aBxDF += theBSDF.Ks.rgb * EvalBlinnReflection (theWi, theWo, theBSDF.FresnelBase.rgb, theBSDF.Ks.w);
   }
 
   aBxDF *= UNIT - fresnelMedia (theWo.z, theBSDF.FresnelCoat);
@@ -546,7 +546,7 @@ float SampleBsdfLayered (in SBSDF theBSDF, in vec3 theWo, out vec3 theWi, inout 
 
       if (theBSDF.Ks.w < FLT_EPSILON)
       {
-        theWeight *= fresnelMedia (theWo.z, theBSDF.FresnelBase);
+        theWeight *= fresnelMedia (theWo.z, theBSDF.FresnelBase.rgb);
 
         theWi = vec3 (-theWo.x,
                       -theWo.y,
@@ -554,7 +554,7 @@ float SampleBsdfLayered (in SBSDF theBSDF, in vec3 theWo, out vec3 theWi, inout 
       }
       else
       {
-        theWeight *= SampleGlossyBlinnReflection (theWo, theWi, theBSDF.FresnelBase, theBSDF.Ks.w, aPDF);
+        theWeight *= SampleGlossyBlinnReflection (theWo, theWi, theBSDF.FresnelBase.rgb, theBSDF.Ks.w, aPDF);
       }
 
       aPDF = mix (aPDF, MAXFLOAT, theBSDF.Ks.w < FLT_EPSILON);
@@ -579,20 +579,6 @@ float SampleBsdfLayered (in SBSDF theBSDF, in vec3 theWo, out vec3 theWi, inout 
 //////////////////////////////////////////////////////////////////////////////////////////////
 // Handlers and samplers for light sources
 //////////////////////////////////////////////////////////////////////////////////////////////
-
-// =======================================================================
-// function : Latlong
-// purpose  : Converts world direction to environment texture coordinates
-// =======================================================================
-vec2 Latlong (in vec3 thePoint)
-{
-  float aPsi = acos (-thePoint.z);
-
-  float aPhi = atan (thePoint.y, thePoint.x) + M_PI;
-
-  return vec2 (aPhi * 0.1591549f,
-               aPsi * 0.3183098f);
-}
 
 //=======================================================================
 // function : SampleLight
@@ -701,14 +687,34 @@ vec3 IntersectLight (in SRay theRay, in int theDepth, in float theHitDistance, o
 
   if (thePDF == 0.f && theHitDistance == MAXFLOAT) // light source not found
   {
-    if (theDepth + uSphereMapForBack == 0) // view ray and map is hidden
+    if (theDepth + uEnvMapForBack == 0) // view ray and map is hidden
     {
-      aTotalRadiance = pow (BackgroundColor().rgb, vec3 (2.f));
+      aTotalRadiance = BackgroundColor().rgb;
     }
     else
     {
-      aTotalRadiance = pow (FetchEnvironment (Latlong (theRay.Direct)).rgb, vec3 (2.f));
+    #ifdef BACKGROUND_CUBEMAP
+      if (theDepth == 0)
+      {
+        vec2 aPixel = uEyeSize * (vPixel - vec2 (0.5)) * 2.0;
+        vec2 anAperturePnt = sampleUniformDisk() * uApertureRadius;
+        vec3 aLocalDir = normalize (vec3 (aPixel * uFocalPlaneDist - anAperturePnt, uFocalPlaneDist));
+        vec3 aDirect = uEyeView * aLocalDir.z +
+                       uEyeSide * aLocalDir.x +
+                       uEyeVert * aLocalDir.y;
+        aTotalRadiance = FetchEnvironment (aDirect, 1.0, true).rgb;
+      }
+      else
+      {
+        aTotalRadiance = FetchEnvironment (theRay.Direct, 1.0, false).rgb;
+      }
+    #else
+      aTotalRadiance = FetchEnvironment (theRay.Direct, 1.0, theDepth == 0).rgb;
+    #endif
     }
+  #ifdef THE_SHIFT_sRGB
+    aTotalRadiance = pow (aTotalRadiance, vec3 (2.f));
+  #endif
   }
   
   return aTotalRadiance;
@@ -754,6 +760,23 @@ bool IsNotZero (in SBSDF theBSDF, in vec3 theThroughput)
 }
 
 //=======================================================================
+// function : NormalAdaptation
+// purpose  : Adapt smooth normal (which may be different from geometry normal) in order to avoid black areas in render
+//=======================================================================
+bool NormalAdaptation (in vec3 theView, in vec3 theGeometryNormal, inout vec3 theSmoothNormal)
+{
+  float aMinCos = dot(theView, theGeometryNormal);
+  aMinCos = 0.5 * (sqrt(1.0 - aMinCos) + sqrt(1.0 + aMinCos));
+  float aCos = dot(theGeometryNormal, theSmoothNormal);
+  if (aCos < aMinCos)
+  {
+    theSmoothNormal = aMinCos * theGeometryNormal + normalize(theSmoothNormal - aCos * theGeometryNormal) * sqrt(1.0 - aMinCos * aMinCos);
+    return true;
+  }
+  return false;
+}
+
+//=======================================================================
 // function : PathTrace
 // purpose  : Calculates radiance along the given ray
 //=======================================================================
@@ -774,12 +797,12 @@ vec4 PathTrace (in SRay theRay, in vec3 theInverse, in int theNbSamples)
   {
     SIntersect aHit = SIntersect (MAXFLOAT, vec2 (ZERO), ZERO);
 
-    ivec4 aTriIndex = SceneNearestHit (theRay, theInverse, aHit, aTransfID);
+    STriangle aTriangle = SceneNearestHit (theRay, theInverse, aHit, aTransfID);
 
     // check implicit path
     vec3 aLe = IntersectLight (theRay, aDepth, aHit.Time, aExpPDF);
 
-    if (any (greaterThan (aLe, ZERO)) || aTriIndex.x == -1)
+    if (any (greaterThan (aLe, ZERO)) || aTriangle.TriIndex.x == -1)
     {
       float aMIS = (aDepth == 0 || aImpPDF == MAXFLOAT) ? 1.f :
         aImpPDF * aImpPDF / (aExpPDF * aExpPDF + aImpPDF * aImpPDF);
@@ -810,49 +833,79 @@ vec4 PathTrace (in SRay theRay, in vec3 theInverse, in int theNbSamples)
     SBSDF aBSDF;
 
     // fetch BxDF weights
-    aBSDF.Kc = texelFetch (uRaytraceMaterialTexture, MATERIAL_KC (aTriIndex.w));
-    aBSDF.Kd = texelFetch (uRaytraceMaterialTexture, MATERIAL_KD (aTriIndex.w));
-    aBSDF.Ks = texelFetch (uRaytraceMaterialTexture, MATERIAL_KS (aTriIndex.w));
-    aBSDF.Kt = texelFetch (uRaytraceMaterialTexture, MATERIAL_KT (aTriIndex.w)).rgb;
+    aBSDF.Kc = texelFetch (uRaytraceMaterialTexture, MATERIAL_KC (aTriangle.TriIndex.w));
+    aBSDF.Kd = texelFetch (uRaytraceMaterialTexture, MATERIAL_KD (aTriangle.TriIndex.w));
+    aBSDF.Ks = texelFetch (uRaytraceMaterialTexture, MATERIAL_KS (aTriangle.TriIndex.w));
+    aBSDF.Kt = texelFetch (uRaytraceMaterialTexture, MATERIAL_KT (aTriangle.TriIndex.w));
+
+    // fetch Fresnel reflectance for both layers
+    aBSDF.FresnelCoat = texelFetch (uRaytraceMaterialTexture, MATERIAL_FRESNEL_COAT (aTriangle.TriIndex.w)).xyz;
+    aBSDF.FresnelBase = texelFetch (uRaytraceMaterialTexture, MATERIAL_FRESNEL_BASE (aTriangle.TriIndex.w));
+
+    vec4 anLE = texelFetch (uRaytraceMaterialTexture, MATERIAL_LE (aTriangle.TriIndex.w));
 
     // compute smooth normal (in parallel with fetch)
-    vec3 aNormal = SmoothNormal (aHit.UV, aTriIndex);
-
+    vec3 aNormal = SmoothNormal (aHit.UV, aTriangle.TriIndex);
     aNormal = normalize (vec3 (dot (aInvTransf0, aNormal),
                                dot (aInvTransf1, aNormal),
                                dot (aInvTransf2, aNormal)));
 
-    SLocalSpace aSpace = buildLocalSpace (aNormal);
-
 #ifdef USE_TEXTURES
-    if (aBSDF.Kd.w >= 0.f)
+    if (aBSDF.Kd.w >= 0.0 || aBSDF.Kt.w >= 0.0 || aBSDF.FresnelBase.w >=0.0 || anLE.w >= 0.0)
     {
-      vec4 aTexCoord = vec4 (SmoothUV (aHit.UV, aTriIndex), 0.f, 1.f);
-
-      vec4 aTrsfRow1 = texelFetch (
-        uRaytraceMaterialTexture, MATERIAL_TRS1 (aTriIndex.w));
-      vec4 aTrsfRow2 = texelFetch (
-        uRaytraceMaterialTexture, MATERIAL_TRS2 (aTriIndex.w));
-
+      vec2 aUVs[3];
+      vec4 aTexCoord = vec4 (SmoothUV (aHit.UV, aTriangle.TriIndex, aUVs), 0.f, 1.f);
+      vec4 aTrsfRow1 = texelFetch (uRaytraceMaterialTexture, MATERIAL_TRS1 (aTriangle.TriIndex.w));
+      vec4 aTrsfRow2 = texelFetch (uRaytraceMaterialTexture, MATERIAL_TRS2 (aTriangle.TriIndex.w));
       aTexCoord.st = vec2 (dot (aTrsfRow1, aTexCoord),
                            dot (aTrsfRow2, aTexCoord));
 
-      vec4 aTexColor = textureLod (
-        sampler2D (uTextureSamplers[int (aBSDF.Kd.w)]), aTexCoord.st, 0.f);
-
-      aBSDF.Kd.rgb *= (aTexColor.rgb * aTexColor.rgb) * aTexColor.w; // de-gamma correction (for gamma = 2)
-
-      if (aTexColor.w != 1.0f)
+      if (anLE.w >= 0.0)
       {
-        // mix transparency BTDF with texture alpha-channel
-        aBSDF.Kt = (UNIT - aTexColor.www) + aTexColor.w * aBSDF.Kt;
+        anLE.rgb *= textureLod (sampler2D (uTextureSamplers[int (anLE.w)]), aTexCoord.st, 0.0).rgb;
       }
+      if (aBSDF.Kt.w >= 0.0)
+      {
+        vec2 aTexMetRough = textureLod (sampler2D (uTextureSamplers[int (aBSDF.Kt.w)]), aTexCoord.st, 0.0).bg;
+        float aPbrMetal = aTexMetRough.x;
+        float aPbrRough2 = aTexMetRough.y * aTexMetRough.y;
+        aBSDF.Ks.a *= aPbrRough2;
+        // when using metal-roughness texture, global metalness of material (encoded in FresnelBase) is expected to be 1.0 so that Kd will be 0.0
+        aBSDF.Kd.rgb = aBSDF.FresnelBase.rgb * (1.0 - aPbrMetal);
+        aBSDF.FresnelBase.rgb *= aPbrMetal;
+      }
+      if (aBSDF.Kd.w >= 0.0)
+      {
+        vec4 aTexColor = textureLod (sampler2D (uTextureSamplers[int (aBSDF.Kd.w)]), aTexCoord.st, 0.0);
+        vec3 aDiff = aTexColor.rgb * aTexColor.a;
+        aBSDF.Kd.rgb *= aDiff;
+        aBSDF.FresnelBase.rgb *= aDiff;
+        if (aTexColor.a != 1.0)
+        {
+          // mix transparency BTDF with texture alpha-channel
+          aBSDF.Ks.rgb *= aTexColor.a;
+          aBSDF.Kt.rgb = (UNIT - aTexColor.aaa) + aTexColor.a * aBSDF.Kt.rgb;
+        }
+      }
+      #ifndef IGNORE_NORMAL_MAP
+      if (aBSDF.FresnelBase.w >= 0.0)
+      {
+        for (int i = 0 ; i < 3; ++i)
+        {
+          aUVs[i] = vec2 (dot (aTrsfRow1, vec4(aUVs[i], 0.0, 1.0)),
+                          dot (aTrsfRow2, vec4(aUVs[i], 0.0, 1.0)));
+        }
+        vec3 aMapNormalValue = textureLod (sampler2D (uTextureSamplers[int (aBSDF.FresnelBase.w)]), aTexCoord.st, 0.0).xyz;
+        mat2 aDeltaUVMatrix = mat2 (aUVs[1] - aUVs[0], aUVs[1] - aUVs[2]);
+        mat2x3 aDeltaVectorMatrix = mat2x3 (aTriangle.Points[1] - aTriangle.Points[0], aTriangle.Points[1] - aTriangle.Points[2]);
+        aNormal = TangentSpaceNormal (aDeltaUVMatrix, aDeltaVectorMatrix, aMapNormalValue, aNormal, true);
+      }
+      #endif
     }
 #endif
-
-    // fetch Fresnel reflectance for both layers
-    aBSDF.FresnelCoat = texelFetch (uRaytraceMaterialTexture, MATERIAL_FRESNEL_COAT (aTriIndex.w)).xyz;
-    aBSDF.FresnelBase = texelFetch (uRaytraceMaterialTexture, MATERIAL_FRESNEL_BASE (aTriIndex.w)).xyz;
+    NormalAdaptation (-theRay.Direct, aHit.Normal, aNormal);
+    aHit.Normal = aNormal;
+    SLocalSpace aSpace = buildLocalSpace (aNormal);
 
     if (uLightCount > 0 && IsNotZero (aBSDF, aThroughput))
     {
@@ -897,11 +950,11 @@ vec4 PathTrace (in SRay theRay, in vec3 theInverse, in int theNbSamples)
     }
 
     // account for self-emission
-    aRadiance += aThroughput * texelFetch (uRaytraceMaterialTexture, MATERIAL_LE (aTriIndex.w)).rgb;
+    aRadiance += aThroughput * anLE.rgb;
 
     if (aInMedium) // handle attenuation
     {
-      vec4 aScattering = texelFetch (uRaytraceMaterialTexture, MATERIAL_ABSORPT_BASE (aTriIndex.w));
+      vec4 aScattering = texelFetch (uRaytraceMaterialTexture, MATERIAL_ABSORPT_BASE (aTriangle.TriIndex.w));
 
       aThroughput *= exp (-aHit.Time * aScattering.w * (UNIT - aScattering.rgb));
     }

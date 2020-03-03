@@ -88,7 +88,8 @@ options:\n\
         -surf_def_off   disables control of deflection of mesh from real\n\
                         surface (enabled by default)\n\
         -parallel       enables parallel execution (switched off by default)\n\
-        -adjust_min     enables local adjustment of min size depending on edge size (switched off by default)\n";
+        -adjust_min     enables local adjustment of min size depending on edge size (switched off by default)\n\
+        -force_face_def disables usage of shape tolerances for computing face deflection (switched off by default). \n";
     return 0;
   }
 
@@ -123,6 +124,8 @@ options:\n\
         aMeshParams.ControlSurfaceDeflection = Standard_False;
       else if (aOpt == "-adjust_min")
         aMeshParams.AdjustMinSize = Standard_True;
+      else if (aOpt == "-force_face_def")
+        aMeshParams.ForceFaceDeflection = Standard_True;
       else if (i < nbarg)
       {
         Standard_Real aVal = Draw::Atof(argv[i++]);
@@ -805,7 +808,7 @@ static Standard_Integer wavefront(Draw_Interpretor&, Standard_Integer nbarg, con
         k1 = n1+totalnodes;
         k2 = n2+totalnodes;
         k3 = n3+totalnodes;
-        fprintf(outfile, "%s %d%s%d %d%s%d %d%s%d\n", "fo", k1,"//", k1, k2,"//", k2, k3,"//", k3);
+        fprintf(outfile, "f %d%s%d %d%s%d %d%s%d\n", k1,"//", k1, k2,"//", k2, k3,"//", k3);
       }
       nbpolygons += nbTriangles;
       totalnodes += nbNodes;

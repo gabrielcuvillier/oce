@@ -43,8 +43,9 @@ public:
 
   DEFINE_STANDARD_ALLOC
 
-  
-  Standard_EXPORT static Standard_OStream& PutReal (Standard_OStream& OS, const Standard_Real theValue);
+  Standard_EXPORT static Standard_OStream& PutReal (Standard_OStream& OS, const Standard_Real& theValue);
+
+  Standard_EXPORT static Standard_OStream& PutShortReal (Standard_OStream& OS, const Standard_ShortReal& theValue);
 
   Standard_EXPORT static Standard_OStream& PutShortReal (Standard_OStream& OS, const Standard_ShortReal theValue);
 

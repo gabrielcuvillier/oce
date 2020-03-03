@@ -530,7 +530,7 @@ gp_Circ2d Adaptor2d_OffsetCurve::Circle() const
 gp_Elips2d Adaptor2d_OffsetCurve::Ellipse() const
 {
   if (myCurve->GetType() == GeomAbs_Ellipse && myOffset == 0.) {
-    return myCurve->Ellipse();;
+    return myCurve->Ellipse();
   }
   else {
     throw Standard_NoSuchObject("Adaptor2d_OffsetCurve:Ellipse");
@@ -656,19 +656,16 @@ static Standard_Integer nbPoints(const Handle(Adaptor2d_HCurve2d)& theCurve)
 
   Standard_Integer nbs = 20;
 
-  if (theCurve->GetType() == GeomAbs_Line)
-    nbs = 2;
-  else if (theCurve->GetType() == GeomAbs_BezierCurve)
+  if (theCurve->GetType() == GeomAbs_BezierCurve)
   {
-    nbs = 3 + theCurve->NbPoles();
+    nbs = Max(nbs, 3 + theCurve->NbPoles());
   }
   else if (theCurve->GetType() == GeomAbs_BSplineCurve) {
-    nbs = theCurve->NbKnots();
-    nbs *= theCurve->Degree();
+    nbs = Max(nbs, theCurve->NbKnots() * theCurve->Degree());
   }
 
-  if (nbs > 200)
-    nbs = 200;
+  if (nbs > 300)
+    nbs = 300;
   return nbs;
 
 }

@@ -1742,39 +1742,6 @@ static Standard_Integer OCC1029_AISTransparency (Draw_Interpretor& di,
 }
 
 //=======================================================================
-//function : OCC1030_AISColor 
-//purpose  : OCC1030_AISColor (DOC,entry,[color])
-//=======================================================================
-
-static Standard_Integer OCC1030_AISColor (Draw_Interpretor& di,
-				      Standard_Integer nb, 
-				      const char ** arg) 
-{
-  if (nb >= 3) {     
-    Handle(TDocStd_Document) D;
-    if (!DDocStd::GetDocument(arg[1],D)) return 1;  
-    TDF_Label L;
-    if (!DDF::FindLabel(D->GetData(),arg[2],L)) return 1;  
-
-    Handle(TPrsStd_AISViewer) viewer;
-    if( !TPrsStd_AISViewer::Find(L, viewer) ) return 1;  
-
-    Handle(TPrsStd_AISPresentation) prs;
-    if(L.FindAttribute( TPrsStd_AISPresentation::GetID(), prs) ) {   
-      if( nb == 4 ) {
-	prs->SetColor((Quantity_NameOfColor)Draw::Atoi(arg[3]));
-	TPrsStd_AISViewer::Update(L);
-      }
-      else
-         di << "Color = " << prs->Color() << "\n";
-      return 0; 
-    }
-  }
-  di << arg[0] << " : Error\n";
-  return 1;
-}
-
-//=======================================================================
 //function : OCC1031_AISMaterial
 //purpose  : OCC1031_AISMaterial (DOC,entry,[material])
 //=======================================================================
@@ -2207,7 +2174,7 @@ static int StackOverflow (int i = -1)
 #endif
 
 // this code does not work with optimize mode on Windows
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
 #pragma optimize( "", off )
 #endif
 static Standard_Integer OCC6143 (Draw_Interpretor& di, Standard_Integer argc, const char ** argv)
@@ -2521,7 +2488,7 @@ static Standard_Integer OCC30775 (Draw_Interpretor& theDI, Standard_Integer theN
   return 0;
 }
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
 #pragma optimize( "", on )
 #endif
 
@@ -4781,17 +4748,19 @@ Standard_Integer OCC28478 (Draw_Interpretor& di, Standard_Integer argc, const ch
 {	
   Standard_Integer nbOuter = (argc > 1 ? Draw::Atoi(argv[1]) : 3);
   Standard_Integer nbInner = (argc > 2 ? Draw::Atoi(argv[2]) : 2);
+  Standard_Boolean isInf = (argc > 3 && ! strcmp (argv[3], "-inf"));
 
   // test behavior of progress indicator when using nested scopes with names set by Sentry objects
   Handle(Draw_ProgressIndicator) aProgress = new Draw_ProgressIndicator (di, 1);
   aProgress->SetTextMode (Standard_True);
+  aProgress->SetTclOutput (Standard_True);
 
   // Outer cycle
   Message_ProgressSentry anOuter (aProgress, "Outer", 0, nbOuter, 1);
   for (int i = 0; i < nbOuter && anOuter.More(); i++, anOuter.Next())
   {
     // Inner cycle
-    Message_ProgressSentry anInner (aProgress, "Inner", 0, nbInner, 1);
+    Message_ProgressSentry anInner (aProgress, "Inner", 0, nbInner, 1, isInf);
     for (int j = 0; j < nbInner && anInner.More(); j++, anInner.Next())
     {
       // Cycle body
@@ -4866,7 +4835,6 @@ void QABugs::Commands_11(Draw_Interpretor& theCommands) {
   theCommands.Add("OCC902", "OCC902 expression", __FILE__, OCC902, group);
 
   theCommands.Add ("OCC1029_AISTransparency","OCC1029_AISTransparency (DOC, entry, [real])",__FILE__, OCC1029_AISTransparency, group);
-  theCommands.Add ("OCC1030_AISColor", "OCC1030_AISColor (DOC, entry, [color])", __FILE__, OCC1030_AISColor, group);
   theCommands.Add ("OCC1031_AISMaterial", "OCC1031_AISMaterial (DOC, entry, [material])", __FILE__, OCC1031_AISMaterial, group); 
   theCommands.Add ("OCC1032_AISWidth", "OCC1032_AISWidth (DOC, entry, [width])", __FILE__, OCC1032_AISWidth, group); 
   theCommands.Add ("OCC1033_AISMode", "OCC1033_AISMode (DOC, entry, [mode])", __FILE__, OCC1033_AISMode, group); 
@@ -4904,6 +4872,6 @@ void QABugs::Commands_11(Draw_Interpretor& theCommands) {
   theCommands.Add("OCC22558", "OCC22558 x_vec y_vec z_vec x_dir y_dir z_dit x_pnt y_pnt z_pnt", __FILE__, OCC22558, group);
   theCommands.Add("CR23403", "CR23403 string", __FILE__, CR23403, group);
   theCommands.Add("OCC23429", "OCC23429 res shape tool [appr]", __FILE__, OCC23429, group);
-  theCommands.Add("OCC28478", "OCC28478 [nb_outer=3 [nb_inner=2]: test progress indicator on nested cycles", __FILE__, OCC28478, group);
+  theCommands.Add("OCC28478", "OCC28478 [nb_outer=3 [nb_inner=2] [-inf]: test progress indicator on nested cycles", __FILE__, OCC28478, group);
   return;
 }

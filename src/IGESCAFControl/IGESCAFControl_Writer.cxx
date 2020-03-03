@@ -276,6 +276,7 @@ void IGESCAFControl_Writer::MakeColors (const TopoDS_Shape &S,
     XCAFPrs_Style own = settings.FindFromKey(S);
     if ( own.IsSetColorCurv() ) style.SetColorCurv ( own.GetColorCurv() );
     if ( own.IsSetColorSurf() ) style.SetColorSurf ( own.GetColorSurf() );
+    style.SetMaterial (own.Material());
   }
   
   // analyze whether current entity should get a color 
@@ -285,6 +286,12 @@ void IGESCAFControl_Writer::MakeColors (const TopoDS_Shape &S,
     if ( style.IsSetColorSurf() ) {
       hasColor = Standard_True;
       col = style.GetColorSurf();
+    }
+    else if (!style.Material().IsNull()
+          && !style.Material()->IsEmpty())
+    {
+      hasColor = Standard_True;
+      col = style.Material()->BaseColor().GetRGB();
     }
   }
   else if ( S.ShapeType() == TopAbs_EDGE || S.ShapeType() == TopAbs_WIRE ) {
@@ -308,7 +315,9 @@ void IGESCAFControl_Writer::MakeColors (const TopoDS_Shape &S,
 	Handle(TCollection_HAsciiString) str = 
 	  new TCollection_HAsciiString ( col.StringName ( col.Name() ) );
 	colent = new IGESGraph_Color;
-	colent->Init ( col.Red() * 100., col.Green() * 100., col.Blue() * 100., str );
+	NCollection_Vec3<Standard_Real> aColor_sRGB;
+	col.Values (aColor_sRGB.r(), aColor_sRGB.g(), aColor_sRGB.b(), Quantity_TOC_sRGB);
+	colent->Init ( aColor_sRGB.r() * 100., aColor_sRGB.g() * 100., aColor_sRGB.b() * 100., str );
 	AddEntity ( colent );
 	colors.Bind ( c, colent );
       }

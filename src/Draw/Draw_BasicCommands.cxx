@@ -537,13 +537,24 @@ static void *CpuFunc(void* /*threadarg*/)
 }
 #endif
 
-#ifdef _WIN32
-static Standard_Integer cpulimit(Draw_Interpretor&, Standard_Integer n, const char** a)
+// Returns time in seconds defined by the argument string,
+// multiplied by factor defined in environment variable
+// CSF_CPULIMIT_FACTOR (if it exists, 1 otherwise)
+static clock_t GetCpuLimit (const Standard_CString theParam)
 {
-#else
+  clock_t aValue = Draw::Atoi (theParam);
+
+  OSD_Environment aEnv("CSF_CPULIMIT_FACTOR");
+  TCollection_AsciiString aEnvStr = aEnv.Value();
+  if (!aEnvStr.IsEmpty())
+  {
+    aValue *= Draw::Atoi (aEnvStr.ToCString());
+  }
+  return aValue;
+}
+
 static Standard_Integer cpulimit(Draw_Interpretor& di, Standard_Integer n, const char** a)
 {
-#endif
   static int aFirst = 1;
 #ifdef _WIN32
   // Windows specific code
@@ -553,7 +564,7 @@ static Standard_Integer cpulimit(Draw_Interpretor& di, Standard_Integer n, const
   if (n <= 1){
     CPU_LIMIT = RLIM_INFINITY;
   } else {
-    CPU_LIMIT = Draw::Atoi (a[1]);
+    CPU_LIMIT = GetCpuLimit (a[1]);
     Standard_Real anUserSeconds, aSystemSeconds;
     OSD_Chronometer::GetProcessCPU (anUserSeconds, aSystemSeconds);
     CPU_CURRENT = clock_t(anUserSeconds + aSystemSeconds);
@@ -573,7 +584,7 @@ static Standard_Integer cpulimit(Draw_Interpretor& di, Standard_Integer n, const
   if (n <= 1)
     rlp.rlim_cur = RLIM_INFINITY;
   else
-    rlp.rlim_cur = Draw::Atoi(a[1]);
+    rlp.rlim_cur = GetCpuLimit (a[1]);
   CPU_LIMIT = rlp.rlim_cur;
 
   int status;
@@ -597,9 +608,9 @@ static Standard_Integer cpulimit(Draw_Interpretor& di, Standard_Integer n, const
     pthread_create(&cpulimitThread, NULL, CpuFunc, NULL);
   }
 #endif
+  di << "CPU and elapsed time limit set to " << (double)CPU_LIMIT << " seconds";
   return 0;
 }
-
 
 //=======================================================================
 //function : mallochook
@@ -767,49 +778,63 @@ static int dmeminfo (Draw_Interpretor& theDI,
                      Standard_Integer  theArgNb,
                      const char**      theArgVec)
 {
-  OSD_MemInfo aMemInfo;
   if (theArgNb <= 1)
   {
+    OSD_MemInfo aMemInfo;
     theDI << aMemInfo.ToString();
     return 0;
   }
 
+  NCollection_Map<OSD_MemInfo::Counter> aCounters;
   for (Standard_Integer anIter = 1; anIter < theArgNb; ++anIter)
   {
     TCollection_AsciiString anArg (theArgVec[anIter]);
     anArg.LowerCase();
     if (anArg == "virt" || anArg == "v")
     {
-      theDI << Standard_Real (aMemInfo.Value (OSD_MemInfo::MemVirtual)) << " ";
+      aCounters.Add (OSD_MemInfo::MemVirtual);
     }
     else if (anArg == "heap" || anArg == "h")
     {
-      theDI << Standard_Real (aMemInfo.Value (OSD_MemInfo::MemHeapUsage)) << " ";
+      aCounters.Add (OSD_MemInfo::MemHeapUsage);
     }
     else if (anArg == "wset" || anArg == "w")
     {
-      theDI << Standard_Real (aMemInfo.Value (OSD_MemInfo::MemWorkingSet)) << " ";
+      aCounters.Add (OSD_MemInfo::MemWorkingSet);
     }
     else if (anArg == "wsetpeak")
     {
-      theDI << Standard_Real (aMemInfo.Value (OSD_MemInfo::MemWorkingSetPeak)) << " ";
+      aCounters.Add (OSD_MemInfo::MemWorkingSetPeak);
     }
     else if (anArg == "swap")
     {
-      theDI << Standard_Real (aMemInfo.Value (OSD_MemInfo::MemSwapUsage)) << " ";
+      aCounters.Add (OSD_MemInfo::MemSwapUsage);
     }
     else if (anArg == "swappeak")
     {
-      theDI << Standard_Real (aMemInfo.Value (OSD_MemInfo::MemSwapUsagePeak)) << " ";
+      aCounters.Add (OSD_MemInfo::MemSwapUsagePeak);
     }
     else if (anArg == "private")
     {
-      theDI << Standard_Real (aMemInfo.Value (OSD_MemInfo::MemPrivate)) << " ";
+      aCounters.Add (OSD_MemInfo::MemPrivate);
     }
     else
     {
       std::cerr << "Unknown argument '" << theArgVec[anIter] << "'!\n";
     }
+  }
+
+  OSD_MemInfo aMemInfo (Standard_False);
+  aMemInfo.SetActive (Standard_False);
+  for (NCollection_Map<OSD_MemInfo::Counter>::Iterator aCountersIt (aCounters); aCountersIt.More(); aCountersIt.Next())
+  {
+    aMemInfo.SetActive (aCountersIt.Value(), Standard_True);
+  }
+  aMemInfo.Update();
+
+  for (NCollection_Map<OSD_MemInfo::Counter>::Iterator aCountersIt (aCounters); aCountersIt.More(); aCountersIt.Next())
+  {
+    theDI << Standard_Real (aMemInfo.Value (aCountersIt.Value())) << " ";
   }
   theDI << "\n";
   return 0;

@@ -43,10 +43,17 @@ DEFINE_STANDARD_HANDLE(XCAFDoc_ColorTool, TDF_Attribute)
 //! Provide tools for management of Colors section of document.
 class XCAFDoc_ColorTool : public TDF_Attribute
 {
+public:
+  //! Returns current auto-naming mode; TRUE by default.
+  //! If TRUE then for added colors the TDataStd_Name attribute will be automatically added.
+  //! This setting is global.
+  Standard_EXPORT static Standard_Boolean AutoNaming();
+
+  //! See also AutoNaming().
+  Standard_EXPORT static void SetAutoNaming (Standard_Boolean theIsAutoNaming);
 
 public:
 
-  
   Standard_EXPORT XCAFDoc_ColorTool();
   
   //! Creates (if not exist) ColorTool.
@@ -240,6 +247,9 @@ public:
   Standard_EXPORT Handle(TDF_Attribute) NewEmpty() const Standard_OVERRIDE;
   
   Standard_EXPORT void Paste (const Handle(TDF_Attribute)& into, const Handle(TDF_RelocationTable)& RT) const Standard_OVERRIDE;
+  
+  //! Dumps the content of me into the stream
+  Standard_EXPORT virtual void DumpJson (Standard_OStream& theOStream, Standard_Integer theDepth = -1) const Standard_OVERRIDE;
 
 
 

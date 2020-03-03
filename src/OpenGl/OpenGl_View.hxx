@@ -58,6 +58,7 @@ struct OpenGl_Matrix;
 
 class Graphic3d_StructureManager;
 class OpenGl_GraphicDriver;
+class OpenGl_PBREnvironment;
 class OpenGl_StateCounter;
 class OpenGl_TriangleSet;
 class OpenGl_Workspace;
@@ -79,6 +80,7 @@ public:
   //! Default destructor.
   Standard_EXPORT virtual ~OpenGl_View();
 
+  //! Release OpenGL resources.
   Standard_EXPORT void ReleaseGlResources (const Handle(OpenGl_Context)& theCtx);
 
   //! Deletes and erases the view.
@@ -226,7 +228,27 @@ public:
   Standard_EXPORT Handle(Graphic3d_CubeMap) BackgroundCubeMap() const Standard_OVERRIDE;
 
   //! Sets environment cubemap as background.
-  Standard_EXPORT virtual void SetBackgroundCubeMap (const Handle(Graphic3d_CubeMap)& theCubeMap) Standard_OVERRIDE;
+  //! @param theCubeMap cubemap source to be set as background
+  //! @param theToUpdatePBREnv defines whether IBL maps will be generated or not (see 'GeneratePBREnvironment')
+  Standard_EXPORT virtual void SetBackgroundCubeMap (const Handle(Graphic3d_CubeMap)& theCubeMap,
+                                                     Standard_Boolean theToUpdatePBREnv = Standard_True) Standard_OVERRIDE;
+
+  //! Generates PBR specular probe and irradiance map
+  //! in order to provide environment indirect illumination in PBR shading model (Image Based Lighting).
+  //! The source of environment data is background cubemap.
+  //! If PBR is unavailable it does nothing.
+  //! If PBR is available but there is no cubemap being set to background it clears all IBL maps (see 'ClearPBREnvironment').
+  virtual void GeneratePBREnvironment() Standard_OVERRIDE { myPBREnvRequest = OpenGl_PBREnvRequest_BAKE; }
+
+  //! Fills PBR specular probe and irradiance map with white color.
+  //! So that environment indirect illumination will be constant
+  //! and will be fully controlled by ambient light sources.
+  //! If PBR is unavailable it does nothing.
+  virtual void ClearPBREnvironment() Standard_OVERRIDE { myPBREnvRequest = OpenGl_PBREnvRequest_CLEAR; }
+
+  //! Returns number of mipmap levels used in specular IBL map.
+  //! 0 if PBR environment is not created.
+  Standard_EXPORT unsigned int SpecIBLMapLevels() const;
 
   //! Returns environment texture set for the view.
   virtual Handle(Graphic3d_TextureEnv) TextureEnv() const Standard_OVERRIDE { return myTextureEnvData; }
@@ -425,6 +447,9 @@ private:
 
 private:
 
+  //! Release sRGB resources (frame-buffers, textures, etc.).
+  void releaseSrgbResources (const Handle(OpenGl_Context)& theCtx);
+
   //! Copy content of Back buffer to the Front buffer.
   bool copyBackToFront();
 
@@ -493,6 +518,7 @@ protected: //! @name Rendering properties
 
   //! Two framebuffers (left and right views) store cached main presentation
   //! of the view (without presentation of immediate layers).
+  Standard_Integer           mySRgbState;             //!< track sRGB state
   GLint                      myFboColorFormat;        //!< sized format for color attachments
   GLint                      myFboDepthFormat;        //!< sized format for depth-stencil attachments
   OpenGl_ColorFormats        myFboOitColorConfig;     //!< selected color format configuration for OIT color attachments
@@ -518,9 +544,47 @@ protected: //! @name Background parameters
 
   OpenGl_Aspects*            myTextureParams;                     //!< Stores texture and its parameters for textured background
   OpenGl_Aspects*            myCubeMapParams;                     //!< Stores cubemap and its parameters for cubemap background
-  Handle(Graphic3d_CubeMap)  myBackgroundCubeMap;                 //!< Cubemap has been setted as background
-  Graphic3d_TypeOfBackground myBackgroundType;                    //!< Current typy of background
+  Handle(Graphic3d_CubeMap)  myBackgroundCubeMap;                 //!< Cubemap has been set as background
+  Graphic3d_TypeOfBackground myBackgroundType;                    //!< Current type of background
   OpenGl_BackgroundArray*    myBackgrounds[Graphic3d_TypeOfBackground_NB]; //!< Array of primitive arrays of different background types
+
+protected: //! @name methods related to PBR
+
+  //! Checks whether PBR is available.
+  Standard_EXPORT Standard_Boolean checkPBRAvailability() const;
+
+  //! Generates IBL maps used in PBR pipeline.
+  //! If background cubemap is not set clears all IBL maps.
+  Standard_EXPORT void bakePBREnvironment (const Handle(OpenGl_Context)& theCtx);
+
+  //! Fills all IBL maps with white color.
+  //! So that environment lighting is considered to be constant and is completely controls by ambient light sources.
+  Standard_EXPORT void clearPBREnvironment (const Handle(OpenGl_Context)& theCtx);
+
+  //! Process requests to generate or to clear PBR environment.
+  Standard_EXPORT void processPBREnvRequest (const Handle(OpenGl_Context)& theCtx);
+
+protected: //! @name fields and types related to PBR
+
+  //! State of PBR environment.
+  enum PBREnvironmentState
+  {
+    OpenGl_PBREnvState_NONEXISTENT,
+    OpenGl_PBREnvState_UNAVAILABLE, // indicates failed try to create PBR environment
+    OpenGl_PBREnvState_CREATED
+  };
+
+  //! Type of action which can be done with PBR environment.
+  enum PBREnvironmentRequest
+  {
+    OpenGl_PBREnvRequest_NONE,
+    OpenGl_PBREnvRequest_BAKE,
+    OpenGl_PBREnvRequest_CLEAR
+  };
+
+  Handle(OpenGl_PBREnvironment) myPBREnvironment; //!< manager of IBL maps used in PBR pipeline
+  PBREnvironmentState           myPBREnvState;    //!< state of PBR environment
+  PBREnvironmentRequest         myPBREnvRequest;  //!< type of action is requested to be done with PBR environment
 
 protected: //! @name data types related to ray-tracing
 
@@ -571,8 +635,8 @@ protected: //! @name data types related to ray-tracing
     // ray-tracing params
     OpenGl_RT_uShadowsEnabled,
     OpenGl_RT_uReflectEnabled,
-    OpenGl_RT_uSphereMapEnabled,
-    OpenGl_RT_uSphereMapForBack,
+    OpenGl_RT_uEnvMapEnabled,
+    OpenGl_RT_uEnvMapForBack,
     OpenGl_RT_uTexSamplersArray,
     OpenGl_RT_uBlockedRngEnabled,
 
@@ -700,11 +764,17 @@ protected: //! @name data types related to ray-tracing
     //! Enables/disables environment map for background.
     Standard_Boolean UseEnvMapForBackground;
 
+    //! Enables/disables normal map ignoring during path tracing.
+    Standard_Boolean ToIgnoreNormalMap;
+
     //! Maximum radiance value used for clamping radiance estimation.
     Standard_ShortReal RadianceClampingValue;
 
     //! Enables/disables depth-of-field effect (path tracing, perspective camera).
     Standard_Boolean DepthOfField;
+
+    //! Enables/disables cubemap backgraund.
+    Standard_Boolean CubemapForBack;
 
     //! Tone mapping method for path tracing.
     Graphic3d_ToneMappingMethod ToneMappingMethod;
@@ -720,8 +790,10 @@ protected: //! @name data types related to ray-tracing
       AdaptiveScreenSampling (Standard_False),
       AdaptiveScreenSamplingAtomic (Standard_False),
       UseEnvMapForBackground (Standard_False),
+      ToIgnoreNormalMap      (Standard_False),
       RadianceClampingValue  (30.0),
       DepthOfField           (Standard_False),
+      CubemapForBack         (Standard_False),
       ToneMappingMethod      (Graphic3d_ToneMappingMethod_Disabled) { }
   };
 #endif
