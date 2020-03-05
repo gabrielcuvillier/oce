@@ -22,7 +22,7 @@
 #include <OpenGl_Structure.hxx>
 #include <Graphic3d_GraphicDriver.hxx>
 
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
 
 //! Use this macro to output BVH profiling info
 // #define RAY_TRACE_PRINT_INFO

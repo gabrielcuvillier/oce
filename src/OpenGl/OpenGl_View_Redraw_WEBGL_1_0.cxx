@@ -1,4 +1,4 @@
-// Copied from OpenGl_View_Redraw, only enabling the GLES2 code path
+// Copied/Adapted from OpenGl_View_Redraw, only enabling the GLES2 code path tweaked for WEBGL 1.0
 //
 // This file is part of Open CASCADE Technology software library.
 //
@@ -37,28 +37,7 @@
 #include <OpenGl_Structure.hxx>
 #include <OpenGl_ArbFBO.hxx>
 
-#if defined(GL_ES_VERSION_2_0)
-
-namespace
-{
-  //! Format Frame Buffer format for logging messages.
-  static TCollection_AsciiString printFboFormat (const Handle(OpenGl_FrameBuffer)& theFbo)
-  {
-    return TCollection_AsciiString() + theFbo->GetInitVPSizeX() + "x" + theFbo->GetInitVPSizeY() + "@" + theFbo->NbSamples();
-  }
-
-  //! Return TRUE if Frame Buffer initialized has failed with the same parameters.
-  static bool checkWasFailedFbo (const Handle(OpenGl_FrameBuffer)& theFboToCheck,
-                                 Standard_Integer theSizeX,
-                                 Standard_Integer theSizeY,
-                                 Standard_Integer theNbSamples)
-  {
-    return !theFboToCheck->IsValid()
-        &&  theFboToCheck->GetInitVPSizeX() == theSizeX
-        &&  theFboToCheck->GetInitVPSizeY() == theSizeY
-        &&  theFboToCheck->NbSamples()      == theNbSamples;
-  }
-}
+#if defined(HAVE_WEBGL_1_0)
 
 //=======================================================================
 //function : drawBackground
@@ -144,7 +123,7 @@ void OpenGl_View::Redraw()
 
   ++myFrameCounter;
   Graphic3d_Camera::Projection aProjectType = myCamera->ProjectionType();
-  Handle(OpenGl_Context)       aCtx         = myWorkspace->GetGlContext();
+  const Handle(OpenGl_Context)& aCtx        = myWorkspace->GetGlContext();
   aCtx->FrameStats()->FrameStart (myWorkspace->View(), false);
   aCtx->SetLineFeather (myRenderParams.LineFeather);
 
@@ -155,14 +134,6 @@ void OpenGl_View::Redraw()
   aCtx->FetchState();
 
   OpenGl_FrameBuffer* aFrameBuffer = myFBO.get();
-
-#if !defined(HAVE_WEBGL)
-  bool toSwap = aCtx->IsRender()
-            && !aCtx->caps->buffersNoSwap
-            &&  aFrameBuffer == NULL;
-#else
-  const bool toSwap = false;
-#endif
 
   const Standard_Integer aSizeX = aFrameBuffer != NULL ? aFrameBuffer->GetVPSizeX() : myWindow->Width();
   const Standard_Integer aSizeY = aFrameBuffer != NULL ? aFrameBuffer->GetVPSizeY() : myWindow->Height();
@@ -178,19 +149,6 @@ void OpenGl_View::Redraw()
     return;
   }
 
-  // determine multisampling parameters
-#if !defined(HAVE_WEBGL)
-  Standard_Integer aNbSamples = !myToDisableMSAA && aSizeX == aRendSizeX
-                              ? Max (Min (myRenderParams.NbMsaaSamples, aCtx->MaxMsaaSamples()), 0)
-                              : 0;
-  if (aNbSamples != 0)
-  {
-    aNbSamples = OpenGl_Context::GetPowerOfTwo (aNbSamples, aCtx->MaxMsaaSamples());
-  }
-#else
-  const Standard_Integer aNbSamples = 0;
-#endif
-
   if ( aFrameBuffer == NULL
    && !aCtx->DefaultFrameBuffer().IsNull()
    &&  aCtx->DefaultFrameBuffer()->IsValid())
@@ -198,32 +156,6 @@ void OpenGl_View::Redraw()
     aFrameBuffer = aCtx->DefaultFrameBuffer().operator->();
   }
 
-  if (myHasFboBlit && !aCtx->caps->fboDisable
-   && (myTransientDrawToFront
-    || aProjectType == Graphic3d_Camera::Projection_Stereo
-    || aNbSamples != 0
-    || aSizeX != aRendSizeX))
-  {
-    if (myMainSceneFbos[0]->GetVPSizeX() != aRendSizeX
-     || myMainSceneFbos[0]->GetVPSizeY() != aRendSizeY
-     || myMainSceneFbos[0]->NbSamples()  != aNbSamples)
-    {
-      // prepare FBOs containing main scene
-      // for further blitting and rendering immediate presentations on top
-      if (aCtx->core20fwd != NULL)
-      {
-        const bool wasFailedMain0 = checkWasFailedFbo (myMainSceneFbos[0], aRendSizeX, aRendSizeY, aNbSamples);
-        if (!myMainSceneFbos[0]->Init (aCtx, aRendSizeX, aRendSizeY, myFboColorFormat, myFboDepthFormat, aNbSamples)
-         && !wasFailedMain0)
-        {
-          TCollection_ExtendedString aMsg = TCollection_ExtendedString() + "Error! Main FBO "
-                                          + printFboFormat (myMainSceneFbos[0]) + " initialization has failed";
-          aCtx->PushMessage (GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, 0, GL_DEBUG_SEVERITY_HIGH, aMsg);
-        }
-      }
-    }
-  }
-  else
   {
     myMainSceneFbos     [0]->Release (aCtx.operator->());
     myMainSceneFbos     [1]->Release (aCtx.operator->());
@@ -247,12 +179,7 @@ void OpenGl_View::Redraw()
     myIsImmediateDrawn   = Standard_False;
     aCtx->SetResolution (myRenderParams.Resolution, myRenderParams.ResolutionRatio(),
                          anImmFbo != aFrameBuffer ? myRenderParams.RenderResolutionScale : 1.0f);
-    if (!redrawImmediate (aProjectType, aMainFbo, anImmFbo, NULL))
-    {
-#if !defined(HAVE_WEBGL)
-      toSwap = false;
-#endif
-    }
+    redrawImmediate (aProjectType, aMainFbo, anImmFbo, NULL);
 
     if (anImmFbo != NULL
      && anImmFbo != aFrameBuffer)
@@ -274,21 +201,7 @@ void OpenGl_View::Redraw()
   // reset state for safety
   aCtx->BindProgram (Handle(OpenGl_ShaderProgram)());
 
-  // Swap the buffers
-  if (toSwap)
-  {
-    aCtx->SwapBuffers();
-    if (!myMainSceneFbos[0]->IsValid())
-    {
-      myBackBufferRestored = Standard_False;
-    }
-  }
-  else
-  {
-#if !defined(HAVE_WEBGL)
-    aCtx->core11fwd->glFlush();
-#endif
-  }
+  // aCtx->core11fwd->glFlush();
 
   // reset render mode state
   aCtx->FetchState();
@@ -326,27 +239,15 @@ void OpenGl_View::RedrawImmediate()
     aFrameBuffer = aCtx->DefaultFrameBuffer().operator->();
   }
 
-#if !defined(HAVE_WEBGL)
-  bool toSwap = false;
-#else
-  const bool toSwap = false;
-#endif
   {
     OpenGl_FrameBuffer* aMainFbo = myMainSceneFbos[0]->IsValid() ? myMainSceneFbos[0].operator->() : NULL;
     OpenGl_FrameBuffer* anImmFbo = aFrameBuffer;
     aCtx->SetResolution (myRenderParams.Resolution, myRenderParams.ResolutionRatio(),
                          anImmFbo != aFrameBuffer ? myRenderParams.RenderResolutionScale : 1.0f);
-#if !defined(HAVE_WEBGL)
-    toSwap = redrawImmediate (aProjectType,
-                              aMainFbo,
-                              anImmFbo,
-                              NULL) || toSwap;
-#else
     redrawImmediate ( aProjectType,
                       aMainFbo,
                       anImmFbo,
                       NULL);
-#endif
 
     if (anImmFbo != NULL
      && anImmFbo != aFrameBuffer)
@@ -360,16 +261,8 @@ void OpenGl_View::RedrawImmediate()
   // reset state for safety
   aCtx->BindProgram (Handle(OpenGl_ShaderProgram)());
 
-  if (toSwap && !aCtx->caps->buffersNoSwap)
-  {
-    aCtx->SwapBuffers();
-  }
-  else
-  {
-#if !defined(HAVE_WEBGL)
-    aCtx->core11fwd->glFlush();
-#endif
-  }
+  //aCtx->core11fwd->glFlush();
+
   aCtx->FrameStats()->FrameEnd (myWorkspace->View(), true);
 
   myWasRedrawnGL = Standard_True;
@@ -407,7 +300,7 @@ void OpenGl_View::redraw (const Graphic3d_Camera::Projection theProjection,
 
   glClearDepthf (1.0f);
 
-  const OpenGl_Vec4& aBgColor = myBgColor;
+  const OpenGl_Vec4 aBgColor = aCtx->Vec4FromQuantityColor (myBgColor);
   glClearColor (aBgColor.r(), aBgColor.g(), aBgColor.b(), 0.0f);
 
   glClear (toClear);
@@ -443,31 +336,7 @@ bool OpenGl_View::redrawImmediate (const Graphic3d_Camera::Projection theProject
   }
   else if (theDrawFbo == NULL)
   {
-#if !defined(HAVE_WEBGL)
-    aCtx->core11fwd->glGetBooleanv (GL_DOUBLEBUFFER, &toCopyBackToFront);
-    if (toCopyBackToFront
-     && myTransientDrawToFront)
-    {
-      if (!HasImmediateStructures()
-        && !theIsPartialUpdate)
-      {
-        // prefer Swap Buffers within Redraw in compatibility mode (without FBO)
-        return true;
-      }
-      if (!copyBackToFront())
-      {
-        toCopyBackToFront    = GL_FALSE;
-        myBackBufferRestored = Standard_False;
-      }
-    }
-    else
-    {
-      toCopyBackToFront    = GL_FALSE;
-      myBackBufferRestored = Standard_False;
-    }
-#else
     (void)theIsPartialUpdate;
-#endif
   }
   else
   {
@@ -726,7 +595,7 @@ void OpenGl_View::renderScene (Graphic3d_Camera::Projection theProjection,
   }
 
   renderStructs (theProjection, theReadDrawFbo, NULL, theToDrawImmediate);
-  aContext->BindTextures (Handle(OpenGl_TextureSet)());
+  aContext->BindTextures (Handle(OpenGl_TextureSet)(), Handle(OpenGl_ShaderProgram)());
 
   // Apply restored view matrix.
   aContext->ApplyWorldViewMatrix();
@@ -846,82 +715,6 @@ bool OpenGl_View::blitBuffers (OpenGl_FrameBuffer*    theReadFbo,
   aCtx->core20fwd->glClearDepthf (1.0f);
   aCtx->core20fwd->glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-#if !defined(HAVE_WEBGL)
-  if (aCtx->arbFBOBlit != NULL
-   && theReadFbo->NbSamples() != 0)
-  {
-    GLbitfield aCopyMask = 0;
-    theReadFbo->BindReadBuffer (aCtx);
-    if (theDrawFbo != NULL
-     && theDrawFbo->IsValid())
-    {
-      theDrawFbo->BindDrawBuffer (aCtx);
-      if (theDrawFbo->HasColor()
-       && theReadFbo->HasColor())
-      {
-        aCopyMask |= GL_COLOR_BUFFER_BIT;
-      }
-      if (theDrawFbo->HasDepth()
-       && theReadFbo->HasDepth())
-      {
-        aCopyMask |= GL_DEPTH_BUFFER_BIT;
-      }
-    }
-    else
-    {
-      if (theReadFbo->HasColor())
-      {
-        aCopyMask |= GL_COLOR_BUFFER_BIT;
-      }
-      if (theReadFbo->HasDepth())
-      {
-        aCopyMask |= GL_DEPTH_BUFFER_BIT;
-      }
-      aCtx->arbFBO->glBindFramebuffer (GL_DRAW_FRAMEBUFFER, OpenGl_FrameBuffer::NO_FRAMEBUFFER);
-    }
-
-    // we don't copy stencil buffer here... does it matter for performance?
-    aCtx->arbFBOBlit->glBlitFramebuffer (0, 0, aReadSizeX, aReadSizeY,
-                                         0, 0, aDrawSizeX, aDrawSizeY,
-                                         aCopyMask, GL_NEAREST);
-    const int anErr = ::glGetError();
-    if (anErr != GL_NO_ERROR)
-    {
-      // glBlitFramebuffer() might fail in several cases:
-      // - Both FBOs have MSAA and they are samples number does not match.
-      //   OCCT checks that this does not happen,
-      //   however some graphics drivers provide an option for overriding MSAA.
-      //   In this case window MSAA might be non-zero (and application can not check it)
-      //   and might not match MSAA of our offscreen FBOs.
-      // - Pixel formats of FBOs do not match.
-      //   This also might happen with window has pixel format,
-      //   e.g. Mesa fails blitting RGBA8 -> RGB8 while other drivers support this conversion.
-      TCollection_ExtendedString aMsg = TCollection_ExtendedString() + "FBO blitting has failed [Error #" + anErr + "]\n"
-                                      + "  Please check your graphics driver settings or try updating driver.";
-      if (theReadFbo->NbSamples() != 0)
-      {
-        myToDisableMSAA = true;
-        aMsg += "\n  MSAA settings should not be overridden by driver!";
-      }
-      aCtx->PushMessage (GL_DEBUG_SOURCE_APPLICATION,
-                         GL_DEBUG_TYPE_ERROR,
-                         0,
-                         GL_DEBUG_SEVERITY_HIGH,
-                         aMsg);
-    }
-
-    if (theDrawFbo != NULL
-     && theDrawFbo->IsValid())
-    {
-      theDrawFbo->BindBuffer (aCtx);
-    }
-    else
-    {
-      aCtx->arbFBO->glBindFramebuffer (GL_FRAMEBUFFER, OpenGl_FrameBuffer::NO_FRAMEBUFFER);
-    }
-  }
-  else
-#endif
   {
     aCtx->core20fwd->glDepthFunc (GL_ALWAYS);
     aCtx->core20fwd->glDepthMask (GL_TRUE);
@@ -932,7 +725,7 @@ bool OpenGl_View::blitBuffers (OpenGl_FrameBuffer*    theReadFbo,
       aCtx->core20fwd->glDisable (GL_DEPTH_TEST);
     }
 
-    aCtx->BindTextures (Handle(OpenGl_TextureSet)());
+    aCtx->BindTextures (Handle(OpenGl_TextureSet)(), Handle(OpenGl_ShaderProgram)());
 
     const Graphic3d_TypeOfTextureFilter aFilter = (aDrawSizeX == aReadSizeX && aDrawSizeY == aReadSizeY) ? Graphic3d_TOTF_NEAREST : Graphic3d_TOTF_BILINEAR;
     const GLint aFilterGl = aFilter == Graphic3d_TOTF_NEAREST ? GL_NEAREST : GL_LINEAR;
@@ -940,7 +733,7 @@ bool OpenGl_View::blitBuffers (OpenGl_FrameBuffer*    theReadFbo,
     OpenGl_VertexBuffer* aVerts = initBlitQuad (theToFlip);
     const Handle(OpenGl_ShaderManager)& aManager = aCtx->ShaderManager();
     if (aVerts->IsValid()
-     && aManager->BindFboBlitProgram())
+     && aManager->BindFboBlitProgram (theReadFbo != NULL ? theReadFbo->NbSamples() : 0, false))
     {
       aCtx->SetSampleAlphaToCoverage (false);
       theReadFbo->ColorTexture()->Bind (aCtx, Graphic3d_TextureUnit_0);

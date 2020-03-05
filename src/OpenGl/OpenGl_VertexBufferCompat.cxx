@@ -14,7 +14,7 @@
 
 #include <OpenGl_VertexBufferCompat.hxx>
 
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
 
 #include <NCollection_AlignedAllocator.hxx>
 

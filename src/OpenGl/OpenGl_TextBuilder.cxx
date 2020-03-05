@@ -179,7 +179,7 @@ void OpenGl_TextBuilder::Perform (const Font_TextFormatter&                     
         aVertsVbo = new OpenGl_VertexBuffer();
         aTcrdsVbo = new OpenGl_VertexBuffer();
       }
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
       else
       {
         aVertsVbo = new OpenGl_VertexBufferCompat();

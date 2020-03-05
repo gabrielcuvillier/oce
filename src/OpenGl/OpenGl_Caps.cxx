@@ -25,22 +25,24 @@ IMPLEMENT_STANDARD_RTTIEXT(OpenGl_Caps,Standard_Transient)
 // =======================================================================
 OpenGl_Caps::OpenGl_Caps()
 :
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
   sRGBDisable       (Standard_False),
   vboDisable        (Standard_False),
-  vboDisable        (Standard_False),
   pntSpritesDisable (Standard_False),
-#endif
   keepArrayData     (Standard_False),
-#if !defined(GL_ES_VERSION_2_0)
   ffpEnable         (Standard_False),
   usePolygonMode    (Standard_False),
+#if !defined(GL_ES_VERSION_2_0)
   useSystemBuffer   (Standard_False),
-  contextStereo     (Standard_False),
+#else
+  useSystemBuffer   (Standard_True),
+#endif
 #endif
   swapInterval      (1),
-  fboDisable        (Standard_False),
   buffersNoSwap     (Standard_False),
+#if !defined(HAVE_WEBGL_1_0)
+  contextStereo     (Standard_False),
+#endif
 #ifdef OCCT_DEBUG
   contextDebug      (Standard_True),
   contextSyncDebug  (Standard_True),
@@ -48,9 +50,13 @@ OpenGl_Caps::OpenGl_Caps()
   contextDebug      (Standard_False),
   contextSyncDebug  (Standard_False),
 #endif
+#if !defined(HAVE_WEBGL_1_0)
+  contextNoAccel    (Standard_False),
 #if !defined(GL_ES_VERSION_2_0)
   contextCompatible (Standard_True),
-  contextNoAccel    (Standard_False),
+#else
+  contextCompatible (Standard_False),
+#endif
 #endif
   contextNoExtensions (Standard_False),
   contextMajorVersionUpper (-1),
@@ -68,23 +74,25 @@ OpenGl_Caps::OpenGl_Caps()
 // =======================================================================
 OpenGl_Caps& OpenGl_Caps::operator= (const OpenGl_Caps& theCopy)
 {
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
   sRGBDisable       = theCopy.sRGBDisable;
   vboDisable        = theCopy.vboDisable;
   pntSpritesDisable = theCopy.pntSpritesDisable;
-  ffpEnable         = theCopy.ffpEnable;
-  usePolygonMode    = theCopy.usePolygonMode;
-  useSystemBuffer   = theCopy.useSystemBuffer;
-  contextNoAccel    = theCopy.contextNoAccel;
-  contextStereo     = theCopy.contextStereo;
-  contextCompatible = theCopy.contextCompatible;
-#endif
-  fboDisable        = theCopy.fboDisable;
   keepArrayData     = theCopy.keepArrayData;
+  ffpEnable         = theCopy.ffpEnable;
+  useSystemBuffer   = theCopy.useSystemBuffer;
+#endif
   swapInterval      = theCopy.swapInterval;
   buffersNoSwap     = theCopy.buffersNoSwap;
+#if !defined(HAVE_WEBGL_1_0)
+  contextStereo     = theCopy.contextStereo;
+#endif
   contextDebug      = theCopy.contextDebug;
   contextSyncDebug  = theCopy.contextSyncDebug;
+#if !defined(HAVE_WEBGL_1_0)
+  contextNoAccel    = theCopy.contextNoAccel;
+  contextCompatible = theCopy.contextCompatible;
+#endif
   contextNoExtensions = theCopy.contextNoExtensions;
   contextMajorVersionUpper = theCopy.contextMajorVersionUpper;
   contextMinorVersionUpper = theCopy.contextMinorVersionUpper;

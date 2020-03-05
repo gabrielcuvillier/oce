@@ -238,13 +238,21 @@ public:
   //! The source of environment data is background cubemap.
   //! If PBR is unavailable it does nothing.
   //! If PBR is available but there is no cubemap being set to background it clears all IBL maps (see 'ClearPBREnvironment').
-  virtual void GeneratePBREnvironment() Standard_OVERRIDE { myPBREnvRequest = OpenGl_PBREnvRequest_BAKE; }
+  virtual void GeneratePBREnvironment() Standard_OVERRIDE {
+#if !defined(HAVE_WEBGL_1_0)
+    myPBREnvRequest = OpenGl_PBREnvRequest_BAKE;
+#endif
+  }
 
   //! Fills PBR specular probe and irradiance map with white color.
   //! So that environment indirect illumination will be constant
   //! and will be fully controlled by ambient light sources.
   //! If PBR is unavailable it does nothing.
-  virtual void ClearPBREnvironment() Standard_OVERRIDE { myPBREnvRequest = OpenGl_PBREnvRequest_CLEAR; }
+  virtual void ClearPBREnvironment() Standard_OVERRIDE {
+#if !defined(HAVE_WEBGL_1_0)
+    myPBREnvRequest = OpenGl_PBREnvRequest_BAKE;
+#endif
+  }
 
   //! Returns number of mipmap levels used in specular IBL map.
   //! 0 if PBR environment is not created.
@@ -456,7 +464,7 @@ private:
   //! Initialize blit quad.
   OpenGl_VertexBuffer* initBlitQuad (const Standard_Boolean theToFlip);
 
-#if !defined(HAVE_GLES2)
+#if !defined(HAVE_WEBGL_1_0)
   //! Blend together views pair into stereo image.
   void drawStereoPair (OpenGl_FrameBuffer* theDrawFbo);
 
@@ -518,12 +526,16 @@ protected: //! @name Rendering properties
 
   //! Two framebuffers (left and right views) store cached main presentation
   //! of the view (without presentation of immediate layers).
+#if !defined(HAVE_WEBGL_1_0)
   Standard_Integer           mySRgbState;             //!< track sRGB state
+#endif
   GLint                      myFboColorFormat;        //!< sized format for color attachments
   GLint                      myFboDepthFormat;        //!< sized format for depth-stencil attachments
+#if !defined(HAVE_WEBGL_1_0)
   OpenGl_ColorFormats        myFboOitColorConfig;     //!< selected color format configuration for OIT color attachments
+#endif
   Handle(OpenGl_FrameBuffer) myMainSceneFbos[2];
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
   Handle(OpenGl_FrameBuffer) myMainSceneFbosOit[2];      //!< Additional buffers for transparent draw of main layer.
   Handle(OpenGl_FrameBuffer) myImmediateSceneFbos[2];    //!< Additional buffers for immediate layer in stereo mode.
   Handle(OpenGl_FrameBuffer) myImmediateSceneFbosOit[2]; //!< Additional buffers for transparency draw of immediate layer.
@@ -547,6 +559,10 @@ protected: //! @name Background parameters
   Handle(Graphic3d_CubeMap)  myBackgroundCubeMap;                 //!< Cubemap has been set as background
   Graphic3d_TypeOfBackground myBackgroundType;                    //!< Current type of background
   OpenGl_BackgroundArray*    myBackgrounds[Graphic3d_TypeOfBackground_NB]; //!< Array of primitive arrays of different background types
+
+protected:
+  //! Marks if environment map should be updated.
+  Standard_Boolean myToUpdateEnvironmentMap;
 
 protected: //! @name methods related to PBR
 
@@ -582,13 +598,15 @@ protected: //! @name fields and types related to PBR
     OpenGl_PBREnvRequest_CLEAR
   };
 
+#if !defined(HAVE_WEBGL_1_0)
   Handle(OpenGl_PBREnvironment) myPBREnvironment; //!< manager of IBL maps used in PBR pipeline
   PBREnvironmentState           myPBREnvState;    //!< state of PBR environment
   PBREnvironmentRequest         myPBREnvRequest;  //!< type of action is requested to be done with PBR environment
+#endif
 
 protected: //! @name data types related to ray-tracing
 
-#if !defined(HAVE_GLES2)
+#if !defined(HAVE_WEBGL_1_0)
   //! Result of OpenGL shaders initialization.
   enum RaytraceInitStatus
   {
@@ -727,7 +745,7 @@ protected: //! @name data types related to ray-tracing
 
   };
 
-#if !defined(HAVE_GLES2)
+#if !defined(HAVE_WEBGL_1_0)
   //! Default ray-tracing depth.
   static const Standard_Integer THE_DEFAULT_NB_BOUNCES = 3;
 
@@ -825,10 +843,7 @@ protected: //! @name data types related to ray-tracing
 
 protected: //! @name methods related to ray-tracing
 
-  //! Marks if environment map should be updated.
-  Standard_Boolean myToUpdateEnvironmentMap;
-
-#if !defined(HAVE_GLES2)
+#if !defined(HAVE_WEBGL_1_0)
   //! Updates 3D scene geometry for ray-tracing.
   Standard_Boolean updateRaytraceGeometry (const RaytraceUpdateMode      theMode,
                                            const Standard_Integer        theViewId,

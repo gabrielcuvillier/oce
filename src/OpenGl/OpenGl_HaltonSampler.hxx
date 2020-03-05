@@ -21,7 +21,7 @@
 #ifndef _OpenGl_HaltonSampler_H
 #define _OpenGl_HaltonSampler_H
 
-#if !defined(HAVE_GLES2)
+#if !defined(HAVE_WEBGL_1_0)
 
 #include <algorithm>
 #include <vector>

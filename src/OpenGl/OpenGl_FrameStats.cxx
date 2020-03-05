@@ -138,7 +138,7 @@ void OpenGl_FrameStats::updateStatistics (const Handle(Graphic3d_CView)& theView
       // main FBOs
       aMemFbos += estimatedDataSize (aView->myMainSceneFbos[0]);
       aMemFbos += estimatedDataSize (aView->myMainSceneFbos[1]);
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
       aMemFbos += estimatedDataSize (aView->myImmediateSceneFbos[0]);
       aMemFbos += estimatedDataSize (aView->myImmediateSceneFbos[1]);
       // OIT FBOs
@@ -149,7 +149,7 @@ void OpenGl_FrameStats::updateStatistics (const Handle(Graphic3d_CView)& theView
 #endif
       // dump FBO
       aMemFbos += estimatedDataSize (aView->myFBO);
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
       // RayTracing FBO
       aMemFbos += estimatedDataSize (aView->myOpenGlFBO);
       aMemFbos += estimatedDataSize (aView->myOpenGlFBO2);
@@ -169,7 +169,7 @@ void OpenGl_FrameStats::updateStatistics (const Handle(Graphic3d_CView)& theView
 #endif
     }
     {
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
       // Ray Tracing geometry
       Standard_Size& aMemGeom = myCountersTmp[Graphic3d_FrameStatsCounter_EstimatedBytesGeom];
       aMemGeom += estimatedDataSize (aView->mySceneNodeInfoTexture);

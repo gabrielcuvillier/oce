@@ -60,11 +60,7 @@
     // however OCCT is expected to be linked against libGLESv2
     #define GL_GLEXT_PROTOTYPES
   #endif
-  #if defined(__EMSCRIPTEN__)
-  #include <GLES2/gl2.h>
-  #else
   #include <GLES3/gl3.h>
-  #endif
 #else
   #include <GL/gl.h>
 #endif
@@ -110,10 +106,6 @@
   #define GL_RED_SNORM    0x8F90
   #define GL_RG_SNORM     0x8F91
   #define GL_RGB_SNORM    0x8F92
-#if defined(HAVE_WEBGL) // GL_WEBGL_depth_texture extension exposes GL_DEPTH_STENCIL_ATTACHMENT
-  #define GL_DEPTH_STENCIL_ATTACHMENT       0x821A
-#endif
-
   #define GL_RGBA_SNORM   0x8F93
 
   // GL_EXT_texture_filter_anisotropic
@@ -162,8 +154,11 @@
   #define GL_PATCHES                    0x000E
 #endif
 
-#if !defined(HAVE_EGL) && (defined(__ANDROID__) || defined(__QNX__) || !defined(__EMSCRIPTEN__) || defined(HAVE_GLES2) || defined(OCCT_UWP))
-  #define HAVE_EGL
+#if !defined(HAVE_EGL) && (defined(__ANDROID__) || defined(__QNX__) || defined(HAVE_GLES2) || defined(OCCT_UWP))
+  // Do not use EGL on Emscripten, as Emscripten API is used directly to initialize the WebGL context
+  #if !defined(__EMSCRIPTEN__)
+    #define HAVE_EGL
+  #endif
 #endif
 
 #include <InterfaceGraphic.hxx>
@@ -759,8 +754,6 @@ public: //! @name OpenGL ES 3.0
   typedef void (APIENTRY *glGetSamplerParameterfv_t)(GLuint sampler, GLenum pname, GLfloat* params);
   glGetSamplerParameterfv_t glGetSamplerParameterfv;
 
-#if !defined(HAVE_WEBGL)  // ES 3.1 and 3.2 APIs are not supported on WebGL 1.0 or 2.0
-
 public: //! @name OpenGL ES 3.1
 
   typedef void (APIENTRY *glTexStorage2DMultisample_t)(GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height, GLboolean fixedsamplelocations);
@@ -770,8 +763,6 @@ public: //! @name OpenGL ES 3.2
 
   typedef void (APIENTRY *glTexBuffer_t)(GLenum target, GLenum internalFormat, GLuint buffer);
   glTexBuffer_t glTexBuffer;
-
-#endif
 
 public: //! @name GL_KHR_debug (optional)
 
@@ -1802,7 +1793,7 @@ public: //! @name wgl extensions
 #elif defined(__APPLE__)
 public: //! @name CGL extensions
 
-#elif defined(HAVE_WEBGL) // WebGL extensions
+#elif defined(HAVE_WEBGL_1_0) // WebGL extensions
 public: //! @name WebGL extensions
 
 #else

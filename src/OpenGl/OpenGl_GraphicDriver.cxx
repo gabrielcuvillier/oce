@@ -50,7 +50,7 @@ IMPLEMENT_STANDARD_RTTIEXT(OpenGl_GraphicDriver,Graphic3d_GraphicDriver)
   #include <X11/Xlib.h> // XOpenDisplay()
 #endif
 
-#if defined(HAVE_EGL) || (defined(HAVE_GLES2) && !defined(__EMSCRIPTEN__)) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__) || defined(__EMSCRIPTEN__)
+#if defined(HAVE_EGL) || (defined(HAVE_GLES2) && !defined(__EMSCRIPTEN__)) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__)
   #include <EGL/egl.h>
   #ifndef EGL_OPENGL_ES3_BIT
     #define EGL_OPENGL_ES3_BIT 0x00000040
@@ -61,7 +61,7 @@ namespace
 {
   static const Handle(OpenGl_Context) TheNullGlCtx;
 
-#if defined(HAVE_EGL) || (defined(HAVE_GLES2) && !defined(__EMSCRIPTEN__)) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__) || defined(__EMSCRIPTEN__)
+#if defined(HAVE_EGL) || (defined(HAVE_GLES2) && !defined(__EMSCRIPTEN__)) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__)
   //! Wrapper over eglChooseConfig() called with preferred defaults.
   static EGLConfig chooseEglSurfConfig (EGLDisplay theDisplay)
   {
@@ -122,7 +122,7 @@ OpenGl_GraphicDriver::OpenGl_GraphicDriver (const Handle(Aspect_DisplayConnectio
                                             const Standard_Boolean                  theToInitialize)
 : Graphic3d_GraphicDriver (theDisp),
   myIsOwnContext (Standard_False),
-#if defined(HAVE_EGL) || (defined(HAVE_GLES2) && !defined(__EMSCRIPTEN__)) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__) || defined(__EMSCRIPTEN__)
+#if defined(HAVE_EGL) || (defined(HAVE_GLES2) && !defined(__EMSCRIPTEN__)) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__)
   myEglDisplay ((Aspect_Display )EGL_NO_DISPLAY),
   myEglContext ((Aspect_RenderingContext )EGL_NO_CONTEXT),
   myEglConfig  (NULL),
@@ -131,7 +131,7 @@ OpenGl_GraphicDriver::OpenGl_GraphicDriver (const Handle(Aspect_DisplayConnectio
   myMapOfView      (1, NCollection_BaseAllocator::CommonBaseAllocator()),
   myMapOfStructure (1, NCollection_BaseAllocator::CommonBaseAllocator())
 {
-#if !defined(_WIN32) && !defined(__ANDROID__) && !defined(__QNX__) && !defined(__EMSCRIPTEN__) && (!defined(__APPLE__) || defined(MACOSX_USE_GLX)) && !defined(__EMSCRIPTEN__)
+#if !defined(_WIN32) && !defined(__ANDROID__) && !defined(__QNX__) && !defined(__EMSCRIPTEN__) && (!defined(__APPLE__) || defined(MACOSX_USE_GLX))
   if (myDisplayConnection.IsNull())
   {
     //throw Aspect_GraphicDeviceDefinitionError("OpenGl_GraphicDriver: cannot connect to X server!");
@@ -230,7 +230,7 @@ void OpenGl_GraphicDriver::ReleaseContext()
     aWindow->GetGlContext()->forcedRelease();
   }
 
-#if defined(HAVE_EGL) || (defined(HAVE_GLES2) && !defined(__EMSCRIPTEN__)) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__) || defined(__EMSCRIPTEN__)
+#if defined(HAVE_EGL) || (defined(HAVE_GLES2) && !defined(__EMSCRIPTEN__)) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__)
   if (myIsOwnContext)
   {
     if (myEglContext != (Aspect_RenderingContext )EGL_NO_CONTEXT)
@@ -265,7 +265,7 @@ void OpenGl_GraphicDriver::ReleaseContext()
 Standard_Boolean OpenGl_GraphicDriver::InitContext()
 {
   ReleaseContext();
-#if defined(HAVE_EGL) || (defined(HAVE_GLES2) && !defined(__EMSCRIPTEN__)) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__) || defined(__EMSCRIPTEN__)
+#if defined(HAVE_EGL) || (defined(HAVE_GLES2) && !defined(__EMSCRIPTEN__)) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__)
 
 #if !defined(_WIN32) && !defined(__ANDROID__) && !defined(__QNX__) && !defined(__EMSCRIPTEN__) && (!defined(__APPLE__) || defined(MACOSX_USE_GLX))
   if (myDisplayConnection.IsNull())
@@ -339,7 +339,7 @@ Standard_Boolean OpenGl_GraphicDriver::InitContext()
   return Standard_True;
 }
 
-#if defined(HAVE_EGL) || (defined(HAVE_GLES2) && !defined(__EMSCRIPTEN__)) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__) || defined(__EMSCRIPTEN__)
+#if defined(HAVE_EGL) || (defined(HAVE_GLES2) && !defined(__EMSCRIPTEN__)) || defined(OCCT_UWP) || defined(__ANDROID__) || defined(__QNX__)
 // =======================================================================
 // function : InitEglContext
 // purpose  :
@@ -349,7 +349,7 @@ Standard_Boolean OpenGl_GraphicDriver::InitEglContext (Aspect_Display          t
                                                        void*                   theEglConfig)
 {
   ReleaseContext();
-#if !defined(_WIN32) && !defined(__ANDROID__) && !defined(__QNX__) && !defined(__EMSCRIPTEN__) && (!defined(__APPLE__) || defined(MACOSX_USE_GLX)) && !defined(__EMSCRIPTEN__)
+#if !defined(_WIN32) && !defined(__ANDROID__) && !defined(__QNX__) && !defined(__EMSCRIPTEN__) && (!defined(__APPLE__) || defined(MACOSX_USE_GLX))
   if (myDisplayConnection.IsNull())
   {
     return Standard_False;
@@ -427,11 +427,7 @@ Standard_Integer OpenGl_GraphicDriver::InquireLimit (const Graphic3d_TypeOfLimit
     case Graphic3d_TypeOfLimit_IsWorkaroundFBO:
       return !aCtx.IsNull() && aCtx->MaxTextureSize() != aCtx->MaxDumpSizeX() ? 1 : 0;
     case Graphic3d_TypeOfLimit_HasMeshEdges:
-#if !defined(HAVE_WEBGL)
       return !aCtx.IsNull() && aCtx->hasGeometryStage != OpenGl_FeatureNotAvailable ? 1 : 0;
-#else
-      return false;
-#endif
     case Graphic3d_TypeOfLimit_NB:
       return 0;
   }
@@ -453,7 +449,7 @@ Standard_ShortReal OpenGl_GraphicDriver::DefaultTextHeight() const
 // =======================================================================
 void OpenGl_GraphicDriver::EnableVBO (const Standard_Boolean theToTurnOn)
 {
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
   myCaps->vboDisable = !theToTurnOn;
 #else
   (void)theToTurnOn;
@@ -754,7 +750,7 @@ Standard_Boolean OpenGl_GraphicDriver::ViewExists (const Handle(Aspect_Window)& 
   #else
     NSView* TheSpecifiedWindowId = THEWindow->HView();
   #endif
-#elif defined(__ANDROID__) || defined(__QNX__) || defined(__EMSCRIPTEN__) || defined(OCCT_UWP)
+#elif defined(__ANDROID__) || defined(__QNX__) || defined(OCCT_UWP)
   (void )AWindow;
   int TheSpecifiedWindowId = -1;
 #elif defined(__EMSCRIPTEN__)
@@ -783,7 +779,7 @@ Standard_Boolean OpenGl_GraphicDriver::ViewExists (const Handle(Aspect_Window)& 
       #else
         NSView* TheWindowIdOfView = theWindow->HView();
       #endif
-#elif defined(__ANDROID__) || defined(__QNX__) || defined(__EMSCRIPTEN__) || defined(OCCT_UWP)
+#elif defined(__ANDROID__) || defined(__QNX__) || defined(OCCT_UWP)
       int TheWindowIdOfView = 0;
 #elif defined(__EMSCRIPTEN__)
       const Handle(Emscripten_Window) theWindow = Handle(Emscripten_Window)::DownCast (AspectWindow);
@@ -794,7 +790,7 @@ Standard_Boolean OpenGl_GraphicDriver::ViewExists (const Handle(Aspect_Window)& 
 #endif  // WNT
       // Comparaison on window IDs
 #if defined(__EMSCRIPTEN__)
-      // On Emscripten, Aspect_Drawable is a const char* string (the canvas element id), so let's do strcmp instead of direct equality comparison
+      // On Emscripten, Aspect_Drawable is a const char* string (the Canvas DOM selector), so let's do strcmp instead of direct equality comparison
       if (!strcmp(TheSpecifiedWindowId, TheWindowIdOfView))
 #else
       if (TheWindowIdOfView == TheSpecifiedWindowId)

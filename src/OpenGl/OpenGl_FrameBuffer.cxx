@@ -42,7 +42,7 @@ namespace
   //! Return TRUE if GL_DEPTH_STENCIL_ATTACHMENT can be used.
   static bool hasDepthStencilAttach (const Handle(OpenGl_Context)& theCtx)
   {
-  #ifdef __EMSCRIPTEN__
+  #if defined(__EMSCRIPTEN__)
     // supported since WebGL 2.0,
     // while WebGL 1.0 + GL_WEBGL_depth_texture needs GL_DEPTH_STENCIL_ATTACHMENT
     // and NOT separate GL_DEPTH_ATTACHMENT+GL_STENCIL_ATTACHMENT calls which is different to OpenGL ES 2.0 + extension
@@ -161,7 +161,7 @@ Standard_Boolean OpenGl_FrameBuffer::Init (const Handle(OpenGl_Context)& theGlCo
   const Standard_Integer aSizeX = theSizeX > 0 ? theSizeX : 2;
   const Standard_Integer aSizeY = theSizeY > 0 ? theSizeY : 2;
 
-#if !defined(HAVE_WEBGL)
+#if !defined(HAVE_WEBGL_1_0)
   // Create the textures (will be used as color buffer and depth-stencil buffer)
   if (theNbSamples != 0)
   {
@@ -287,7 +287,7 @@ Standard_Boolean OpenGl_FrameBuffer::Init (const Handle(OpenGl_Context)& theGlCo
   const Standard_Integer aSizeY = theSizeY > 0 ? theSizeY : 2;
   bool hasStencilRB = false;
 
-#if !defined(HAVE_WEBGL)
+#if !defined(HAVE_WEBGL_1_0)
   // Create the textures (will be used as color buffer and depth-stencil buffer)
   if (theNbSamples != 0)
   {

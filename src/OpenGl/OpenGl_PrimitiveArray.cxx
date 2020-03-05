@@ -300,8 +300,11 @@ Standard_Boolean OpenGl_PrimitiveArray::buildVBO (const Handle(OpenGl_Context)& 
   if (isNormalMode
    && initNormalVbo (theCtx))
   {
-    if (!theCtx->caps->keepArrayData
-     && !theToKeepData
+    if (
+#if !defined(HAVE_WEBGL_1_0)
+        !theCtx->caps->keepArrayData &&
+#endif
+        !theToKeepData
      && !myAttribs->IsMutable())
     {
       myIndices.Nullify();
@@ -314,7 +317,7 @@ Standard_Boolean OpenGl_PrimitiveArray::buildVBO (const Handle(OpenGl_Context)& 
     return Standard_True;
   }
 
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
   Handle(OpenGl_VertexBufferCompat) aVboAttribs;
   switch (myAttribs->NbAttributes)
   {
@@ -500,7 +503,7 @@ void OpenGl_PrimitiveArray::drawArray (const Handle(OpenGl_Workspace)& theWorksp
 // =======================================================================
 void OpenGl_PrimitiveArray::drawEdges (const Handle(OpenGl_Workspace)& theWorkspace) const
 {
-#if defined(GL_ES_VERSION_2_0)
+#if defined(HAVE_WEBGL_1_0)
   // Loosy hack to emulate glPolygonMode(GL_LINE) on GLES 2 by using GL_LINE_LOOP on each individual triangles of
   // the VBO. This is really not good on the performance side, but at least, it works!
 
@@ -529,9 +532,9 @@ void OpenGl_PrimitiveArray::drawEdges (const Handle(OpenGl_Workspace)& theWorksp
                                                   anAspect->ShaderProgramRes (aGlContext));
   }
   aGlContext->SetSampleAlphaToCoverage (aGlContext->ShaderManager()->MaterialState().HasAlphaCutoff());
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
   const GLenum aDrawMode = !aGlContext->ActiveProgram().IsNull()
-                             && aGlContext->ActiveProgram()->HasTessellationStage()
+                         && aGlContext->ActiveProgram()->HasTessellationStage()
                          ? GL_PATCHES
                          : myDrawMode;
 #else
@@ -577,7 +580,7 @@ void OpenGl_PrimitiveArray::drawEdges (const Handle(OpenGl_Workspace)& theWorksp
     // draw one (or sequential) primitive by the indices
     else
     {
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
       glDrawElements (aDrawMode, myVboIndices->GetElemsNb(), myVboIndices->GetDataType(), anOffset);
 #else
       const size_t aStride = myVboIndices->GetDataType() == (GL_UNSIGNED_SHORT ? sizeof(unsigned short) : sizeof(unsigned int)) * 3;
@@ -602,7 +605,7 @@ void OpenGl_PrimitiveArray::drawEdges (const Handle(OpenGl_Workspace)& theWorksp
   }
   else
   {
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
     glDrawArrays (aDrawMode, 0, !myVboAttribs.IsNull() ? myVboAttribs->GetElemsNb() : myAttribs->NbElements);
 #else
     const Standard_Integer aMax = (!myVboAttribs.IsNull() ? myVboAttribs->GetElemsNb() : myAttribs->NbElements);

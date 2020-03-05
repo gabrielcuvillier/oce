@@ -265,7 +265,7 @@ void OpenGl_Group::AddElement (OpenGl_Element* theElem)
   (myLast? myLast->next : myFirst) = aNode;
   myLast = aNode;
 
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
   if (OpenGl_Raytrace::IsRaytracedElement (aNode))
   {
     myIsRaytracable = Standard_True;

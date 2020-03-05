@@ -17,7 +17,7 @@
 
 #include <OpenGl_VertexBuffer.hxx>
 
-#if !defined(HAVE_GLES2)  // OpenGL without VBO disabled on GLES2
+#if !defined(HAVE_WEBGL_1_0)  // OpenGL without VBO disabled on GLES2
 
 //! Compatibility layer for old OpenGL without VBO.
 //! Make sure to pass pointer from GetDataOffset() instead of NULL.

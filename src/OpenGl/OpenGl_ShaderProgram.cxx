@@ -205,7 +205,7 @@ Standard_Boolean OpenGl_ShaderProgram::Initialize (const Handle(OpenGl_Context)&
   myHasWeightOitOutput = !myProxy.IsNull() ? myProxy->HasWeightOitOutput() && myNbFragOutputs >= 2 : 1;
 
   // detect the minimum GLSL version required for defined Shader Objects
-#if !defined(HAVE_WEBGL)
+#if !defined(HAVE_WEBGL_1_0)
 #if defined(GL_ES_VERSION_2_0)
   if (myHasTessShader)
   {
@@ -382,7 +382,7 @@ Standard_Boolean OpenGl_ShaderProgram::Initialize (const Handle(OpenGl_Context)&
       }
 #endif
     }
-#if !defined(HAVE_WEBGL)
+#if !defined(HAVE_WEBGL_1_0)
 #if defined(GL_ES_VERSION_2_0)
     if (theCtx->hasGeometryStage == OpenGl_FeatureInExtensions)
     {
@@ -453,11 +453,6 @@ Standard_Boolean OpenGl_ShaderProgram::Initialize (const Handle(OpenGl_Context)&
         aHeaderConstants += "#define THE_HAS_TEXTURE_METALROUGHNESS\n";
       }
     }
-
-    // There is some specific tweaks for GLSL in WebGL
-    #if defined(HAVE_WEBGL)
-      anExtensions += "#define HAVE_WEBGL\n";
-    #endif
 
     const TCollection_AsciiString aSource = aHeaderVer                     // #version   - header defining GLSL version, should be first
                                           + (!aHeaderVer.IsEmpty() ? "\n" : "")
@@ -1072,14 +1067,19 @@ Standard_Boolean OpenGl_ShaderProgram::SetUniform (const Handle(OpenGl_Context)&
                                                    GLint                         theLocation,
                                                    const OpenGl_Vec2u&           theValue)
 {
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
   if (theCtx->core32 == NULL || myProgramID == NO_PROGRAM || theLocation == INVALID_LOCATION)
   {
     return Standard_False;
   }
 
+#if !defined(GL_ES_VERSION_2_0)
   theCtx->core32->glUniform2uiv (theLocation, 1, theValue.GetData());
   return Standard_True;
+#else
+  (void )theValue;
+  return Standard_False;
+#endif
 #else
   (void)theValue;
   (void)theLocation;
@@ -1109,14 +1109,20 @@ Standard_Boolean OpenGl_ShaderProgram::SetUniform (const Handle(OpenGl_Context)&
                                                    const GLsizei                 theCount,
                                                    const OpenGl_Vec2u*           theValue)
 {
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
   if (theCtx->core32 == NULL || myProgramID == NO_PROGRAM || theLocation == INVALID_LOCATION)
   {
     return Standard_False;
   }
 
+#if !defined(GL_ES_VERSION_2_0)
   theCtx->core32->glUniform2uiv (theLocation, theCount, theValue->GetData());
   return Standard_True;
+#else
+  (void )theCount;
+  (void )theValue;
+  return Standard_False;
+#endif
 #else
   (void )theCount;
   (void )theValue;

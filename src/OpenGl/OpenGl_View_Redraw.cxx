@@ -39,7 +39,7 @@
 #include <OpenGl_Structure.hxx>
 #include <OpenGl_ArbFBO.hxx>
 
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
 
 #include "../Textures/Textures_EnvLUT.pxx"
 
@@ -114,6 +114,7 @@ void OpenGl_View::drawBackground (const Handle(OpenGl_Workspace)& theWorkspace)
         || myBackgrounds[Graphic3d_TOB_TEXTURE]->TextureFillMethod() == Aspect_FM_CENTERED
         || myBackgrounds[Graphic3d_TOB_TEXTURE]->TextureFillMethod() == Aspect_FM_NONE))
     {
+      #if !defined(GL_ES_VERSION_2_0)
       GLint aShadingModelOld = GL_SMOOTH;
       if (aCtx->core11 != NULL
         && aCtx->caps->ffpEnable)
@@ -122,14 +123,17 @@ void OpenGl_View::drawBackground (const Handle(OpenGl_Workspace)& theWorkspace)
         aCtx->core11fwd->glGetIntegerv (GL_SHADE_MODEL, &aShadingModelOld);
         aCtx->core11->glShadeModel (GL_SMOOTH);
       }
+      #endif
 
       myBackgrounds[Graphic3d_TOB_GRADIENT]->Render(theWorkspace);
 
+      #if !defined(GL_ES_VERSION_2_0)
       if (aCtx->core11 != NULL
         && aCtx->caps->ffpEnable)
       {
         aCtx->core11->glShadeModel (aShadingModelOld);
       }
+      #endif
     }
 
     // Drawing background image if it is defined
@@ -160,7 +164,6 @@ void OpenGl_View::Redraw()
 {
   const Standard_Boolean wasDisabledMSAA = myToDisableMSAA;
   const Standard_Boolean hadFboBlit      = myHasFboBlit;
-
   if (myRenderParams.Method == Graphic3d_RM_RAYTRACING
   && !myCaps->vboDisable
   && !myCaps->keepArrayData)
@@ -231,8 +234,9 @@ void OpenGl_View::Redraw()
 
   bool toUseOit = myRenderParams.TransparencyMethod == Graphic3d_RTM_BLEND_OIT
                && checkOitCompatibility (aCtx, aNbSamples > 0);
+
   const bool toInitImmediateFbo = myTransientDrawToFront
-      && (!aCtx->caps->useSystemBuffer || (toUseOit && HasImmediateStructures()));
+                               && (!aCtx->caps->useSystemBuffer || (toUseOit && HasImmediateStructures()));
 
   if ( aFrameBuffer == NULL
    && !aCtx->DefaultFrameBuffer().IsNull()
@@ -479,7 +483,6 @@ void OpenGl_View::Redraw()
       toUseOit = false;
     }
   }
-
   if (!toUseOit && myMainSceneFbosOit[0]->IsValid())
   {
     myMainSceneFbosOit     [0]->Release (aCtx.operator->());
@@ -534,14 +537,18 @@ void OpenGl_View::Redraw()
       anImmFbosOit[1] = NULL;
     }
 
+  #if !defined(GL_ES_VERSION_2_0)
     aCtx->SetReadDrawBuffer (aStereoMode == Graphic3d_StereoMode_QuadBuffer ? GL_BACK_LEFT : GL_BACK);
+  #endif
     aCtx->SetResolution (myRenderParams.Resolution, myRenderParams.ResolutionRatio(),
                          aMainFbos[0] != NULL ? myRenderParams.RenderResolutionScale : 1.0f);
 
     redraw (Graphic3d_Camera::Projection_MonoLeftEye, aMainFbos[0], aMainFbosOit[0]);
     myBackBufferRestored = Standard_True;
     myIsImmediateDrawn   = Standard_False;
+  #if !defined(GL_ES_VERSION_2_0)
     aCtx->SetReadDrawBuffer (aStereoMode == Graphic3d_StereoMode_QuadBuffer ? GL_BACK_LEFT : GL_BACK);
+  #endif
     aCtx->SetResolution (myRenderParams.Resolution, myRenderParams.ResolutionRatio(),
                          anImmFbos[0] != NULL ? myRenderParams.RenderResolutionScale : 1.0f);
     if (!redrawImmediate (Graphic3d_Camera::Projection_MonoLeftEye, aMainFbos[0], anImmFbos[0], anImmFbosOit[0]))
@@ -553,7 +560,9 @@ void OpenGl_View::Redraw()
       aCtx->SwapBuffers();
     }
 
+  #if !defined(GL_ES_VERSION_2_0)
     aCtx->SetReadDrawBuffer (aStereoMode == Graphic3d_StereoMode_QuadBuffer ? GL_BACK_RIGHT : GL_BACK);
+  #endif
     aCtx->SetResolution (myRenderParams.Resolution, myRenderParams.ResolutionRatio(),
                          aMainFbos[1] != NULL ? myRenderParams.RenderResolutionScale : 1.0f);
 
@@ -590,10 +599,12 @@ void OpenGl_View::Redraw()
       anImmFboOit = myImmediateSceneFbosOit[0]->IsValid() ? myImmediateSceneFbosOit[0].operator->() : NULL;
     }
 
+  #if !defined(GL_ES_VERSION_2_0)
     if (aMainFbo == NULL)
     {
       aCtx->SetReadDrawBuffer (GL_BACK);
     }
+  #endif
     aCtx->SetResolution (myRenderParams.Resolution, myRenderParams.ResolutionRatio(),
                          aMainFbo != aFrameBuffer ? myRenderParams.RenderResolutionScale : 1.0f);
 
@@ -729,10 +740,12 @@ void OpenGl_View::RedrawImmediate()
     {
       aCtx->arbFBO->glBindFramebuffer (GL_FRAMEBUFFER, OpenGl_FrameBuffer::NO_FRAMEBUFFER);
     }
+  #if !defined(GL_ES_VERSION_2_0)
     if (anImmFbos[0] == NULL)
     {
       aCtx->SetReadDrawBuffer (aStereoMode == Graphic3d_StereoMode_QuadBuffer ? GL_BACK_LEFT : GL_BACK);
     }
+  #endif
 
     aCtx->SetResolution (myRenderParams.Resolution, myRenderParams.ResolutionRatio(),
                          anImmFbos[0] != NULL ? myRenderParams.RenderResolutionScale : 1.0f);
@@ -752,10 +765,12 @@ void OpenGl_View::RedrawImmediate()
     {
       aCtx->arbFBO->glBindFramebuffer (GL_FRAMEBUFFER, OpenGl_FrameBuffer::NO_FRAMEBUFFER);
     }
+  #if !defined(GL_ES_VERSION_2_0)
     if (anImmFbos[1] == NULL)
     {
       aCtx->SetReadDrawBuffer (aStereoMode == Graphic3d_StereoMode_QuadBuffer ? GL_BACK_RIGHT : GL_BACK);
     }
+  #endif
     aCtx->SetResolution (myRenderParams.Resolution, myRenderParams.ResolutionRatio(),
                          anImmFbos[1] != NULL ? myRenderParams.RenderResolutionScale : 1.0f);
     toSwap = redrawImmediate (Graphic3d_Camera::Projection_MonoRightEye,
@@ -778,10 +793,12 @@ void OpenGl_View::RedrawImmediate()
       anImmFbo    = myImmediateSceneFbos[0].operator->();
       anImmFboOit = myImmediateSceneFbosOit[0]->IsValid() ? myImmediateSceneFbosOit[0].operator->() : NULL;
     }
+  #if !defined(GL_ES_VERSION_2_0)
     if (aMainFbo == NULL)
     {
       aCtx->SetReadDrawBuffer (GL_BACK);
     }
+  #endif
     aCtx->SetResolution (myRenderParams.Resolution, myRenderParams.ResolutionRatio(),
                          anImmFbo != aFrameBuffer ? myRenderParams.RenderResolutionScale : 1.0f);
     toSwap = redrawImmediate (aProjectType,
@@ -849,7 +866,11 @@ void OpenGl_View::redraw (const Graphic3d_Camera::Projection theProjection,
   glDepthMask (GL_TRUE);
   glEnable (GL_DEPTH_TEST);
 
+#if !defined(GL_ES_VERSION_2_0)
   glClearDepth (1.0);
+#else
+  glClearDepthf (1.0f);
+#endif
 
   const OpenGl_Vec4 aBgColor = aCtx->Vec4FromQuantityColor (myBgColor);
   glClearColor (aBgColor.r(), aBgColor.g(), aBgColor.b(), 0.0f);
@@ -887,7 +908,9 @@ bool OpenGl_View::redrawImmediate (const Graphic3d_Camera::Projection theProject
   }
   else if (theDrawFbo == NULL)
   {
+  #if !defined(GL_ES_VERSION_2_0)
     aCtx->core11fwd->glGetBooleanv (GL_DOUBLEBUFFER, &toCopyBackToFront);
+  #endif
     if (toCopyBackToFront
      && myTransientDrawToFront)
     {
@@ -920,7 +943,11 @@ bool OpenGl_View::redrawImmediate (const Graphic3d_Camera::Projection theProject
   glDepthFunc (GL_LEQUAL);
   glDepthMask (GL_TRUE);
   glEnable (GL_DEPTH_TEST);
+#if !defined(GL_ES_VERSION_2_0)
   glClearDepth (1.0);
+#else
+  glClearDepthf (1.0f);
+#endif
 
   render (theProjection, theDrawFbo, theOitAccumFbo, Standard_True);
 
@@ -945,6 +972,7 @@ void OpenGl_View::render (Graphic3d_Camera::Projection theProjection,
                                         && theOutputFBO != NULL
                                         && theOutputFBO->NbSamples() != 0);
 
+#if !defined(GL_ES_VERSION_2_0)
   // Disable current clipping planes
   if (aContext->core11 != NULL)
   {
@@ -954,6 +982,7 @@ void OpenGl_View::render (Graphic3d_Camera::Projection theProjection,
       aContext->core11fwd->glDisable (aClipPlaneId);
     }
   }
+#endif
 
   // update states of OpenGl_BVHTreeSelector (frustum culling algorithm);
   // note that we pass here window dimensions ignoring Graphic3d_RenderingParams::RenderResolutionScale
@@ -1004,12 +1033,14 @@ void OpenGl_View::render (Graphic3d_Camera::Projection theProjection,
     drawBackground (myWorkspace);
   }
 
+#if !defined(GL_ES_VERSION_2_0)
   // Switch off lighting by default
   if (aContext->core11 != NULL
    && aContext->caps->ffpEnable)
   {
     glDisable(GL_LIGHTING);
   }
+#endif
 
   // =================================
   //      Step 3: Redraw main plane
@@ -1029,6 +1060,7 @@ void OpenGl_View::render (Graphic3d_Camera::Projection theProjection,
       glDisable (GL_CULL_FACE);
   }
 
+#if !defined(GL_ES_VERSION_2_0)
   // if the view is scaled normal vectors are scaled to unit
   // length for correct displaying of shaded objects
   const gp_Pnt anAxialScale = myCamera->AxialScale();
@@ -1049,6 +1081,7 @@ void OpenGl_View::render (Graphic3d_Camera::Projection theProjection,
     aContext->core11->glShadeModel (myShadingModel == Graphic3d_TOSM_FACET
                                  || myShadingModel == Graphic3d_TOSM_UNLIT ? GL_FLAT : GL_SMOOTH);
   }
+#endif
 
   aManager->SetShadingModel (OpenGl_ShaderManager::PBRShadingModelFallback (myShadingModel, checkPBRAvailability()));
 
@@ -1313,7 +1346,14 @@ void OpenGl_View::bindDefaultFbo (OpenGl_FrameBuffer* theCustomFbo)
   }
   else
   {
+  #if !defined(GL_ES_VERSION_2_0)
     aCtx->SetReadDrawBuffer (GL_BACK);
+  #else
+    if (aCtx->arbFBO != NULL)
+    {
+      aCtx->arbFBO->glBindFramebuffer (GL_FRAMEBUFFER, OpenGl_FrameBuffer::NO_FRAMEBUFFER);
+    }
+  #endif
     const Standard_Integer aViewport[4] = { 0, 0, myWindow->Width(), myWindow->Height() };
     aCtx->ResizeViewport (aViewport);
   }
@@ -1395,7 +1435,11 @@ bool OpenGl_View::blitBuffers (OpenGl_FrameBuffer*    theReadFbo,
   const Standard_Integer aViewport[4] = { 0, 0, aDrawSizeX, aDrawSizeY };
   aCtx->ResizeViewport (aViewport);
 
+#if !defined(GL_ES_VERSION_2_0)
   aCtx->core20fwd->glClearDepth  (1.0);
+#else
+  aCtx->core20fwd->glClearDepthf (1.0f);
+#endif
   aCtx->core20fwd->glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
   const bool toApplyGamma = aCtx->ToRenderSRGB() != aCtx->IsFrameBufferSRGB();
@@ -1480,6 +1524,13 @@ bool OpenGl_View::blitBuffers (OpenGl_FrameBuffer*    theReadFbo,
     aCtx->core20fwd->glDepthFunc (GL_ALWAYS);
     aCtx->core20fwd->glDepthMask (GL_TRUE);
     aCtx->core20fwd->glEnable (GL_DEPTH_TEST);
+  #if defined(GL_ES_VERSION_2_0)
+    if (!aCtx->IsGlGreaterEqual (3, 0)
+     && !aCtx->extFragDepth)
+    {
+      aCtx->core20fwd->glDisable (GL_DEPTH_TEST);
+    }
+  #endif
 
     aCtx->BindTextures (Handle(OpenGl_TextureSet)(), Handle(OpenGl_ShaderProgram)());
 
@@ -1724,6 +1775,7 @@ void OpenGl_View::drawStereoPair (OpenGl_FrameBuffer* theDrawFbo)
 bool OpenGl_View::copyBackToFront()
 {
   myIsImmediateDrawn = Standard_False;
+#if !defined(GL_ES_VERSION_2_0)
   const Handle(OpenGl_Context)& aCtx = myWorkspace->GetGlContext();
   if (aCtx->core11 == NULL)
   {
@@ -1784,6 +1836,9 @@ bool OpenGl_View::copyBackToFront()
   // read/write from front buffer now
   aCtx->SetReadBuffer (aCtx->DrawBuffer());
   return true;
+#else
+  return false;
+#endif
 }
 
 // =======================================================================

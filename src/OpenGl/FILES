@@ -37,7 +37,7 @@ OpenGl_View.hxx
 OpenGl_View.cxx
 OpenGl_View_Raytrace.cxx
 OpenGl_View_Redraw.cxx
-OpenGl_View_Redraw_GLES2.cxx
+OpenGl_View_Redraw_WEBGL_1_0.cxx
 OpenGl_GraduatedTrihedron.hxx
 OpenGl_GraduatedTrihedron.cxx
 OpenGl_Material.hxx

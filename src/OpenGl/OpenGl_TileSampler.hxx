@@ -16,7 +16,7 @@
 #ifndef _OpenGl_TileSampler_H
 #define _OpenGl_TileSampler_H
 
-#if !defined(HAVE_GLES2)
+#if !defined(HAVE_WEBGL_1_0)
 
 #include <OpenGl_Texture.hxx>
 #include <OpenGl_HaltonSampler.hxx>

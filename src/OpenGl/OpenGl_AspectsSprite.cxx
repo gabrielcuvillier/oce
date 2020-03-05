@@ -1643,11 +1643,12 @@ void OpenGl_AspectsSprite::build (const Handle(OpenGl_Context)& theCtx,
     }
   }
 
-#if !defined(GL_ES_VERSION_2_0)
   if (!theCtx.IsNull()
    &&  theCtx->core20fwd != NULL
-   && !theCtx->caps->pntSpritesDisable)
+#if !defined(HAVE_WEBGL_1_0)
+   && !theCtx->caps->pntSpritesDisable
 #endif
+  )
   {
     // Creating texture resource for using it with point sprites
     Handle(Graphic3d_MarkerImage) aNewMarkerImage;
@@ -1784,9 +1785,9 @@ void OpenGl_AspectsSprite::build (const Handle(OpenGl_Context)& theCtx,
       }
     }
   }
-#if !defined(GL_ES_VERSION_2_0)
   else
   {
+  #if !defined(GL_ES_VERSION_2_0)
     // Creating list with bitmap for using it in compatibility mode
     GLuint aBitmapList = glGenLists (1);
     aSprite->SetDisplayList (theCtx, aBitmapList);
@@ -1908,8 +1909,8 @@ void OpenGl_AspectsSprite::build (const Handle(OpenGl_Context)& theCtx,
       }
       glEndList();
     }
-  }
   #endif
+  }
 }
 
 // =======================================================================

@@ -416,7 +416,7 @@ EOL"  {"
 EOL"    discard;"
 EOL"  }";
 
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
 //! Modify color for Wireframe presentation.
 const char THE_FRAG_WIREFRAME_COLOR[] =
 EOL"vec4 getFinalColor(void)"
@@ -547,7 +547,9 @@ OpenGl_ShaderManager::OpenGl_ShaderManager (OpenGl_Context* theContext)
   myShadingModel (Graphic3d_TOSM_VERTEX),
   myUnlitPrograms (new OpenGl_SetOfPrograms()),
   myContext  (theContext),
+#if !defined(HAVE_WEBGL_1_0)
   mySRgbState (theContext->ToRenderSRGB()),
+#endif
   myHasLocalOrigin (Standard_False),
   myLastView (NULL)
 {
@@ -561,10 +563,12 @@ OpenGl_ShaderManager::OpenGl_ShaderManager (OpenGl_Context* theContext)
 OpenGl_ShaderManager::~OpenGl_ShaderManager()
 {
   myProgramList.Clear();
+#if !defined(HAVE_WEBGL_1_0)
   if (!myPBREnvironment.IsNull())
   {
     myPBREnvironment->Release (myContext);
   }
+#endif
 }
 
 // =======================================================================
@@ -713,6 +717,7 @@ void OpenGl_ShaderManager::switchLightPrograms()
 // =======================================================================
 void OpenGl_ShaderManager::UpdateSRgbState()
 {
+#if !defined(HAVE_WEBGL_1_0)
   if (mySRgbState == myContext->ToRenderSRGB())
   {
     return;
@@ -722,6 +727,7 @@ void OpenGl_ShaderManager::UpdateSRgbState()
 
   // special cases - GLSL programs dealing with sRGB/linearRGB internally
   myStereoPrograms[Graphic3d_StereoMode_Anaglyph].Nullify();
+#endif
 }
 
 // =======================================================================
@@ -1365,7 +1371,7 @@ void OpenGl_ShaderManager::pushMaterialState (const Handle(OpenGl_ShaderProgram)
   }
 }
 
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
 // =======================================================================
 // function : pushOitState
 // purpose  :
@@ -1434,7 +1440,7 @@ void OpenGl_ShaderManager::PushState (const Handle(OpenGl_ShaderProgram)& thePro
   PushProjectionState  (aProgram);
   PushLightSourceState (aProgram);
   PushMaterialState    (aProgram);
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
   PushOitState         (aProgram);
 #endif
 
@@ -1654,7 +1660,7 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramFboBlit (Handle(OpenGl_S
 // function : prepareStdProgramOitCompositing
 // purpose  :
 // =======================================================================
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
 Standard_Boolean OpenGl_ShaderManager::prepareStdProgramOitCompositing (const Standard_Boolean theMsaa)
 {
   Handle(OpenGl_ShaderProgram)& aProgram = myOitCompositingProgram[theMsaa ? 1 : 0];
@@ -1811,7 +1817,6 @@ int OpenGl_ShaderManager::defaultGlslVersion (const Handle(Graphic3d_ShaderProgr
 #endif
   // prefer "100 es" on OpenGL ES 3.0- devices (save the features unavailable before "300 es")
   // and    "300 es" on OpenGL ES 3.1+ devices
-#if !defined(HAVE_WEBGL)
   if (myContext->IsGlGreaterEqual (3, 1))
   {
     if ((theBits & OpenGl_PO_NeedsGeomShader) != 0)
@@ -1824,7 +1829,6 @@ int OpenGl_ShaderManager::defaultGlslVersion (const Handle(Graphic3d_ShaderProgr
     }
   }
   else
-#endif
   {
     if (theProgram->IsPBR()
      && myContext->IsGlGreaterEqual (3, 0))
@@ -1832,7 +1836,7 @@ int OpenGl_ShaderManager::defaultGlslVersion (const Handle(Graphic3d_ShaderProgr
       theProgram->SetHeader ("#version 300 es");
     }
     if (
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
         (theBits & OpenGl_PO_WriteOit) != 0 ||
 #endif
         (theBits & OpenGl_PO_StippleLine) != 0)
@@ -1843,7 +1847,7 @@ int OpenGl_ShaderManager::defaultGlslVersion (const Handle(Graphic3d_ShaderProgr
       }
       else
       {
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
         aBits = aBits & ~OpenGl_PO_WriteOit;
 #endif
         if (!myContext->oesStdDerivatives)
@@ -1881,7 +1885,7 @@ TCollection_AsciiString OpenGl_ShaderManager::prepareGeomMainSrc (OpenGl_ShaderO
                                                                   OpenGl_ShaderObject::ShaderVariableList& theStageInOuts,
                                                                   Standard_Integer theBits)
 {
-#if defined(HAVE_WEBGL)
+#if defined(HAVE_WEBGL_1_0)
   (void)theUnifoms;
   (void)theStageInOuts;
   (void)theBits;
@@ -2104,7 +2108,7 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramUnlit (Handle(OpenGl_Sha
                          : THE_FRAG_CLIP_PLANES_2;
     }
   }
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
   if ((theBits & OpenGl_PO_WriteOit) != 0)
   {
     aProgramSrc->SetNbFragmentOutputs (2);
@@ -2149,7 +2153,7 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramUnlit (Handle(OpenGl_Sha
        ? EOL"  uint aBit = uint (floor (aRotatePoint / occStippleFactor + 0.5)) & 15U;"
          EOL"  if ((uint (occStipplePattern) & (1U << aBit)) == 0U) discard;"
        : EOL"  int aBit = int (mod (floor (aRotatePoint / occStippleFactor + 0.5), 16.0));"
-         #if !defined(HAVE_WEBGL)
+         #if !defined(HAVE_WEBGL_1_0)
           EOL"  if (!occStipplePattern[aBit]) discard;")
          #else
           // GAB 2019: On WebGL, array indices must be constant expressions. So we use a loop instead.
@@ -2176,7 +2180,7 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramUnlit (Handle(OpenGl_Sha
 
   TCollection_AsciiString aSrcGeom = prepareGeomMainSrc (aUniforms, aStageInOuts, theBits);
   aSrcFragGetColor +=
-#if !defined(HAVE_WEBGL)
+#if !defined(HAVE_WEBGL_1_0)
       (theBits & OpenGl_PO_MeshEdges) != 0 ? THE_FRAG_WIREFRAME_COLOR :
 #endif
       EOL"#define getFinalColor getColor";
@@ -2525,7 +2529,7 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramGouraud (Handle(OpenGl_S
                           : THE_FRAG_CLIP_PLANES_2;
     }
   }
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
   if ((theBits & OpenGl_PO_WriteOit) != 0)
   {
     aProgramSrc->SetNbFragmentOutputs (2);
@@ -2557,7 +2561,7 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramGouraud (Handle(OpenGl_S
 
   TCollection_AsciiString aSrcGeom = prepareGeomMainSrc (aUniforms, aStageInOuts, theBits);
   aSrcFragGetColor +=
-#if !defined(HAVE_WEBGL)
+#if !defined(HAVE_WEBGL_1_0)
       (theBits & OpenGl_PO_MeshEdges) != 0 ? THE_FRAG_WIREFRAME_COLOR :
 #endif
       EOL"#define getFinalColor getColor";
@@ -2731,7 +2735,7 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramPhong (Handle(OpenGl_Sha
                          : THE_FRAG_CLIP_PLANES_2;
     }
   }
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
   if ((theBits & OpenGl_PO_WriteOit) != 0)
   {
     aProgramSrc->SetNbFragmentOutputs (2);
@@ -2802,7 +2806,7 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramPhong (Handle(OpenGl_Sha
 
   TCollection_AsciiString aSrcGeom = prepareGeomMainSrc (aUniforms, aStageInOuts, theBits);
   aSrcFragGetColor +=
-#if !defined(HAVE_WEBGL)
+#if !defined(HAVE_WEBGL_1_0)
       (theBits & OpenGl_PO_MeshEdges) != 0 ? THE_FRAG_WIREFRAME_COLOR :
 #endif
     EOL"#define getFinalColor getColor";
@@ -2844,7 +2848,7 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramPhong (Handle(OpenGl_Sha
   return Standard_True;
 }
 
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
 // =======================================================================
 // function : prepareStdProgramStereo
 // purpose  :
@@ -3115,7 +3119,7 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramBoundBox()
       return Standard_True;
     }
   }
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
   myBoundBoxVertBuffer = new OpenGl_VertexBufferCompat();
   myBoundBoxVertBuffer->Init (myContext, 4, 24, aLinesVertices[0].GetData());
   myContext->ShareResource ("OpenGl_ShaderManager_BndBoxVbo", myBoundBoxVertBuffer);
@@ -3238,7 +3242,7 @@ Standard_Boolean OpenGl_ShaderManager::BindMarkerProgram (const Handle(OpenGl_Te
                                                           const Handle(OpenGl_ShaderProgram)& theCustomProgram)
 {
   if (!theCustomProgram.IsNull()
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
     || myContext->caps->ffpEnable
 #endif
     )

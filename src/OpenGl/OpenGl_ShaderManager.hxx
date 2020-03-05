@@ -118,7 +118,7 @@ public:
                                     const Handle(OpenGl_ShaderProgram)& theCustomProgram)
   {
     if (!theCustomProgram.IsNull()
-#if !defined(HAVE_GLES2)
+#if !defined(HAVE_WEBGL_1_0)
         || myContext->caps->ffpEnable
 #endif
         )
@@ -144,7 +144,7 @@ public:
                                     const Handle(OpenGl_ShaderProgram)& theCustomProgram)
   {
     if (!theCustomProgram.IsNull()
-#if !defined(HAVE_GLES2)
+#if !defined(HAVE_WEBGL_1_0)
         || myContext->caps->ffpEnable
 #endif
         )
@@ -173,7 +173,7 @@ public:
   Standard_Boolean BindFontProgram (const Handle(OpenGl_ShaderProgram)& theCustomProgram)
   {
     if (!theCustomProgram.IsNull()
-#if !defined(HAVE_GLES2)
+#if !defined(HAVE_WEBGL_1_0)
         || myContext->caps->ffpEnable
 #endif
         )
@@ -192,7 +192,7 @@ public:
   //! Bind program for outline rendering
   Standard_Boolean BindOutlineProgram()
   {
-#if !defined(HAVE_GLES2)
+#if !defined(HAVE_WEBGL_1_0)
     if (myContext->caps->ffpEnable)
     {
       return false;
@@ -218,7 +218,7 @@ public:
   Standard_EXPORT Standard_Boolean BindFboBlitProgram (Standard_Integer theNbSamples,
                                                        Standard_Boolean theIsFallback_sRGB);
 
-#if !defined(HAVE_GLES2)
+#if !defined(HAVE_WEBGL_1_0)
   //! Bind program for blended order-independent transparency buffers compositing.
   Standard_Boolean BindOitCompositingProgram (const Standard_Boolean theIsMSAAEnabled)
   {
@@ -439,7 +439,7 @@ public:
 
 public:
 
-#if !defined(HAVE_GLES2)
+#if !defined(HAVE_WEBGL_1_0)
   //! Returns state of OIT uniforms.
   const OpenGl_OitState& OitState() const { return myOitState; }
 
@@ -614,8 +614,6 @@ protected:
     }
 
     aBits |= getClipPlaneBits();
-
-#if !defined(HAVE_WEBGL)  // Geometry stages are not supported on WebGL 1.0 and 2.0
     if (theEnableMeshEdges
      && myContext->hasGeometryStage != OpenGl_FeatureNotAvailable)
     {
@@ -625,9 +623,6 @@ protected:
         aBits |= OpenGl_PO_AlphaTest;
       }
     }
-#else
-    (void)theEnableMeshEdges;
-#endif
 
     if (theEnableEnvMap)
     {
@@ -649,7 +644,7 @@ protected:
       aBits |= OpenGl_PO_VertColor;
     }
 
-#if !defined(HAVE_GLES2)
+#if !defined(HAVE_WEBGL_1_0)
     if (myOitState.ToEnableWrite())
     {
       aBits |= OpenGl_PO_WriteOit;
@@ -698,7 +693,7 @@ protected:
                                                              Standard_Integer theNbSamples,
                                                              Standard_Boolean theIsFallback_sRGB);
 
-#if !defined(HAVE_GLES2)
+#if !defined(HAVE_WEBGL_1_0)
   //! Prepare standard GLSL programs for OIT compositing operation.
   Standard_EXPORT Standard_Boolean prepareStdProgramOitCompositing (const Standard_Boolean theMsaa);
 #endif
@@ -754,7 +749,7 @@ protected:
   //! Set pointer myLightPrograms to active lighting programs set from myMapOfLightPrograms
   Standard_EXPORT void switchLightPrograms();
 
-#if !defined(HAVE_GLES2)
+#if !defined(HAVE_WEBGL_1_0)
   //! Prepare standard GLSL program for stereoscopic image.
   Standard_EXPORT Standard_Boolean prepareStdProgramStereo (Handle(OpenGl_ShaderProgram)& theProgram,
                                                             const Graphic3d_StereoMode    theStereoMode);
@@ -849,10 +844,14 @@ protected:
 
   Handle(OpenGl_VertexBuffer)        myBoundBoxVertBuffer; //!< bounding box vertex buffer
 
+#if !defined(HAVE_WEBGL_1_0)
   mutable Handle(OpenGl_PBREnvironment) myPBREnvironment;  //!< manager of IBL maps used in PBR pipeline
+#endif
 
   OpenGl_Context*                    myContext;            //!< OpenGL context
+#if !defined(HAVE_WEBGL_1_0)
   Standard_Boolean                   mySRgbState;          //!< track sRGB state
+#endif
 
 protected:
 

@@ -617,7 +617,7 @@ bool OpenGl_Texture::Init2DMultisample (const Handle(OpenGl_Context)& theCtx,
     theCtx->Functions()->glTexImage2DMultisample   (myTarget, myNbSamples, theTextFormat, theSizeX, theSizeY, GL_FALSE);
   }
 #else
-#if !defined(HAVE_WEBGL)
+#if !defined(HAVE_WEBGL_1_0)
   theCtx->Functions()  ->glTexStorage2DMultisample (myTarget, myNbSamples, theTextFormat, theSizeX, theSizeY, GL_FALSE);
 #else
   Unbind (theCtx);

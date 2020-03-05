@@ -176,7 +176,7 @@ Standard_Boolean OpenGl_Workspace::Activate()
   {
     myGlContext->core20fwd->glUseProgram (OpenGl_ShaderProgram::NO_PROGRAM);
   }
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
   if (myGlContext->caps->ffpEnable)
   {
     myGlContext->ShaderManager()->PushState (Handle(OpenGl_ShaderProgram)());
@@ -313,6 +313,7 @@ const OpenGl_Aspects* OpenGl_Workspace::ApplyAspects (bool theToBindTextures)
     myGlContext->BindTextures (aTextureSet, Handle(OpenGl_ShaderProgram)());
   }
 
+#if !defined(HAVE_WEBGL_1_0)
   if ((myView->myShadingModel == Graphic3d_TOSM_PBR
     || myView->myShadingModel == Graphic3d_TOSM_PBR_FACET)
    && !myView->myPBREnvironment.IsNull()
@@ -320,6 +321,7 @@ const OpenGl_Aspects* OpenGl_Workspace::ApplyAspects (bool theToBindTextures)
   {
     myView->myPBREnvironment->Bind (myGlContext);
   }
+#endif
 
   myAspectsApplied = myAspectsSet->Aspect();
   return myAspectsSet;
@@ -403,7 +405,7 @@ Standard_Boolean OpenGl_Workspace::BufferDump (const Handle(OpenGl_FrameBuffer)&
 bool OpenGl_Workspace::ShouldRender (const OpenGl_Element* theElement)
 {
   // render only non-raytracable elements when RayTracing is enabled
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
   if ((myRenderFilter & OpenGl_RenderFilter_NonRaytraceableOnly) != 0)
   {
     if (OpenGl_Raytrace::IsRaytracedElement (theElement))

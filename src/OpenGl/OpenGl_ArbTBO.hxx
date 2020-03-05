@@ -21,9 +21,7 @@
 //! TBO is available on OpenGL 3.0+ and OpenGL ES 3.2+ hardware
 struct OpenGl_ArbTBO : protected OpenGl_GlFunctions
 {
-#if !defined(HAVE_WEBGL)  // Texture Buffer Objects are not supported on WebGL 1.0 or 2.0
   using OpenGl_GlFunctions::glTexBuffer;
-#endif
 };
 
 #endif // _OpenGl_ArbTBO_H__

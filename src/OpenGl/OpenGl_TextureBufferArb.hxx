@@ -15,8 +15,6 @@
 #ifndef _OpenGl_TextureBufferArb_H__
 #define _OpenGl_TextureBufferArb_H__
 
-#if !defined(HAVE_WEBGL)  // Texture Buffer Objects are not supported on WebGL 1.0 or 2.0
-
 #include <OpenGl_VertexBuffer.hxx>
 #include <OpenGl_ArbTBO.hxx>
 
@@ -116,4 +114,3 @@ protected:
 DEFINE_STANDARD_HANDLE(OpenGl_TextureBufferArb, OpenGl_VertexBuffer)
 
 #endif // _OpenGl_TextureBufferArb_H__
-#endif

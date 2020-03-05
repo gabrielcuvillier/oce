@@ -29,12 +29,14 @@ OpenGl_TextureFormat OpenGl_TextureFormat::FindFormat (const Handle(OpenGl_Conte
     case Image_Format_GrayF:
     {
       aFormat.SetNbComponents (1);
+#if !defined(HAVE_WEBGL_1_0)
       if (theCtx->core11 == NULL)
       {
         aFormat.SetInternalFormat (theCtx->arbTexFloat ? GL_R32F : GL_R8);
         aFormat.SetPixelFormat (GL_RED);
       }
       else
+#endif
       {
       #if !defined(GL_ES_VERSION_2_0)
         aFormat.SetInternalFormat (GL_LUMINANCE8);
@@ -49,12 +51,14 @@ OpenGl_TextureFormat OpenGl_TextureFormat::FindFormat (const Handle(OpenGl_Conte
     case Image_Format_AlphaF:
     {
       aFormat.SetNbComponents (1);
-      if (theCtx->core11 == NULL)
+#if !defined(HAVE_WEBGL_1_0)
+    if (theCtx->core11 == NULL)
       {
         aFormat.SetInternalFormat (theCtx->arbTexFloat ? GL_R32F : GL_R8);
         aFormat.SetPixelFormat (GL_RED);
       }
       else
+#endif
       {
       #if !defined(GL_ES_VERSION_2_0)
         aFormat.SetInternalFormat (GL_ALPHA8);
@@ -255,12 +259,14 @@ OpenGl_TextureFormat OpenGl_TextureFormat::FindFormat (const Handle(OpenGl_Conte
     case Image_Format_Gray:
     {
       aFormat.SetNbComponents (1);
+#if !defined(HAVE_WEBGL_1_0)
       if (theCtx->core11 == NULL)
       {
         aFormat.SetInternalFormat (GL_R8);
         aFormat.SetPixelFormat (GL_RED);
       }
       else
+#endif
       {
       #if !defined(GL_ES_VERSION_2_0)
         aFormat.SetInternalFormat (GL_LUMINANCE8);
@@ -275,12 +281,14 @@ OpenGl_TextureFormat OpenGl_TextureFormat::FindFormat (const Handle(OpenGl_Conte
     case Image_Format_Alpha:
     {
       aFormat.SetNbComponents (1);
+#if !defined(HAVE_WEBGL_1_0)
       if (theCtx->core11 == NULL)
       {
         aFormat.SetInternalFormat (GL_R8);
         aFormat.SetPixelFormat (GL_RED);
       }
       else
+#endif
       {
       #if !defined(GL_ES_VERSION_2_0)
         aFormat.SetInternalFormat (GL_ALPHA8);

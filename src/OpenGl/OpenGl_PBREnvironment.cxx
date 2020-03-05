@@ -12,6 +12,8 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
+#if !defined(HAVE_WEBGL_1_0)
+
 #include <OpenGl_PBREnvironment.hxx>
 
 #include <Graphic3d_PBRMaterial.hxx>
@@ -485,3 +487,5 @@ void OpenGl_PBREnvironment::clear (const Handle(OpenGl_Context)& theCtx,
   processSpecIBLMap (theCtx, false);
   processDiffIBLMap (theCtx, false);
 }
+
+#endif

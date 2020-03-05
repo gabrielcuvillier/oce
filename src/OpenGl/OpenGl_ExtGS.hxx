@@ -21,7 +21,7 @@
 //! Geometry shader as extension is available on OpenGL 2.0+
 struct OpenGl_ExtGS : protected OpenGl_GlFunctions
 {
-#if !defined(HAVE_WEBGL)  // Geometry Shaders are not supported on WebGL 1.0 or 2.0
+#if !defined(GL_ES_VERSION_2_0)
   using OpenGl_GlFunctions::glProgramParameteriEXT;
 #endif
 };

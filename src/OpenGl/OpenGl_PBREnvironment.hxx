@@ -15,6 +15,8 @@
 #ifndef _OpenGl_PBREnvironment_HeaderFile
 #define _OpenGl_PBREnvironment_HeaderFile
 
+#if !defined(HAVE_WEBGL_1_0)
+
 #include <OpenGl_Texture.hxx>
 #include <OpenGl_VertexBuffer.hxx>
 
@@ -204,3 +206,4 @@ private:
 };
 
 #endif // _OpenGl_PBREnvironment_HeaderFile
+#endif

@@ -18,7 +18,7 @@
 #include <Graphic3d_RenderingParams.hxx>
 #include <TCollection_ExtendedString.hxx>
 
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
 
 // define to debug algorithm values
 //#define RAY_TRACE_PRINT_DEBUG_INFO

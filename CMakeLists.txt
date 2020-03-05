@@ -650,8 +650,8 @@ if (CAN_USE_GLES2)
     OCCT_INCLUDE_CMAKE_FILE("adm/cmake/gles2")
     if (EMSCRIPTEN)
       # Emscripten also defines HAVE_WEBGL
-      add_definitions(-DHAVE_WEBGL)
-      message(STATUS "Info: WEBGL is used by OCCT")
+      add_definitions(-DHAVE_WEBGL_1_0)
+      message(STATUS "Info: WEBGL 1.0 is used by OCCT")
       # Emscripten don't use EGL with GLES2
       OCCT_CHECK_AND_UNSET_GROUP("3RDPARTY_EGL")
       OCCT_CHECK_AND_UNSET("INSTALL_EGL")

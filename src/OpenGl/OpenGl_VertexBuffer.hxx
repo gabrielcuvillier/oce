@@ -301,7 +301,7 @@ public: //! @name advanced methods
                                const Graphic3d_TypeOfAttribute theMode);
 
 private:
-#if !defined(HAVE_GLES2)
+#if !defined(HAVE_WEBGL_1_0)
   //! Setup FFP array pointer.
   static void bindFixed (const Handle(OpenGl_Context)&   theGlCtx,
                          const Graphic3d_TypeOfAttribute theMode,

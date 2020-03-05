@@ -57,7 +57,9 @@ OpenGl_View::OpenGl_View (const Handle(Graphic3d_StructureManager)& theMgr,
   myCurrLightSourceState (theCounter->Increment()),
   myLightsRevision       (0),
   myLastLightSourceState (0, 0),
+#if !defined(HAVE_WEBGL_1_0)
   mySRgbState            (-1),
+#endif
   myFboColorFormat       (GL_SRGB8_ALPHA8), // note that GL_SRGB8 is not required to be renderable, unlike GL_RGB8, GL_RGBA8, GL_SRGB8_ALPHA8
   myFboDepthFormat       (GL_DEPTH24_STENCIL8),
   myToFlipOutput         (Standard_False),
@@ -72,11 +74,11 @@ OpenGl_View::OpenGl_View (const Handle(Graphic3d_StructureManager)& theMgr,
   myTextureParams   (new OpenGl_Aspects()),
   myCubeMapParams   (new OpenGl_Aspects()),
   myBackgroundType  (Graphic3d_TOB_NONE),
-    // ray-tracing fields initialization
   myToUpdateEnvironmentMap (Standard_False)
-#if !defined(GL_ES_VERSION_2_0)
-  myPBREnvState     (OpenGl_PBREnvState_NONEXISTENT),
+#if !defined(HAVE_WEBGL_1_0)
+  ,myPBREnvState     (OpenGl_PBREnvState_NONEXISTENT),
   myPBREnvRequest   (OpenGl_PBREnvRequest_NONE),
+    // ray-tracing fields initialization
   myRaytraceInitStatus     (OpenGl_RT_NONE),
   myIsRaytraceDataValid    (Standard_False),
   myIsRaytraceWarnTextures (Standard_False),
@@ -107,7 +109,7 @@ OpenGl_View::OpenGl_View (const Handle(Graphic3d_StructureManager)& theMgr,
 
   myMainSceneFbos[0]         = new OpenGl_FrameBuffer();
   myMainSceneFbos[1]         = new OpenGl_FrameBuffer();
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
   myMainSceneFbosOit[0]      = new OpenGl_FrameBuffer();
   myMainSceneFbosOit[1]      = new OpenGl_FrameBuffer();
   myImmediateSceneFbos[0]    = new OpenGl_FrameBuffer();
@@ -117,7 +119,7 @@ OpenGl_View::OpenGl_View (const Handle(Graphic3d_StructureManager)& theMgr,
 #endif
   myOpenGlFBO                = new OpenGl_FrameBuffer();
   myOpenGlFBO2               = new OpenGl_FrameBuffer();
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
   myRaytraceFBO1[0]          = new OpenGl_FrameBuffer();
   myRaytraceFBO1[1]          = new OpenGl_FrameBuffer();
   myRaytraceFBO2[0]          = new OpenGl_FrameBuffer();
@@ -182,7 +184,7 @@ void OpenGl_View::releaseSrgbResources (const Handle(OpenGl_Context)& theCtx)
 
   myMainSceneFbos[0]        ->Release (theCtx.get());
   myMainSceneFbos[1]        ->Release (theCtx.get());
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
   myMainSceneFbosOit[0]     ->Release (theCtx.get());
   myMainSceneFbosOit[1]     ->Release (theCtx.get());
   myImmediateSceneFbos[0]   ->Release (theCtx.get());
@@ -209,9 +211,9 @@ void OpenGl_View::ReleaseGlResources (const Handle(OpenGl_Context)& theCtx)
   myGraduatedTrihedron.Release (theCtx.get());
   myFrameStatsPrs.Release (theCtx.get());
 
-#if !defined(GL_ES_VERSION_2_0)
   releaseSrgbResources (theCtx);
 
+#if !defined(HAVE_WEBGL_1_0)
   releaseRaytraceResources (theCtx);
 
   if (!myPBREnvironment.IsNull())
@@ -407,7 +409,7 @@ Standard_Boolean OpenGl_View::BufferDump (Image_PixMap& theImage, const Graphic3
     return myWorkspace->BufferDump(myFBO, theImage, theBufferType);
   }
 
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
   if (!myRaytraceParameters.AdaptiveScreenSampling)
   {
     return myWorkspace->BufferDump(myAccumFrames % 2 ? myRaytraceFBO2[0] : myRaytraceFBO1[0], theImage, theBufferType);
@@ -555,7 +557,11 @@ Handle(Graphic3d_CubeMap) OpenGl_View::BackgroundCubeMap() const
 // =======================================================================
 unsigned int OpenGl_View::SpecIBLMapLevels() const
 {
+#if !defined(HAVE_WEBGL_1_0)
   return myPBREnvironment.IsNull() ? 0 : myPBREnvironment->SpecMapLevelsNumber();
+#else
+  return 0;
+#endif
 }
 
 // =======================================================================
@@ -570,7 +576,9 @@ void OpenGl_View::SetBackgroundCubeMap (const Handle(Graphic3d_CubeMap)& theCube
   {
     if (theToUpdatePBREnv)
     {
-      myPBREnvRequest = OpenGl_PBREnvRequest_CLEAR;
+#if !defined(HAVE_WEBGL_1_0)
+  myPBREnvRequest = OpenGl_PBREnvRequest_CLEAR;
+#endif
     }
     if (myBackgroundType == Graphic3d_TOB_CUBEMAP)
     {
@@ -596,7 +604,9 @@ void OpenGl_View::SetBackgroundCubeMap (const Handle(Graphic3d_CubeMap)& theCube
 
   if (theToUpdatePBREnv)
   {
-    myPBREnvRequest = OpenGl_PBREnvRequest_BAKE;
+#if !defined(HAVE_WEBGL_1_0)
+  myPBREnvRequest = OpenGl_PBREnvRequest_BAKE;
+#endif
   }
   const OpenGl_Aspects* anAspectsBackup = myWorkspace->SetAspects (myCubeMapParams);
   myWorkspace->ApplyAspects();

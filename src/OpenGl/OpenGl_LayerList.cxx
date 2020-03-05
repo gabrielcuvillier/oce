@@ -852,7 +852,7 @@ void OpenGl_LayerList::renderTransparent (const Handle(OpenGl_Workspace)&   theW
   // should contain two additional color buffers to handle accumulated color channels,
   // blended alpha channel and weight factors - these accumulation buffers are required
   // to implement commuting blend operator (at least OpenGl 2.0 should be available).
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
   const bool isEnabledOit = theOitAccumFbo != NULL
                          && theOitAccumFbo->NbColorBuffers() >= 2
                          && theOitAccumFbo->ColorTexture (0)->IsValid()
@@ -871,7 +871,7 @@ void OpenGl_LayerList::renderTransparent (const Handle(OpenGl_Workspace)&   theW
   }
 
   const Handle(OpenGl_Context) aCtx            = theWorkspace->GetGlContext();
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
   const Handle(OpenGl_ShaderManager)& aManager = aCtx->ShaderManager();
   OpenGl_View* aView = theWorkspace->View();
   const float aDepthFactor =  aView != NULL ? aView->RenderingParams().OitDepthFactor : 0.0f;
@@ -882,7 +882,7 @@ void OpenGl_LayerList::renderTransparent (const Handle(OpenGl_Workspace)&   theW
 
   aCtx->core11fwd->glEnable (GL_BLEND);
 
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
   if (isEnabledOit)
   {
     aManager->SetOitState (true, aDepthFactor);
@@ -915,7 +915,7 @@ void OpenGl_LayerList::renderTransparent (const Handle(OpenGl_Workspace)&   theW
   }
 
   // Revert state of rendering.
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
   if (isEnabledOit)
   {
     aManager->SetOitState (false, aDepthFactor);
@@ -931,7 +931,7 @@ void OpenGl_LayerList::renderTransparent (const Handle(OpenGl_Workspace)&   theW
 #endif
 
   theWorkspace->SetRenderFilter (aPrevFilter | OpenGl_RenderFilter_OpaqueOnly);
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
   if (isEnabledOit)
   {
     const Standard_Boolean isMSAA = theReadDrawFbo && theReadDrawFbo->NbSamples() > 0;

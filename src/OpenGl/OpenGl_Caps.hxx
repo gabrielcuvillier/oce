@@ -27,15 +27,15 @@ class OpenGl_Caps : public Standard_Transient
 
 public: //! @name flags to disable particular functionality, should be used only for testing purposes!
 
-#if !defined(HAVE_GLES2)  // VBO disable, PntSprite disable, FFP enable, and PolygonMode not supported on GLES2
+#if !defined(HAVE_WEBGL_1_0) // VBO disable, PntSprite disable, FFP enable, and PolygonMode not supported on GLES2
   Standard_Boolean sRGBDisable;       //!< Disables sRGB rendering (OFF by default)
   Standard_Boolean vboDisable;        //!< disallow VBO usage for debugging purposes (OFF by default)
   Standard_Boolean pntSpritesDisable; //!< flag permits Point Sprites usage, will significantly affect performance (OFF by default)
+  Standard_Boolean keepArrayData;     //!< Disables freeing CPU memory after building VBOs (OFF by default)
   Standard_Boolean ffpEnable;         //!< Enables FFP (fixed-function pipeline), do not use built-in GLSL programs (OFF by default)
   Standard_Boolean usePolygonMode;    //!< Enables Polygon Mode instead of built-in GLSL programs (OFF by default; unsupported on OpenGL ES)
   Standard_Boolean useSystemBuffer;   //!< Enables usage of system backbuffer for blitting (OFF by default on desktop OpenGL and ON on OpenGL ES for testing)
 #endif
-  Standard_Boolean keepArrayData;     //!< Disables freeing CPU memory after building VBOs (OFF by default)
   Standard_Integer swapInterval;      //!< controls swap interval - 0 for VSync off and 1 for VSync on, 1 by default
   Standard_Integer fboDisable;        //!< flag permits FBO usage, might be needed to be disabled if you use a GL context created externally
 
@@ -50,12 +50,14 @@ public: //! @name context creation parameters
    */
   Standard_Boolean buffersNoSwap;
 
+#if !defined(HAVE_WEBGL_1_0)
   /**
    * Request stereoscopic context (with Quad Buffer). This flag requires support in OpenGL driver.
    *
    * OFF by default.
    */
   Standard_Boolean contextStereo;
+#endif
 
   /**
    * Request debug GL context. This flag requires support in OpenGL driver.
@@ -81,7 +83,7 @@ public: //! @name context creation parameters
    */
   Standard_Boolean contextSyncDebug;
 
-#if !defined(HAVE_GLES2)
+#if !defined(HAVE_WEBGL_1_0)
   /**
    * Disable hardware acceleration.
    *

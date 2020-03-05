@@ -69,7 +69,7 @@ IMPLEMENT_STANDARD_RTTIEXT(OpenGl_Context,Standard_Transient)
   #include <GL/glx.h> // glXGetProcAddress()
 #endif
 
-#ifdef __EMSCRIPTEN__
+#if defined (__EMSCRIPTEN__)
   #include <emscripten/html5.h>
 
   //! Check if WebGL extension is available and activate it
@@ -123,7 +123,7 @@ OpenGl_Context::OpenGl_Context (const Handle(OpenGl_Caps)& theCaps)
 : core11fwd  (NULL),
   core15fwd  (NULL),
   core20fwd  (NULL),
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
   core11     (NULL),
   core15     (NULL),
   core20     (NULL),
@@ -166,35 +166,26 @@ OpenGl_Context::OpenGl_Context (const Handle(OpenGl_Caps)& theCaps)
   hasFloatBuffer     (OpenGl_FeatureNotAvailable),
   hasHalfFloatBuffer (OpenGl_FeatureNotAvailable),
   hasSampleVariables (OpenGl_FeatureNotAvailable),
-#if !defined(HAVE_WEBGL)
   hasGeometryStage   (OpenGl_FeatureNotAvailable),
-#endif
   arbDrawBuffers (Standard_False),
   arbNPTW  (Standard_False),
   arbTexRG (Standard_False),
   arbTexFloat (Standard_False),
   arbSamplerObject (NULL),
-#if !defined(GL_ES_VERSION_2_0)
   arbTexBindless (NULL),
-  arbIns (NULL),
-#endif
-#if !defined(HAVE_WEBGL)
   arbTBO (NULL),
   arbTboRGB32 (Standard_False),
-#endif
+  arbIns (NULL),
   arbDbg (NULL),
   arbFBO (NULL),
   arbFBOBlit (NULL),
   arbSampleShading (Standard_False),
   extFragDepth (Standard_False),
   extDrawBuffers (Standard_False),
-#if !defined(HAVE_WEBGL)
   extGS  (NULL),
-#endif
   extBgra(Standard_False),
   extAnis(Standard_False),
   extPDS (Standard_False),
-  extTexDepth(Standard_False),
   atiMem (Standard_False),
   nvxMem (Standard_False),
   oesSampleVariables (Standard_False),
@@ -222,6 +213,7 @@ OpenGl_Context::OpenGl_Context (const Handle(OpenGl_Caps)& theCaps)
   myIsStereoBuffers (Standard_False),
   myIsGlNormalizeEnabled (Standard_False),
   mySpriteTexUnit (Graphic3d_TextureUnit_PointSprite),
+#if !defined(HAVE_WEBGL_1_0)
   myHasRayTracing (Standard_False),
   myHasRayTracingTextures (Standard_False),
   myHasRayTracingAdaptiveSampling (Standard_False),
@@ -230,6 +222,7 @@ OpenGl_Context::OpenGl_Context (const Handle(OpenGl_Caps)& theCaps)
   myPBREnvLUTTexUnit       (Graphic3d_TextureUnit_PbrEnvironmentLUT),
   myPBRDiffIBLMapSHTexUnit (Graphic3d_TextureUnit_PbrIblDiffuseSH),
   myPBRSpecIBLMapTexUnit   (Graphic3d_TextureUnit_PbrIblSpecular),
+#endif
   myFrameStats (new OpenGl_FrameStats()),
   myActiveMockTextures (0),
 #if !defined(GL_ES_VERSION_2_0)
@@ -1396,7 +1389,7 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
     }
   }
 
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
   if (!caps->ffpEnable
    && !IsGlGreaterEqual (2, 0))
   {
@@ -1448,7 +1441,7 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   core15fwd  = NULL;
   core20fwd  = NULL;
 
-#if !defined(GL_ES_VERSION_2_0)
+#if !defined(HAVE_WEBGL_1_0)
   core11     = NULL;
   if (!isCoreProfile)
   {
@@ -1471,20 +1464,14 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   core45     = NULL;
   core45back = NULL;
 #endif
-#if !defined(GL_ES_VERSION_2_0)
-  arbIns     = NULL;
   arbTexBindless = NULL;
-#endif
-#if !defined(HAVE_WEBGL)
   arbTBO     = NULL;
   arbTboRGB32 = Standard_False;
-#endif
+  arbIns     = NULL;
   arbDbg     = NULL;
   arbFBO     = NULL;
   arbFBOBlit = NULL;
-#if !defined(HAVE_WEBGL)
   extGS      = NULL;
-#endif
   myDefaultVao = 0;
 
   //! Make record shorter to retrieve function pointer using variable with same name
@@ -1510,21 +1497,21 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   extAnis = CheckExtension ("GL_EXT_texture_filter_anisotropic");
   extPDS  = IsGlGreaterEqual (3, 0)
          || CheckExtension ("GL_OES_packed_depth_stencil");
-  extTexDepth = CheckExtension ("GL_OES_depth_texture");
-
-#if defined(HAVE_WEBGL)
-    // WEBGL_depth_texture is a subset of GL_OES_depth_texture and GL_OES_packed_depth_stencil. This should work (see OpenGl_Framebuffer.cxx)
-    if (CheckExtension("GL_WEBGL_depth_texture"))
-    {
-      extPDS = true;
-      extTexDepth = true;
-    }
+#if defined(__EMSCRIPTEN__)
+  if (!extPDS
+    && checkEnableWebGlExtension (*this, "GL_WEBGL_depth_texture"))
+  {
+    extPDS = true; // WebGL 1.0 extension (in WebGL 2.0 core)
+  }
 #endif
 
   core11fwd = (OpenGl_GlCore11Fwd* )(&(*myFuncs));
   if (IsGlGreaterEqual (2, 0))
   {
     // enable compatible functions
+#if !defined(HAVE_WEBGL_1_0)
+    core20    = (OpenGl_GlCore20*    )(&(*myFuncs));
+#endif
     core20fwd = (OpenGl_GlCore20Fwd* )(&(*myFuncs));
     core15fwd = (OpenGl_GlCore15Fwd* )(&(*myFuncs));
     if (!caps->fboDisable) {
@@ -1556,8 +1543,6 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   }
   extFragDepth = !IsGlGreaterEqual(3, 0)
                && CheckExtension ("GL_EXT_frag_depth");
-
-#if !defined(HAVE_WEBGL)
   if (IsGlGreaterEqual (3, 1)
    && FindProcShort (glTexStorage2DMultisample))
   {
@@ -1565,7 +1550,6 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
     // but MSAA Textures - only in OpenGL ES 3.1+
     ::glGetIntegerv (GL_MAX_SAMPLES, &myMaxMsaaSamples);
   }
-#endif
 
   hasUintIndex = IsGlGreaterEqual (3, 0)
               || CheckExtension ("GL_OES_element_index_uint");
@@ -1583,7 +1567,6 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   hasTexFloatLinear = arbTexFloat
                    && CheckExtension ("GL_OES_texture_float_linear");
 
-#if !defined(HAVE_WEBGL)
   const Standard_Boolean hasTexBuffer32  = IsGlGreaterEqual (3, 2) && FindProcShort (glTexBuffer);
   const Standard_Boolean hasExtTexBuffer = CheckExtension ("GL_EXT_texture_buffer") && FindProc ("glTexBufferEXT", myFuncs->glTexBuffer);
 
@@ -1591,7 +1574,6 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
   {
     arbTBO = reinterpret_cast<OpenGl_ArbTBO*> (myFuncs.get());
   }
-#endif
 
   // initialize debug context extension
   if (CheckExtension ("GL_KHR_debug"))
@@ -1635,25 +1617,16 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
     hasDrawBuffers = OpenGl_FeatureInExtensions;
   }
 
-  hasFloatBuffer     =
-#if !defined(HAVE_WEBGL)
-      IsGlGreaterEqual (3, 2) ? OpenGl_FeatureInCore :
-#endif
+  hasFloatBuffer     = IsGlGreaterEqual (3, 2) ? OpenGl_FeatureInCore :
                        CheckExtension ("GL_EXT_color_buffer_float") ? OpenGl_FeatureInExtensions
                                                                     : OpenGl_FeatureNotAvailable;
-  hasHalfFloatBuffer =
-#if !defined(HAVE_WEBGL)
-  IsGlGreaterEqual (3, 2) ? OpenGl_FeatureInCore :
-#endif
+  hasHalfFloatBuffer = IsGlGreaterEqual (3, 2) ? OpenGl_FeatureInCore :
                        CheckExtension ("GL_EXT_color_buffer_half_float") ? OpenGl_FeatureInExtensions
                                                                          : OpenGl_FeatureNotAvailable;
 
   oesSampleVariables = CheckExtension ("GL_OES_sample_variables");
   oesStdDerivatives  = CheckExtension ("GL_OES_standard_derivatives");
-  hasSampleVariables =
-#if !defined(HAVE_WEBGL)
-      IsGlGreaterEqual (3, 2) ? OpenGl_FeatureInCore :
-#endif
+  hasSampleVariables = IsGlGreaterEqual (3, 2) ? OpenGl_FeatureInCore :
                        oesSampleVariables ? OpenGl_FeatureInExtensions
                                           : OpenGl_FeatureNotAvailable;
   hasGlslBitwiseOps = IsGlGreaterEqual (3, 0)
@@ -1665,24 +1638,18 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
                   : (oesStdDerivatives && hasHighp
                    ? OpenGl_FeatureInExtensions
                    : OpenGl_FeatureNotAvailable);
-
-  if (
-      #if !defined(HAVE_WEBGL)
-      !IsGlGreaterEqual (3, 1) &&
-      #endif
-      myVendor.Search("qualcomm") != -1)
+  if (!IsGlGreaterEqual (3, 1)
+    && myVendor.Search("qualcomm") != -1)
   {
     // dFdx/dFdy are completely broken on tested Adreno devices with versions below OpenGl ES 3.1
     hasFlatShading = OpenGl_FeatureNotAvailable;
   }
 
-  #if !defined(HAVE_WEBGL)
-    hasGeometryStage =
-      IsGlGreaterEqual (3, 2) ? OpenGl_FeatureInCore:
-                   (CheckExtension ("GL_EXT_geometry_shader") && CheckExtension ("GL_EXT_shader_io_blocks")
+  hasGeometryStage = IsGlGreaterEqual (3, 2)
+                   ? OpenGl_FeatureInCore
+                   : (CheckExtension ("GL_EXT_geometry_shader") && CheckExtension ("GL_EXT_shader_io_blocks")
                      ? OpenGl_FeatureInExtensions
                      : OpenGl_FeatureNotAvailable);
-  #endif
 #else
 
   myTexClamp = IsGlGreaterEqual (1, 2) ? GL_CLAMP_TO_EDGE : GL_CLAMP;
@@ -1717,11 +1684,9 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
                                          CheckExtension ("GL_ARB_color_buffer_float") ? OpenGl_FeatureInExtensions
                                                                                       : OpenGl_FeatureNotAvailable;
 
-#if !defined(HAVE_WEBGL)
   hasGeometryStage = IsGlGreaterEqual (3, 2)
                    ? OpenGl_FeatureInCore
                    : OpenGl_FeatureNotAvailable;
-#endif
 
   hasSampleVariables = IsGlGreaterEqual (4, 0) ? OpenGl_FeatureInCore :
                         arbSampleShading ? OpenGl_FeatureInExtensions
@@ -3051,6 +3016,7 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
     }
   }
 
+#if !defined(HAVE_WEBGL_1_0)
   // check whether PBR shading model is supported
   myHasPBR = arbFBO != NULL
           && myMaxTexCombined >= 4
@@ -3067,6 +3033,7 @@ void OpenGl_Context::init (const Standard_Boolean theIsCoreProfile)
     myPBRDiffIBLMapSHTexUnit = static_cast<Graphic3d_TextureUnit>(myMaxTexCombined + Graphic3d_TextureUnit_PbrIblDiffuseSH);
     myPBRSpecIBLMapTexUnit   = static_cast<Graphic3d_TextureUnit>(myMaxTexCombined + Graphic3d_TextureUnit_PbrIblSpecular);
   }
+#endif
 }
 
 // =======================================================================
@@ -3295,7 +3262,7 @@ void OpenGl_Context::DiagnosticInformation (TColStd_IndexedDataMapOfStringString
     ReadGlVersion (aDriverVer[0], aDriverVer[1]);
     addInfo (theDict, "GLvendor",    (const char*)::glGetString (GL_VENDOR));
     addInfo (theDict, "GLdevice",    (const char*)::glGetString (GL_RENDERER));
-  #ifdef __EMSCRIPTEN__
+  #if defined(__EMSCRIPTEN__)
     if (checkEnableWebGlExtension (*this, "GL_WEBGL_debug_renderer_info"))
     {
       if (const char* aVendor = (const char*)::glGetString (0x9245))
