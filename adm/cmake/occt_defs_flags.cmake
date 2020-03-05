@@ -28,9 +28,6 @@ if (NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
   endif()
 endif()
 
-if(LIGHT_BUILD)
-endif()
-
 if (MSVC)
   add_definitions (-D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_DEPRECATE)
 else()
@@ -40,17 +37,16 @@ else()
     # Fully disable exceptions
     add_compile_options(-fno-exceptions)
     # Disable a couple of warnings
-    add_compile_options(-Wno-return-std-move)
     add_compile_options(-Wno-misleading-indentation)
     # Emscripten Strict Mode
     add_compile_options(-s STRICT=1)
-    # save up a couple of additional KBs: static destructors are not usefull, as the program never really 'quits'
-    #add_compile_options(-fno-c++-static-destructors)
 
     message (STATUS "Info: OCCT_DISABLE_EXCEPTIONS is defined")
     add_definitions(-DOCCT_DISABLE_EXCEPTIONS)
-    message (STATUS "Info: OCCT_NO_RVALUE_REFERENCE is defined")
-    add_definitions(-DOCCT_NO_RVALUE_REFERENCE)
+    #message (STATUS "Info: OCCT_NO_RVALUE_REFERENCE is defined")
+    #add_definitions(-DOCCT_NO_RVALUE_REFERENCE)
+    #message (STATUS "Info: OCCT_HANDLE_NOCAST is defined")
+    #add_definitions(-DOCCT_HANDLE_NOCAST)
     message (STATUS "Info: OCCT_IGNORE_NO_ATOMICS is defined")
     add_definitions(-DOCCT_IGNORE_NO_ATOMICS)
   else()
@@ -66,14 +62,12 @@ else()
   endif()
 endif()
 
-if(NOT LIGHT_BUILD)
 # enable structured exceptions for MSVC
 string (REGEX MATCH "EHsc" ISFLAG "${CMAKE_CXX_FLAGS}")
 if (ISFLAG)
   string (REGEX REPLACE "EHsc" "EHa" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 elseif (MSVC)
   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHa")
-endif()
 endif()
 
 # remove _WINDOWS flag if it exists
