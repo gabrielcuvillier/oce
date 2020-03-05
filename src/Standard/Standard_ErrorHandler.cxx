@@ -174,6 +174,7 @@ void Standard_ErrorHandler::Abort (const Handle(Standard_Failure)& theError)
     if (!theError.IsNull())
       std::cerr << "\t... The exception is:" << theError->GetMessageString() << std::endl;
 #if defined(__EMSCRIPTEN__)
+    // Call to std::terminate on Emscripten, as it allows to use set_terminate_handler and do platform-specific cleanups
     std::terminate();
 #else
     exit(1);
@@ -328,20 +329,5 @@ void Standard_ErrorHandler::Callback::UnregisterCallback ()
   else if ( ((Standard_ErrorHandler*)myHandler)->myCallbackPtr == this)
     ((Standard_ErrorHandler*)myHandler)->myCallbackPtr = (Standard_ErrorHandler::Callback*)myNext;
   myHandler = myNext = myPrev = 0;
-}
-#else
-// If OCCT_CONVERT_SIGNALS is not defined,
-// provide empty implementation
-Standard_ErrorHandler::Callback::Callback () : myNext(0)
-{
-}
-Standard_ErrorHandler::Callback::~Callback ()
-{
-}
-void Standard_ErrorHandler::Callback::RegisterCallback ()
-{
-}
-void Standard_ErrorHandler::Callback::UnregisterCallback ()
-{
 }
 #endif

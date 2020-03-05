@@ -100,6 +100,7 @@ Standard_Integer OSD_Process::ProcessId(){
 TCollection_AsciiString OSD_Process::UserName()
 {
 #if defined(__EMSCRIPTEN__)
+  // getpwuid is not implemented on Emscripten. Use "web_user" as it is the default on Emscripten.
   return "web_user";
 #else
   struct passwd *anInfos = getpwuid (getuid());
@@ -109,6 +110,7 @@ TCollection_AsciiString OSD_Process::UserName()
 
 Standard_Boolean OSD_Process::IsSuperUser (){
 #if defined(__EMSCRIPTEN__)
+  // Does not have sense on Emscripten
   return Standard_False;
 #else
   if (getuid()) {
@@ -429,7 +431,7 @@ TCollection_AsciiString OSD_Process::ExecutablePath()
   TCollection_AsciiString aProcessPath (aResultBuf);
   free (aResultBuf); // according to man for realpath()
   return aProcessPath;
-#elif defined(__linux__)
+#elif defined(__linux__) || defined(__gnu_linux__)
   // get info from /proc/PID/exe
 
   TCollection_AsciiString aSimLink = TCollection_AsciiString("/proc/") + TCollection_AsciiString(getpid()) + "/exe";

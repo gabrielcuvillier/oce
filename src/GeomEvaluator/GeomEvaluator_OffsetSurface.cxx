@@ -41,7 +41,7 @@ const Standard_Real the_D1MagTol = 1.e-9;
 //
 // NB: temporarily this is made as static function and not class method, 
 // hence code duplications
-#if defined(__EMSCRIPTEN__)
+#if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunneeded-internal-declaration"
 #endif
@@ -99,7 +99,7 @@ static Standard_Boolean shiftPoint (const Standard_Real theUStart, const Standar
 
   return Standard_True;
 }
-#if defined(__EMSCRIPTEN__)
+#if defined(__clang__)
 #pragma clang diagnostic pop
 #endif
 

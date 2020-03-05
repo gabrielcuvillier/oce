@@ -67,7 +67,7 @@ void HandleFaces(std::shared_ptr<PlyData> theData, opencascade::handle<Poly_Tria
 }
 
 opencascade::handle<Poly_Triangulation> RWPly::ReadFile(const Standard_CString theFile,
-                                                        const opencascade::handle<Message_ProgressIndicator> &theProgress) {
+                                                        const opencascade::handle<Message_ProgressIndicator> &/*theProgress*/) {
   std::ifstream ss(theFile, std::ios::binary);
   if (ss.fail()) return nullptr;
 
@@ -83,7 +83,7 @@ opencascade::handle<Poly_Triangulation> RWPly::ReadFile(const Standard_CString t
     faces = file.request_properties_from_element("face", {"vertex_indices"}, 3);
 
     opencascade::handle<Poly_Triangulation>
-        aPoly = new Poly_Triangulation(vertices->count, faces->count, Standard_False /*texcoords->count > 0*/);
+        aPoly = new Poly_Triangulation(static_cast<Standard_Integer>(vertices->count), static_cast<Standard_Integer>(faces->count), Standard_False /*texcoords->count > 0*/);
 
     file.read(ss);
 
@@ -101,21 +101,22 @@ opencascade::handle<Poly_Triangulation> RWPly::ReadFile(const Standard_CString t
       }
     }
 
-    if Standard_IF_CONSTEXPR(false && texcoords->count > 0) {
-      switch (texcoords->t) {
-        case tinyply::Type::FLOAT32: {
-          HandleTexCoords<float>(texcoords, aPoly);
-          break;
-        }
-        case tinyply::Type::FLOAT64: {
-          HandleTexCoords<double>(texcoords, aPoly);
-          break;
-        }
-        default: {
-          return nullptr;
-        }
-      }
-    }
+// Inactive code for unknown reason (texcoords not correctly supported?)
+//    if Standard_IF_CONSTEXPR(false  && texcoords->count > 0) {
+//      switch (texcoords->t) {
+//        case tinyply::Type::FLOAT32: {
+//          HandleTexCoords<float>(texcoords, aPoly);
+//          break;
+//        }
+//        case tinyply::Type::FLOAT64: {
+//          HandleTexCoords<double>(texcoords, aPoly);
+//          break;
+//        }
+//        default: {
+//          return nullptr;
+//        }
+//      }
+//    }
 
     switch (faces->t) {
       case tinyply::Type::INT8: {
@@ -149,7 +150,7 @@ opencascade::handle<Poly_Triangulation> RWPly::ReadFile(const Standard_CString t
 
     return aPoly;
   }
-  catch (std::exception & anException) {
+  catch (std::exception & /*anException*/) {
     return nullptr;
   }
 }

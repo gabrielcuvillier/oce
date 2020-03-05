@@ -1023,7 +1023,10 @@ bool AIS_ViewController::RemoveTouchPoint (Standard_Size theId,
     if (myTouchPoints.Extent() == 1 && myTapDetectionStarted) {
       // Ok, this is a Tap => Let's do a selection in Viewer
       const Aspect_Touch& theLastTouch = myTouchPoints.FindFromIndex (1);
-      SelectInViewer(Graphic3d_Vec2i(theLastTouch.To.x(), theLastTouch.To.y()));
+      SelectInViewer(
+          Graphic3d_Vec2i(
+              static_cast<Standard_Integer>(theLastTouch.To.x()),
+              static_cast<Standard_Integer>(theLastTouch.To.y())));
       myTapDetectionStarted = false;
     }
 

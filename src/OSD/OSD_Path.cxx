@@ -37,15 +37,13 @@ static OSD_SysType whereAmI()
   return OSD_WindowsNT;
 #elif defined(_WIN32) || defined(__WIN32__)
   return OSD_WindowsNT;
-#elif defined(__CYGWIN32_) || defined(__MINGW32__)
+#elif defined(__MINGW32__)
   return OSD_WindowsNT;
 #elif defined(vax) || defined(__vms)
   return OSD_VMS;
 #elif defined(__EMSCRIPTEN__)
   return OSD_Emscripten;
-#elif defined(__linux__) || defined(__linux)
-  return OSD_LinuxREDHAT;
-#elif defined(__EMSCRIPTEN__)
+#elif defined(__CYGWIN__) || defined(__linux__) || defined(__gnu_linux__)
   return OSD_LinuxREDHAT;
 #elif defined(_AIX) || defined(AIX)
   return OSD_Aix;

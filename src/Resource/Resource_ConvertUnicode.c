@@ -240,4 +240,8 @@ void Resource_unicode_to_gb (unsigned int *ph, unsigned int *pl)
     *pl = 0 ;
   }
 }
+#else
+#if defined(_MSC_VER)
+#pragma warning(disable:4206) // Disable empty translation unit warning
+#endif
 #endif

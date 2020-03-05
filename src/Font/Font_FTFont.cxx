@@ -106,22 +106,20 @@ bool Font_FTFont::Init (const Handle(NCollection_Buffer)& theData,
       return false;
     }
   }
-#if !defined(__EMSCRIPTEN__)
-  else
-  {
-    if (FT_New_Face (myFTLib->Instance(), myFontPath.ToCString(), (FT_Long )theFaceId, &myFTFace) != 0)
-    {
-      //Message::DefaultMessenger()->Send (TCollection_AsciiString("Font '") + myFontPath + "' failed to load from file", Message_Trace);
+  else {
+#if !defined(OCCT_MINIMAL_FREETYPE_BUILD)
+    if (FT_New_Face(myFTLib->Instance(), myFontPath.ToCString(),
+                    (FT_Long)theFaceId, &myFTFace) != 0) {
+      // Message::DefaultMessenger()->Send (TCollection_AsciiString("Font '") + myFontPath + "' failed to load from file", Message_Trace);
       Release();
       return false;
     }
-  }
 #else
-  else {
+    // Do not attempt to use Freetype file I/O on OCCT_MINIMAL_FREETYPE_BUILD
     Release();
     return false;
-  }
 #endif
+  }
 
   if (FT_Select_Charmap (myFTFace, ft_encoding_unicode) != 0)
   {
@@ -628,11 +626,13 @@ Font_Rect Font_FTFont::BoundingBox (const NCollection_String&               theS
 //! @param theParams   initialization parameters
 //! @return true on success
 bool Font_FTFont::Init (const TCollection_AsciiString& theFontPath,
-           const Font_FTFontParams& theParams)
+           const Font_FTFontParams& theParams,
+           const Standard_Integer theFaceId)
 {
-#if !defined(__EMSCRIPTEN__)
-  return Init (Handle(NCollection_Buffer)(), theFontPath, theParams);
+#if !defined(OCCT_MINIMAL_FREETYPE_BUILD)
+  return Init (Handle(NCollection_Buffer)(), theFontPath, theParams, theFaceId);
 #else
+  // Preload the file in memory on OCCT_MINIMAL_FREETYPE_BUILD
   Standard_Boolean aResult = Standard_False;
   Standard_Byte* file_data_buffer = nullptr;
   std::ifstream aDataStream(theFontPath.ToCString(), std::ios::in | std::ios::ate | std::ios::binary);
@@ -647,7 +647,7 @@ bool Font_FTFont::Init (const TCollection_AsciiString& theFontPath,
         Handle(NCollection_Buffer) aBuffer = new NCollection_Buffer (Handle(NCollection_BaseAllocator)(),
                                                                      aFileSize,
                                                                      file_data_buffer);
-        aResult = Init(aBuffer, theFontPath, theParams);
+        aResult = Init(aBuffer, theFontPath, theParams, theFaceId);
       }
     }
     aDataStream.close();

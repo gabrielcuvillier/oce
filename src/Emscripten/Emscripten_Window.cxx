@@ -11,6 +11,7 @@
 #include <Emscripten_Window.hxx>
 
 #if defined(__EMSCRIPTEN__)
+// Emscripten_Window is only available on Emscripten
 
 // cstd
 #include <cstring>  // std::strcpy
@@ -138,7 +139,7 @@ void Emscripten_Window::Unmap() const
 // function : DoResize
 // purpose  :
 // =======================================================================
-Aspect_TypeOfResize Emscripten_Window::DoResize() const
+Aspect_TypeOfResize Emscripten_Window::DoResize()
 {
   // Resize the canvas internal size to the canvas CSS size adjusted by the devicePixelRatio
 

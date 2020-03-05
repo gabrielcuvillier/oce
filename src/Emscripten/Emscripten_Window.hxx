@@ -12,6 +12,7 @@
 #define _Emscripten_Window_H__
 
 #if defined(__EMSCRIPTEN__)
+// Emscripten_Window is only available on Emscripten
 
 #include <functional> // std::function
 
@@ -41,7 +42,7 @@ public:
   Standard_EXPORT virtual void Unmap() const Standard_OVERRIDE ;
 
   //! Applies the resizing to the window <me>
-  Standard_EXPORT virtual Aspect_TypeOfResize DoResize() const Standard_OVERRIDE ;
+  Standard_EXPORT virtual Aspect_TypeOfResize DoResize() Standard_OVERRIDE ;
 
   //! Apply the mapping change to the window <me>
   Standard_EXPORT virtual Standard_Boolean DoMapping() const Standard_OVERRIDE ;

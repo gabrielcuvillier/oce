@@ -21,9 +21,6 @@
 #include <TopExp_Explorer.hxx>
 #include <BRep_Tool.hxx>
 #include <BRep_Builder.hxx>
-#if !defined(OCCT_DISABLE_SHAPEANALYSIS_IN_MESHING)
-#include <ShapeAnalysis_Edge.hxx>
-#endif
 #include <BRepAdaptor_Curve.hxx>
 #include <Precision.hxx>
 #include <Bnd_Box.hxx>
@@ -356,13 +353,6 @@ Standard_Boolean BRepMesh_ShapeTool::Range (
     Standard_Real tmp = theFirstParam; theFirstParam = theLastParam; theLastParam = tmp;
   }
   return !thePCurve.IsNull();
-
-#if !defined(OCCT_DISABLE_SHAPEANALYSIS_IN_MESHING)
-  ShapeAnalysis_Edge aEdge;
-  return aEdge.PCurve (theEdge, theFace, thePCurve,
-    theFirstParam, theLastParam,
-    isConsiderOrientation);
-#endif
 }
 
 //=======================================================================

@@ -68,7 +68,7 @@ IMPLEMENT_STANDARD_RTTIEXT(Font_FontMgr,Standard_Transient)
     static Standard_CString Font_FontMgr_Extensions[] =
     {
       "ttf",
-#if !defined(__EMSCRIPTEN__)
+#if !defined(OCCT_MINIMAL_FREETYPE_BUILD)
       "otf",
       "ttc",
       "pfa",
@@ -101,7 +101,7 @@ IMPLEMENT_STANDARD_RTTIEXT(Font_FontMgr,Standard_Transient)
                                                     NULL
                                                    };
   #elif defined(__EMSCRIPTEN__)
-    // Use CSF_CustomFontDirectory environment variable, or "/fonts" by default
+    // FS is in memory on Emscripten. Use CSF_CustomFontDirectory environment variable, or "/fonts" by default
     static Standard_CString myDefaultFontsDirs[] = { getenv("CSF_CustomFontDirectory") ? getenv("CSF_CustomFontDirectory") : "/fonts",
                                                      NULL
                                                    };
@@ -156,10 +156,10 @@ static bool checkFont (NCollection_Sequence<Handle(Font_SystemFont)>& theFonts,
                        FT_Long theFaceId = -1)
 {
   const FT_Long aFaceId = theFaceId != -1 ? theFaceId : 0;
-  FT_Face aFontFace;
+  FT_Face aFontFace = 0;
   FT_Error aFaceError = 1;
   Standard_Byte* file_data_buffer = nullptr;
-  std::ifstream aDataStream(theFontPath, std::ios::in | std::ios::ate | std::ios::binary);
+  std::ifstream aDataStream(theFontPath.ToCString(), std::ios::in | std::ios::ate | std::ios::binary);
   if (aDataStream) {
     auto aFileSize = aDataStream.tellg();
     aDataStream.seekg(0);
@@ -177,8 +177,8 @@ static bool checkFont (NCollection_Sequence<Handle(Font_SystemFont)>& theFonts,
     delete[] file_data_buffer;
     return NULL;
   }
-  if (aFontFace->family_name == NULL // skip broken fonts (error in FreeType?)
-   || FT_Select_Charmap (aFontFace, ft_encoding_unicode) != 0) // Font_FTFont supports only UNICODE fonts
+  if (aFontFace && (aFontFace->family_name == NULL // skip broken fonts (error in FreeType?)
+   || FT_Select_Charmap (aFontFace, ft_encoding_unicode) != 0)) // Font_FTFont supports only UNICODE fonts
   {
     FT_Done_Face (aFontFace);
     return false;
@@ -398,6 +398,7 @@ Font_FontMgr::Font_FontMgr()
   aSerif ->Append (Font_FontAlias ("droid serif"));
   aSans  ->Append (Font_FontAlias ("roboto")); // actually DroidSans.ttf
 #elif defined(__EMSCRIPTEN__)
+  // bitstream vera fonts have to be embedded in MemFS on Emscripten (either in CSF_CustomFontDirectory or "/fonts")
   aMono  ->Append (Font_FontAlias ("bitstream vera sans mono"));
   aSerif ->Append (Font_FontAlias ("bitstream vera serif"));
   aSans  ->Append (Font_FontAlias ("bitstream vera sans"));

@@ -6793,14 +6793,11 @@ static int VCaps (Draw_Interpretor& theDI,
 
   if (theArgNb < 2)
   {
-    theDI << "sRGB:    " << (aCaps->sRGBDisable       ? "0" : "1") << "\n";
-
 #if !defined(GL_ES_VERSION_2_0)
+    theDI << "sRGB:    " << (aCaps->sRGBDisable       ? "0" : "1") << "\n";
     theDI << "VBO:     " << (aCaps->vboDisable        ? "0" : "1") << "\n";
     theDI << "SoftMode:" << (aCaps->contextNoAccel    ? "1" : "0") << "\n";
-#endif
     theDI << "Sprites: " << (aCaps->pntSpritesDisable ? "0" : "1") << "\n";
-#if !defined(GL_ES_VERSION_2_0)
     theDI << "FFP:     " << (aCaps->ffpEnable         ? "1" : "0") << "\n";
     theDI << "PolygonMode: " << (aCaps->usePolygonMode ? "1" : "0") << "\n";
     theDI << "WinBuffer: " << (aCaps->useSystemBuffer ? "1" : "0") << "\n";

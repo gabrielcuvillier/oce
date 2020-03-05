@@ -219,6 +219,7 @@ void OSD_Parallel::SetUseOcctThreads (Standard_Boolean theToUseOcct)
 Standard_Integer OSD_Parallel::NbLogicalProcessors()
 {
 #if defined(__EMSCRIPTEN__)
+  // MT is not enabled on Emscripten for now
   return 1;
 #else
   static Standard_Integer aNumLogicalProcessors = 0;

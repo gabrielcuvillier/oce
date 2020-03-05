@@ -149,10 +149,10 @@ bool RWMesh_MaterialMap::copyFileTo (const TCollection_AsciiString& theFileSrc,
     aFileSrc.Copy (aDstPath);
     return !aFileSrc.Failed();
   }
-  catch (Standard_Failure const& theException)
+  catch (Standard_Failure const& anException)
   {
     Message::DefaultMessenger()->Send (TCollection_AsciiString("Failed to copy file\n") +
-                                       theException.GetMessageString(), Message_Fail);
+                                       anException.GetMessageString(), Message_Fail);
     return false;
   }
 }

@@ -158,12 +158,8 @@ public:
   //! @param theFaceId   face id within the file (0 by default)
   //! @return true on success
   bool Init (const TCollection_AsciiString& theFontPath,
-             const Font_FTFontParams& theParams);
              const Font_FTFontParams& theParams,
-             const Standard_Integer theFaceId = 0)
-  {
-    return Init (Handle(NCollection_Buffer)(), theFontPath, theParams, theFaceId);
-  }
+             const Standard_Integer theFaceId = 0);
 
   //! Initialize the font from the given file path or memory buffer.
   //! @param theData     memory to read from, should NOT be freed after initialization!

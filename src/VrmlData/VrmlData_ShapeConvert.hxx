@@ -41,11 +41,11 @@ class VrmlData_ShapeConvert
 {
  public:
 
-  typedef struct {
+  struct ShapeData {
     TCollection_AsciiString Name;
     TopoDS_Shape            Shape;
     Handle(VrmlData_Node)   Node;
-  } ShapeData;
+  };
 
   // ---------- PUBLIC METHODS ----------
 

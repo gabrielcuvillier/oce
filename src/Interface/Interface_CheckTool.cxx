@@ -41,7 +41,7 @@
 
 static int errh = 1;
 
-#if defined(__EMSCRIPTEN__)
+#if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunneeded-internal-declaration"
 #endif
@@ -60,7 +60,7 @@ static void raisecheck (Standard_Failure& theException,Handle(Interface_Check)& 
     throw theException;
   }
 }
-#if defined(__EMSCRIPTEN__)
+#if defined(__clang__)
 #pragma clang diagnostic pop
 #endif
 

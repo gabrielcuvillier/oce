@@ -302,6 +302,7 @@ Standard_Boolean OSD_Thread::Wait (const Standard_Integer theTimeMs,
   #ifdef HAS_TIMED_NP
     struct timespec aTimeout;
   #if defined(__EMSCRIPTEN__)
+    // Use dedicated time functions on Emscripten
     const double aNow = emscripten_get_now();
     aTimeout.tv_sec = aNow/1000;
     aTimeout.tv_nsec = (((Standard_Integer)aNow) % 1000)*1000*1000;

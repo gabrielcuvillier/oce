@@ -82,20 +82,6 @@ Standard_OStream& BinTools::PutShortReal (Standard_OStream& theOS,
 }
 
 //=======================================================================
-//function : PutShortReal
-//purpose  :
-//=======================================================================
-
-Standard_OStream &BinTools::PutShortReal(Standard_OStream &OS, const Standard_ShortReal aValue) {
-  Standard_ShortReal aRValue = aValue;
-#if DO_INVERSE
-  aRValue = InverseShortReal (aValue);
-#endif
-  OS.write((char *) &aRValue, sizeof(Standard_ShortReal));
-  return OS;
-}
-
-//=======================================================================
 //function : PutExtChar
 //purpose  : 
 //=======================================================================
@@ -143,22 +129,6 @@ Standard_IStream& BinTools::GetShortReal (Standard_IStream& theIS,
 #endif
   return theIS;
 }
-
-
-//=======================================================================
-//function : GetShortReal
-//purpose  :
-//=======================================================================
-
-Standard_IStream &BinTools::GetShortReal(Standard_IStream &IS, Standard_ShortReal &aValue) {
-  if (!IS.read((char *) &aValue, sizeof(Standard_ShortReal)))
-    throw Storage_StreamTypeMismatchError();
-#if DO_INVERSE
-  aValue = InverseShortReal (aValue);
-#endif
-  return IS;
-}
-
 
 //=======================================================================
 //function : GetInteger

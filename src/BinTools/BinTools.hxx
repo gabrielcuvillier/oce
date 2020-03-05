@@ -47,8 +47,6 @@ public:
 
   Standard_EXPORT static Standard_OStream& PutShortReal (Standard_OStream& OS, const Standard_ShortReal& theValue);
 
-  Standard_EXPORT static Standard_OStream& PutShortReal (Standard_OStream& OS, const Standard_ShortReal theValue);
-
   Standard_EXPORT static Standard_OStream& PutInteger (Standard_OStream& OS, const Standard_Integer theValue);
   
   Standard_EXPORT static Standard_OStream& PutBool (Standard_OStream& OS, const Standard_Boolean theValue);

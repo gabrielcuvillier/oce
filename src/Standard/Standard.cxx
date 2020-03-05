@@ -33,7 +33,7 @@
 #elif (defined(__GNUC__) && __GNUC__ >= 4 && __GNUC_MINOR__ >= 1 && (defined(__i386) || defined(__x86_64)))
   #include <mm_malloc.h>
 #elif defined(__EMSCRIPTEN__)
-  // uses aligned_alloc from stdlib
+  // use aligned_alloc from stdlib
 #else
   extern "C" int posix_memalign (void** thePtr, size_t theAlign, size_t theSize);
 #endif

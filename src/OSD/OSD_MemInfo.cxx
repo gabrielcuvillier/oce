@@ -146,13 +146,13 @@ void OSD_MemInfo::Update()
     }
   }
 
-#elif (defined(__linux__) || defined(__linux) || defined(__EMSCRIPTEN__))
+#elif defined(__linux__) || defined(__gnu_linux__) || defined(__EMSCRIPTEN__) || defined( __CYGWIN__ )
   const struct mallinfo aMI = mallinfo();
   if (IsActive (MemHeapUsage))
   {
     myCounters[MemHeapUsage] = aMI.uordblks;
   }
-#if defined(__EMSCRIPTEN__)
+#if defined(__EMSCRIPTEN__) || defined( __CYGWIN__ )
   // /proc/%d/status is not emulated - get more info from mallinfo()
   if (IsActive (MemWorkingSet))
   {
