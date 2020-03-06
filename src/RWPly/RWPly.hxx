@@ -13,7 +13,7 @@ class RWPly
 public:
 
   static Handle(Poly_Triangulation) ReadFile (const Standard_CString theFile,
-                                              const Handle(Message_ProgressIndicator)& theProgress);
+                                              const Handle(Message_ProgressIndicator)& theProgress = Handle(Message_ProgressIndicator)());
 };
 
 #endif
