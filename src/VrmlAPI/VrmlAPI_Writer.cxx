@@ -426,11 +426,16 @@ Standard_Boolean VrmlAPI_Writer::write_v3(const TopoDS_Shape& aShape,const Stand
 Standard_Boolean VrmlAPI_Writer::WriteDoc(
   const Handle(TDocStd_Document) &theDoc,
   const Standard_CString theFile,
-  const Standard_Real theScale) const
+  const Standard_Real theScale,
+  const Standard_Integer aVersion) const
 {
   VrmlData_Scene aScene;
   VrmlData_ShapeConvert aConv(aScene, theScale);
   aConv.ConvertDocument(theDoc);
+
+  if (aVersion == 3) {
+    aScene.setX3D(true);
+  }
 
   std::ofstream anOutStream;
   OSD_OpenStream(anOutStream, theFile, std::ios::out);

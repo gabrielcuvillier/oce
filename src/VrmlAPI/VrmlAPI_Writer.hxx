@@ -113,7 +113,8 @@ public:
   Standard_EXPORT Standard_Boolean WriteDoc(
     const Handle(TDocStd_Document) &theDoc,
     const Standard_CString theFile,
-    const Standard_Real theScale) const;
+    const Standard_Real theScale,
+    const Standard_Integer aVersion = 2) const;
 
 protected:
 
