@@ -1292,6 +1292,7 @@ static Standard_Integer XShowFaceBoundary (Draw_Interpretor& di,
     aPrs = TPrsStd_AISPresentation::Set (aLabel,XCAFPrs_Driver::GetID ());
   }
 
+
   Handle(AIS_InteractiveObject) anInteractive = aPrs->GetAIS ();
   if (anInteractive.IsNull ())
   {

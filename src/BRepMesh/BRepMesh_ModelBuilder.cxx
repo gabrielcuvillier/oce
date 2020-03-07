@@ -15,9 +15,7 @@
 
 #include <BRepMesh_ModelBuilder.hxx>
 #include <BRepMeshData_Model.hxx>
-#if !defined(OCCT_DISABLE_SHAPEANALYSIS_IN_MESHING)
 #include <BRepMesh_ShapeVisitor.hxx>
-#endif
 #include <BRepMesh_ShapeTool.hxx>
 #include <IMeshTools_ShapeExplorer.hxx>
 #include <IMeshTools_Parameters.hxx>

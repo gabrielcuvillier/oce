@@ -41,11 +41,13 @@ Handle(XCAFApp_Application) XCAFApp_Application::GetApplication()
 
 XCAFApp_Application::XCAFApp_Application()
 {
+#if !defined(OCCT_DISABLE_VCAF_IN_XDE)
   // NB: Registration of XCAFPrs drivers is NO more done in an XCAFApp_Application, to remove dependency to TKVCAF, TKXCAFPrs, and TKV3d
   // This have to be done separately for any kind of application that want to use XCAFPrs_Driver. See for example XDEDRAW::Init
   //
   //Handle(TPrsStd_DriverTable) table  = TPrsStd_DriverTable::Get();
   //table->AddDriver (XCAFPrs_Driver::GetID(), new XCAFPrs_Driver);
+#endif
 }
 
 //=======================================================================

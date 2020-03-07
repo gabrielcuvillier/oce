@@ -441,7 +441,6 @@ n IVtkDraw
 t TKIVtkDraw
 n Geom2dEvaluator
 t TKVCAF
-t TKXCAFPrs
 n XCAFView
 n XCAFNoteObjects
 t TKRWMesh
