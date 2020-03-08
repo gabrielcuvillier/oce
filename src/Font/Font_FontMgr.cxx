@@ -175,7 +175,7 @@ static bool checkFont (NCollection_Sequence<Handle(Font_SystemFont)>& theFonts,
   }
   if (aFaceError != FT_Err_Ok) {
     delete[] file_data_buffer;
-    return NULL;
+    return false;
   }
   if (aFontFace && (aFontFace->family_name == NULL // skip broken fonts (error in FreeType?)
    || FT_Select_Charmap (aFontFace, ft_encoding_unicode) != 0)) // Font_FTFont supports only UNICODE fonts
