@@ -73,6 +73,7 @@ void TPrsStd_DriverTable::InitStandardDrivers()
 {
   if (myDrivers.Extent() > 0) return;
 
+  #if !defined(OCCT_DISABLE_PRESENTATION_DRIVERS_IN_VCAF)
   Handle(TPrsStd_AxisDriver) axisdrv = new TPrsStd_AxisDriver;
   Handle(TPrsStd_ConstraintDriver) cnstrdrv = new TPrsStd_ConstraintDriver;
   Handle(TPrsStd_GeometryDriver) geomdrv = new TPrsStd_GeometryDriver ;
@@ -86,6 +87,7 @@ void TPrsStd_DriverTable::InitStandardDrivers()
   myDrivers.Bind(TNaming_NamedShape::GetID(), nshapedrv);
   myDrivers.Bind(TDataXtd_Plane::GetID(), planedrv);
   myDrivers.Bind(TDataXtd_Point::GetID(), pointdrv);
+  #endif
 }
 
 //=======================================================================

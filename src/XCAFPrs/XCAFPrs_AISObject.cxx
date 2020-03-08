@@ -17,7 +17,11 @@
 
 #include <AIS_DisplayMode.hxx>
 #include <BRep_Builder.hxx>
+#if !defined(OCCT_DISABLE_MESHING_IN_XDE)
 #include <BRepBndLib.hxx>
+#else
+#include <BRepBndLibApprox.hxx>
+#endif
 #include <gp_Pnt.hxx>
 #include <Graphic3d_AspectFillArea3d.hxx>
 #include <Graphic3d_AspectLine3d.hxx>
@@ -73,7 +77,11 @@ static void DisplayText (const TDF_Label& aLabel,
       // find the position to display as middle of the bounding box
       aShape.Move (aLocation);
       Bnd_Box aBox;
+#if !defined(OCCT_DISABLE_MESHING_IN_XDE)
       BRepBndLib::Add (aShape, aBox);
+#else
+      BRepBndLibApprox::Add (aShape, aBox);
+#endif
       if ( ! aBox.IsVoid() ) 
       {
 	Standard_Real aXmin, aYmin, aZmin, aXmax, aYmax, aZmax;
