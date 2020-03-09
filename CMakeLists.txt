@@ -24,28 +24,21 @@ if (NOT BUILD_LIBRARY_TYPE)
   SET_PROPERTY(CACHE BUILD_LIBRARY_TYPE PROPERTY STRINGS Shared Static)
 endif ()
 
+# the name of the project
+project(OCCT)
+
+# Emscripten enable "Light Build" mode
 if (EMSCRIPTEN)
   set(LIGHT_BUILD_default ON)
 else()
   set(LIGHT_BUILD_default OFF)
 endif()
-set(LIGHT_BUILD ON CACHE BOOL "Light Build Mode")
+set(LIGHT_BUILD ${LIGHT_BUILD_default} CACHE BOOL "Light Build Mode")
 
-# the name of the project
-project(OCCT)
-
-# Emscripten requires Static library build
-if (EMSCRIPTEN)
-  set(BUILD_LIBRARY_TYPE "Static" FORCE)
-endif ()
-
-# Emscripten enable "Light Build" mode
-if (EMSCRIPTEN)
-  set(LIGHT_BUILD ON)
-endif()
 if (LIGHT_BUILD)
   message(STATUS "Info: Light build mode enabled")
-endif()
+  set(BUILD_LIBRARY_TYPE "Static" FORCE)
+endif ()
 
 if ("${BUILD_LIBRARY_TYPE}" STREQUAL "Shared")
   set(BUILD_SHARED_LIBS ON)
