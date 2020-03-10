@@ -533,7 +533,7 @@ else ()
 endif ()
 
 if (USE_ZLIB)
-  message(STATUS "Info: zlib is used by OCCT")
+  message(STATUS "Info: Zlib is used by OCCT")
   if (LIGHT_BUILD)
     file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/zlib-build)
     # Configure
@@ -542,7 +542,6 @@ if (USE_ZLIB)
       -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/zlib-build/install/zlib
       -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
       -DBUILD_SHARED_LIBS=OFF
-      -DZLIB_FORCE_OUTPUT_LIBZ=ON
       -G "${CMAKE_GENERATOR}"
       -T "${CMAKE_GENERATOR_TOOLSET}"
       RESULT_VARIABLE result
@@ -566,7 +565,7 @@ else()
 endif()
 
 if (USE_PNG)
-  message(STATUS "Info: libpng is used by OCCT")
+  message(STATUS "Info: Libpng is used by OCCT")
   if (LIGHT_BUILD)
     file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/libpng-build)
     # Configure
@@ -601,7 +600,7 @@ else()
 endif()
 
 if (USE_JPEG)
-  message(STATUS "Info: libjpeg is used by OCCT")
+  message(STATUS "Info: Libjpeg is used by OCCT")
   if (LIGHT_BUILD)
     file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/libjpeg-build)
     # Configure
@@ -610,6 +609,8 @@ if (USE_JPEG)
             -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/libjpeg-build/install/libjpeg
             -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
             -DBUILD_SHARED_LIBS=OFF
+            -DBUILD_EXECUTABLES=OFF
+            -DBUILD_TESTS=OFF
             -G "${CMAKE_GENERATOR}"
             -T "${CMAKE_GENERATOR_TOOLSET}"
             RESULT_VARIABLE result
@@ -633,22 +634,33 @@ else()
 endif()
 
 if (USE_FREETYPE)
-  message(STATUS "Info: Freetype Minimal is used by OCCT")
+  message(STATUS "Info: Freetype is used by OCCT")
   if (LIGHT_BUILD)
-    file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/freetype-emscripten-minimal)
-    if (NOT MSVC)
-      execute_process(COMMAND ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/freetype-emscripten-minimal/install/freetype2 -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} -G "${CMAKE_GENERATOR}" ${CMAKE_SOURCE_DIR}/deps/freetype-emscripten-minimal
-              RESULT_VARIABLE result
-              WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/freetype-emscripten-minimal)
-    else()
-      execute_process(COMMAND ${CMAKE_COMMAND} -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/freetype-emscripten-minimal/install/freetype2 -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} -G "${CMAKE_GENERATOR}" ${CMAKE_SOURCE_DIR}/deps/freetype-emscripten-minimal -T "${CMAKE_GENERATOR_TOOLSET}"
-              RESULT_VARIABLE result
-              WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/freetype-emscripten-minimal)
-    endif()
-    execute_process(COMMAND ${CMAKE_COMMAND} --build . --target install --config ${CMAKE_BUILD_TYPE}
+    file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/freetype-build)
+    # Configure
+    execute_process(COMMAND ${CMAKE_COMMAND} ${CMAKE_SOURCE_DIR}/deps/freetype-minimal
+            -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+            -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/freetype-build/install/freetype
+            -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+            -DZLIB_ROOT=${3RDPARTY_ZLIB_DIR}
+            -DPNG_ROOT=${3RDPARTY_PNG_DIR}
+            -DBUILD_SHARED_LIBS=OFF
+            -DFT_WITH_ZLIB=ON
+            -DFT_WITH_PNG=ON
+            -G "${CMAKE_GENERATOR}"
+            -T "${CMAKE_GENERATOR_TOOLSET}"
             RESULT_VARIABLE result
-            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/freetype-emscripten-minimal)
-    set(3RDPARTY_FREETYPE_DIR "${CMAKE_BINARY_DIR}/freetype-emscripten-minimal/install/freetype2" CACHE PATH "The directory containing Freetype2")
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/freetype-build)
+    # Build
+    execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE}
+            RESULT_VARIABLE result
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/freetype-build)
+    # Install
+    execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE} --target install
+            RESULT_VARIABLE result
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/freetype-build)
+    # Final
+    set(3RDPARTY_FREETYPE_DIR "${CMAKE_BINARY_DIR}/freetype-build/install/freetype" CACHE PATH "The directory containing freetype")
     set(INSTALL_FREETYPE 1)
   endif()
   OCCT_INCLUDE_CMAKE_FILE("adm/cmake/freetype")

@@ -3,7 +3,6 @@ TKService
 TKMath
 TKV3d
 CSF_TBB
-CSF_FREETYPE
 CSF_OpenGlLibs
 CSF_user32
 CSF_gdi32
