@@ -241,18 +241,18 @@ macro (THIRDPARTY_PRODUCT PRODUCT_NAME HEADER_NAME LIBRARY_CSF_NAME LIBRARY_NAME
 
         if (WIN32)
           if (SINGLE_GENERATOR)
-            install (FILES "${3RDPARTY_${PRODUCT_NAME}_DLL_${LIBRARY_NAME_SUFFIX}}" DESTINATION "${INSTALL_DIR_BIN}")
+            install (FILES "${3RDPARTY_${PRODUCT_NAME}_LIBRARY_${LIBRARY_NAME_SUFFIX}}" DESTINATION "${INSTALL_DIR_BIN}")
           else()
-            install (FILES "${3RDPARTY_${PRODUCT_NAME}_DLL_${LIBRARY_NAME_SUFFIX}}"
+            install (FILES "${3RDPARTY_${PRODUCT_NAME}_LIBRARY_${LIBRARY_NAME_SUFFIX}}"
                      CONFIGURATIONS Release
                      DESTINATION "${INSTALL_DIR_BIN}")
-            install (FILES "${3RDPARTY_${PRODUCT_NAME}_DLL_${LIBRARY_NAME_SUFFIX}}"
+            install (FILES "${3RDPARTY_${PRODUCT_NAME}_LIBRARY_${LIBRARY_NAME_SUFFIX}}"
                      CONFIGURATIONS RelWithDebInfo
                      DESTINATION "${INSTALL_DIR_BIN}")
-            install (FILES "${3RDPARTY_${PRODUCT_NAME}_DLL_${LIBRARY_NAME_SUFFIX}}"
+            install (FILES "${3RDPARTY_${PRODUCT_NAME}_LIBRARY_${LIBRARY_NAME_SUFFIX}}"
                      CONFIGURATIONS Debug
                      DESTINATION "${INSTALL_DIR_BIN}")
-            install (FILES "${3RDPARTY_${PRODUCT_NAME}_DLL_${LIBRARY_NAME_SUFFIX}}"
+            install (FILES "${3RDPARTY_${PRODUCT_NAME}_LIBRARY_${LIBRARY_NAME_SUFFIX}}"
                      CONFIGURATIONS MinSizeRel
                      DESTINATION "${INSTALL_DIR_BIN}")
           endif()
@@ -278,8 +278,9 @@ macro (THIRDPARTY_PRODUCT PRODUCT_NAME HEADER_NAME LIBRARY_CSF_NAME LIBRARY_NAME
                        DESTINATION "${INSTALL_DIR_LIB}"
                        RENAME ${FREEIMLIB}.3)
             endif()
+          else()
+            install (FILES "${3RDPARTY_${PRODUCT_NAME}_LIBRARY_${LIBRARY_NAME_SUFFIX}}" DESTINATION "${INSTALL_DIR_BIN}")
           endif()
-
         endif()
       else()
         # the library directory for using by the executable

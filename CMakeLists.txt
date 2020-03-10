@@ -78,7 +78,7 @@ set(BUILD_RESOURCES OFF CACHE BOOL "${BUILD_RESOURCES_DESCR}")
 
 # single-configuration generator
 set(SINGLE_GENERATOR OFF)
-if (DEFINED CMAKE_BUILD_TYPE)
+if (DEFINED CMAKE_BUILD_TYPE AND NOT MSVC)
   set(SINGLE_GENERATOR ON)
 endif ()
 
@@ -542,6 +542,7 @@ if (USE_ZLIB)
       -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/zlib-build/install/zlib
       -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
       -DBUILD_SHARED_LIBS=OFF
+      -DFORCE_OUTPUT_LIBZ=ON
       -G "${CMAKE_GENERATOR}"
       -T "${CMAKE_GENERATOR_TOOLSET}"
       RESULT_VARIABLE result
@@ -551,7 +552,7 @@ if (USE_ZLIB)
       RESULT_VARIABLE result
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/zlib-build)
     # Install
-    execute_process(COMMAND ${CMAKE_COMMAND} --install .
+    execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE} --target install
       RESULT_VARIABLE result
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/zlib-build)
 
@@ -570,11 +571,13 @@ if (USE_PNG)
     file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/libpng-build)
     # Configure
     execute_process(COMMAND ${CMAKE_COMMAND} ${CMAKE_SOURCE_DIR}/deps/libpng-minimal
+      -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
       -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/libpng-build/install/libpng
       -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
-      -DZLIB_ROOT="${3RDPARTY_ZLIB_DIR}"
+      -DZLIB_ROOT=${3RDPARTY_ZLIB_DIR}
       -DBUILD_SHARED_LIBS=OFF
-      # -DPNG_BUILD_ZLIB=OFF    # Already the default: use external zlib
+      -DDISABLE_AWK=ON        # Might be broken on some platforms (eg. Ubuntu 18.04)
+      -DPNG_BUILD_ZLIB=OFF    # Use external zlib through ZLIB_ROOT
       -G "${CMAKE_GENERATOR}"
       -T "${CMAKE_GENERATOR_TOOLSET}"
       RESULT_VARIABLE result
@@ -584,7 +587,7 @@ if (USE_PNG)
       RESULT_VARIABLE result
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/libpng-build)
     # Install
-    execute_process(COMMAND ${CMAKE_COMMAND} --install .
+    execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE} --target install
       RESULT_VARIABLE result
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/libpng-build)
 
@@ -603,7 +606,8 @@ if (USE_JPEG)
     file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/libjpeg-build)
     # Configure
     execute_process(COMMAND ${CMAKE_COMMAND} ${CMAKE_SOURCE_DIR}/deps/libjpeg-minimal
-            -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/libpng-build/install/libjpeg
+            -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+            -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/libjpeg-build/install/libjpeg
             -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
             -DBUILD_SHARED_LIBS=OFF
             -G "${CMAKE_GENERATOR}"
@@ -615,11 +619,11 @@ if (USE_JPEG)
             RESULT_VARIABLE result
             WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/libjpeg-build)
     # Install
-    execute_process(COMMAND ${CMAKE_COMMAND} --install .
-            RESULT_VARIABLE result
-            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/libjpeg-build)
+    execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE} --target install
+      RESULT_VARIABLE result
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/libjpeg-build)
 
-    set(3RDPARTY_JPEG_DIR "${CMAKE_BINARY_DIR}/libpng-build/install/libjpeg" CACHE PATH "The directory containing libjpeg")
+    set(3RDPARTY_JPEG_DIR "${CMAKE_BINARY_DIR}/libjpeg-build/install/libjpeg" CACHE PATH "The directory containing libjpeg")
     set(INSTALL_JPEG 1)
   endif()
   OCCT_INCLUDE_CMAKE_FILE("adm/cmake/libjpeg")
