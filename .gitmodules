@@ -4,9 +4,6 @@
 [submodule "deps/rapidjson"]
 	path = deps/rapidjson
 	url = https://github.com/Tencent/rapidjson
-[submodule "deps/freetype-emscripten-minimal"]
-	path = deps/freetype-emscripten-minimal
-	url = https://github.com/gabrielcuvillier/freetype-emscripten-minimal
 [submodule "deps/zlib-minimal"]
 	path = deps/zlib-minimal
 	url = https://github.com/gabrielcuvillier/zlib-minimal.git
@@ -16,3 +13,6 @@
 [submodule "deps/libjpeg-minimal"]
 	path = deps/libjpeg-minimal
 	url = https://github.com/gabrielcuvillier/libjpeg-minimal.git
+[submodule "deps/freetype-minimal"]
+	path = deps/freetype-minimal
+	url = https://github.com/gabrielcuvillier/freetype-minimal.git
