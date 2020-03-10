@@ -99,6 +99,9 @@ INSTALL_MESSAGE (INSTALL_TINYPLY          "TinyPLY header files")
 INSTALL_MESSAGE (INSTALL_TCL              "TCL binaries")
 INSTALL_MESSAGE (INSTALL_TK               "TK binaries")
 INSTALL_MESSAGE (INSTALL_VTK              "VTK binaries ")
+INSTALL_MESSAGE (INSTALL_ZLIB             "ZLIB binaries")
+INSTALL_MESSAGE (INSTALL_PNG              "PNG binaries")
+INSTALL_MESSAGE (INSTALL_JPEG             "JPEG binaries")
 
 # build variables
 macro (BUILD_MODULE_MESSAGE BUILD_MODULE_TARGET_VARIABLE BUILD_MODULE_TARGET_STRING)

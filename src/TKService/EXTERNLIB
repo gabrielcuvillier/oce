@@ -22,3 +22,6 @@ CSF_FreeImagePlus
 CSF_FREETYPE
 CSF_FFmpeg
 CSF_winmm
+CSF_ZLIB
+CSF_PNG
+CSF_JPEG

@@ -37,7 +37,7 @@ set(LIGHT_BUILD ${LIGHT_BUILD_default} CACHE BOOL "Light Build Mode")
 
 if (LIGHT_BUILD)
   message(STATUS "Info: Light build mode enabled")
-  set(BUILD_LIBRARY_TYPE "Static" FORCE)
+  set(BUILD_LIBRARY_TYPE "Static")
 endif ()
 
 if ("${BUILD_LIBRARY_TYPE}" STREQUAL "Shared")
@@ -506,6 +506,9 @@ endif ()
 
 # search for CSF variable in EXTERNLIB of each being used toolkit
 OCCT_IS_PRODUCT_REQUIRED(CSF_FreeImagePlus CAN_USE_FREEIMAGE)
+OCCT_IS_PRODUCT_REQUIRED(CSF_ZLIB USE_ZLIB)
+OCCT_IS_PRODUCT_REQUIRED(CSF_PNG USE_PNG)
+OCCT_IS_PRODUCT_REQUIRED(CSF_JPEG USE_JPEG)
 OCCT_IS_PRODUCT_REQUIRED(CSF_TclLibs USE_TCL)
 OCCT_IS_PRODUCT_REQUIRED(CSF_FREETYPE USE_FREETYPE)
 OCCT_IS_PRODUCT_REQUIRED(CSF_OpenGlLibs CAN_USE_GLES2)
@@ -528,6 +531,102 @@ else ()
   OCCT_CHECK_AND_UNSET("INSTALL_TCL")
   OCCT_CHECK_AND_UNSET("INSTALL_TK")
 endif ()
+
+if (USE_ZLIB)
+  message(STATUS "Info: zlib is used by OCCT")
+  if (LIGHT_BUILD)
+    file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/zlib-build)
+    # Configure
+    execute_process(COMMAND ${CMAKE_COMMAND} ${CMAKE_SOURCE_DIR}/deps/zlib-minimal
+      -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+      -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/zlib-build/install/zlib
+      -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+      -DBUILD_SHARED_LIBS=OFF
+      -G "${CMAKE_GENERATOR}"
+      -T "${CMAKE_GENERATOR_TOOLSET}"
+      RESULT_VARIABLE result
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/zlib-build)
+    # Build
+    execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE}
+      RESULT_VARIABLE result
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/zlib-build)
+    # Install
+    execute_process(COMMAND ${CMAKE_COMMAND} --install .
+      RESULT_VARIABLE result
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/zlib-build)
+
+    set(3RDPARTY_ZLIB_DIR "${CMAKE_BINARY_DIR}/zlib-build/install/zlib" CACHE PATH "The directory containing zlib")
+    set(INSTALL_ZLIB 1)
+  endif()
+  OCCT_INCLUDE_CMAKE_FILE("adm/cmake/zlib")
+else()
+  OCCT_CHECK_AND_UNSET_GROUP("3RDPARTY_ZLIB")
+  OCCT_CHECK_AND_UNSET("INSTALL_ZLIB")
+endif()
+
+if (USE_PNG)
+  message(STATUS "Info: libpng is used by OCCT")
+  if (LIGHT_BUILD)
+    file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/libpng-build)
+    # Configure
+    execute_process(COMMAND ${CMAKE_COMMAND} ${CMAKE_SOURCE_DIR}/deps/libpng-minimal
+      -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/libpng-build/install/libpng
+      -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+      -DZLIB_ROOT="${3RDPARTY_ZLIB_DIR}"
+      -DBUILD_SHARED_LIBS=OFF
+      # -DPNG_BUILD_ZLIB=OFF    # Already the default: use external zlib
+      -G "${CMAKE_GENERATOR}"
+      -T "${CMAKE_GENERATOR_TOOLSET}"
+      RESULT_VARIABLE result
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/libpng-build)
+    # Build
+    execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE}
+      RESULT_VARIABLE result
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/libpng-build)
+    # Install
+    execute_process(COMMAND ${CMAKE_COMMAND} --install .
+      RESULT_VARIABLE result
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/libpng-build)
+
+    set(3RDPARTY_PNG_DIR "${CMAKE_BINARY_DIR}/libpng-build/install/libpng" CACHE PATH "The directory containing libpng")
+    set(INSTALL_PNG 1)
+  endif()
+  OCCT_INCLUDE_CMAKE_FILE("adm/cmake/libpng")
+else()
+  OCCT_CHECK_AND_UNSET_GROUP("3RDPARTY_PNG")
+  OCCT_CHECK_AND_UNSET("INSTALL_PNG")
+endif()
+
+if (USE_JPEG)
+  message(STATUS "Info: libjpeg is used by OCCT")
+  if (LIGHT_BUILD)
+    file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/libjpeg-build)
+    # Configure
+    execute_process(COMMAND ${CMAKE_COMMAND} ${CMAKE_SOURCE_DIR}/deps/libjpeg-minimal
+            -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/libpng-build/install/libjpeg
+            -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+            -DBUILD_SHARED_LIBS=OFF
+            -G "${CMAKE_GENERATOR}"
+            -T "${CMAKE_GENERATOR_TOOLSET}"
+            RESULT_VARIABLE result
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/libjpeg-build)
+    # Build
+    execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE}
+            RESULT_VARIABLE result
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/libjpeg-build)
+    # Install
+    execute_process(COMMAND ${CMAKE_COMMAND} --install .
+            RESULT_VARIABLE result
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/libjpeg-build)
+
+    set(3RDPARTY_JPEG_DIR "${CMAKE_BINARY_DIR}/libpng-build/install/libjpeg" CACHE PATH "The directory containing libjpeg")
+    set(INSTALL_JPEG 1)
+  endif()
+  OCCT_INCLUDE_CMAKE_FILE("adm/cmake/libjpeg")
+else()
+  OCCT_CHECK_AND_UNSET_GROUP("3RDPARTY_JPEG")
+  OCCT_CHECK_AND_UNSET("INSTALL_JPEG")
+endif()
 
 if (USE_FREETYPE)
   message(STATUS "Info: Freetype Minimal is used by OCCT")

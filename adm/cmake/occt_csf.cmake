@@ -42,6 +42,27 @@ else()
   endif()
 endif()
 
+# ZLIB
+if (USE_ZLIB)
+  set(CSF_ZLIB "z")
+else()
+  set(CSF_ZLIB "")
+endif()
+
+# PNG
+if (USE_PNG)
+  set(CSF_PNG "png")
+else()
+  set(CSF_PNG "")
+endif()
+
+# JPEG
+if (USE_JPEG)
+  set(CSF_JPEG "jpeg")
+else()
+  set(CSF_JPEG "")
+endif()
+
 # TCL/TK
 if (USE_TCL)
   if (WIN32)

@@ -65,3 +65,6 @@ Release
 /stamp*
 /build*
 /install
+
+/deps/zlib-minimal/zconf.h.included
+/deps/zlib-minimal/zconf.h
