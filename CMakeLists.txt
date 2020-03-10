@@ -542,7 +542,7 @@ if (USE_ZLIB)
       -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/zlib-build/install/zlib
       -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
       -DBUILD_SHARED_LIBS=OFF
-      -DFORCE_OUTPUT_LIBZ=ON
+      -DZLIB_FORCE_OUTPUT_LIBZ=ON
       -G "${CMAKE_GENERATOR}"
       -T "${CMAKE_GENERATOR_TOOLSET}"
       RESULT_VARIABLE result
@@ -555,7 +555,7 @@ if (USE_ZLIB)
     execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE} --target install
       RESULT_VARIABLE result
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/zlib-build)
-
+    # Final
     set(3RDPARTY_ZLIB_DIR "${CMAKE_BINARY_DIR}/zlib-build/install/zlib" CACHE PATH "The directory containing zlib")
     set(INSTALL_ZLIB 1)
   endif()
@@ -576,8 +576,8 @@ if (USE_PNG)
       -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
       -DZLIB_ROOT=${3RDPARTY_ZLIB_DIR}
       -DBUILD_SHARED_LIBS=OFF
-      -DDISABLE_AWK=ON        # Might be broken on some platforms (eg. Ubuntu 18.04)
-      -DPNG_BUILD_ZLIB=OFF    # Use external zlib through ZLIB_ROOT
+      -DPNG_DISABLE_AWK=ON        # Awk scripts might fail on some platforms for unknown reason (eg. Ubuntu 18.04)
+      -DPNG_BUILD_ZLIB=OFF        # Use external zlib through ZLIB_ROOT
       -G "${CMAKE_GENERATOR}"
       -T "${CMAKE_GENERATOR_TOOLSET}"
       RESULT_VARIABLE result
@@ -590,7 +590,7 @@ if (USE_PNG)
     execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE} --target install
       RESULT_VARIABLE result
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/libpng-build)
-
+    # Final
     set(3RDPARTY_PNG_DIR "${CMAKE_BINARY_DIR}/libpng-build/install/libpng" CACHE PATH "The directory containing libpng")
     set(INSTALL_PNG 1)
   endif()
@@ -622,7 +622,7 @@ if (USE_JPEG)
     execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE} --target install
       RESULT_VARIABLE result
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/libjpeg-build)
-
+    # Final
     set(3RDPARTY_JPEG_DIR "${CMAKE_BINARY_DIR}/libjpeg-build/install/libjpeg" CACHE PATH "The directory containing libjpeg")
     set(INSTALL_JPEG 1)
   endif()
