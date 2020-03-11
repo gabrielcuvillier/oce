@@ -10,9 +10,6 @@
 [submodule "deps/libpng-minimal"]
 	path = deps/libpng-minimal
 	url = https://github.com/gabrielcuvillier/libpng-minimal
-[submodule "deps/libjpeg-minimal"]
-	path = deps/libjpeg-minimal
-	url = https://github.com/gabrielcuvillier/libjpeg-minimal.git
 [submodule "deps/freetype-minimal"]
 	path = deps/freetype-minimal
 	url = https://github.com/gabrielcuvillier/freetype-minimal.git
