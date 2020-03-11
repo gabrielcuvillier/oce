@@ -533,7 +533,7 @@ else ()
 endif ()
 
 if (USE_ZLIB)
-  message(STATUS "Info: Zlib is used by OCCT")
+  message(STATUS "Info: zlib is used by libpng,Freetype,Freeimage")
   if (LIGHT_BUILD)
     file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/zlib-build)
     # Configure
@@ -565,7 +565,7 @@ else()
 endif()
 
 if (USE_PNG)
-  message(STATUS "Info: Libpng is used by OCCT")
+  message(STATUS "Info: libpng is used by Freetype,Freeimage")
   if (LIGHT_BUILD)
     file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/libpng-build)
     # Configure
@@ -600,7 +600,7 @@ else()
 endif()
 
 if (USE_JPEG)
-  message(STATUS "Info: Libjpeg is used by OCCT")
+  message(STATUS "Info: libjpeg is used by Freeimage")
   if (LIGHT_BUILD)
     file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/libjpeg-build)
     # Configure
@@ -705,6 +705,7 @@ if (CAN_USE_FREEIMAGE)
   set(USE_FREEIMAGE OFF CACHE BOOL "${USE_FREEIMAGE_DESCR}")
 
   if (USE_FREEIMAGE)
+    message(STATUS "Info: Freeimage is used by OCCT")
     add_definitions(-DHAVE_FREEIMAGE)
     OCCT_INCLUDE_CMAKE_FILE("adm/cmake/freeimage")
   else ()

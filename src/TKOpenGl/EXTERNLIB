@@ -10,3 +10,7 @@ CSF_XwLibs
 CSF_Appkit
 CSF_IOKit
 CSF_objc
+CSF_FREETYPE
+CSF_PNG
+CSF_ZLIB
+
