@@ -702,11 +702,38 @@ endif ()
 # FREEIMAGE
 
 if (CAN_USE_FREEIMAGE)
-  set(USE_FREEIMAGE OFF CACHE BOOL "${USE_FREEIMAGE_DESCR}")
+  set(USE_FREEIMAGE ${LIGHT_BUILD} CACHE BOOL "${USE_FREEIMAGE_DESCR}")
 
   if (USE_FREEIMAGE)
     message(STATUS "Info: Freeimage is used by OCCT")
-    add_definitions(-DHAVE_FREEIMAGE)
+    if (LIGHT_BUILD)
+      add_definitions(-DHAVE_FREEIMAGE)
+      file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/freeimage-build)
+      # Configure
+      execute_process(COMMAND ${CMAKE_COMMAND} ${CMAKE_SOURCE_DIR}/deps/freeimage-minimal
+              -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+              -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/freeimage-build/install/freeimage
+              -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+              -DZLIB_ROOT:PATH=${3RDPARTY_ZLIB_DIR}
+              -DPNG_ROOT:PATH=${3RDPARTY_PNG_DIR}
+              -DJPEG_ROOT:PATH=${3RDPARTY_JPEG_DIR}
+              -DBUILD_SHARED_LIBS=OFF
+              -G "${CMAKE_GENERATOR}"
+              -T "${CMAKE_GENERATOR_TOOLSET}"
+              RESULT_VARIABLE result
+              WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/freeimage-build)
+      # Build
+      execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE}
+              RESULT_VARIABLE result
+              WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/freeimage-build)
+      # Install
+      execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE} --target install
+              RESULT_VARIABLE result
+              WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/freeimage-build)
+      # Final
+      set(3RDPARTY_FREEIMAGE_DIR "${CMAKE_BINARY_DIR}/freeimage-build/install/freeimage" CACHE PATH "The directory containing freeimage")
+      set(INSTALL_FREEIMAGE 1)
+    endif()
     OCCT_INCLUDE_CMAKE_FILE("adm/cmake/freeimage")
   else ()
     OCCT_CHECK_AND_UNSET_GROUP("3RDPARTY_FREEIMAGE")
