@@ -573,7 +573,7 @@ if (USE_PNG)
       -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
       -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/libpng-build/install/libpng
       -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
-      -DZLIB_ROOT=${3RDPARTY_ZLIB_DIR}
+      -DZLIB_ROOT:PATH=${3RDPARTY_ZLIB_DIR}
       -DBUILD_SHARED_LIBS=OFF
       -DPNG_DISABLE_AWK=ON        # Awk scripts might fail on some platforms for unknown reason (eg. Ubuntu 18.04)
       -DPNG_BUILD_ZLIB=OFF        # Use external zlib through ZLIB_ROOT
@@ -642,8 +642,8 @@ if (USE_FREETYPE)
             -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
             -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/freetype-build/install/freetype
             -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
-            -DZLIB_ROOT=${3RDPARTY_ZLIB_DIR}
-            -DPNG_ROOT=${3RDPARTY_PNG_DIR}
+            -DZLIB_ROOT:PATH=${3RDPARTY_ZLIB_DIR}
+            -DPNG_ROOT:PATH=${3RDPARTY_PNG_DIR}
             -DBUILD_SHARED_LIBS=OFF
             -DFT_WITH_ZLIB=ON
             -DFT_WITH_PNG=ON
