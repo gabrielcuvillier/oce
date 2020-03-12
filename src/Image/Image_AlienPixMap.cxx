@@ -13,6 +13,9 @@
 // Alternatively, this file may be used under the terms of Open CASCADE
 // commercial license or contractual agreement.
 
+// Need to be included before FreeImage.h
+#include <Standard_DefineException.hxx>
+
 #if !defined(HAVE_FREEIMAGE) && defined(_WIN32)
   #define HAVE_WINCODEC
 #endif
