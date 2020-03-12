@@ -542,6 +542,7 @@ if (USE_ZLIB)
       -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/zlib-build/install/zlib
       -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
       -DBUILD_SHARED_LIBS=OFF
+      -DZLIB_FORCE_LIBZ_OUTPUT_NAME=ON
       -G "${CMAKE_GENERATOR}"
       -T "${CMAKE_GENERATOR_TOOLSET}"
       RESULT_VARIABLE result
@@ -577,6 +578,7 @@ if (USE_PNG)
       -DBUILD_SHARED_LIBS=OFF
       -DPNG_DISABLE_AWK=ON        # Awk scripts might fail on some platforms for unknown reason (eg. Ubuntu 18.04)
       -DPNG_BUILD_ZLIB=OFF        # Use external zlib through ZLIB_ROOT
+      -DPNG_MSVC_DO_NOT_PREFIX_LIB=ON
       -G "${CMAKE_GENERATOR}"
       -T "${CMAKE_GENERATOR_TOOLSET}"
       RESULT_VARIABLE result
