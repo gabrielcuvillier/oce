@@ -15,6 +15,9 @@
 #ifndef _RWGltf_GltfJsonParser_HeaderFile
 #define _RWGltf_GltfJsonParser_HeaderFile
 
+// Need to be included before rapidjson.h
+#include <Standard_DefineException.hxx>
+
 #include <Graphic3d_Vec.hxx>
 #include <Message_Gravity.hxx>
 #include <NCollection_DataMap.hxx>
@@ -47,6 +50,7 @@
   #include <rapidjson/ostreamwrapper.h>
 
   typedef rapidjson::Document::ValueType RWGltf_JsonValue;
+
 #endif
 
 class Message_ProgressIndicator;

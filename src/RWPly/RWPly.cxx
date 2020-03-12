@@ -4,10 +4,6 @@
 
 #if defined(HAVE_TINYPLY)
 
-// Be sure to include these files before tinyply header, due to possible throw/try/catch and constexpr being redefined
-#include <Standard_Macro.hxx>
-#include <Standard_DefineException.hxx>
-
 #include <Message_ProgressSentry.hxx>
 #include <NCollection_Vector.hxx>
 #include <OSD_File.hxx>
@@ -101,22 +97,21 @@ opencascade::handle<Poly_Triangulation> RWPly::ReadFile(const Standard_CString t
       }
     }
 
-// Inactive code for unknown reason (texcoords not correctly supported?)
-//    if Standard_IF_CONSTEXPR(false  && texcoords->count > 0) {
-//      switch (texcoords->t) {
-//        case tinyply::Type::FLOAT32: {
-//          HandleTexCoords<float>(texcoords, aPoly);
-//          break;
-//        }
-//        case tinyply::Type::FLOAT64: {
-//          HandleTexCoords<double>(texcoords, aPoly);
-//          break;
-//        }
-//        default: {
-//          return nullptr;
-//        }
-//      }
-//    }
+    if (texcoords->count > 0) {
+      switch (texcoords->t) {
+        case tinyply::Type::FLOAT32: {
+          HandleTexCoords<float>(texcoords, aPoly);
+          break;
+        }
+        case tinyply::Type::FLOAT64: {
+          HandleTexCoords<double>(texcoords, aPoly);
+          break;
+        }
+        default: {
+          return nullptr;
+        }
+      }
+    }
 
     switch (faces->t) {
       case tinyply::Type::INT8: {
