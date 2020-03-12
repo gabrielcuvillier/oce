@@ -36,10 +36,6 @@ IMPLEMENT_STANDARD_RTTIEXT(Font_FontMgr,Standard_Transient)
   #include <windows.h>
   #include <stdlib.h>
 
-  #ifdef _MSC_VER
-    #pragma comment (lib, "freetype.lib")
-  #endif
-
   namespace
   {
     // list of supported extensions
@@ -68,9 +64,9 @@ IMPLEMENT_STANDARD_RTTIEXT(Font_FontMgr,Standard_Transient)
     static Standard_CString Font_FontMgr_Extensions[] =
     {
       "ttf",
-#if !defined(OCCT_MINIMAL_FREETYPE_BUILD)
       "otf",
       "ttc",
+#if !defined(OCCT_MINIMAL_FREETYPE_BUILD)
       "pfa",
       "pfb",
     #ifdef __APPLE__
