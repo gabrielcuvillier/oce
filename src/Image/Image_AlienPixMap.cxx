@@ -18,11 +18,14 @@
 #endif
 
 #ifdef HAVE_FREEIMAGE
+  #define FREEIMAGE_LIB
   #include <FreeImage.h>
+  #include <Utilities.h>
 
-  #ifdef _MSC_VER
-    #pragma comment( lib, "FreeImage.lib" )
-  #endif
+  static const int g_FreeImageInit = ([]() {
+    FreeImage_Initialise(TRUE); return 1;
+  })();
+
 #elif defined(HAVE_WINCODEC)
   #include <wincodec.h>
   // prevent warnings on MSVC10
@@ -558,12 +561,13 @@ bool Image_AlienPixMap::Load (const Standard_Byte* theData,
   }
 
   int aLoadFlags = 0;
-  if (aFIF == FIF_GIF)
-  {
-    // 'Play' the GIF to generate each frame (as 32bpp) instead of returning raw frame data when loading
-    aLoadFlags = GIF_PLAYBACK;
-  }
-  else if (aFIF == FIF_ICO)
+//  if (aFIF == FIF_GIF)
+//  {
+//    // 'Play' the GIF to generate each frame (as 32bpp) instead of returning raw frame data when loading
+//    aLoadFlags = GIF_PLAYBACK;
+//  }
+//  else
+  if (aFIF == FIF_ICO)
   {
     // convert to 32bpp and create an alpha channel from the AND-mask when loading
     aLoadFlags = ICO_MAKEALPHA;
@@ -617,6 +621,18 @@ bool Image_AlienPixMap::Load (const Standard_Byte* theData,
                                          FreeImage_GetBPP      (anImage));
       }
     }
+
+    if (aFormat == Image_Format_BGR32 || aFormat == Image_Format_BGR || aFormat == Image_Format_BGRA ) {
+      if (SwapRedBlue32(anImage)) {
+          if (aFormat == Image_Format_BGR32) {
+            aFormat = Image_Format_RGB32;
+          } else if (aFormat == Image_Format_BGR) {
+            aFormat = Image_Format_RGB;
+          } else if (aFormat == Image_Format_BGRA) {
+            aFormat = Image_Format_RGBA;
+          }
+      }
+    }
   }
   if (aFormat == Image_Format_UNKNOWN)
   {
@@ -656,12 +672,13 @@ bool Image_AlienPixMap::Load (std::istream& theStream,
   }
 
   int aLoadFlags = 0;
-  if (aFIF == FIF_GIF)
-  {
-    // 'Play' the GIF to generate each frame (as 32bpp) instead of returning raw frame data when loading
-    aLoadFlags = GIF_PLAYBACK;
-  }
-  else if (aFIF == FIF_ICO)
+//  if (aFIF == FIF_GIF)
+//  {
+//    // 'Play' the GIF to generate each frame (as 32bpp) instead of returning raw frame data when loading
+//    aLoadFlags = GIF_PLAYBACK;
+//  }
+//  else
+  if (aFIF == FIF_ICO)
   {
     // convert to 32bpp and create an alpha channel from the AND-mask when loading
     aLoadFlags = ICO_MAKEALPHA;
@@ -923,65 +940,65 @@ bool Image_AlienPixMap::Save (const TCollection_AsciiString& theFileName)
       }
       break;
     }
-    case FIF_GIF:
-    {
-      FIBITMAP* aTmpBitmap = myLibImage;
-      if (FreeImage_GetImageType (myLibImage) != FIT_BITMAP)
-      {
-        aTmpBitmap = FreeImage_ConvertToType (myLibImage, FIT_BITMAP);
-        if (aTmpBitmap == NULL)
-        {
-          return false;
-        }
-      }
-
-      if (FreeImage_GetBPP (aTmpBitmap) != 24)
-      {
-        FIBITMAP* aTmpBitmap24 = FreeImage_ConvertTo24Bits (aTmpBitmap);
-        if (aTmpBitmap != myLibImage)
-        {
-          FreeImage_Unload (aTmpBitmap);
-        }
-        if (aTmpBitmap24 == NULL)
-        {
-          return false;
-        }
-        aTmpBitmap = aTmpBitmap24;
-      }
-
-      // need conversion to image with palette (requires 24bit bitmap)
-      anImageToDump = FreeImage_ColorQuantize (aTmpBitmap, FIQ_NNQUANT);
-      if (aTmpBitmap != myLibImage)
-      {
-        FreeImage_Unload (aTmpBitmap);
-      }
-      break;
-    }
-    case FIF_HDR:
-    case FIF_EXR:
-    {
-      if (Format() == Image_Format_Gray
-       || Format() == Image_Format_Alpha)
-      {
-        anImageToDump = FreeImage_ConvertToType (myLibImage, FIT_FLOAT);
-      }
-      else if (Format() == Image_Format_RGBA
-            || Format() == Image_Format_BGRA)
-      {
-        anImageToDump = FreeImage_ConvertToType (myLibImage, FIT_RGBAF);
-      }
-      else
-      {
-        FREE_IMAGE_TYPE aImgTypeFI = FreeImage_GetImageType (myLibImage);
-        if (aImgTypeFI != FIT_RGBF
-         && aImgTypeFI != FIT_RGBAF
-         && aImgTypeFI != FIT_FLOAT)
-        {
-          anImageToDump = FreeImage_ConvertToType (myLibImage, FIT_RGBF);
-        }
-      }
-      break;
-    }
+//    case FIF_GIF:
+//    {
+//      FIBITMAP* aTmpBitmap = myLibImage;
+//      if (FreeImage_GetImageType (myLibImage) != FIT_BITMAP)
+//      {
+//        aTmpBitmap = FreeImage_ConvertToType (myLibImage, FIT_BITMAP);
+//        if (aTmpBitmap == NULL)
+//        {
+//          return false;
+//        }
+//      }
+//
+//      if (FreeImage_GetBPP (aTmpBitmap) != 24)
+//      {
+//        FIBITMAP* aTmpBitmap24 = FreeImage_ConvertTo24Bits (aTmpBitmap);
+//        if (aTmpBitmap != myLibImage)
+//        {
+//          FreeImage_Unload (aTmpBitmap);
+//        }
+//        if (aTmpBitmap24 == NULL)
+//        {
+//          return false;
+//        }
+//        aTmpBitmap = aTmpBitmap24;
+//      }
+//
+//      // need conversion to image with palette (requires 24bit bitmap)
+//      anImageToDump = FreeImage_ColorQuantize (aTmpBitmap, FIQ_NNQUANT);
+//      if (aTmpBitmap != myLibImage)
+//      {
+//        FreeImage_Unload (aTmpBitmap);
+//      }
+//      break;
+//    }
+//  case FIF_HDR:
+//  case FIF_EXR:
+//  {
+//      if (Format() == Image_Format_Gray
+//       || Format() == Image_Format_Alpha)
+//      {
+//        anImageToDump = FreeImage_ConvertToType (myLibImage, FIT_FLOAT);
+//      }
+//      else if (Format() == Image_Format_RGBA
+//            || Format() == Image_Format_BGRA)
+//      {
+//        anImageToDump = FreeImage_ConvertToType (myLibImage, FIT_RGBAF);
+//      }
+//      else
+//      {
+//        FREE_IMAGE_TYPE aImgTypeFI = FreeImage_GetImageType (myLibImage);
+//        if (aImgTypeFI != FIT_RGBF
+//         && aImgTypeFI != FIT_RGBAF
+//         && aImgTypeFI != FIT_FLOAT)
+//        {
+//          anImageToDump = FreeImage_ConvertToType (myLibImage, FIT_RGBF);
+//        }
+//      }
+//      break;
+//    }
     default:
     {
       if (FreeImage_GetImageType (myLibImage) != FIT_BITMAP)

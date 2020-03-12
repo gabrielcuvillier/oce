@@ -30,7 +30,9 @@ struct FIBITMAP;
 //! - *.tif, *.tiff - TIFF (Tagged Image File Format).
 //! - *.tga - TGA (Truevision Targa Graphic), lossless format.
 //! - *.gif - GIF (Graphical Interchange Format), lossy format. Color stored using palette (up to 256 distinct colors).
-//! - *.exr - OpenEXR high dynamic-range format (supports float pixel formats). 
+//! - *.exr - OpenEXR high dynamic-range format (supports float pixel formats).
+//!
+//! On light build mode supported formats are: bmp, ico, ppm/pbm/pgm, png, jpg, and xbm formats are supported (no tga, gif, exr)
 class Image_AlienPixMap : public Image_PixMap
 {
   DEFINE_STANDARD_RTTIEXT(Image_AlienPixMap, Image_PixMap)
