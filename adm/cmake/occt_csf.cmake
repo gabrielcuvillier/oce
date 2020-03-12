@@ -44,22 +44,14 @@ endif()
 
 # ZLIB
 if (USE_ZLIB)
-  if (UNIX OR MINGW)
-    set(CSF_ZLIB "z")
-  else ()
-    set(CSF_ZLIB "zlibstatic")
-  endif()
+  set(CSF_ZLIB "z")
 else()
   set(CSF_ZLIB "")
 endif()
 
 # PNG
 if (USE_PNG)
-  if (UNIX OR MINGW)
-    set(CSF_PNG "png16")
-  else ()
-    set(CSF_PNG "libpng16")
-  endif()
+  set(CSF_PNG "png16")
 else()
   set(CSF_PNG "")
 endif()
@@ -69,6 +61,20 @@ if (USE_JPEG)
   set(CSF_JPEG "jpeg")
 else()
   set(CSF_JPEG "")
+endif()
+
+# TinyPLY
+if (USE_TINYPLY)
+  set(CSF_TINYPLY "tinyply")
+else()
+  set(CSF_TINYPLY "")
+endif()
+
+# RapidJSON
+if (USE_RAPIDJSON)
+  set(CSF_RAPIDJSON "")
+else()
+  set(CSF_RAPIDJSON "")
 endif()
 
 # TCL/TK

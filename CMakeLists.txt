@@ -30,9 +30,9 @@ project(OCCT)
 # Emscripten enable "Light Build" mode
 if (EMSCRIPTEN)
   set(LIGHT_BUILD_default ON)
-else()
+else ()
   set(LIGHT_BUILD_default OFF)
-endif()
+endif ()
 set(LIGHT_BUILD ${LIGHT_BUILD_default} CACHE BOOL "Light Build Mode")
 
 if (LIGHT_BUILD)
@@ -505,10 +505,12 @@ else ()
 endif ()
 
 # search for CSF variable in EXTERNLIB of each being used toolkit
-OCCT_IS_PRODUCT_REQUIRED(CSF_FreeImagePlus CAN_USE_FREEIMAGE)
+OCCT_IS_PRODUCT_REQUIRED(CSF_FreeImagePlus USE_FREEIMAGE)
 OCCT_IS_PRODUCT_REQUIRED(CSF_ZLIB USE_ZLIB)
 OCCT_IS_PRODUCT_REQUIRED(CSF_PNG USE_PNG)
 OCCT_IS_PRODUCT_REQUIRED(CSF_JPEG USE_JPEG)
+OCCT_IS_PRODUCT_REQUIRED(CSF_TINYPLY USE_TINYPLY)
+OCCT_IS_PRODUCT_REQUIRED(CSF_RAPIDJSON USE_RAPIDJSON)
 OCCT_IS_PRODUCT_REQUIRED(CSF_TclLibs USE_TCL)
 OCCT_IS_PRODUCT_REQUIRED(CSF_FREETYPE USE_FREETYPE)
 OCCT_IS_PRODUCT_REQUIRED(CSF_OpenGlLibs CAN_USE_GLES2)
@@ -538,32 +540,32 @@ if (USE_ZLIB)
     file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/zlib-build)
     # Configure
     execute_process(COMMAND ${CMAKE_COMMAND} ${CMAKE_SOURCE_DIR}/deps/zlib-minimal
-      -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-      -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/zlib-build/install/zlib
-      -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
-      -DBUILD_SHARED_LIBS=OFF
-      -DZLIB_FORCE_LIBZ_OUTPUT_NAME=ON
-      -G "${CMAKE_GENERATOR}"
-      -T "${CMAKE_GENERATOR_TOOLSET}"
-      RESULT_VARIABLE result
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/zlib-build)
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/zlib-build/install/zlib
+        -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+        -DBUILD_SHARED_LIBS=OFF
+        -DZLIB_FORCE_LIBZ_OUTPUT_NAME=ON
+        -G "${CMAKE_GENERATOR}"
+        -T "${CMAKE_GENERATOR_TOOLSET}"
+        RESULT_VARIABLE result
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/zlib-build)
     # Build
     execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE}
-      RESULT_VARIABLE result
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/zlib-build)
+        RESULT_VARIABLE result
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/zlib-build)
     # Install
     execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE} --target install
-      RESULT_VARIABLE result
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/zlib-build)
+        RESULT_VARIABLE result
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/zlib-build)
     # Final
     set(3RDPARTY_ZLIB_DIR "${CMAKE_BINARY_DIR}/zlib-build/install/zlib" CACHE PATH "The directory containing zlib")
     set(INSTALL_ZLIB 1)
-  endif()
+  endif ()
   OCCT_INCLUDE_CMAKE_FILE("adm/cmake/zlib")
-else()
+else ()
   OCCT_CHECK_AND_UNSET_GROUP("3RDPARTY_ZLIB")
   OCCT_CHECK_AND_UNSET("INSTALL_ZLIB")
-endif()
+endif ()
 
 if (USE_PNG)
   message(STATUS "Info: libpng is used by Freetype,Freeimage")
@@ -571,35 +573,35 @@ if (USE_PNG)
     file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/libpng-build)
     # Configure
     execute_process(COMMAND ${CMAKE_COMMAND} ${CMAKE_SOURCE_DIR}/deps/libpng-minimal
-      -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-      -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/libpng-build/install/libpng
-      -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
-      -DZLIB_ROOT:PATH=${3RDPARTY_ZLIB_DIR}
-      -DBUILD_SHARED_LIBS=OFF
-      -DPNG_DISABLE_AWK=ON        # Awk scripts might fail on some platforms for unknown reason (eg. Ubuntu 18.04)
-      -DPNG_BUILD_ZLIB=OFF        # Use external zlib through ZLIB_ROOT
-      -DPNG_MSVC_DO_NOT_PREFIX_LIB=ON
-      -G "${CMAKE_GENERATOR}"
-      -T "${CMAKE_GENERATOR_TOOLSET}"
-      RESULT_VARIABLE result
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/libpng-build)
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/libpng-build/install/libpng
+        -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+        -DZLIB_ROOT:PATH=${3RDPARTY_ZLIB_DIR}
+        -DBUILD_SHARED_LIBS=OFF
+        -DPNG_DISABLE_AWK=ON        # Awk scripts might fail on some platforms for unknown reason (eg. Ubuntu 18.04)
+        -DPNG_BUILD_ZLIB=OFF        # Use external zlib through ZLIB_ROOT
+        -DPNG_MSVC_DO_NOT_PREFIX_LIB=ON
+        -G "${CMAKE_GENERATOR}"
+        -T "${CMAKE_GENERATOR_TOOLSET}"
+        RESULT_VARIABLE result
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/libpng-build)
     # Build
     execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE}
-      RESULT_VARIABLE result
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/libpng-build)
+        RESULT_VARIABLE result
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/libpng-build)
     # Install
     execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE} --target install
-      RESULT_VARIABLE result
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/libpng-build)
+        RESULT_VARIABLE result
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/libpng-build)
     # Final
     set(3RDPARTY_PNG_DIR "${CMAKE_BINARY_DIR}/libpng-build/install/libpng" CACHE PATH "The directory containing libpng")
     set(INSTALL_PNG 1)
-  endif()
+  endif ()
   OCCT_INCLUDE_CMAKE_FILE("adm/cmake/libpng")
-else()
+else ()
   OCCT_CHECK_AND_UNSET_GROUP("3RDPARTY_PNG")
   OCCT_CHECK_AND_UNSET("INSTALL_PNG")
-endif()
+endif ()
 
 if (USE_JPEG)
   message(STATUS "Info: libjpeg is used by Freeimage")
@@ -607,64 +609,65 @@ if (USE_JPEG)
     file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/libjpeg-build)
     # Configure
     execute_process(COMMAND ${CMAKE_COMMAND} ${CMAKE_SOURCE_DIR}/deps/libjpeg-minimal
-            -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-            -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/libjpeg-build/install/libjpeg
-            -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
-            -DBUILD_SHARED_LIBS=OFF
-            -DBUILD_EXECUTABLES=OFF
-            -DBUILD_TESTS=OFF
-            -G "${CMAKE_GENERATOR}"
-            -T "${CMAKE_GENERATOR_TOOLSET}"
-            RESULT_VARIABLE result
-            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/libjpeg-build)
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/libjpeg-build/install/libjpeg
+        -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+        -DBUILD_SHARED_LIBS=OFF
+        -DBUILD_EXECUTABLES=OFF
+        -DBUILD_TESTS=OFF
+        -G "${CMAKE_GENERATOR}"
+        -T "${CMAKE_GENERATOR_TOOLSET}"
+        RESULT_VARIABLE result
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/libjpeg-build)
     # Build
     execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE}
-            RESULT_VARIABLE result
-            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/libjpeg-build)
+        RESULT_VARIABLE result
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/libjpeg-build)
     # Install
     execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE} --target install
-      RESULT_VARIABLE result
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/libjpeg-build)
+        RESULT_VARIABLE result
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/libjpeg-build)
     # Final
     set(3RDPARTY_JPEG_DIR "${CMAKE_BINARY_DIR}/libjpeg-build/install/libjpeg" CACHE PATH "The directory containing libjpeg")
     set(INSTALL_JPEG 1)
-  endif()
+  endif ()
   OCCT_INCLUDE_CMAKE_FILE("adm/cmake/libjpeg")
-else()
+else ()
   OCCT_CHECK_AND_UNSET_GROUP("3RDPARTY_JPEG")
   OCCT_CHECK_AND_UNSET("INSTALL_JPEG")
-endif()
+endif ()
 
 if (USE_FREETYPE)
   message(STATUS "Info: Freetype is used by OCCT")
   if (LIGHT_BUILD)
+    add_definitions(-DHAVE_FREETYPE)
     file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/freetype-build)
     # Configure
     execute_process(COMMAND ${CMAKE_COMMAND} ${CMAKE_SOURCE_DIR}/deps/freetype-minimal
-            -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-            -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/freetype-build/install/freetype
-            -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
-            -DZLIB_ROOT:PATH=${3RDPARTY_ZLIB_DIR}
-            -DPNG_ROOT:PATH=${3RDPARTY_PNG_DIR}
-            -DBUILD_SHARED_LIBS=OFF
-            -DFT_WITH_ZLIB=ON
-            -DFT_WITH_PNG=ON
-            -G "${CMAKE_GENERATOR}"
-            -T "${CMAKE_GENERATOR_TOOLSET}"
-            RESULT_VARIABLE result
-            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/freetype-build)
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/freetype-build/install/freetype
+        -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+        -DZLIB_ROOT:PATH=${3RDPARTY_ZLIB_DIR}
+        -DPNG_ROOT:PATH=${3RDPARTY_PNG_DIR}
+        -DBUILD_SHARED_LIBS=OFF
+        -DFT_WITH_ZLIB=ON
+        -DFT_WITH_PNG=ON
+        -G "${CMAKE_GENERATOR}"
+        -T "${CMAKE_GENERATOR_TOOLSET}"
+        RESULT_VARIABLE result
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/freetype-build)
     # Build
     execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE}
-            RESULT_VARIABLE result
-            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/freetype-build)
+        RESULT_VARIABLE result
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/freetype-build)
     # Install
     execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE} --target install
-            RESULT_VARIABLE result
-            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/freetype-build)
+        RESULT_VARIABLE result
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/freetype-build)
     # Final
     set(3RDPARTY_FREETYPE_DIR "${CMAKE_BINARY_DIR}/freetype-build/install/freetype" CACHE PATH "The directory containing freetype")
     set(INSTALL_FREETYPE 1)
-  endif()
+  endif ()
   OCCT_INCLUDE_CMAKE_FILE("adm/cmake/freetype")
 else ()
   OCCT_CHECK_AND_UNSET_GROUP("3RDPARTY_FREETYPE")
@@ -702,48 +705,38 @@ if (USE_GLX)
 endif ()
 
 # FREEIMAGE
-
-if (CAN_USE_FREEIMAGE)
-  set(USE_FREEIMAGE ${LIGHT_BUILD} CACHE BOOL "${USE_FREEIMAGE_DESCR}")
-
-  if (USE_FREEIMAGE)
-    message(STATUS "Info: Freeimage is used by OCCT")
-    if (LIGHT_BUILD)
-      add_definitions(-DHAVE_FREEIMAGE)
-      file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/freeimage-build)
-      # Configure
-      execute_process(COMMAND ${CMAKE_COMMAND} ${CMAKE_SOURCE_DIR}/deps/freeimage-minimal
-              -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-              -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/freeimage-build/install/freeimage
-              -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
-              -DZLIB_ROOT:PATH=${3RDPARTY_ZLIB_DIR}
-              -DPNG_ROOT:PATH=${3RDPARTY_PNG_DIR}
-              -DJPEG_ROOT:PATH=${3RDPARTY_JPEG_DIR}
-              -DBUILD_SHARED_LIBS=OFF
-              -G "${CMAKE_GENERATOR}"
-              -T "${CMAKE_GENERATOR_TOOLSET}"
-              RESULT_VARIABLE result
-              WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/freeimage-build)
-      # Build
-      execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE}
-              RESULT_VARIABLE result
-              WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/freeimage-build)
-      # Install
-      execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE} --target install
-              RESULT_VARIABLE result
-              WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/freeimage-build)
-      # Final
-      set(3RDPARTY_FREEIMAGE_DIR "${CMAKE_BINARY_DIR}/freeimage-build/install/freeimage" CACHE PATH "The directory containing freeimage")
-      set(INSTALL_FREEIMAGE 1)
-    endif()
-    OCCT_INCLUDE_CMAKE_FILE("adm/cmake/freeimage")
-  else ()
-    OCCT_CHECK_AND_UNSET_GROUP("3RDPARTY_FREEIMAGE")
-    OCCT_CHECK_AND_UNSET("INSTALL_FREEIMAGE")
+if (USE_FREEIMAGE)
+  message(STATUS "Info: Freeimage is used by OCCT")
+  if (LIGHT_BUILD)
+    add_definitions(-DHAVE_FREEIMAGE)
+    file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/freeimage-build)
+    # Configure
+    execute_process(COMMAND ${CMAKE_COMMAND} ${CMAKE_SOURCE_DIR}/deps/freeimage-minimal
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/freeimage-build/install/freeimage
+        -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+        -DZLIB_ROOT:PATH=${3RDPARTY_ZLIB_DIR}
+        -DPNG_ROOT:PATH=${3RDPARTY_PNG_DIR}
+        -DJPEG_ROOT:PATH=${3RDPARTY_JPEG_DIR}
+        -DBUILD_SHARED_LIBS=OFF
+        -G "${CMAKE_GENERATOR}"
+        -T "${CMAKE_GENERATOR_TOOLSET}"
+        RESULT_VARIABLE result
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/freeimage-build)
+    # Build
+    execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE}
+        RESULT_VARIABLE result
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/freeimage-build)
+    # Install
+    execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE} --target install
+        RESULT_VARIABLE result
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/freeimage-build)
+    # Final
+    set(3RDPARTY_FREEIMAGE_DIR "${CMAKE_BINARY_DIR}/freeimage-build/install/freeimage" CACHE PATH "The directory containing freeimage")
+    set(INSTALL_FREEIMAGE 1)
   endif ()
+  OCCT_INCLUDE_CMAKE_FILE("adm/cmake/freeimage")
 else ()
-  OCCT_CHECK_AND_UNSET("USE_FREEIMAGE")
-
   OCCT_CHECK_AND_UNSET_GROUP("3RDPARTY_FREEIMAGE")
   OCCT_CHECK_AND_UNSET("INSTALL_FREEIMAGE")
 endif ()
@@ -831,46 +824,68 @@ else ()
 endif ()
 
 # RapidJSON
-# search for CSF_RapidJSON variable in EXTERNLIB of each being used toolkit
-OCCT_IS_PRODUCT_REQUIRED(CSF_RapidJSON CAN_USE_RAPIDJSON)
-if (CAN_USE_RAPIDJSON)
-  set(USE_RAPIDJSON ON CACHE BOOL "${USE_RAPIDJSON_DESCR}")
-
-  if (USE_RAPIDJSON)
-    message(STATUS "Info: RapidJSON is used by OCCT")
+if (USE_RAPIDJSON)
+  message(STATUS "Info: RapidJSON is used by OCCT")
+  if (LIGHT_BUILD)
     add_definitions(-DHAVE_RAPIDJSON)
-    set(3RDPARTY_RAPIDJSON_DIR "${CMAKE_SOURCE_DIR}/deps/rapidjson" CACHE PATH "The directory containing RapidJSON")
-    OCCT_INCLUDE_CMAKE_FILE("adm/cmake/rapidjson")
-  else ()
-    OCCT_CHECK_AND_UNSET_GROUP("3RDPARTY_RAPIDJSON")
-    OCCT_CHECK_AND_UNSET("INSTALL_RAPIDJSON")
+    file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/rapidjson-build)
+    # Configure
+    execute_process(COMMAND ${CMAKE_COMMAND} ${CMAKE_SOURCE_DIR}/deps/rapidjson-minimal
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/rapidjson-build/install/rapidjson
+        -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+        -G "${CMAKE_GENERATOR}"
+        -T "${CMAKE_GENERATOR_TOOLSET}"
+        RESULT_VARIABLE result
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/rapidjson-build)
+    # Build
+    execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE}
+        RESULT_VARIABLE result
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/rapidjson-build)
+    # Install
+    execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE} --target install
+        RESULT_VARIABLE result
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/rapidjson-build)
+    # Final
+    set(3RDPARTY_RAPIDJSON_DIR "${CMAKE_BINARY_DIR}/rapidjson-build/install/rapidjson" CACHE PATH "The directory containing rapidjson")
+    set(INSTALL_RAPIDJSON 1)
   endif ()
+  OCCT_INCLUDE_CMAKE_FILE("adm/cmake/rapidjson")
 else ()
-  OCCT_CHECK_AND_UNSET("USE_RAPIDJSON")
-
   OCCT_CHECK_AND_UNSET_GROUP("3RDPARTY_RAPIDJSON")
   OCCT_CHECK_AND_UNSET("INSTALL_RAPIDJSON")
 endif ()
 
 # TinyPLY
-# search for CSF_TinyPly variable in EXTERNLIB of each being used toolkit
-OCCT_IS_PRODUCT_REQUIRED(CSF_TinyPly CAN_USE_TINYPLY)
-
-if (CAN_USE_TINYPLY)
-  set(USE_TINYPLY ON CACHE BOOL "${USE_TINYPLY_DESCR}")
-
-  if (USE_TINYPLY)
-    message(STATUS "Info: TinyPLY is used by OCCT")
+if (USE_TINYPLY)
+  message(STATUS "Info: TinyPLY is used by OCCT")
+  if (LIGHT_BUILD)
     add_definitions(-DHAVE_TINYPLY)
-    set(3RDPARTY_TINYPLY_DIR "${CMAKE_SOURCE_DIR}/deps/tinyply" CACHE PATH "The directory containing TinyPLY")
-    OCCT_INCLUDE_CMAKE_FILE("adm/cmake/tinyply")
-  else ()
-    OCCT_CHECK_AND_UNSET_GROUP("3RDPARTY_TINYPLY")
-    OCCT_CHECK_AND_UNSET("INSTALL_TINYPLY")
+    file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/tinyply-build)
+    # Configure
+    execute_process(COMMAND ${CMAKE_COMMAND} ${CMAKE_SOURCE_DIR}/deps/tinyply-minimal
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/tinyply-build/install/tinyply
+        -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+        -DBUILD_SHARED_LIBS=OFF
+        -G "${CMAKE_GENERATOR}"
+        -T "${CMAKE_GENERATOR_TOOLSET}"
+        RESULT_VARIABLE result
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/tinyply-build)
+    # Build
+    execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE}
+        RESULT_VARIABLE result
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/tinyply-build)
+    # Install
+    execute_process(COMMAND ${CMAKE_COMMAND} --build . --config ${CMAKE_BUILD_TYPE} --target install
+        RESULT_VARIABLE result
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/tinyply-build)
+    # Final
+    set(3RDPARTY_TINYPLY_DIR "${CMAKE_BINARY_DIR}/tinyply-build/install/tinyply" CACHE PATH "The directory containing tinyply")
+    set(INSTALL_TINYPLY 1)
   endif ()
+  OCCT_INCLUDE_CMAKE_FILE("adm/cmake/tinyply")
 else ()
-  OCCT_CHECK_AND_UNSET("USE_TINYPLY")
-
   OCCT_CHECK_AND_UNSET_GROUP("3RDPARTY_TINYPLY")
   OCCT_CHECK_AND_UNSET("INSTALL_TINYPLY")
 endif ()
