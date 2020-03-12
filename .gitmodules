@@ -1,9 +1,3 @@
-[submodule "deps/tinyply"]
-	path = deps/tinyply
-	url = https://github.com/ddiakopoulos/tinyply
-[submodule "deps/rapidjson"]
-	path = deps/rapidjson
-	url = https://github.com/Tencent/rapidjson
 [submodule "deps/zlib-minimal"]
 	path = deps/zlib-minimal
 	url = https://github.com/gabrielcuvillier/zlib-minimal.git
@@ -19,3 +13,9 @@
 [submodule "deps/freeimage-minimal"]
 	path = deps/freeimage-minimal
 	url = https://github.com/gabrielcuvillier/freeimage-minimal.git
+[submodule "deps/tinyply-minimal"]
+	path = deps/tinyply-minimal
+	url = https://github.com/gabrielcuvillier/tinyply-minimal.git
+[submodule "deps/rapidjson-minimal"]
+	path = deps/rapidjson-minimal
+	url = https://github.com/gabrielcuvillier/rapidjson-minimal.git
