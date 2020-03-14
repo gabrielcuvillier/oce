@@ -2,7 +2,8 @@
 
 #include <RWPly.hxx>
 
-#if defined(HAVE_TINYPLY)
+#if 0
+//defined(HAVE_TINYPLY)
 
 #include <Message_ProgressSentry.hxx>
 #include <NCollection_Vector.hxx>

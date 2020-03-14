@@ -16,6 +16,8 @@
 // Need to be included before FreeImage.h
 #include <Standard_DefineException.hxx>
 
+#undef HAVE_FREEIMAGE
+
 #if !defined(HAVE_FREEIMAGE) && defined(_WIN32)
   #define HAVE_WINCODEC
 #endif
@@ -26,7 +28,10 @@
   #include <Utilities.h>
 
   static const int g_FreeImageInit = ([]() {
-    FreeImage_Initialise(TRUE); return 1;
+    std::cout << "FreeImage_Initialise" << std::endl;
+    FreeImage_Initialise(TRUE);
+    std::cout << "FreeImage_Initialise OK" << std::endl;
+    return 1;
   })();
 
 #elif defined(HAVE_WINCODEC)
