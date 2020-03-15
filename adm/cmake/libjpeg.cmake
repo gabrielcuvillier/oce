@@ -1,3 +1,3 @@
 #libpng
 
-THIRDPARTY_PRODUCT("JPEG" "jpeglib.h" "CSF_JPEG" "d")
+THIRDPARTY_PRODUCT("JPEG" "jpeglib.h" "CSF_JPEG" "")
