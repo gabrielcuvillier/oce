@@ -25,6 +25,7 @@
 #include <OpenGl_Workspace.hxx>
 #include <TCollection_ExtendedString.hxx>
 
+#if !defined(HAVE_WEBGL_1_0)
 #include "../Shaders/Shaders_PBRDistribution_glsl.pxx"
 #include "../Shaders/Shaders_PBRGeometry_glsl.pxx"
 #include "../Shaders/Shaders_PBRFresnel_glsl.pxx"
@@ -32,6 +33,7 @@
 #include "../Shaders/Shaders_PBRIllumination_glsl.pxx"
 #include "../Shaders/Shaders_PBREnvBaking_fs.pxx"
 #include "../Shaders/Shaders_PBREnvBaking_vs.pxx"
+#endif
 #include "../Shaders/Shaders_PointLightAttenuation_glsl.pxx"
 #include "../Shaders/Shaders_TangentSpaceNormal_glsl.pxx"
 
@@ -2332,11 +2334,13 @@ TCollection_AsciiString OpenGl_ShaderManager::stdComputeLighting (Standard_Integ
 
     if (theIsPBR)
     {
+#if !defined(HAVE_WEBGL_1_0)
       aLightsFunc += Shaders_PBRDistribution_glsl;
       aLightsFunc += Shaders_PBRGeometry_glsl;
       aLightsFunc += Shaders_PBRFresnel_glsl;
       aLightsFunc += Shaders_PBRCookTorrance_glsl;
       aLightsFunc += Shaders_PBRIllumination_glsl;
+#endif
     }
 
     if (aLights->NbEnabledLightsOfType (Graphic3d_TOLS_DIRECTIONAL) == 1
@@ -3127,6 +3131,7 @@ Standard_Boolean OpenGl_ShaderManager::prepareStdProgramBoundBox()
   return Standard_True;
 }
 
+#if !defined(HAVE_WEBGL_1_0)
 // =======================================================================
 // function : preparePBREnvBakingProgram
 // purpose  :
@@ -3168,6 +3173,7 @@ Standard_Boolean OpenGl_ShaderManager::preparePBREnvBakingProgram()
 
   return Standard_True;
 }
+#endif
 
 // =======================================================================
 // function : GetBgCubeMapProgram

@@ -263,6 +263,7 @@ public:
   //! Returns bounding box vertex buffer.
   const Handle(OpenGl_VertexBuffer)& BoundBoxVertBuffer() const { return myBoundBoxVertBuffer; }
 
+#if !defined(HAVE_WEBGL_1_0)
   //! Bind program for IBL maps generation in PBR pipeline.
   Standard_Boolean BindPBREnvBakingProgram()
   {
@@ -272,6 +273,7 @@ public:
     }
     return myContext->BindProgram (myPBREnvBakingProgram);
   }
+#endif
 
   //! Generates shader program to render environment cubemap as background.
   Standard_EXPORT const Handle(Graphic3d_ShaderProgram)& GetBgCubeMapProgram ();
@@ -769,8 +771,10 @@ protected:
                                                               OpenGl_ShaderObject::ShaderVariableList& theStageInOuts,
                                                               Standard_Integer theBits);
 
+#if !defined(HAVE_WEBGL_1_0)
   //! Prepare GLSL source for IBL generation used in PBR pipeline.
   Standard_EXPORT Standard_Boolean preparePBREnvBakingProgram();
+#endif
 
   //! Checks whether one of PBR shading models is set as default model.
   Standard_Boolean IsPbrAllowed() const { return myShadingModel == Graphic3d_TOSM_PBR
