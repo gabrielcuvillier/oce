@@ -94,6 +94,11 @@ Graphic3d_TextureRoot::Graphic3d_TextureRoot (const TCollection_AsciiString& the
   myType     (theType),
   myIsColorMap (true)
 {
+#if defined(HAVE_WEBGL_1_0)
+  if (myType == Graphic3d_TOT_2D_MIPMAP) {
+    myType = Graphic3d_TOT_2D;
+  }
+#endif
   generateId();
 }
 
