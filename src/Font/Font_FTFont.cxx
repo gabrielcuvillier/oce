@@ -21,7 +21,9 @@
 #include <Message.hxx>
 #include <Message_Messenger.hxx>
 
+#if !defined(OCCT_MINIMAL_FREETYPE_BUILD)
 #include "Font_DejavuSans_Latin_woff.pxx"
+#endif
 
 #include <algorithm>
 
@@ -196,6 +198,8 @@ Handle(Font_FTFont) Font_FTFont::FindAndCreate (const TCollection_AsciiString& t
         aParams.ToSynthesizeItalic = true;
         break;
     }
+
+#if !defined(OCCT_MINIMAL_FREETYPE_BUILD)
     Handle(NCollection_Buffer) aBuffer = new NCollection_Buffer (Handle(NCollection_BaseAllocator)(),
                                                                  Font_DejavuSans_Latin_woff_size,
                                                                  const_cast<Standard_Byte*>(Font_DejavuSans_Latin_woff));
@@ -205,6 +209,7 @@ Handle(Font_FTFont) Font_FTFont::FindAndCreate (const TCollection_AsciiString& t
       aFont->myFontAspect = aFontAspect;
       return aFont;
     }
+#endif
   }
   return Handle(Font_FTFont)();
 }
@@ -239,10 +244,13 @@ bool Font_FTFont::FindAndInit (const TCollection_AsciiString& theFontName,
     {
       aParams.ToSynthesizeItalic = true;
     }
+
+#if !defined(OCCT_MINIMAL_FREETYPE_BUILD)
     Handle(NCollection_Buffer) aBuffer = new NCollection_Buffer (Handle(NCollection_BaseAllocator)(),
                                                                  Font_DejavuSans_Latin_woff_size,
                                                                  const_cast<Standard_Byte*>(Font_DejavuSans_Latin_woff));
     return Init (aBuffer, "Embed Fallback Font", aParams, 0);
+#endif
   }
   Release();
   return false;
