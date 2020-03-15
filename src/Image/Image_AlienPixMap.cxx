@@ -573,11 +573,11 @@ bool Image_AlienPixMap::Load (const Standard_Byte* theData,
 //    aLoadFlags = GIF_PLAYBACK;
 //  }
 //  else
-  if (aFIF == FIF_ICO)
-  {
-    // convert to 32bpp and create an alpha channel from the AND-mask when loading
-    aLoadFlags = ICO_MAKEALPHA;
-  }
+//    if (aFIF == FIF_ICO)
+//    {
+//      // convert to 32bpp and create an alpha channel from the AND-mask when loading
+ //     aLoadFlags = ICO_MAKEALPHA;
+//    }
 
   FIBITMAP* anImage = NULL;
   if (theData != NULL)
@@ -684,11 +684,11 @@ bool Image_AlienPixMap::Load (std::istream& theStream,
 //    aLoadFlags = GIF_PLAYBACK;
 //  }
 //  else
-  if (aFIF == FIF_ICO)
-  {
-    // convert to 32bpp and create an alpha channel from the AND-mask when loading
-    aLoadFlags = ICO_MAKEALPHA;
-  }
+//    if (aFIF == FIF_ICO)
+//    {
+//      // convert to 32bpp and create an alpha channel from the AND-mask when loading
+//      aLoadFlags = ICO_MAKEALPHA;
+//    }
 
   FIBITMAP* anImage = FreeImage_LoadFromHandle (aFIF, &aFiIO, &aStream, aLoadFlags);
   if (anImage == NULL)
