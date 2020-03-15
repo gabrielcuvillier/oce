@@ -16,8 +16,6 @@
 // Need to be included before FreeImage.h
 #include <Standard_DefineException.hxx>
 
-#undef HAVE_FREEIMAGE
-
 #if !defined(HAVE_FREEIMAGE) && defined(_WIN32)
   #define HAVE_WINCODEC
 #endif
@@ -26,13 +24,6 @@
   #define FREEIMAGE_LIB
   #include <FreeImage.h>
   #include <Utilities.h>
-
-  static const int g_FreeImageInit = ([]() {
-    std::cout << "FreeImage_Initialise" << std::endl;
-    FreeImage_Initialise(TRUE);
-    std::cout << "FreeImage_Initialise OK" << std::endl;
-    return 1;
-  })();
 
 #elif defined(HAVE_WINCODEC)
   #include <wincodec.h>
@@ -348,6 +339,13 @@ namespace
 Image_AlienPixMap::Image_AlienPixMap()
 : myLibImage (NULL)
 {
+#ifdef HAVE_FREEIMAGE
+  static const int _initFreeImage = ([]() {
+    FreeImage_Initialise(TRUE);
+    return 1;
+  })();
+  (void)_initFreeImage;
+#endif
   SetTopDown (false);
 }
 
