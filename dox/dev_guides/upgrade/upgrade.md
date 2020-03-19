@@ -1892,3 +1892,19 @@ Enumeration BRepOffset_Type is renamed to ChFiDS_TypeOfConcavity.
 @subsection upgrade_750_sensitiveEntity Select3D_SensitiveEntity interface change
 
 The method Select3D_SensitiveEntity::NbSubElements() has been changed to be constant. Select3D_SensitiveEntity subclasses at application level should be updated accordingly.
+
+
+@subsection upgrade_750_Booleans Changes in Boolean operations algorithm
+
+* TreatCompound method has been moved from *BOPAlgo_Tools* to *BOPTools_AlgoTools*. Additionally, the map parameter became optional:
+~~~~
+void BOPTools_AlgoTools::TreatCompound (const TopoDS_Shape& theS,
+                                        TopTools_ListOfShape& theLS,
+                                        TopTools_MapOfShape* theMap = NULL);
+~~~~
+
+@subsection upgrade_750_Adaptor2d_OffsetCurve  Offset direction change
+
+Offset direction, which used in class Adaptor2d_OffsetCurve for evaluating values and derivatives of offset curve is unified for offset direction used in class Geom2d_OffsetCurve: now offset direction points to outer ("right") side of base curve instead of the previously used inner ("left") side. Old usage of class in any application should be changed something like that:
+
+Adaptor2d_OffsetCurve aOC(BaseCurve, Offset) --> Adaptor2d_OffsetCurve aOC(BaseCurve, -Offset)

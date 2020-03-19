@@ -584,6 +584,9 @@ public:
   //! (GL_FRAMEBUFFER_SRGB can be considered as always tuned ON).
   bool IsWindowSRGB() const { return myIsSRgbWindow; }
 
+  //! Overrides if window/surface buffer is sRGB-ready or not (initialized with the context).
+  void SetWindowSRGB (bool theIsSRgb) { myIsSRgbWindow = theIsSRgb; }
+
   //! Convert Quantity_ColorRGBA into vec4
   //! with conversion or no conversion into non-linear sRGB
   //! basing on ToRenderSRGB() flag.
@@ -794,7 +797,8 @@ public: //! @name methods to alter or retrieve current state
   //! - FALSE if sRGB rendering is not supported or sRGB-not-ready window buffer is used for drawing.
   //! @param theIsFbo [in] flag indicating writing into offscreen FBO (always expected sRGB-ready when sRGB FBO is supported)
   //!                      or into window buffer (FALSE, sRGB-readiness might vary).
-  Standard_EXPORT void SetFrameBufferSRGB (bool theIsFbo);
+  //! @param theIsSRgb [in] flag indicating off-screen FBO is sRGB-ready
+  Standard_EXPORT void SetFrameBufferSRGB (bool theIsFbo, bool theIsFboSRgb = true);
 
   //! Return cached flag indicating writing into color buffer is enabled or disabled (glColorMask).
   bool ColorMask() const { return myColorMask; }
@@ -979,6 +983,9 @@ public: //! @name methods to alter or retrieve current state
   //! Dumps the content of openGL state into the stream
   Standard_EXPORT static void DumpJsonOpenGlState (Standard_OStream& theOStream, Standard_Integer theDepth = -1);
 
+  //! Set GL_SHADE_MODEL value.
+  Standard_EXPORT void SetShadeModel (Graphic3d_TypeOfShadingModel theModel);
+
 private:
 
   //! Wrapper to system function to retrieve GL function pointer by name.
@@ -1149,6 +1156,7 @@ private: //! @name fields tracking current state
   Standard_Integer              myViewportVirt[4]; //!< virtual viewport
   Standard_Integer              myPointSpriteOrig; //!< GL_POINT_SPRITE_COORD_ORIGIN state (GL_UPPER_LEFT by default)
   Standard_Integer              myRenderMode;      //!< value for active rendering mode
+  Standard_Integer              myShadeModel;      //!< currently used shade model (glShadeModel)
   Standard_Integer              myPolygonMode;     //!< currently used polygon rasterization mode (glPolygonMode)
   Graphic3d_PolygonOffset       myPolygonOffset;   //!< currently applied polygon offset
   bool                          myToCullBackFaces; //!< back face culling mode enabled state (glIsEnabled (GL_CULL_FACE))
