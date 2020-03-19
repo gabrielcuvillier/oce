@@ -114,8 +114,8 @@ void StdSelect_BRepSelectionTool::Load (const Handle(SelectMgr_Selection)& theSe
                                         const Standard_Real theMaxParam)
 {
   Standard_Integer aPriority = (thePriority == -1) ? GetStandardPriority (theShape, theType) : thePriority;
-
-  if( isAutoTriangulation && !BRepTools::Triangulation (theShape, Precision::Infinite()) )
+  if (isAutoTriangulation
+  && !BRepTools::Triangulation (theShape, Precision::Infinite(), true))
   {
 #if !defined(OCCT_DISABLE_MESHING_IN_VISUALIZATION)
     BRepMesh_IncrementalMesh aMesher(theShape, theDeflection, Standard_False, theDeviationAngle);
@@ -451,7 +451,15 @@ void StdSelect_BRepSelectionTool::GetEdgeSensitive (const TopoDS_Shape& theShape
   if (!aPoints.IsNull()
    && !aPoints->IsEmpty())
   {
-    theSensitive = new Select3D_SensitiveCurve (theOwner, aPoints);
+    if (aPoints->Length() == 2)
+    {
+      // don't waste memory, create a segment
+      theSensitive = new Select3D_SensitiveSegment (theOwner, aPoints->First(), aPoints->Last());
+    }
+    else
+    {
+      theSensitive = new Select3D_SensitiveCurve (theOwner, aPoints);
+    }
     return;
   }
 

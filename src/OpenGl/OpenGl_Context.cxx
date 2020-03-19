@@ -228,10 +228,12 @@ OpenGl_Context::OpenGl_Context (const Handle(OpenGl_Caps)& theCaps)
 #if !defined(GL_ES_VERSION_2_0)
   myPointSpriteOrig (GL_UPPER_LEFT),
   myRenderMode (GL_RENDER),
+  myShadeModel (GL_SMOOTH),
   myPolygonMode (GL_FILL),
 #else
   myPointSpriteOrig (0),
   myRenderMode (0),
+  myShadeModel (0),
   myPolygonMode (0),
 #endif
   myToCullBackFaces (false),
@@ -529,7 +531,7 @@ void OpenGl_Context::SetDrawBuffers (const Standard_Integer theNb, const Standar
 // function : SetFrameBufferSRGB
 // purpose  :
 // =======================================================================
-void OpenGl_Context::SetFrameBufferSRGB (bool theIsFbo)
+void OpenGl_Context::SetFrameBufferSRGB (bool theIsFbo, bool theIsFboSRgb)
 {
   if (!hasFboSRGB)
   {
@@ -537,7 +539,8 @@ void OpenGl_Context::SetFrameBufferSRGB (bool theIsFbo)
     return;
   }
   myIsSRgbActive = ToRenderSRGB()
-               && (theIsFbo || myIsSRgbWindow);
+               && (theIsFbo || myIsSRgbWindow)
+               && theIsFboSRgb;
   if (!hasSRGBControl)
   {
     return;
@@ -587,6 +590,7 @@ void OpenGl_Context::FetchState()
   if (core11 != NULL)
   {
     ::glGetIntegerv (GL_RENDER_MODE, &myRenderMode);
+    ::glGetIntegerv (GL_SHADE_MODEL, &myShadeModel);
   }
 
   // cache read buffers state
@@ -3961,6 +3965,29 @@ Standard_Boolean OpenGl_Context::SetGlNormalizeEnabled (Standard_Boolean isEnabl
 #endif
 
   return anOldGlNormalize;
+}
+
+// =======================================================================
+// function : SetShadeModel
+// purpose  :
+// =======================================================================
+void OpenGl_Context::SetShadeModel (Graphic3d_TypeOfShadingModel theModel)
+{
+#if !defined(GL_ES_VERSION_2_0)
+  if (core11 != NULL)
+  {
+    const Standard_Integer aModel = theModel == Graphic3d_TOSM_FACET
+                                 || theModel == Graphic3d_TOSM_PBR_FACET ? GL_FLAT : GL_SMOOTH;
+    if (myShadeModel == aModel)
+    {
+      return;
+    }
+    myShadeModel = aModel;
+    core11->glShadeModel (aModel);
+  }
+#else
+  (void )theModel;
+#endif
 }
 
 // =======================================================================
