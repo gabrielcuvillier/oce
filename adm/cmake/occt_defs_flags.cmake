@@ -28,13 +28,21 @@ if (NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
   endif ()
 endif ()
 
+if (LIGHT_BUILD)
+  # Target C++ 17
+  set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
+  # Target C99
+  set(CMAKE_C_STANDARD 99)
+  set(CMAKE_C_STANDARD_REQUIRED TRUE)
+endif()
+
 if (MSVC)
+  # be sure to have "__cplusplus" macro to correctly report C++ version
+  add_compile_options(/Zc:__cplusplus)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_DEPRECATE)
 else ()
   if (EMSCRIPTEN)
-    # Target C++ 17
-    set(CMAKE_CXX_STANDARD 17)
-    set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
     # Fully disable exceptions
     add_compile_options(-fno-exceptions)
     # Disable a couple of warnings
