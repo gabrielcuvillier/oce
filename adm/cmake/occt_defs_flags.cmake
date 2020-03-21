@@ -34,6 +34,7 @@ else ()
   if (EMSCRIPTEN)
     # Target C++ 17
     set(CMAKE_CXX_STANDARD 17)
+    set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
     # Fully disable exceptions
     add_compile_options(-fno-exceptions)
     # Disable a couple of warnings
