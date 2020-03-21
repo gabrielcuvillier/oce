@@ -1,4 +1,4 @@
-project(TInspectorEXE)
+project(TInspectorEXE CXX)
 
 OCCT_INCLUDE_CMAKE_FILE (adm/cmake/occt_toolkit_prepare_tool)
 set (EXECUTABLE_PROJECT ON)

@@ -1,4 +1,4 @@
-project(DRAWEXE)
+project(DRAWEXE CXX)
 
 set (EXECUTABLE_PROJECT ON)
 OCCT_INCLUDE_CMAKE_FILE (adm/cmake/occt_toolkit)

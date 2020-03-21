@@ -1,3 +1,3 @@
-project(TKFillet)
+project(TKFillet CXX)
 
 OCCT_INCLUDE_CMAKE_FILE (adm/cmake/occt_toolkit)

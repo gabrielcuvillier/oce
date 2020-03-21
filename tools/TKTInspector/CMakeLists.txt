@@ -1,4 +1,4 @@
-project(TKTInspector)
+project(TKTInspector CXX)
 
 set (INSTALL_API ON)
 

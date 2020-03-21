@@ -25,7 +25,7 @@ if (NOT BUILD_LIBRARY_TYPE)
 endif ()
 
 # the name of the project
-project(OCCT)
+project(OCCT CXX)
 
 # Emscripten enable "Light Build" mode
 if (EMSCRIPTEN)

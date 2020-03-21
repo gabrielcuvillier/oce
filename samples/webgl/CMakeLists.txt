@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.2)
 
-project(occt-webgl-sample)
+project(occt-webgl-sample CXX)
 
 set(CMAKE_CXX_STANDARD 11)
 set(APP_VERSION_MAJOR 1)

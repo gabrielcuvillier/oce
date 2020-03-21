@@ -1,4 +1,4 @@
-project(TKV3d)
+project(TKV3d CXX)
 
 OCCT_INCLUDE_CMAKE_FILE (adm/cmake/occt_toolkit)
 

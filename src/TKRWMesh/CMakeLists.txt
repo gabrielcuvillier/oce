@@ -1,4 +1,4 @@
-project(TKRWMesh)
+project(TKRWMesh CXX)
 
 OCCT_INCLUDE_CMAKE_FILE (adm/cmake/occt_toolkit)
 

@@ -1,3 +1,3 @@
-project(TKG2d)
+project(TKG2d CXX)
 
 OCCT_INCLUDE_CMAKE_FILE (adm/cmake/occt_toolkit)

@@ -1,3 +1,3 @@
-project(TKIGES)
+project(TKIGES CXX)
 
 OCCT_INCLUDE_CMAKE_FILE (adm/cmake/occt_toolkit)

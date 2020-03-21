@@ -1,3 +1,3 @@
-project(TKBRep)
+project(TKBRep CXX)
 
 OCCT_INCLUDE_CMAKE_FILE (adm/cmake/occt_toolkit)

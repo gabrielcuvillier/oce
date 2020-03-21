@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.4.0)
-project(uwp)
+project(uwp CXX)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
