@@ -1,3 +1,3 @@
-project(TKOffset CXX)
+project(TKOffset)
 
 OCCT_INCLUDE_CMAKE_FILE (adm/cmake/occt_toolkit)

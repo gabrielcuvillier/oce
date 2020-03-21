@@ -1,4 +1,4 @@
-project(TKVRML CXX)
+project(TKVRML)
 
 OCCT_INCLUDE_CMAKE_FILE (adm/cmake/occt_toolkit)
 

@@ -1,4 +1,4 @@
-project(TKTInspectorAPI CXX)
+project(TKTInspectorAPI)
 
 SET (TOOL_API_LIBRARY ON)
 

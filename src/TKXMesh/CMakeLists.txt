@@ -1,3 +1,3 @@
-project(TKXMesh CXX)
+project(TKXMesh)
 
 OCCT_INCLUDE_CMAKE_FILE (adm/cmake/occt_toolkit)

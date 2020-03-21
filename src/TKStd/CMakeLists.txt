@@ -1,3 +1,3 @@
-project(TKStd CXX)
+project(TKStd)
 
 OCCT_INCLUDE_CMAKE_FILE (adm/cmake/occt_toolkit)

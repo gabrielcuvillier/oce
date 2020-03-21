@@ -1,3 +1,3 @@
-project(TKTopTest CXX)
+project(TKTopTest)
 
 OCCT_INCLUDE_CMAKE_FILE (adm/cmake/occt_toolkit)

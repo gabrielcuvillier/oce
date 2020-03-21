@@ -1,3 +1,3 @@
-project(TKMath CXX)
+project(TKMath)
 
 OCCT_INCLUDE_CMAKE_FILE (adm/cmake/occt_toolkit)
