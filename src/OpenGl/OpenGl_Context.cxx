@@ -835,7 +835,10 @@ void* OpenGl_Context::findProc (const char* theFuncName)
 #if defined(HAVE_EGL)
   return (void* )eglGetProcAddress (theFuncName);
 #elif defined(__EMSCRIPTEN__)
-  return (void*)emscripten_webgl_get_proc_address(theFuncName);
+  // Do not use emscripten_webgl_get_proc_address as explained by Emscripten (to reduce code size and enhance performance)
+  // findProc result is not usefull in WebGL 1.0
+  //return (void*)emscripten_webgl_get_proc_address(theFuncName);
+  return (void*)NULL;
 #elif defined(_WIN32)
   return (void* )wglGetProcAddress (theFuncName);
 #elif defined(__APPLE__) && !defined(MACOSX_USE_GLX)
